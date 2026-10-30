@@ -237,7 +237,7 @@ const notice=t=>{$('status').textContent=t};
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
 let lastCourse=null,courseFix=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
-// Cerca de mí: salida a menos de 4 km y recorrido completo inferior a 15 km.
+// Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
 const nearbyMaxLength=15000;
 function routeLength(i){
  const t=tracks[i];if(!t?.points?.length)return Infinity;
@@ -245,7 +245,7 @@ function routeLength(i){
  return t._nearLength;
 }
 function nearTrack(i){
- return !nearbyOnly||(!!nearbyOrigin&&tracks[i]?.points?.length>1&&dist(nearbyOrigin,tracks[i].points[0])<=nearbyRadius&&routeLength(i)<=nearbyMaxLength);
+ return !nearbyOnly||(!!nearbyOrigin&&tracks[i]?.points?.length>1&&routeLength(i)<=nearbyMaxLength&&(dist(nearbyOrigin,tracks[i].points[0])<=nearbyRadius||closestMeters(nearbyOrigin,tracks[i].points)<=1500));
 }
 function updateNearbyLayers(){
  if(!nearbyOnly||!tracks.length)return;
@@ -260,14 +260,14 @@ function updateNearbyLayers(){
  if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
  if(savedLine)savedLine.bringToFront();
  $('nearbyAction').textContent='Todas';
- $('nearbyAction').title=nearbyCount+' rutas de menos de 15 km con salida a menos de 4 km';
+ $('nearbyAction').title=nearbyCount+' rutas de menos de 15 km con salida a 4 km o trazado a 1,5 km';
 }
 function applyNearbyPosition(p){
  if(!nearbyOnly)return;
  nearbyOrigin=p.slice();nearbyLast=p.slice();
  updateNearbyLayers();
  showRoutesIfOpen();
- notice(nearbyCount?nearbyCount+' rutas cortas con salida a menos de 4 km':'No hay rutas de menos de 15 km que salgan a menos de 4 km');
+ notice(nearbyCount?nearbyCount+' rutas cortas con salida a 4 km o trazado a 1,5 km':'No hay rutas de menos de 15 km con salida cercana o trazado a 1,5 km');
 }
 function showRoutesIfOpen(){if(!$('routeDialog').classList.contains('hidden'))showRoutes()}
 function nearbyButtonState(){
@@ -329,7 +329,7 @@ $('nearbyAction').onclick=()=>{
  // No dejar las 68 rutas visibles mientras se localiza el móvil.
  updateNearbyLayers();
  showRoutesIfOpen();
- notice('Buscando rutas cortas con salida a menos de 4 km…');
+ notice('Buscando rutas cortas con salida a 4 km o trazado a 1,5 km…');
  locateNearby();
 };
 // Flechas pequeñas sobre el recorrido azul, siguiendo el orden real del GPX.
@@ -378,7 +378,7 @@ function drawAll(){
 }
 $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible&&(!nearbyOnly||nearTrack(i))){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
 function selectRoute(i){activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
-function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.map((t,i)=>({t,i})).sort((a,b)=>nearbyOnly&&nearbyOrigin?dist(nearbyOrigin,a.t.points[0])-dist(nearbyOrigin,b.t.points[0]):a.i-b.i).forEach(({t,i})=>{if(nearbyOnly&&!nearTrack(i))return;if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent=nearbyOnly&&!nearbyOrigin?'Esperando ubicación GPS…':nearbyOnly?'No hay rutas de menos de 15 km que salgan a menos de 4 km':'Sin coincidencias'}
+function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.map((t,i)=>({t,i})).sort((a,b)=>nearbyOnly&&nearbyOrigin?dist(nearbyOrigin,a.t.points[0])-dist(nearbyOrigin,b.t.points[0]):a.i-b.i).forEach(({t,i})=>{if(nearbyOnly&&!nearTrack(i))return;if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent=nearbyOnly&&!nearbyOrigin?'Esperando ubicación GPS…':nearbyOnly?'No hay rutas de menos de 15 km con salida cercana o trazado a 1,5 km':'Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
 function changeMode(m){
  const creating=m==='create';
