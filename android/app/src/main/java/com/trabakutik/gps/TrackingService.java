@@ -31,7 +31,7 @@ public class TrackingService extends Service implements LocationListener {
   File dir=new File(getFilesDir(),"grabaciones");dir.mkdirs();
   String name=new SimpleDateFormat("yyyyMMdd-HHmmss",Locale.ROOT).format(new Date());
   file=new File(dir,"trabakutik-"+name+".gpx");
-  try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?><gpx version=\\"1.1\\" creator=\\"Trabakutik Android\\" xmlns=\\"http://www.topografix.com/GPX/1/1\\"><trk><name>Grabacion</name><trkseg>\\n");}
+  try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   recording=true;updateNotice();
  }
  void loadRoute(){
@@ -86,7 +86,7 @@ public class TrackingService extends Service implements LocationListener {
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
    fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
    String time=fmt.format(new Date(l.getTime()));
-   w.write("<trkpt lat=\\""+l.getLatitude()+"\\" lon=\\""+l.getLongitude()+"\\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\\n");
+   w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\n");
    points++;if(points%10==0)updateNotice();
   }catch(Exception ignored){}
  }
