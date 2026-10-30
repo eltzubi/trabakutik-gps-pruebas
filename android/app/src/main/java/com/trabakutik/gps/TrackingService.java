@@ -38,15 +38,16 @@ public class TrackingService extends Service implements LocationListener {
   recording=true;updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;loadTurns();
+  route.clear();routeReached=false;offRoute=false;farSince=0;
   File f=new File(getFilesDir(),"ruta-activa.json");
-  if(!f.exists())return;
+  if(!f.exists()){loadTurns();return;}
   try {
    byte[] raw=new byte[(int)Math.min(f.length(),2000000)];
    try(FileInputStream in=new FileInputStream(f)){int n=0,k;while(n<raw.length&&(k=in.read(raw,n,raw.length-n))>0)n+=k;}
    JSONArray pts=new JSONArray(new String(raw,java.nio.charset.StandardCharsets.UTF_8));
    for(int i=0;i<pts.length()&&i<15000;i++){JSONArray p=pts.optJSONArray(i);if(p!=null&&p.length()>=2){double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);if(Double.isFinite(lat)&&Double.isFinite(lon))route.add(new double[]{lat,lon});}}
   }catch(Exception ignored){}
+  loadTurns();
  }
  void loadTurns(){
   turns.clear();warnedTurns.clear();upcomingTurn="";
