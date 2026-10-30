@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
   showScreen(true);
   web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
   webRoutes.loadUrl("https://trabakutik.com/");
-  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);
+  beginPermissionSetup();
  }
  void showScreen(boolean gps){
   showingGps=gps;
@@ -198,6 +198,37 @@ public class MainActivity extends Activity {
  int dp(int px){return Math.round(px*getResources().getDisplayMetrics().density);}
  void stopNativeRecording(){if(serviceActive)startService(new Intent(this,TrackingService.class).setAction("STOP_RECORD"));}
  void discardLastRecording(){File dir=new File(getFilesDir(),"grabaciones");File[] files=dir.listFiles((d,n)->n.endsWith(".gpx"));if(files==null||files.length==0)return;File last=files[0];for(File f:files)if(f.lastModified()>last.lastModified())last=f;if(last.delete())Toast.makeText(this,"Grabación descartada",Toast.LENGTH_SHORT).show();}
+ // Configuración inicial: Android concede cada permiso únicamente tras confirmación.
+ void beginPermissionSetup(){
+  if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))return;
+  new AlertDialog.Builder(this).setTitle("Preparar Trabakutik GPS")
+   .setMessage("Para navegar y grabar con la pantalla bloqueada, permite la ubicación precisa y las notificaciones. Después podrás revisar la batería para evitar que Samsung suspenda el GPS.")
+   .setPositiveButton("Configurar", (d,w)->requestStartupLocation())
+   .setNegativeButton("Más tarde",(d,w)->getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply())
+   .show();
+ }
+ void requestStartupLocation(){
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);return;
+  }
+  requestStartupNotifications();
+ }
+ void requestStartupNotifications(){
+  if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
+   requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},101);return;
+  }
+  showBatterySetup();
+ }
+ void showBatterySetup(){
+  getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply();
+  new AlertDialog.Builder(this).setTitle("Grabación con pantalla apagada")
+   .setMessage("Para reducir cortes del track, en Ajustes de Trabakutik GPS revisa Batería y selecciona Sin restricciones si tu Samsung lo permite. Android no deja que la aplicación active esta opción por sí sola.")
+   .setPositiveButton("Abrir ajustes", (d,w)->{
+    Intent intent=new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName()));
+    startActivity(intent);
+   })
+   .setNegativeButton("Ahora no",null).show();
+ }
  void startTrack(){ensureGpsPermissions("START");}
  void ensureGpsPermissions(String action){
   pendingGpsAction=action;
@@ -221,10 +252,14 @@ public class MainActivity extends Activity {
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
    pendingGpsAction=null;
    Toast.makeText(this,"Para navegar necesitas permitir la ubicación precisa.",Toast.LENGTH_LONG).show();
+   if(pendingGpsAction==null)showBatterySetup();
    return;
   }
-  if(code==101){launchGps();return;}
-  if(pendingGpsAction!=null)ensureGpsPermissions(pendingGpsAction);
+  if(pendingGpsAction!=null){
+   if(code==101){launchGps();return;}
+   ensureGpsPermissions(pendingGpsAction);
+  }else if(code==100)requestStartupNotifications();
+  else if(code==101)showBatterySetup();
  }
  void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;exportFile=latest;
  Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_TITLE,latest.getName());startActivityForResult(i,200);}
