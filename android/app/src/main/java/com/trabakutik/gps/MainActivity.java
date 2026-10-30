@@ -130,8 +130,18 @@ public class MainActivity extends Activity {
     runOnUiThread(()->{if(serviceActive)getApplicationContext().startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));});
    }catch(Exception ignored){}
   }
+  @JavascriptInterface public void setJunctions(String json){
+   try{
+    org.json.JSONArray turns=new org.json.JSONArray(json);
+    if(turns.length()>400||json.length()>40000)return;
+    File f=new File(getFilesDir(),"giros-activos.json");
+    try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("TURNS"));});
+   }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudieron registrar giros",e);}
+  }
   @JavascriptInterface public void clearRoute(){
     File f=new File(getFilesDir(),"ruta-activa.json");if(f.exists())f.delete();
+    File turns=new File(getFilesDir(),"giros-activos.json");if(turns.exists())turns.delete();
     runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));});
   }
   @JavascriptInterface public void startNavigationWithRoute(String json){
