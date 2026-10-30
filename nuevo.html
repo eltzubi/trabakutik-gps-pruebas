@@ -5,21 +5,21 @@
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div class="info"><b id="mapTitle">Mapa de rutas</b><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
-<footer class="bottom"><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Navegar</button><button id="modeCreate" aria-pressed="false">✎ Crear</button><button id="modeRecord" aria-pressed="false">⏺ Grabación</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button class="go" id="navGo">Iniciar GPS</button></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="switchTrack" disabled>Cambiar ruta</button><button class="blue" id="saveCreated" disabled>Guardar GPX</button><button class="go" id="navCreated" disabled>Navegar</button></div><div class="actions hidden" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#5d8eff"></i>Creada</span></div><div class="status" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
+<footer class="bottom"><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Navegar</button><button id="modeCreate" aria-pressed="false">✎ Crear</button><button id="modeRecord" aria-pressed="false">⏺ Grabación</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button class="go" id="navGo">Iniciar GPS</button></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button class="blue" id="saveCreated" disabled>Guardar GPX</button><button class="go" id="navCreated" disabled>Navegar</button></div><div class="actions hidden" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#5d8eff"></i>Creada</span></div><div class="status" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="routeDialog" class="popup hidden"><div class="sheet"><button class="close" id="closeDialog">✕</button><h2>Elegir ruta de Trabakutik</h2><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
 </div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>t.href.replace(/\.html$/,'').replace(/[-_]/g,' '),fmt=m=>m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';
 const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([43.19,-2.55],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
-let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,switching=false,alerted=false,farCount=0,audio=null;
+let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],alerted=false,farCount=0,audio=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 function drawAll(){layers.forEach(l=>map.removeLayer(l));layers=[];tracks.forEach((t,i)=>{const l=L.polyline(t.points.map(p=>[p[0],p[1]]),{color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?6:4.5,opacity:i===chosen?1:.97,interactive:false}).addTo(map);layers.push(l)});if(chosen>=0){map.fitBounds(layers[chosen].getBounds(),{padding:[35,35]});$('title').textContent=toName(tracks[chosen]);$('mapTitle').textContent=toName(tracks[chosen]);$('distance').textContent='Cian: tu ruta · Naranja: demás rutas'}}
 function selectRoute(i){chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();$('routeDialog').classList.add('hidden');notice('Ruta cargada. Inicia GPS para seguirla.')}
 function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent='Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
-function changeMode(m){mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';notice(m==='create'?'Toca cualquiera de tus rutas, naranja o cian, para crear el recorrido':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();setTimeout(()=>map.invalidateSize(),60)}
+function changeMode(m){mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');$('modeRecord').onclick=()=>changeMode('record');
 function closest(p,restrict=-1,limit=34){
  const touch=map.latLngToContainerPoint(p);let hit=null;
@@ -30,16 +30,36 @@ function closest(p,restrict=-1,limit=34){
   }
  });return hit;
 }
+function drawJunctions(){
+ junctionMarks.forEach(x=>map.removeLayer(x));junctionMarks=[];
+ if(mode!=='create'||!drawSteps.length)return;
+ const end=drawSteps.at(-1),base=tracks[end.n].points[end.i],options=[];
+ for(let n=0;n<tracks.length;n++){if(n===end.n)continue;
+  const points=tracks[n].points;
+  for(let i=0;i<points.length;i++){if(dist(base,points[i])<=6){options.push({n,i});break}}
+ }
+ for(const option of options.slice(0,12)){
+  const p=tracks[option.n].points[option.i];
+  const mark=L.circleMarker([p[0],p[1]],{radius:12,color:'#fff',weight:3,fillColor:'#238dff',fillOpacity:.95,interactive:true}).addTo(map);
+  mark.on('click',e=>{L.DomEvent.stopPropagation(e);
+   const current=drawSteps.at(-1);
+   if(!current||current.n===option.n)return;
+   if(dist(tracks[current.n].points[current.i],p)>6){notice('La conexión ya no está junto al último punto.');return}
+   drawSteps.push({n:option.n,i:option.i});rebuildDraw();
+   notice('Conexión elegida. Marca el siguiente punto por esta ruta.');
+  });junctionMarks.push(mark);
+ }
+ if(options.length)notice(options.length+' continuaciones próximas: toca una bolita azul en el cruce');
+}
 function updateDraw(){
  drawMarks.forEach(x=>map.removeLayer(x));drawMarks=[];
  if(drawLayer)map.removeLayer(drawLayer);drawLayer=null;
  if(drawPoints.length)drawLayer=L.polyline(drawPoints,{color:'#1267ff',weight:7,opacity:1,interactive:false}).addTo(map);
- drawSteps.forEach(s=>{const p=tracks[s.n].points[s.i];drawMarks.push(L.circleMarker([p[0],p[1]],{radius:8,color:'#fff',weight:3,fillColor:'#1267ff',fillOpacity:1,interactive:false}).addTo(map))});
- $('undo').disabled=!drawSteps.length;$('switchTrack').disabled=!drawSteps.length;
- $('switchTrack').textContent=switching?'Cancelar cambio':'Cambiar ruta';
- $('saveCreated').disabled=drawPoints.length<2;$('navCreated').disabled=drawPoints.length<2;
+ drawSteps.forEach(s=>{const p=tracks[s.n].points[s.i];drawMarks.push(L.circleMarker([p[0],p[1]],{radius:7,color:'#fff',weight:2,fillColor:'#1267ff',fillOpacity:1,interactive:false}).addTo(map))});
+ $('undo').disabled=!drawSteps.length;$('saveCreated').disabled=drawPoints.length<2;$('navCreated').disabled=drawPoints.length<2;
+ drawJunctions();
 }
-function appendSegment(n,a,b){const p=tracks[n].points,dir=b>=a?1:-1;for(let j=a+dir;dir>0?j<=b:j>=b;j+=dir)drawPoints.push(p[j].slice(0,2))}
+function appendSegment(n,a,b){const p=tracks[n].points,dir=b>=a?1:-1;for(let j=a+dir;dir>0?j<=b:j+=dir)drawPoints.push(p[j].slice(0,2))}
 function rebuildDraw(){
  drawPoints=[];for(let n=0;n<drawSteps.length;n++){const step=drawSteps[n],p=tracks[step.n].points;
  if(n===0){drawPoints.push(p[step.i].slice(0,2));continue}
@@ -48,31 +68,22 @@ function rebuildDraw(){
  else drawPoints.push(p[step.i].slice(0,2));
  }updateDraw();
 }
-$('switchTrack').onclick=()=>{switching=!switching;updateDraw();notice(switching?'Toca una ruta distinta justo donde se cruza con la bolita azul final. No se añadirá un desvío.':'Continúa por la misma ruta.')};
 map.on('click',e=>{
  if(mode!=='create'||!tracks.length)return;
- const last=drawSteps.at(-1);
- if(switching){
-  if(!last){switching=false;return}
-  const hit=closest(e.latlng,-1,30);
-  if(!hit||hit.n===last.n){notice('Toca otra ruta en el cruce, cerca de la última bolita azul.');return}
-  const a=tracks[last.n].points[last.i],b=tracks[hit.n].points[hit.i];
-  if(dist(a,b)>12){notice('Las rutas no coinciden en ese punto. No he añadido ningún salto.');return}
-  hit.switch=true;drawSteps.push(hit);switching=false;rebuildDraw();notice('Cambio de ruta marcado. Ahora toca el siguiente punto de esta nueva ruta.');return;
- }
- const hit=closest(e.latlng,last?last.n:-1,34);
- if(!hit){notice(last?'Sigue tocando la misma ruta. Para usar otra, pulsa Cambiar ruta.':'Acércate y toca una línea naranja o cian.');return}
+ const last=drawSteps.at(-1),hit=closest(e.latlng,last?last.n:-1,38);
+ if(!hit){notice('Toca una línea naranja o cian. En los cruces, elige una bolita azul.');return}
  if(last&&hit.i===last.i)return;
  if(last){
-  const lastMove=drawSteps.length>1?drawSteps.at(-2):null;
-  if(lastMove&&lastMove.n===last.n){
-   const dir=Math.sign(last.i-lastMove.i);
-   if(dir&&Math.sign(hit.i-last.i)!==dir){notice('Ese punto vuelve hacia atrás. Usa Deshacer si quieres cambiar de sentido.');return}
+  const before=drawSteps.length>1?drawSteps.at(-2):null;
+  if(before&&before.n===last.n){
+   const direction=Math.sign(last.i-before.i);
+   if(direction&&Math.sign(hit.i-last.i)!==direction){notice('Ese punto te haría retroceder. Pulsa Deshacer para cambiar el sentido.');return}
   }
  }
- drawSteps.push(hit);rebuildDraw();notice(drawSteps.length+' bolitas azules · Sigue avanzando por esta ruta.');
+ drawSteps.push(hit);rebuildDraw();
+ if(!junctionMarks.length)notice(drawSteps.length+' puntos azules · toca el siguiente tramo o guarda el GPX.');
 });
-$('undo').onclick=()=>{switching=false;drawSteps.pop();rebuildDraw()};
+$('undo').onclick=()=>{drawSteps.pop();rebuildDraw()};
 function gpx(points,name){return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Trabakutik"><trk><name>'+name+'</name><trkseg>'+points.map(p=>'<trkpt lat="'+p[0]+'" lon="'+p[1]+'"/>').join('')+'</trkseg></trk></gpx>'}
 function download(points,name){if(points.length<2)return;const url=URL.createObjectURL(new Blob([gpx(points,name)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=name+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 $('saveCreated').onclick=()=>{download(drawPoints,'trabakutik-creado');notice('Guardado GPX iniciado. Comprueba la carpeta Descargas del móvil')};$('navCreated').onclick=()=>{routePoints=drawPoints.slice();chosen=-1;changeMode('nav');$('mapTitle').textContent='Mi recorrido creado';$('title').textContent='Ruta creada';notice('Pulsa Iniciar GPS para navegar tu track azul')};
