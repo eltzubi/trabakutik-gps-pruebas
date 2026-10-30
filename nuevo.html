@@ -843,7 +843,8 @@ function computeJunctions(){
     if(dist(before,b)>20||dist(after,b)>20){branch=true;break}
    }
   }
-  if(!branch)continue;
+  // Giros pronunciados del GPX también cuentan aunque no haya otra ruta registrada.
+  if(!branch&&angle<60)continue;
   if(junctions.length&&dist(junctions.at(-1).point,b)<35)continue;
   const cross=v1[0]*v2[1]-v1[1]*v2[0];
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
