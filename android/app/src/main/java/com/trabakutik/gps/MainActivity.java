@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
   root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
   setContentView(root);
   showScreen(true);
-  web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html");
+  web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
   webRoutes.loadUrl("https://trabakutik.com/");
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);
  }
@@ -76,6 +76,7 @@ public class MainActivity extends Activity {
   w.setBackgroundColor(0xff07131d);
   w.getSettings().setJavaScriptEnabled(true);
   w.getSettings().setDomStorageEnabled(true);
+   if(navigator)w.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
   w.getSettings().setGeolocationEnabled(true);
   w.getSettings().setUseWideViewPort(true);
   w.getSettings().setLoadWithOverviewMode(true);
