@@ -105,17 +105,17 @@ function rebuildDrawn(){
  drawUpdate();
 }
 function startDrawing(){
- drawing=true;follow=false;map.dragging.enable();$('mapCanvas').style.transform='none';$('bearingText').textContent='Dibujando sobre tus rutas';
+ drawing=true;follow=false;map.closePopup();nearbyLayers.forEach(l=>{l.closePopup();l.off('click');l.options.interactive=false});map.dragging.enable();$('mapCanvas').style.transform='none';$('bearingText').textContent='Dibujando sobre tus rutas';
  $('drawPanel').classList.add('active');
  for(const id of ['drawUndo','drawSave','drawFinish','drawInfo','drawClear'])$(id).classList.remove('hidden');
  $('drawStart').textContent='● Dibujando';
  msg('Toca tus rutas en el mapa para añadir bolitas azules. Cada toque añade un punto.');
 }
 $('drawStart').onclick=()=>{if(!drawing)startDrawing();else msg('Dibujo activo: toca el track para añadir puntos.')};
-map.on('click',e=>{if(drawing)previewDraw(e.latlng)});
+map.on('click',e=>{if(drawing){map.closePopup();previewDraw(e.latlng)}});
 $('drawUndo').onclick=()=>{clearPreview();drawIndexes.pop();if(!drawIndexes.length)drawTrackIndex=-1;rebuildDrawn()};
 $('drawClear').onclick=()=>{if(drawIndexes.length&&!confirm('¿Borrar los puntos del trazado?'))return;drawing=false;clearPreview();drawIndexes=[];drawTrackIndex=-1;rebuildDrawn();$('drawPanel').classList.remove('active');$('drawStart').textContent='✎ Crear track';for(const id of ['drawUndo','drawSave','drawFinish','drawInfo','drawClear'])$(id).classList.add('hidden')};
-$('drawFinish').onclick=()=>{drawing=false;clearPreview();$('drawPanel').classList.remove('active');$('drawStart').textContent='✎ Crear track';$('drawFinish').classList.add('hidden');drawUpdate();msg('Trazado terminado sobre la ruta seleccionada. Puedes guardarlo en GPX.')};
+$('drawFinish').onclick=()=>{drawing=false;clearPreview();nearbyLayers.forEach(l=>{l.options.interactive=true;l.on('click',()=>l.openPopup())});$('drawPanel').classList.remove('active');$('drawStart').textContent='✎ Crear track';$('drawFinish').classList.add('hidden');drawUpdate();msg('Trazado terminado sobre la ruta seleccionada. Puedes guardarlo en GPX.')};
 $('drawSave').onclick=()=>{if(drawn.length<2)return;const xml='<?xml version="1.0" encoding="UTF-8"?>\n<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Trabakutik"><trk><name>Track manual sin verificar</name><trkseg>'+drawn.map(p=>'<trkpt lat="'+p[0]+'" lon="'+p[1]+'"/>').join('')+'</trkseg></trk></gpx>';const url=URL.createObjectURL(new Blob([xml],{type:'application/gpx+xml'}));const a=document.createElement('a');a.href=url;a.download='trabakutik-track-manual.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);msg('Descarga del track manual iniciada. Comprueba la carpeta Descargas.')};
 
 function clearReturn(){if(returnLayer){map.removeLayer(returnLayer);returnLayer=null}returnMode=null;$('returnBox').classList.add('hidden');$('clearReturn').disabled=true;if(track)track.setStyle({opacity:.94})}
@@ -176,7 +176,7 @@ $('nearby').onclick=()=>{
  }
  for(const t of candidates){
   const l=L.polyline(t.points.map(p=>[p[0],p[1]]),{color:'#ff9c3b',weight:3,opacity:.65,dashArray:'6 7',interactive:true}).addTo(map);
-  l.bindPopup('Ruta cercana: '+escapeXML(t.href.replace(/\.html$/,''))+'<br>Proximidad NO confirma un cruce transitable');
+  l.bindPopup('Ruta cercana: '+escapeXML(t.href.replace(/\.html$/,''))+'<br>Proximidad NO confirma un cruce transitable');if(drawing){l.off('click');l.options.interactive=false}
   nearbyLayers.push(l)
  }
  $('nearby').textContent='Ocultar rutas cercanas';
