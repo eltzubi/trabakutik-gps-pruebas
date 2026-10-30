@@ -15,9 +15,28 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,att
 let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,audio=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
-function drawAll(){layers.forEach(l=>map.removeLayer(l));layers=[];tracks.forEach((t,i)=>{const l=L.polyline(t.points.map(p=>[p[0],p[1]]),{color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?6:4.5,opacity:i===chosen?1:.97,interactive:false}).addTo(map);layers.push(l);if(!otherTracksVisible&&i!==chosen)map.removeLayer(l)});if(chosen>=0){map.fitBounds(layers[chosen].getBounds(),{padding:[35,35]});$('title').textContent=toName(tracks[chosen]);$('mapTitle').textContent=toName(tracks[chosen]);$('distance').textContent='Cian: tu ruta · Naranja: demás rutas'}}
-$('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
-function selectRoute(i){chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();$('routeDialog').classList.add('hidden');notice('Ruta cargada. Inicia GPS para seguirla.')}
+function drawAll(){
+ layers.forEach(l=>map.removeLayer(l));layers=[];
+ // Primero los naranjas, al final la ruta activa por encima de todos.
+ tracks.forEach((t,i)=>{
+  const l=L.polyline(t.points.map(p=>[p[0],p[1]]),{
+   color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?7:4.5,
+   opacity:i===chosen?1:.97,interactive:false
+  });
+  layers.push(l);
+  if((otherTracksVisible||i===chosen)&&i!==chosen)l.addTo(map);
+ });
+ if(chosen>=0){
+  layers[chosen].addTo(map).bringToFront();
+  map.fitBounds(layers[chosen].getBounds(),{padding:[35,35]});
+  $('title').textContent=toName(tracks[chosen]);
+  $('mapTitle').textContent=toName(tracks[chosen]);
+  $('distance').textContent='Azul: tu ruta · Naranja: demás rutas';
+ }
+ if(savedLine) savedLine.bringToFront();
+}
+$('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
+function selectRoute(i){if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();$('routeDialog').classList.add('hidden');notice('Ruta cargada. Inicia GPS para seguirla.')}
 function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent='Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
 function changeMode(m){mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();setTimeout(()=>map.invalidateSize(),60)}
@@ -199,7 +218,7 @@ function loadSaved(item){
  $('savedDialog').classList.add('hidden');changeMode('nav');
  
  if(savedLine)map.removeLayer(savedLine);
- savedLine=L.polyline(routePoints,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map);
+ savedLine=L.polyline(routePoints,{color:'#5bebff',weight:8,opacity:1,interactive:false}).addTo(map).bringToFront();
  map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
  $('title').textContent=item.name;$('mapTitle').textContent=item.name;
  $('distance').textContent='Ruta propia'+elevationText(routePoints);
