@@ -332,6 +332,29 @@ $('nearbyAction').onclick=()=>{
  notice('Buscando rutas cortas con salida a menos de 1 km…');
  locateNearby();
 };
+// Flechas pequeñas sobre el recorrido azul, siguiendo el orden real del GPX.
+let directionArrows=L.layerGroup().addTo(map);
+function updateDirectionArrows(){
+ directionArrows.clearLayers();
+ if(routePoints.length<2||map.getZoom()<13)return;
+ let totalMeters=0;
+ for(let i=1;i<routePoints.length;i++)totalMeters+=dist(routePoints[i-1],routePoints[i]);
+ const spacing=Math.max(220,totalMeters/40);
+ let next=spacing/2,covered=0;
+ for(let i=1;i<routePoints.length;i++){
+  const a=routePoints[i-1],b=routePoints[i],len=dist(a,b);
+  if(len<1)continue;
+  while(covered+len>=next){
+   const t=(next-covered)/len,point=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+   const angle=bearingBetween(a,b);
+   const icon=L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:'<div style="width:20px;height:20px;display:grid;place-items:center;transform:rotate('+angle+'deg);pointer-events:none"><svg width="15" height="17" viewBox="0 0 15 17" aria-hidden="true"><path d="M7.5 1L14 15L7.5 11.5L1 15Z" fill="#07314b" stroke="#f0ffff" stroke-width="1.8" stroke-linejoin="round"/></svg></div>'});
+   L.marker(point,{icon,interactive:false,keyboard:false,zIndexOffset:450}).addTo(directionArrows);
+   next+=spacing;
+  }
+  covered+=len;
+ }
+}
+map.on('zoomend',updateDirectionArrows);
 function drawAll(){
  layers.forEach(l=>map.removeLayer(l));layers=[];
  // Primero los naranjas, al final la ruta activa por encima de todos.
@@ -351,6 +374,7 @@ function drawAll(){
   $('distance').textContent='Azul: tu ruta · Naranja: demás rutas';
  }
  if(savedLine) savedLine.bringToFront();
+ updateDirectionArrows();
 }
 $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible&&(!nearbyOnly||nearTrack(i))){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
 function selectRoute(i){activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
@@ -630,6 +654,7 @@ function loadSaved(item){
  
  if(savedLine)map.removeLayer(savedLine);
  savedLine=L.polyline(routePoints,{color:'#5bebff',weight:8,opacity:1,interactive:false}).addTo(map).bringToFront();
+ updateDirectionArrows();
  map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
  $('title').textContent=item.name;$('mapTitle').textContent=item.name;
  $('distance').textContent='Ruta propia'+elevationText(routePoints);
@@ -665,7 +690,7 @@ function clearActiveRoute(){
  // El dibujo provisional del creador es otra capa distinta de la ruta activa.
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(chosen<0&&drawPoints.length&&sameTrack(drawPoints,routePoints))clearDraft();
- routePoints=[];chosen=-1;activeSavedId=null;
+ routePoints=[];chosen=-1;activeSavedId=null;directionArrows.clearLayers();
  junctions=[];junctionWarned.clear();routeCumulative=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
