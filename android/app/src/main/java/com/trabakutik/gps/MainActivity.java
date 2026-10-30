@@ -27,7 +27,8 @@ public class MainActivity extends Activity {
   web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html");
   requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);
  }
- int dp(int px){return Math.round(px*getResources().getDisplayMetrics().density);}\n void startTrack(){if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);return;}
+ int dp(int px){return Math.round(px*getResources().getDisplayMetrics().density);}
+ void startTrack(){if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);return;}
   if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},101);
   startForegroundService(new Intent(this,TrackingService.class).setAction("START"));
  }
