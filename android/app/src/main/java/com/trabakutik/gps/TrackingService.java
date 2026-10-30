@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;File file;boolean recording=false,active=false,routeReached=false,offRoute=false;int points=0;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;File file;boolean recording=false,active=false,routeReached=false,offRoute=false;int points=0;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
  final String channel="trabakutik-grabacion";
  @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));}
  @Override public IBinder onBind(Intent i){return null;}
@@ -26,8 +26,12 @@ public class TrackingService extends Service implements LocationListener {
   try {
    loadRoute();active=true;
    startForeground(12,notification());
+   PowerManager pm=(PowerManager)getSystemService(POWER_SERVICE);
+   gpsWakeLock=pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"TrabakutikGPS:Location");
+   gpsWakeLock.acquire();
    if(withRecording)beginRecording();
    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1500,2,this,Looper.getMainLooper());
+   try{manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,5,this,Looper.getMainLooper());}catch(Exception ignored){}
   }catch(Exception ex){finish();}
  }
  void beginRecording() throws IOException {
@@ -159,6 +163,6 @@ public class TrackingService extends Service implements LocationListener {
   catch(Exception e){android.util.Log.e("TrabakutikGPS","No se pudo cerrar GPX",e);}
   recording=false;
  }
- void finish(){if(active){manager.removeUpdates(this);active=false;}endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){if(active||recording)finish();super.onDestroy();}
 }
