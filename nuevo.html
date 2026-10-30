@@ -231,12 +231,12 @@ function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLa
 let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
 changeBase(initialBase);
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=10000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=500,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
-// Cerca de mí compara los INICIOS de ruta, no los tracks enteros.
+// Comparar la posicion con todos los segmentos del trazado, no con la salida.
 function nearTrack(i){
- return !nearbyOnly||(!!nearbyOrigin&&dist(nearbyOrigin,tracks[i].points[0])<=nearbyRadius);
+ return !nearbyOnly||(!!nearbyOrigin&&tracks[i]?.points?.length>1&&closestMeters(nearbyOrigin,tracks[i].points)<=nearbyRadius);
 }
 function updateNearbyLayers(){
  if(!nearbyOnly||!tracks.length)return;
@@ -244,21 +244,21 @@ function updateNearbyLayers(){
  layers.forEach((layer,i)=>{
   const near=nearTrack(i);
   if(near)nearbyCount++;
-  if(i===chosen)return; // La ruta azul elegida nunca desaparece.
+  if(i===chosen){if(!map.hasLayer(layer))layer.addTo(map);return;} // La ruta azul elegida nunca desaparece.
   if(otherTracksVisible&&near){if(!map.hasLayer(layer))layer.addTo(map)}
   else if(map.hasLayer(layer))map.removeLayer(layer);
  });
  if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
  if(savedLine)savedLine.bringToFront();
  $('nearbyAction').textContent='Todas';
- $('nearbyAction').title=nearbyCount+' rutas con inicio a 10 km o menos';
+ $('nearbyAction').title=nearbyCount+' rutas que pasan a 500 m o menos';
 }
 function applyNearbyPosition(p){
  if(!nearbyOnly)return;
  nearbyOrigin=p.slice();nearbyLast=p.slice();
  updateNearbyLayers();
  showRoutesIfOpen();
- notice(nearbyCount?nearbyCount+' rutas con salida en un radio de 10 km':'No hay salidas de rutas a menos de 10 km');
+ notice(nearbyCount?nearbyCount+' rutas que pasan a menos de 500 m':'No hay rutas a menos de 500 m');
 }
 function showRoutesIfOpen(){if(!$('routeDialog').classList.contains('hidden'))showRoutes()}
 function nearbyButtonState(){
@@ -320,7 +320,7 @@ $('nearbyAction').onclick=()=>{
  // No dejar las 68 rutas visibles mientras se localiza el móvil.
  updateNearbyLayers();
  showRoutesIfOpen();
- notice('Buscando rutas con salida a menos de 10 km…');
+ notice('Buscando rutas que pasan a menos de 500 m…');
  locateNearby();
 };
 function drawAll(){
@@ -345,7 +345,7 @@ function drawAll(){
 }
 $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible&&(!nearbyOnly||nearTrack(i))){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
 function selectRoute(i){activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
-function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(nearbyOnly&&!nearTrack(i))return;if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent=nearbyOnly&&!nearbyOrigin?'Esperando ubicación GPS…':nearbyOnly?'No hay rutas que comiencen a menos de 10 km':'Sin coincidencias'}
+function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(nearbyOnly&&!nearTrack(i))return;if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent=nearbyOnly&&!nearbyOrigin?'Esperando ubicación GPS…':nearbyOnly?'No hay rutas a menos de 500 m':'Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
 function changeMode(m){
  const creating=m==='create';
@@ -839,7 +839,7 @@ function junctionGuidance(p,accuracy){
  }
  if(ahead< -9)resetJunctionView();
 }
-function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const h=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0?pos.coords.heading:null;const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(!prior||dist(prior,p)>4)map.panTo(p,{animate:false});if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>1000))applyNearbyPosition(p);
+function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const h=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0?pos.coords.heading:null;const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(!prior||dist(prior,p)>4)map.panTo(p,{animate:false});if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
  if(recording){if(!recorded.length||dist(recorded.at(-1),p)>2){recorded.push(p);if(recordLayer){recordLayer.setLatLngs(recorded);recordLayer.bringToFront()}else recordLayer=L.polyline(recorded,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,lineCap:'round',lineJoin:'round',className:'recorded-red'}).addTo(map).bringToFront()}}
  if(mode==='nav'&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')}else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
