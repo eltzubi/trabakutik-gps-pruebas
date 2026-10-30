@@ -92,7 +92,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  void endRecording(){
   if(!recording)return;
-  try(FileWriter w=new FileWriter(file,true)){w.write("</trkseg></trk></gpx>\\n");}
+  try(FileWriter w=new FileWriter(file,true)){w.write("</trkseg></trk></gpx>\n");}
   catch(Exception e){android.util.Log.e("TrabakutikGPS","No se pudo cerrar GPX",e);}
   recording=false;
  }
