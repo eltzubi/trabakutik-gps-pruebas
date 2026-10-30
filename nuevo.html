@@ -56,6 +56,9 @@ button{min-width:0}
 .clear-active.hidden{display:none}
 .info-top .basemap-control{flex-shrink:0}
 .info:has(.clear-active:not(.hidden)) .basemap-control{max-width:92px}
+#createActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#createActions button{min-width:0}
+@media(max-height:650px){#createActions button{min-height:36px;padding:6px 5px}}
 /* Selector cartográfico compacto; mantiene el trazado sobre las teselas. */
 .info{max-width:calc(100% - 79px);width:min(315px,calc(100% - 79px));pointer-events:auto}
 .info-top{display:flex;align-items:center;justify-content:space-between;gap:5px}
