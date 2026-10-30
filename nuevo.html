@@ -20,14 +20,23 @@ $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((lay
 function selectRoute(i){chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();$('routeDialog').classList.add('hidden');notice('Ruta cargada. Inicia GPS para seguirla.')}
 function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent='Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
-function changeMode(m){mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();setTimeout(()=>map.invalidateSize(),60)}
+function changeMode(m){mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();if(m==='create'&&map.getZoom()<15)map.setZoom(15);setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');$('modeRecord').onclick=()=>changeMode('record');
-function closest(p,restrict=-1,limit=34){
- const touch=map.latLngToContainerPoint(p);let hit=null;
- tracks.forEach((t,n)=>{if(restrict>=0&&n!==restrict)return;const arr=t.points;
-  for(let i=1;i<arr.length;i++){const a=map.latLngToContainerPoint(arr[i-1]),b=map.latLngToContainerPoint(arr[i]),dx=b.x-a.x,dy=b.y-a.y,den=dx*dx+dy*dy;
-   const f=Math.max(0,Math.min(1,((touch.x-a.x)*dx+(touch.y-a.y)*dy)/(den||1))),d=Math.hypot(touch.x-a.x-f*dx,touch.y-a.y-f*dy);
-   if(d<limit&&(!hit||d<hit.d)){const idx=f<.5?i-1:i;hit={n,i:idx,d}};
+function closest(p,restrict=-1,limit=28){
+ const touch=map.latLngToContainerPoint(p),last=drawSteps.at(-1);let hit=null;
+ tracks.forEach((t,n)=>{
+  if(restrict>=0&&n!==restrict)return;
+  const arr=t.points;
+  for(let i=1;i<arr.length;i++){
+   const a=map.latLngToContainerPoint(arr[i-1]),b=map.latLngToContainerPoint(arr[i]);
+   const dx=b.x-a.x,dy=b.y-a.y,den=dx*dx+dy*dy;
+   const f=Math.max(0,Math.min(1,((touch.x-a.x)*dx+(touch.y-a.y)*dy)/(den||1)));
+   const d=Math.hypot(touch.x-a.x-f*dx,touch.y-a.y-f*dy);
+   const idx=f<.5?i-1:i;
+   // En zonas donde varios tracks se superponen, favorecer la continuidad,
+   // nunca saltar automáticamente a otro trazado.
+   const score=d+(last&&n===last.n?Math.min(Math.abs(idx-last.i)*.025,5):0);
+   if(d<=limit&&(!hit||score<hit.score))hit={n,i:idx,d,score};
   }
  });return hit;
 }
@@ -76,10 +85,11 @@ function rebuildDraw(){
 }
 map.on('click',e=>{
  if(mode!=='create'||!tracks.length)return;
- const last=drawSteps.at(-1),hit=closest(e.latlng,last?last.n:-1,38);
+ const last=drawSteps.at(-1),hit=closest(e.latlng,last?last.n:-1,30);
  if(!hit){notice('Toca una línea naranja o cian. En los cruces, elige una bolita azul.');return}
  if(last&&hit.i===last.i){notice('Ese punto ya está marcado. Toca más adelante en la línea.');return;}
  if(last&&dist(tracks[last.n].points[last.i],tracks[hit.n].points[hit.i])<3){notice('Toca un poco más adelante para añadir otra bolita.');return}
+ if(last&&Math.abs(hit.i-last.i)>90){notice('Ese punto está demasiado lejos del anterior. Amplía el mapa y marca un punto intermedio.');return}
  if(last){
   const before=drawSteps.length>1?drawSteps.at(-2):null;
   if(before&&before.n===last.n){
