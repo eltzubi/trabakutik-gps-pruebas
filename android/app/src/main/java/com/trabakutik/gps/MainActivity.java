@@ -94,6 +94,7 @@ public class MainActivity extends Activity {
    Toast.makeText(this,"Para navegar necesitas permitir la ubicación precisa.",Toast.LENGTH_LONG).show();
    return;
   }
+  if(code==101){launchGps();return;}
   if(pendingGpsAction!=null)ensureGpsPermissions(pendingGpsAction);
  }
  void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;exportFile=latest;
