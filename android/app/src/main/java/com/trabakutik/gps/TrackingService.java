@@ -17,7 +17,7 @@ public class TrackingService extends Service implements LocationListener {
  @Override public IBinder onBind(Intent i){return null;}
  Notification notification(){Intent intent=new Intent(this,TrackingService.class).setAction("STOP");PendingIntent stop=PendingIntent.getService(this,1,intent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
  return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentTitle(recording?"Trabakutik GPS grabando":"Trabakutik GPS navegando").setContentText(offRoute?"FUERA DE RUTA · vuelve a la línea azul":(route.size()>1?"Siguiendo ruta · pantalla bloqueada activa":points+" puntos registrados")).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
- @Override public int onStartCommand(Intent i,int flags,int id){if(i!=null&&"STOP".equals(i.getAction())){finish();return START_NOT_STICKY;}if(i!=null&&"ROUTE".equals(i.getAction())){loadRoute();if(active)updateNotice();return active?START_STICKY:START_NOT_STICKY;}boolean wantsRecord=i!=null&&"START".equals(i.getAction());if(!active)start(wantsRecord);else if(wantsRecord&&!recording){try{beginRecording();}catch(IOException ex){android.util.Log.e("TrabakutikGPS","No se pudo empezar grabacion",ex);}}return active?START_STICKY:START_NOT_STICKY;}
+ @Override public int onStartCommand(Intent i,int flags,int id){if(i!=null&&"STOP".equals(i.getAction())){finish();return START_NOT_STICKY;}if(i!=null&&"STOP_RECORD".equals(i.getAction())){endRecording();updateNotice();return active?START_STICKY:START_NOT_STICKY;}if(i!=null&&"ROUTE".equals(i.getAction())){loadRoute();if(active)updateNotice();return active?START_STICKY:START_NOT_STICKY;}boolean wantsRecord=i!=null&&"START".equals(i.getAction());if(!active)start(wantsRecord);else if(wantsRecord&&!recording){try{beginRecording();}catch(IOException ex){android.util.Log.e("TrabakutikGPS","No se pudo empezar grabacion",ex);}}return active?START_STICKY:START_NOT_STICKY;}
  void start(boolean withRecording){
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){stopSelf();return;}
   try {
@@ -58,15 +58,15 @@ public class TrackingService extends Service implements LocationListener {
   return best;
  }
  void checkDeviation(Location l){
-  if(route.size()<2||!l.hasAccuracy()||l.getAccuracy()>30){farSince=0;return;}
+  if(route.size()<2||!l.hasAccuracy()||l.getAccuracy()>22){farSince=0;return;}
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
-  if(d<=Math.max(16,acc+5)){
+  if(d<=Math.max(14,acc+4)){
    routeReached=true;farSince=0;if(offRoute){offRoute=false;updateNotice();}return;
   }
   if(!routeReached)return;
-  if(d<=Math.max(24,acc+12)){farSince=0;return;}
+  if(d<=Math.max(18,acc+7)){farSince=0;return;}
   if(farSince==0){farSince=SystemClock.elapsedRealtime();return;}
-  if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=1600){
+  if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=800){
    offRoute=true;updateNotice();tripleBeep();
   }
  }
@@ -90,6 +90,12 @@ public class TrackingService extends Service implements LocationListener {
    points++;if(points%10==0)updateNotice();
   }catch(Exception ignored){}
  }
- void finish(){if(active){manager.removeUpdates(this);active=false;}if(recording){try(FileWriter w=new FileWriter(file,true)){w.write("</trkseg></trk></gpx>\n");}catch(Exception ignored){}recording=false;}stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void endRecording(){
+  if(!recording)return;
+  try(FileWriter w=new FileWriter(file,true)){w.write("</trkseg></trk></gpx>\\n");}
+  catch(Exception e){android.util.Log.e("TrabakutikGPS","No se pudo cerrar GPX",e);}
+  recording=false;
+ }
+ void finish(){if(active){manager.removeUpdates(this);active=false;}endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){if(active||recording)finish();super.onDestroy();}
 }
