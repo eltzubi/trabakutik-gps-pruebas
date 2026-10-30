@@ -65,6 +65,7 @@ button{min-width:0}
 #navActions button{width:100%}
 @media(max-width:390px){.info{max-width:calc(100% - 65px);width:min(315px,calc(100% - 65px))}.basemap-control span{display:none}.basemap-control select{width:58px}}
 
+.map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
 .turn-hint{position:absolute;z-index:705;left:10px;bottom:12px;display:flex;align-items:center;gap:10px;max-width:calc(100% - 78px);padding:7px 12px 7px 9px;border:1px solid #66bdd0b3;border-radius:14px;background:#092434ed;color:#f0fcff;box-shadow:0 3px 14px #0008;pointer-events:none}
 .turn-arrow{display:grid;place-items:center;min-width:41px;height:41px;background:#0c5362;border:1px solid #4ba7bc;border-radius:10px;font-size:32px;line-height:1;color:#a7f7ff}
 .turn-copy{display:flex;flex-direction:column;gap:1px;min-width:0}
@@ -97,7 +98,7 @@ function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLa
 let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
 changeBase(initialBase);
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[];
+let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 function drawAll(){
@@ -431,6 +432,7 @@ function closestMeters(p,path){let best=Infinity;for(let i=1;i<path.length;i++){
 // Cruces: solo se consideran giros marcados de la ruta con otra rama registrada
 // en los tracks. No se inventan instrucciones de giro.
 function resetJunctionView(){
+ if(turnMarker){map.removeLayer(turnMarker);turnMarker=null}
  $('turnHint').classList.add('hidden');
  junctionActive=-1;junctionBlocked=-1;
  if(junctionZoom!==null){
@@ -521,6 +523,11 @@ function junctionGuidance(p,accuracy){
  const {j,ahead,turn}=best;
  const arrow=turn.direction==='izquierda'?'↰':turn.direction==='derecha'?'↱':'↶';
  $('turnArrow').textContent=arrow;
+ if(!turnMarker||turnMarker.options.turnIndex!==j){
+  if(turnMarker)map.removeLayer(turnMarker);
+  const sign=L.divIcon({className:'',iconSize:[38,38],iconAnchor:[19,19],html:'<div class="map-turn-sign">'+arrow+'</div>'});
+  turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
+ }
  $('turnDirection').textContent=turn.direction==='vuelta'?'Cambio de sentido':'Gira a la '+turn.direction;
  $('turnDistance').textContent=ahead>0?'En '+Math.max(0,Math.round(ahead/5)*5)+' m':'En el cruce';
  $('turnHint').classList.remove('hidden');
