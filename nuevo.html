@@ -262,7 +262,7 @@ function updateNearbyLayers(){
   const near=nearTrack(i);
   if(near)nearbyCount++;
   if(i===chosen){if(!map.hasLayer(layer))layer.addTo(map);return;} // La ruta azul elegida nunca desaparece.
-  if(otherTracksVisible&&near){if(!map.hasLayer(layer))layer.addTo(map)}
+  if(routeListScope!=='current'&&otherTracksVisible&&near){if(!map.hasLayer(layer))layer.addTo(map)}
   else if(map.hasLayer(layer))map.removeLayer(layer);
  });
  if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
@@ -320,7 +320,7 @@ function locateNearby(){
  });
 }
 $('nearbyAction').onclick=()=>{
- nearbyOnly=!nearbyOnly;nearbyOrigin=null;nearbyLast=null;
+ nearbyOnly=!nearbyOnly;routeListScope=nearbyOnly?'near':'all';nearbyOrigin=null;nearbyLast=null;
  nearbyButtonState();
  if(!nearbyOnly){
   layers.forEach((layer,i)=>{
@@ -372,7 +372,7 @@ function drawAll(){
    opacity:i===chosen?1:.97,interactive:false
   });
   layers.push(l);
-  if((otherTracksVisible||i===chosen)&&i!==chosen&&(!nearbyOnly||i===chosen||nearTrack(i)))l.addTo(map);
+  if(i!==chosen&&routeListScope!=='current'&&otherTracksVisible&&(!nearbyOnly||nearTrack(i)))l.addTo(map);
  });
  if(chosen>=0){
   layers[chosen].addTo(map).bringToFront();
@@ -382,11 +382,26 @@ function drawAll(){
   $('distance').textContent='Azul: tu ruta · Naranja: demás rutas';
  }
  if(savedLine) savedLine.bringToFront();
+ syncScopeMap();
  updateDirectionArrows();
 }
-$('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible&&(!nearbyOnly||nearTrack(i))){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
+$('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible&&routeListScope!=='current'&&(!nearbyOnly||nearTrack(i))){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
 function selectRoute(i){activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
 let routeListScope='all';
+function syncScopeMap(){
+ nearbyOnly=routeListScope==='near';nearbyButtonState();
+ nearbyCount=0;
+ layers.forEach((layer,i)=>{
+  const visible=i===chosen||(routeListScope!=='current'&&otherTracksVisible&&(!nearbyOnly||nearTrack(i)));
+  if(visible){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer);
+  if(nearbyOnly&&nearTrack(i))nearbyCount++;
+ });
+ if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
+ if(savedLine)savedLine.bringToFront();
+ if(routeListScope==='current')notice('Mostrando solo la ruta actual');
+ else if(routeListScope==='all')notice('Mostrando todas las rutas');
+ else notice(nearbyOrigin?nearbyCount+' rutas cercanas en el mapa':'Buscando ubicación GPS…');
+}
 function showRoutes(){
  const q=$('search').value.toLowerCase().trim(),list=$('items');list.replaceChildren();
  document.querySelectorAll('#routeListScope button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scope===routeListScope)));
@@ -404,7 +419,11 @@ function showRoutes(){
 }
 document.querySelectorAll('#routeListScope button').forEach(b=>b.onclick=()=>{
  routeListScope=b.dataset.scope;
- if(routeListScope==='near'&&!nearbyOrigin){const cached=position||quickNativePosition();if(cached)nearbyOrigin=cached;else if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{nearbyOrigin=[p.coords.latitude,p.coords.longitude];showRoutes()},warnGps,{enableHighAccuracy:true,timeout:12000,maximumAge:5000});else warnGps() }
+ syncScopeMap();
+ if(routeListScope==='near'){
+  const cached=position||quickNativePosition();
+  if(cached){applyNearbyPosition(cached)}else if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{if(routeListScope!=='near')return;position=[p.coords.latitude,p.coords.longitude];applyNearbyPosition(position);syncScopeMap();showRoutes()},warnGps,{enableHighAccuracy:true,timeout:12000,maximumAge:5000});else warnGps();
+ }
  showRoutes();
 });
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
