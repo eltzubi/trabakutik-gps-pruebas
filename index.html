@@ -85,7 +85,7 @@ function refreshNearby(p){
  near.sort((a,b)=>a.d-b.d);
  select.replaceChildren();
  const hint=document.createElement('option');hint.value='';hint.textContent=near.length?near.length+' rutas a menos de 3 km · elige una':'No hay rutas en 3 km';select.append(hint);
- for(const x of near){const option=document.createElement('option');option.value=String(x.i);option.textContent=(x.d<1000?Math.round(x.d)+' m':fmt(x.d/1000)+' km')+' · '+allTracks[x.i].href.replace(/\\.html$/,'').replaceAll('-',' ');select.append(option)}
+ for(const x of near){const option=document.createElement('option');option.value=String(x.i);option.textContent=(x.d<1000?Math.round(x.d)+' m':fmt(x.d/1000)+' km')+' · '+allTracks[x.i].href.replace(/\.html$/,'').replaceAll('-',' ');select.append(option)}
  if(prior!==''&&near.some(x=>x.i===selected))select.value=prior;
  else select.value='';
 }
@@ -95,11 +95,11 @@ function chooseIndexedTrack(t){
  nearbyLayers.forEach(l=>map.removeLayer(l));nearbyLayers=[];
  const xml='<?xml version="1.0"?><gpx><trk><trkseg>'+t.points.map(p=>'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>';
  load(xml,t.href.replace(/\.html$/,'').replaceAll('-',' '));
- $('routeName').textContent=t.href.replace(/\.html$/,'').replaceAll('-',' ');
+ $('routeName').textContent=t.href.replace(/\.html$/,'').replaceAll('-',' ');$('routeChoice').value=String(allTracks.indexOf(t));
  $('nearby').disabled=false;
  msg('Ruta del índice cargada. Es un trazado simplificado para explorar; la altimetría puede no estar disponible. Verifica el GPX original para navegar.');
 }
-$('routeChoice').onchange=()=>{const t=allTracks[Number($('routeChoice').value)];if(t)chooseIndexedTrack(t)};
+$('routeChoice').onchange=()=>{const value=$('routeChoice').value;if(value==='')return;const t=allTracks[Number(value)];if(t)chooseIndexedTrack(t)};
 $('nearby').onclick=()=>{
  if(!pts.length||!allTracks.length)return;
  if(nearbyLayers.length){nearbyLayers.forEach(l=>map.removeLayer(l));nearbyLayers=[];$('nearby').textContent='Ver rutas cercanas';msg('Rutas cercanas ocultadas.');return}
