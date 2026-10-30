@@ -10,7 +10,7 @@ import android.widget.*;
 import java.io.*;
 import android.webkit.JavascriptInterface;
 public class MainActivity extends Activity {
- WebView web; File exportFile; String pendingGpx=null;
+ WebView web; File exportFile; String pendingGpx=null; String pendingGpsAction=null;
  @Override public void onCreate(Bundle b) {
   super.onCreate(b);
   getWindow().setStatusBarColor(0xff07131d);
@@ -26,7 +26,7 @@ public class MainActivity extends Activity {
   web.setWebViewClient(new WebViewClient(){@Override public boolean shouldOverrideUrlLoading(WebView w,WebResourceRequest r){String host=r.getUrl().getHost();if("eltzubi.github.io".equals(host)||"trabakutik.com".equals(host)||"www.trabakutik.com".equals(host))return false;startActivity(new Intent(Intent.ACTION_VIEW,r.getUrl()));return true;}});
   root.addView(web,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));setContentView(root);
   web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html");
-  requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);
  }
  public class Bridge {
   @JavascriptInterface public void setRoute(String json){
@@ -42,6 +42,15 @@ public class MainActivity extends Activity {
     File f=new File(getFilesDir(),"ruta-activa.json");if(f.exists())f.delete();
     runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));});
   }
+  @JavascriptInterface public void startNavigationWithRoute(String json){
+    try{
+      org.json.JSONArray list=new org.json.JSONArray(json);
+      if(list.length()<2||list.length()>15000||json.length()>2000000)return;
+      File f=new File(getFilesDir(),"ruta-activa.json");
+      try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+      runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));startNavigationService();});
+    }catch(Exception e){android.util.Log.e("TrabakutikGPS","Ruta de navegacion incorrecta",e);}
+  }
   @JavascriptInterface public void startNavigation(){runOnUiThread(()->startNavigationService());}
   @JavascriptInterface public void startRecording(){runOnUiThread(()->startTrack());}
   @JavascriptInterface public void stopRecording(){runOnUiThread(()->stopNativeRecording());}
@@ -56,17 +65,36 @@ public class MainActivity extends Activity {
   }
  }
  boolean serviceActive=false;
- void startNavigationService(){
-  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);return;}
-  if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},101);
-  serviceActive=true;startForegroundService(new Intent(this,TrackingService.class).setAction("NAVIGATE"));
- }
+ void startNavigationService(){ensureGpsPermissions("NAVIGATE");}
  int dp(int px){return Math.round(px*getResources().getDisplayMetrics().density);}
  void stopNativeRecording(){if(serviceActive)startService(new Intent(this,TrackingService.class).setAction("STOP_RECORD"));}
  void discardLastRecording(){File dir=new File(getFilesDir(),"grabaciones");File[] files=dir.listFiles((d,n)->n.endsWith(".gpx"));if(files==null||files.length==0)return;File last=files[0];for(File f:files)if(f.lastModified()>last.lastModified())last=f;if(last.delete())Toast.makeText(this,"Grabación descartada",Toast.LENGTH_SHORT).show();}
- void startTrack(){if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);return;}
-  if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},101);
-  serviceActive=true;startForegroundService(new Intent(this,TrackingService.class).setAction("START"));
+ void startTrack(){ensureGpsPermissions("START");}
+ void ensureGpsPermissions(String action){
+  pendingGpsAction=action;
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);return;
+  }
+  if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
+   requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},101);return;
+  }
+  launchGps();
+ }
+ void launchGps(){
+  if(pendingGpsAction==null)return;
+  String action=pendingGpsAction;pendingGpsAction=null;
+  try{serviceActive=true;startForegroundService(new Intent(this,TrackingService.class).setAction(action));}
+  catch(Exception ex){serviceActive=false;Toast.makeText(this,"No se pudo activar el GPS. Revisa permisos y ubicación.",Toast.LENGTH_LONG).show();}
+ }
+ @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){
+  super.onRequestPermissionsResult(code,permissions,results);
+  if(code!=100&&code!=101)return;
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   pendingGpsAction=null;
+   Toast.makeText(this,"Para navegar necesitas permitir la ubicación precisa.",Toast.LENGTH_LONG).show();
+   return;
+  }
+  if(pendingGpsAction!=null)ensureGpsPermissions(pendingGpsAction);
  }
  void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;exportFile=latest;
  Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_TITLE,latest.getName());startActivityForResult(i,200);}
