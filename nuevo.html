@@ -155,11 +155,51 @@ body.creating-route #createActions button:focus-visible{outline:2px solid #a4ecf
  body.creating-route #elevationPanel{height:77px}
  body.creating-route #elevationSvg{height:36px}
 }
+
+/* Sistema cartográfico: mapa como lienzo y mandos flotantes ultracompactos. */
+body.creating-route footer.bottom{display:none}
+body.creating-route #map{flex:1;min-height:0}
+body.creating-route .modes{
+ position:absolute;z-index:740;left:50%;bottom:110px;transform:translateX(-50%);
+ display:flex;align-items:center;justify-content:center;gap:3px;
+ width:max-content;max-width:calc(100% - 22px);margin:0;padding:4px;
+ border:1px solid #5c8a9b88;border-radius:14px;
+ background:#0a1e2dee;box-shadow:0 4px 20px #00131e99;
+ backdrop-filter:blur(13px);
+}
+body.creating-route .modes button{
+ flex:none;min-width:70px;min-height:36px;height:36px;
+ padding:5px 9px;border-radius:10px;border:0;
+ background:transparent;color:#a8c4d2;font-size:11px;font-weight:650;
+}
+body.creating-route .modes button[aria-pressed=true]{
+ color:#041e2a;background:#69e0f2;border-radius:9px;
+}
+body.creating-route #elevationPanel{bottom:9px}
+.elevation-head{gap:7px}
+.elevation-head span{flex:1;min-width:0;text-align:right}
+#toggleProfile{
+ display:grid;place-items:center;width:25px;height:22px;min-height:22px;
+ padding:0;border:1px solid #4d7586;border-radius:8px;
+ background:#123849;color:#c9ecf5;font-size:18px;line-height:1;flex:none;
+}
+body.creating-route #elevationPanel.collapsed{
+ height:36px;min-height:36px;padding:5px 10px;overflow:hidden
+}
+body.creating-route #elevationPanel.collapsed .elevation-stats,
+body.creating-route #elevationPanel.collapsed #elevationSvg,
+body.creating-route #elevationPanel.collapsed .elevation-foot{display:none}
+body.creating-route:has(#elevationPanel.collapsed) .modes{bottom:55px}
+body.creating-route #elevationPanel.profile-empty:not(.collapsed){height:34px}
+body.creating-route #elevationPanel.profile-empty .elevation-head{min-height:22px}
+body.creating-route:has(#elevationPanel.profile-empty:not(.collapsed)) .modes{bottom:55px}
+body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
+@media(max-width:365px){body.creating-route .modes button{min-width:63px;padding:4px 6px}}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
- <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span></div>
+ <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
  <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
@@ -210,8 +250,9 @@ function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
 function changeMode(m){
  const creating=m==='create';
- const actions=$('createActions'),profile=$('elevationPanel');
+ const actions=$('createActions'),profile=$('elevationPanel'),modes=document.querySelector('.modes');
  (creating?$('map'):document.querySelector('footer.bottom')).appendChild(actions);
+ (creating?$('map'):document.querySelector('footer.bottom')).prepend(modes);
  (creating?$('map'):document.querySelector('#app')).appendChild(profile);
  document.body.classList.toggle('creating-route',creating);
  if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':routePoints.length>1?'Siguiendo la ruta seleccionada':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
@@ -346,6 +387,13 @@ function metros(a, b){
 // Perfil de altura del creador: relación entre pendiente real y ángulo visible.
 // Con una ventana vertical proporcional a la distancia, las pendientes suaves
 // se ven suaves y las pronunciadas mantienen un ángulo mayor.
+let profileCollapsed=false;
+$('toggleProfile').onclick=()=>{
+ profileCollapsed=!profileCollapsed;
+ $('elevationPanel').classList.toggle('collapsed',profileCollapsed);
+ $('toggleProfile').setAttribute('aria-expanded',String(!profileCollapsed));
+ $('toggleProfile').textContent=profileCollapsed?'⌃':'⌄';
+};
 function updateElevation(){
  const panel=$('elevationPanel');
  if(!panel)return;
