@@ -251,8 +251,7 @@ $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes(
 function changeMode(m){
  const creating=m==='create';
  const actions=$('createActions'),profile=$('elevationPanel'),modes=document.querySelector('.modes');
- (creating?$('map'):document.querySelector('footer.bottom')).appendChild(actions);
- (creating?$('map'):document.querySelector('footer.bottom')).prepend(modes);
+ if(creating){$('map').appendChild(actions);$('map').appendChild(modes)}else{document.querySelector('footer.bottom').prepend(modes);modes.after(actions)}
  (creating?$('map'):document.querySelector('#app')).appendChild(profile);
  document.body.classList.toggle('creating-route',creating);
  if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':routePoints.length>1?'Siguiendo la ruta seleccionada':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
@@ -387,6 +386,11 @@ function metros(a, b){
 // Perfil de altura del creador: relación entre pendiente real y ángulo visible.
 // Con una ventana vertical proporcional a la distancia, las pendientes suaves
 // se ven suaves y las pronunciadas mantienen un ángulo mayor.
+// Los paneles flotantes no deben marcar puntos al pulsarlos.
+for(const id of ['elevationPanel','createActions']){
+ const el=$(id);el.addEventListener('click',e=>e.stopPropagation());el.addEventListener('dblclick',e=>e.stopPropagation());
+}
+document.querySelector('.modes').addEventListener('click',e=>e.stopPropagation());
 let profileCollapsed=false;
 $('toggleProfile').onclick=()=>{
  profileCollapsed=!profileCollapsed;
