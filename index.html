@@ -40,7 +40,30 @@ gainLeft=Array(pts.length).fill(0);lossLeft=Array(pts.length).fill(0);for(let i=
 if(track)map.removeLayer(track);if(completed)map.removeLayer(completed);track=L.polyline(pts.map(p=>[p.lat,p.lng]),{color:'#a6ff4d',weight:6,opacity:.94}).addTo(map);completed=L.polyline([],{color:'#1685ff',weight:6}).addTo(map);map.fitBounds(track.getBounds(),{padding:[35,35]});progress=0;offCount=0;offAlert=false;lastPos=null;clearReturn();drawProfile();set('distance',fmt(total/1000));set('remaining',fmt(total/1000));set('covered','0,0');set('up','0');set('upLeft',Math.round(gainLeft[0])+' m');set('downLeft',Math.round(lossLeft[0])+' m');set('grade','—');$('routeName').textContent=name||'Ruta GPX';msg('Track cargado. Pulsa «Iniciar GPS» para seguirlo.');}
 function beepAlert(){if(!audioContext)return;try{if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});const now=audioContext.currentTime;for(let i=0;i<3;i++){const t=now+i*.34,o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sine';o.frequency.value=900;g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.16,t+.025);g.gain.exponentialRampToValueAtTime(.001,t+.20);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+.22)}}catch(e){}}
 function unlockAudio(){if(!audioContext){try{audioContext=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return}}audioContext.resume().catch(()=>{})}
-function update(pos){$('start').classList.remove('hidden');$('start').textContent='✓ GPS listo';$('start').disabled=true;$('record').disabled=false;$('gpsLabel').classList.add('hidden');const p={lat:pos.coords.latitude,lng:pos.coords.longitude};if(allTracks.length&&(!lastNearbyFix||meters(lastNearbyFix,p)>150)){refreshNearby(p);lastNearbyFix=p;}syncRecordingButtons();if(!pts.length){lastPos=p;$('quickDistance').textContent='Ubicación disponible';map.setView([p.lat,p.lng],16,{animate:false});msg('Elige una ruta cercana para navegar.');return;}
+function update(pos){$('start').classList.remove('hidden');$('start').textContent='✓ GPS listo';$('start').disabled=true;$('record').disabled=false;$('gpsLabel').classList.add('hidden');const p={lat:pos.coords.latitude,lng:pos.coords.longitude};if(allTracks.length&&(!lastNearbyFix||meters(lastNearbyFix,p)>150)){refreshNearby(p);lastNearbyFix=p;}syncRecordingButtons();if(!pts.length){
+ const prev=previousFix, moved=prev?meters(prev,p):0;
+ if(Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&pos.coords.speed>=0.7)course=pos.coords.heading;
+ else if(prev&&moved>8&&pos.coords.accuracy<=20&&prev.accuracy<=20){
+  const a=prev.lat*rad,b=p.lat*rad,d=(p.lng-prev.lng)*rad;
+  course=(Math.atan2(Math.sin(d)*Math.cos(b),Math.cos(a)*Math.sin(b)-Math.sin(a)*Math.cos(b)*Math.cos(d))*180/Math.PI+360)%360;
+ }
+ if(!prev||moved>5)previousFix={...p,accuracy:pos.coords.accuracy};
+ lastPos=p;
+ if(follow&&!drawing&&Number.isFinite(course)&&pos.coords.accuracy<=25&&((pos.coords.speed||0)>=0.7||moved>8)){
+  const diff=((course-mapBearing+540)%360)-180;
+  if(Math.abs(diff)>3)mapBearing=(mapBearing+diff*.45+360)%360;
+  $('mapCanvas').style.transform='rotate('+(-mapBearing)+'deg) scale(1.48)';
+  $('bearingText').textContent='↑ Sentido de marcha';
+ }
+ const headingVisible=Number.isFinite(course);
+ const arrow='<div style="width:38px;height:38px;display:grid;place-items:center;transform:rotate('+(headingVisible?course-mapBearing:0)+'deg)"><svg width="35" height="35" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg"><circle cx="17.5" cy="17.5" r="14" fill="#1685ff" fill-opacity=".2"/><circle cx="17.5" cy="17.5" r="9" fill="#1685ff" stroke="white" stroke-width="2.8"/>'+(headingVisible?'<path d="M17.5 0L10 14L17.5 11L25 14Z" fill="#1685ff" stroke="white" stroke-width="1.2"/>':'')+'</svg></div>';
+ const icon=L.divIcon({html:arrow,className:'',iconSize:[38,38],iconAnchor:[19,19]});
+ if(!me)me=L.marker([p.lat,p.lng],{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng([p.lat,p.lng]);me.setIcon(icon)}
+ $('quickDistance').textContent='Ubicación disponible';
+ if(follow&&!drawing){if(map.getZoom()<15)map.setView([p.lat,p.lng],16,{animate:false});else map.panTo([p.lat,p.lng],{animate:false})}
+ msg('Tu posición aparece en azul. Puedes elegir una ruta o grabar tu recorrido.');
+ return;
+}
 const previous=previousFix;const moved=previous?meters(previous,p):0;
 if(Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&pos.coords.speed>=0.7)course=pos.coords.heading;
 else if(previous&&moved>8&&pos.coords.accuracy<=20&&previous.accuracy<=20){const a=previous.lat*rad,b=p.lat*rad,d=(p.lng-previous.lng)*rad;course=(Math.atan2(Math.sin(d)*Math.cos(b),Math.cos(a)*Math.sin(b)-Math.sin(a)*Math.cos(b)*Math.cos(d))*180/Math.PI+360)%360;}
