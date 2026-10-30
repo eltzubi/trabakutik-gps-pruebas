@@ -52,6 +52,10 @@ button{min-width:0}
 .elevation-foot{font-size:10px;color:#95b5c5;margin-top:-2px}
 @media(max-height:650px){.elevation-panel{min-height:113px;padding-top:4px}#elevationSvg{height:62px}}
 
+.clear-active{border:1px solid #506b79;background:#173544;color:#e5f4fa;border-radius:8px;width:25px;height:26px;display:grid;place-items:center;font-size:20px;line-height:1;flex:none;padding:0}
+.clear-active.hidden{display:none}
+.info-top .basemap-control{flex-shrink:0}
+.info:has(.clear-active:not(.hidden)) .basemap-control{max-width:92px}
 /* Selector cartográfico compacto; mantiene el trazado sobre las teselas. */
 .info{max-width:calc(100% - 79px);width:min(315px,calc(100% - 79px));pointer-events:auto}
 .info-top{display:flex;align-items:center;justify-content:space-between;gap:5px}
@@ -74,7 +78,7 @@ button{min-width:0}
 @media(max-width:390px){.turn-hint{left:7px;bottom:8px;padding:5px 9px}.turn-arrow{min-width:36px;height:36px;font-size:28px}.turn-copy b{font-size:12px}}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -98,7 +102,7 @@ function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLa
 let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
 changeBase(initialBase);
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 function drawAll(){
@@ -122,10 +126,10 @@ function drawAll(){
  if(savedLine) savedLine.bringToFront();
 }
 $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
-function selectRoute(i){resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
+function selectRoute(i){activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
 function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent='Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
-function changeMode(m){if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
+function changeMode(m){if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':routePoints.length>1?'Siguiendo la ruta seleccionada':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');$('modeRecord').onclick=()=>changeMode('record');
 const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null;
@@ -371,6 +375,7 @@ function elevationText(points){
  return points.some(p=>Number.isFinite(p[2]))?' · +'+Math.round(up)+' / -'+Math.round(down)+' m aprox.':' · sin alturas disponibles';
 }
 function loadSaved(item){
+ activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();routePoints=item.points.map(p=>p.slice());chosen=-1;
  $('savedDialog').classList.add('hidden');changeMode('nav');
  
@@ -382,6 +387,23 @@ function loadSaved(item){
  computeJunctions();syncNativeRoute();startGPS();notice('Ruta creada cargada · GPS activándose');
 }
 let savedLine=null;
+function clearActiveRoute(){
+ resetOffRoute();
+ resetJunctionView();
+ if(savedLine){map.removeLayer(savedLine);savedLine=null}
+ routePoints=[];chosen=-1;activeSavedId=null;
+ junctions=[];junctionWarned.clear();routeCumulative=[];
+ $('clearActiveRoute').classList.add('hidden');
+ $('title').textContent='Trabakutik GPS';
+ $('mapTitle').textContent='Mapa de rutas';
+ $('distance').textContent='Elige una ruta para navegar';
+ if(window.TrabakutikAndroid&&window.TrabakutikAndroid.clearRoute){
+  try{window.TrabakutikAndroid.clearRoute()}catch(e){console.warn('No se pudo desactivar la ruta GPS',e)}
+ }
+ drawAll();
+ notice('Ruta quitada del mapa y de la navegación');
+}
+$('clearActiveRoute').onclick=clearActiveRoute;
 function showSaved(){
  const target=$('savedItems');target.replaceChildren();
  const list=savedList();
@@ -389,7 +411,7 @@ function showSaved(){
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
   const open=document.createElement('button');open.textContent=item.name+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
-  const del=document.createElement('button');del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;list.splice(i,1);putSaved(list);showSaved()};
+  const del=document.createElement('button');del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&((item.created&&activeSavedId===item.created)||(!item.created&&routePoints.length===item.points.length&&routePoints.every((p,k)=>p[0]===item.points[k][0]&&p[1]===item.points[k][1])));list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();showSaved()}};
   row.append(open,del);target.append(row);
  });
 }
