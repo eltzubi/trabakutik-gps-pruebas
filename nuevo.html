@@ -40,9 +40,26 @@ button{min-width:0}
  .status{margin-top:4px}
  .legend{margin-top:4px}
 }
+
+.elevation-panel{background:#0b202e;border-top:1px solid #376077;padding:7px 11px 6px;flex:none;min-height:141px}
+.elevation-head,.elevation-stats,.elevation-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.elevation-head strong{font-size:10px;letter-spacing:.1em;color:#a9cfdf}
+.elevation-head span{font-size:11px;font-weight:750;color:#a2f6b0;text-align:right}
+.elevation-head .up{color:#ffbe74}.elevation-head .down{color:#81e4ff}
+.elevation-stats{justify-content:flex-start;gap:17px;font-size:12px;font-weight:750;margin-top:3px}
+.elevation-stats span:nth-child(2){color:#ffbd75}.elevation-stats span:nth-child(3){color:#85dffd}
+#elevationSvg{display:block;width:100%;height:86px;margin-top:1px;overflow:visible}
+.elevation-foot{font-size:10px;color:#95b5c5;margin-top:-2px}
+@media(max-height:650px){.elevation-panel{min-height:113px;padding-top:4px}#elevationSvg{height:62px}}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div class="info"><b id="mapTitle">Mapa de rutas</b><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
+ <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span></div>
+ <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
+ <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
+ <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
+</section>
 <footer class="bottom"><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Navegar</button><button id="modeCreate" aria-pressed="false">✎ Crear</button><button id="modeRecord" aria-pressed="false">⏺ Grabación</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="savedRoutes">Mis rutas</button><button class="go" id="navGo">Iniciar GPS</button></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button class="blue" id="saveCreated" disabled>Guardar GPX</button><button class="go" id="navCreated" disabled>Navegar</button></div><div class="actions hidden" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="savedDialog" class="popup hidden"><div class="sheet"><button class="close" id="closeSaved">✕</button><h2>Mis rutas creadas</h2><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><button class="close" id="closeDialog">✕</button><h2>Elegir ruta de Trabakutik</h2><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
 </div><script src="vendor/leaflet/leaflet.js"></script><script>
@@ -78,7 +95,7 @@ $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((lay
 function selectRoute(i){resetOffRoute();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');notice('Ruta cargada. Inicia GPS para seguirla.')}
 function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent='Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
-function changeMode(m){mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();setTimeout(()=>map.invalidateSize(),60)}
+function changeMode(m){mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');$('modeRecord').onclick=()=>changeMode('record');
 const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null;
@@ -206,6 +223,76 @@ function metros(a, b){
   }
 
 
+
+// Perfil de altura del creador: relación entre pendiente real y ángulo visible.
+// Con una ventana vertical proporcional a la distancia, las pendientes suaves
+// se ven suaves y las pronunciadas mantienen un ángulo mayor.
+function updateElevation(){
+ const panel=$('elevationPanel');
+ if(!panel)return;
+ panel.classList.toggle('hidden',mode!=='create');
+ if(mode!=='create')return;
+ const pts=drawPoints,available=pts.filter(p=>Number.isFinite(p[2]));
+ if(pts.length<2||available.length<2){
+  $('elevationPath').setAttribute('d','');$('elevationFill').setAttribute('d','');
+  $('elevationEnd').style.display='none';
+  $('profileDistance').textContent='0,00 km';$('profileGain').textContent='↑ 0 m';$('profileLoss').textContent='↓ 0 m';
+  $('elevationSlope').textContent=pts.length?'Marca el siguiente punto':'Marca el inicio';
+  $('profileLow').textContent=available.length?'Altura inicial '+Math.round(available[0][2])+' m':'Sin alturas todavía';
+  $('profileHigh').textContent=available.length?'':'Perfil disponible cuando haya desnivel';
+  return;
+ }
+ const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
+ for(let i=0;i<pts.length;i++){
+  if(i)travelled+=dist(pts[i-1],pts[i]);
+  const elevation=Number.isFinite(pts[i][2])?pts[i][2]:null;
+  if(elevation!==null){
+   if(lastElev!==null){
+    const delta=elevation-lastElev;
+    // Evitar sumar ruido centimétrico entre puntos interpolados.
+    if(delta>0)up+=delta;else down-=delta;
+   }
+   lastElev=elevation;lastKnown=elevation;
+  }
+  samples.push({d:travelled,h:elevation});
+ }
+ const known=samples.filter(p=>p.h!==null);
+ const hMin=Math.min(...known.map(p=>p.h)),hMax=Math.max(...known.map(p=>p.h));
+ const total=Math.max(1,travelled), width=800,top=8,bottom=108,drawH=bottom-top;
+ // 8% del recorrido total como escala vertical mínima: no amplificar
+ // una cuesta suave para que parezca una pared.
+ const verticalSpan=Math.max(35,total*.08,(hMax-hMin)*1.18);
+ const center=(hMax+hMin)/2,base=center-verticalSpan/2;
+ const x=d=>d/total*width;
+ const y=h=>Math.max(top,Math.min(bottom,bottom-(h-base)/verticalSpan*drawH));
+ const coords=known.map(p=>[x(p.d),y(p.h)]);
+ const line=coords.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' ');
+ $('elevationPath').setAttribute('d',line);
+ $('elevationFill').setAttribute('d',line+' L'+coords.at(-1)[0].toFixed(2)+' '+bottom+' L'+coords[0][0].toFixed(2)+' '+bottom+' Z');
+ $('elevationEnd').style.display='';
+ $('elevationEnd').setAttribute('cx',coords.at(-1)[0]);$('elevationEnd').setAttribute('cy',coords.at(-1)[1]);
+ $('profileDistance').textContent=(travelled/1000).toFixed(2).replace('.',',')+' km';
+ $('profileGain').textContent='↑ '+Math.round(up)+' m';
+ $('profileLoss').textContent='↓ '+Math.round(down)+' m';
+ $('profileLow').textContent='Mín. '+Math.round(hMin)+' m';
+ $('profileHigh').textContent='Máx. '+Math.round(hMax)+' m';
+ // Pendiente media del último tramo marcado, con su distancia real.
+ const part=tramosGps.at(-1)||[];
+ let partDist=0,partFirst=null,partLast=null;
+ for(let i=0;i<part.length;i++){
+  const p=redGps.nodos[part[i]];
+  if(i)partDist+=dist(redGps.nodos[part[i-1]],p);
+  if(Number.isFinite(p[2])){if(partFirst===null)partFirst=p[2];partLast=p[2]}
+ }
+ const info=$('elevationSlope');
+ if(partDist>=3&&partFirst!==null&&partLast!==null){
+  const grade=(partLast-partFirst)/partDist*100;
+  const gradeText=Math.abs(grade).toFixed(1).replace('.',',')+'%';
+  info.textContent=(grade>0.5?'↗ Subida ':grade<-.5?'↘ Bajada ':'→ Casi llano ')+gradeText;
+  info.className=grade>0.5?'up':grade<-.5?'down':'';
+ }else{info.textContent='Pendiente sin datos';info.className=''}
+}
+
 function updateDraw(){
  drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
  junctionMarks.forEach(m=>map.removeLayer(m));junctionMarks=[];
@@ -220,6 +307,7 @@ function updateDraw(){
  $('undo').disabled=anclasGps.length===0;
  $('saveCreated').disabled=drawPoints.length<2;
  $('navCreated').disabled=drawPoints.length<2;
+ updateElevation();
 }
 map.on('click',e=>{
  if(mode!=='create'||!tracks.length)return;
