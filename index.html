@@ -8,7 +8,7 @@
 </style></head><body>
 <header><div><small>TRABAKUTIK · GPS</small><strong id="routeName">Arteta · Berano Nagusi · Arandoño</strong></div><span class="chip" id="gpsLabel">GPS apagado</span></header>
 <main><div class="route-select"><label for="routeChoice">Ruta de Trabakutik</label><select id="routeChoice"><option value="">Activa GPS para buscar rutas cercanas</option></select><button id="nearby" disabled>Ver rutas cercanas</button></div><div class="toolbar"><button id="start" class="primary">▶ Iniciar GPS</button><button id="center">⌖ Centrar</button><button id="menuToggle" aria-expanded="false" aria-controls="menuNav">☰ Opciones</button></div>
-<div id="menuNav" class="compact-menu hidden"><div class="actions"><button id="stop" disabled>■ Detener GPS</button><label for="file">Cargar GPX <input type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" id="file"></label></div><div class="actions"><button id="record" class="primary">⏺ Grabar mi recorrido</button><button id="pauseRecord" class="hidden" disabled>Ⅱ Pausar grabación</button><button id="saveRecord" class="hidden" disabled>↓ Guardar GPX</button><span class="chip" id="recordInfo">0 puntos · 0,00 km</span></div></div><details class="return-panel" id="drawPanel"><summary>✎ Crear mi propio track</summary><p>Marca puntos sobre los trazados de Trabakutik. Verás bolitas azules y el tramo entre ellas seguirá exactamente el track seleccionado. No se inventarán caminos entre rutas.</p><div class="return-buttons"><button id="drawHere">Desde mi GPS</button><button id="drawStart">Elegir tramo de mis rutas</button></div><div class="return-buttons"><button id="drawUndo" disabled>↶ Deshacer punto</button><button id="drawClear" disabled>✕ Borrar</button></div><div class="return-buttons"><button id="drawSave" disabled>↓ Guardar track GPX</button><button id="drawFinish" disabled>✓ Terminar dibujo</button></div><p id="drawInfo" role="status">Sin puntos dibujados.</p></details><div id="map" role="application" aria-label="Mapa de seguimiento de ruta"><div id="mapCanvas"></div><div class="map-overlays"><div class="map-zoom"><button id="mapPlus" aria-label="Acercar">+</button><button id="mapMinus" aria-label="Alejar">−</button></div><span class="map-bearing" id="bearingText">Norte arriba · esperando movimiento</span><span class="map-credit">© OpenStreetMap contributors · Leaflet</span></div></div>
+<div id="menuNav" class="compact-menu hidden"><div class="actions"><button id="stop" disabled>■ Detener GPS</button><label for="file">Cargar GPX <input type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" id="file"></label></div><div class="actions"><button id="record" class="primary">⏺ Grabar mi recorrido</button><button id="pauseRecord" class="hidden" disabled>Ⅱ Pausar grabación</button><button id="saveRecord" class="hidden" disabled>↓ Guardar GPX</button><span class="chip" id="recordInfo">0 puntos · 0,00 km</span></div></div><details class="return-panel" id="drawPanel"><summary>✎ Crear mi propio track</summary><p>Marca puntos sobre los trazados de Trabakutik. Verás bolitas azules y el tramo entre ellas seguirá exactamente el track seleccionado. No se inventarán caminos entre rutas.</p><div class="return-buttons"><button id="drawHere">Desde mi GPS</button><button id="drawStart">Elegir tramo de mis rutas</button></div><div class="return-buttons"><button id="drawConfirm" disabled>✓ Añadir bolita</button><button id="drawUndo" disabled>↶ Deshacer punto</button><button id="drawClear" disabled>✕ Borrar</button></div><div class="return-buttons"><button id="drawSave" disabled>↓ Guardar track GPX</button><button id="drawFinish" disabled>✓ Terminar dibujo</button></div><p id="drawInfo" role="status">Sin puntos dibujados.</p></details><div id="map" role="application" aria-label="Mapa de seguimiento de ruta"><div id="mapCanvas"></div><div class="map-overlays"><div class="map-zoom"><button id="mapPlus" aria-label="Acercar">+</button><button id="mapMinus" aria-label="Alejar">−</button></div><span class="map-bearing" id="bearingText">Norte arriba · esperando movimiento</span><span class="map-credit">© OpenStreetMap contributors · Leaflet</span></div></div>
 <p id="status" role="status" aria-live="polite">Cargando track de ejemplo real…</p>
 <div class="stats"><div class="stat"><strong id="covered">—</strong><span>km desde salida (GPX)</span></div><div class="stat"><strong id="remaining">—</strong><span>km restantes</span></div><div class="stat"><strong id="distance">—</strong><span>km de ruta</span></div><div class="stat"><strong id="up">—</strong><span>m ascenso estimado</span></div><div class="stat"><strong id="grade">—</strong><span>% pendiente del track</span></div><div class="stat"><strong id="speed">—</strong><span>km/h velocidad</span></div></div>
 <details class="return-panel"><summary>↶ Volver al inicio</summary><p>Busca dos caminos sobre el GPX cargado. Pulsa uno de los resultados para ver el trayecto naranja. Aún no conecta rutas diferentes.</p><div class="return-buttons"><button id="findReturn" class="primary">Ver opciones de regreso</button><button id="clearReturn" disabled>Quitar alternativa</button></div><div id="returnBox" class="hidden"><p id="returnNote">Opciones de regreso</p><div class="return-options" id="returnOptions"></div><p><span style="color:#a6ff4d">━━</span> Original · <span style="color:#1685ff">━━</span> Recorrido · <span style="color:#ff9c3b">━━</span> Alternativa</p></div></details><nav><button id="showMap" aria-pressed="true">Mapa</button><button id="showProfile">Altimetría</button><button id="showData">Más datos</button></nav>
@@ -23,7 +23,7 @@ $('menuToggle').onclick=()=>{const menu=$('menuNav'),open=menu.classList.toggle(
 const map=L.map('mapCanvas',{zoomControl:false}).setView([43.19,-2.55],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map); // Solo carga en red; NO guardar teselas.
 $('mapPlus').onclick=()=>map.zoomIn();$('mapMinus').onclick=()=>map.zoomOut();
-let pts=[],cumulative=[],alt=[],total=0,gainLeft=[],lossLeft=[],track,completed,me,watch=null,started=0,last=null,progress=0,movement=0,speedSamples=0,follow=true,recording=false,recordPaused=false,recorded=[],recordLayer=null,recordDist=0,offCount=0,offAlert=false,returnLayer=null,returnMode=null,lastPos=null,previousFix=null,course=null,showCourse=true,mapBearing=0,allTracks=[],nearbyLayers=[],lastNearbyFix=null,nearbyRadius=3000,drawing=false,drawn=[],drawLine=null,drawDots=[],drawTrackIndex=-1,drawIndexes=[];const OFF_LIMIT=15,OFF_CONFIRMATIONS=3;
+let pts=[],cumulative=[],alt=[],total=0,gainLeft=[],lossLeft=[],track,completed,me,watch=null,started=0,last=null,progress=0,movement=0,speedSamples=0,follow=true,recording=false,recordPaused=false,recorded=[],recordLayer=null,recordDist=0,offCount=0,offAlert=false,returnLayer=null,returnMode=null,lastPos=null,previousFix=null,course=null,showCourse=true,mapBearing=0,allTracks=[],nearbyLayers=[],lastNearbyFix=null,nearbyRadius=3000,drawing=false,drawn=[],drawLine=null,drawDots=[],drawTrackIndex=-1,drawIndexes=[],previewIndex=null,previewMarker=null;const OFF_LIMIT=15,OFF_CONFIRMATIONS=3;
 const rad=Math.PI/180,EARTH=6371000;
 function meters(a,b){const dy=(b.lat-a.lat)*rad,dx=(b.lng-a.lng)*rad;const q=Math.sin(dy/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dx/2)**2;return 2*EARTH*Math.asin(Math.min(1,Math.sqrt(q)));}
 function msg(t,w=false){$('status').textContent=t;$('status').classList.toggle('warning',w)}
@@ -41,7 +41,7 @@ if(Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&pos.coords.speed>
 else if(previous&&moved>8&&pos.coords.accuracy<=20&&previous.accuracy<=20){const a=previous.lat*rad,b=p.lat*rad,d=(p.lng-previous.lng)*rad;course=(Math.atan2(Math.sin(d)*Math.cos(b),Math.cos(a)*Math.sin(b)-Math.sin(a)*Math.cos(b)*Math.cos(d))*180/Math.PI+360)%360;}
 if(!previous||moved>5)previousFix={...p,accuracy:pos.coords.accuracy};
 lastPos=p;
-if(follow&&Number.isFinite(course)&&pos.coords.accuracy<=25&&((pos.coords.speed||0)>=0.7||moved>8)){
+if(follow&&!drawing&&Number.isFinite(course)&&pos.coords.accuracy<=25&&((pos.coords.speed||0)>=0.7||moved>8)){
  const diff=((course-mapBearing+540)%360)-180;
  if(Math.abs(diff)>3)mapBearing=(mapBearing+diff*.45+360)%360;
  $('mapCanvas').style.transform='rotate('+(-mapBearing)+'deg) scale(1.48)';
@@ -51,7 +51,7 @@ const near=computeNearest(p);const current=cumulative[near.index]+near.t*(cumula
 set('covered',fmt(current/1000));set('remaining',fmt((total-current)/1000));set('up',Math.round(gainLeft[0]-gainLeft[i]));set('grade',fmt(gradient,0));set('nextGrade',fmt(gradient,0)+' %');set('elevation',Number.isFinite(alt[i])?Math.round(alt[i])+' m':'—');set('upLeft',Math.round(gainLeft[i])+' m');set('downLeft',Math.round(lossLeft[i])+' m');set('off',Math.round(near.d)+' m');set('accuracy',Math.round(pos.coords.accuracy)+' m');set('speed',Number.isFinite(pos.coords.speed)?fmt(pos.coords.speed*3.6):'—');set('elapsed',Math.round((Date.now()-started)/60000)+' min');if(Number.isFinite(pos.coords.speed)){movement+=pos.coords.speed*3.6;speedSamples++}set('avgSpeed',speedSamples?fmt(movement/speedSamples)+' km/h':'—');const headingVisible=showCourse&&Number.isFinite(course);
 const arrow='<div style="width:38px;height:38px;display:grid;place-items:center;transform:rotate('+ (headingVisible?course-mapBearing:0) +'deg)"><svg width="35" height="35" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg"><circle cx="17.5" cy="17.5" r="14" fill="#1685ff" fill-opacity=".2"/><circle cx="17.5" cy="17.5" r="9" fill="#1685ff" stroke="white" stroke-width="2.8"/>'+(headingVisible?'<path d="M17.5 0L10 14L17.5 11L25 14Z" fill="#1685ff" stroke="white" stroke-width="1.2"/>':'')+'</svg></div>';
 const markerIcon=L.divIcon({html:arrow,className:'',iconSize:[38,38],iconAnchor:[19,19]});
-if(!me)me=L.marker([p.lat,p.lng],{icon:markerIcon,zIndexOffset:1000}).addTo(map);else{me.setLatLng([p.lat,p.lng]);me.setIcon(markerIcon)}completed.setLatLngs(pts.slice(0,i+1).concat([{lat:pts[i].lat+(pts[i+1].lat-pts[i].lat)*near.t,lng:pts[i].lng+(pts[i+1].lng-pts[i].lng)*near.t}]));if(follow)map.panTo([p.lat,p.lng],{animate:false});drawProfile();const unreliable=pos.coords.accuracy>15;if(unreliable){offCount=0;msg('Precisión GPS insuficiente (±'+Math.round(pos.coords.accuracy)+' m). No se puede confirmar una desviación de 15 m.',true);set('gpsLabel','GPS impreciso')}else{if(near.d>OFF_LIMIT){offCount++;if(offCount>=OFF_CONFIRMATIONS)offAlert=true}else{offCount=0;offAlert=false}if(offAlert){msg('Fuera de ruta: a '+Math.round(near.d)+' m del track (límite 15 m). Revisa el mapa.',true);set('gpsLabel','Fuera de ruta')}else{msg(near.d>OFF_LIMIT?'Comprobando posible desviación de '+Math.round(near.d)+' m…':'GPS activo · Sobre el track (aproximadamente).');set('gpsLabel','GPS activo');$('start').textContent='● GPS activo'}}}
+if(!me)me=L.marker([p.lat,p.lng],{icon:markerIcon,zIndexOffset:1000}).addTo(map);else{me.setLatLng([p.lat,p.lng]);me.setIcon(markerIcon)}completed.setLatLngs(pts.slice(0,i+1).concat([{lat:pts[i].lat+(pts[i+1].lat-pts[i].lat)*near.t,lng:pts[i].lng+(pts[i+1].lng-pts[i].lng)*near.t}]));if(follow&&!drawing)map.panTo([p.lat,p.lng],{animate:false});drawProfile();const unreliable=pos.coords.accuracy>15;if(unreliable){offCount=0;msg('Precisión GPS insuficiente (±'+Math.round(pos.coords.accuracy)+' m). No se puede confirmar una desviación de 15 m.',true);set('gpsLabel','GPS impreciso')}else{if(near.d>OFF_LIMIT){offCount++;if(offCount>=OFF_CONFIRMATIONS)offAlert=true}else{offCount=0;offAlert=false}if(offAlert){msg('Fuera de ruta: a '+Math.round(near.d)+' m del track (límite 15 m). Revisa el mapa.',true);set('gpsLabel','Fuera de ruta')}else{msg(near.d>OFF_LIMIT?'Comprobando posible desviación de '+Math.round(near.d)+' m…':'GPS activo · Sobre el track (aproximadamente).');set('gpsLabel','GPS activo');$('start').textContent='● GPS activo'}}}
 
 
 function gpxExport(){const esc=t=>String(t).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');const lines=recorded.map(p=>'<trkpt lat="'+p.lat+'" lon="'+p.lng+'">'+(p.ele===null?'':'<ele>'+p.ele+'</ele>')+'<time>'+esc(p.time)+'</time></trkpt>').join('');return '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Trabakutik GPS pruebas" xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>Recorrido realizado</name></metadata><trk><name>Recorrido realizado</name><trkseg>'+lines+'</trkseg></trk></gpx>';}
@@ -63,16 +63,33 @@ window.addEventListener('beforeunload',e=>{if(recording&&recorded.length){e.prev
 
 function snapDrawPoint(p){
  let found=null;
+ const chosen=Number($('routeChoice').value);
+ const only=drawTrackIndex>=0?drawTrackIndex:(Number.isInteger(chosen)&&$('routeChoice').value!==''?chosen:-1);
  for(let n=0;n<allTracks.length;n++){
-  if(drawTrackIndex>=0&&n!==drawTrackIndex)continue;
+  if(only>=0&&n!==only)continue;
   const arr=allTracks[n].points;
+  const touch=map.latLngToContainerPoint([p.lat,p.lng]);
   for(let i=0;i<arr.length;i++){
-   const q={lat:arr[i][0],lng:arr[i][1]},distance=meters(p,q);
-   if(distance<35&&(!found||distance<found.distance))found={n,i,distance};
+   const pixel=map.latLngToContainerPoint([arr[i][0],arr[i][1]]);
+   const distance=touch.distanceTo(pixel);
+   if(distance<=48&&(!found||distance<found.distance))found={n,i,distance};
   }
  }
  return found;
 }
+function clearPreview(){previewIndex=null;if(previewMarker){map.removeLayer(previewMarker);previewMarker=null}$('drawConfirm').disabled=true}
+function previewDraw(p){
+ if(!allTracks.length){msg('Espera a que carguen las rutas.',true);return}
+ const hit=snapDrawPoint(p);
+ if(!hit){msg('Acércate al trazado con el zoom y toca una línea de Trabakutik.',true);return}
+ previewIndex=hit;
+ if(previewMarker)map.removeLayer(previewMarker);
+ const q=allTracks[hit.n].points[hit.i];
+ previewMarker=L.circleMarker([q[0],q[1]],{radius:11,color:'#fff',weight:3,fillColor:'#1685ff',fillOpacity:.9,interactive:false}).addTo(map);
+ $('drawConfirm').disabled=false;
+ msg('Punto azul preparado. Pulsa «Añadir bolita» para confirmarlo o toca otro lugar.');
+}
+$('drawConfirm').onclick=()=>{if(!previewIndex)return;const hit=previewIndex;if(drawTrackIndex<0)drawTrackIndex=hit.n;if(drawTrackIndex!==hit.n){msg('Para cambiar de ruta primero termina este tramo.',true);return}if(drawIndexes.at(-1)!==hit.i){drawIndexes.push(hit.i);rebuildDrawn()}clearPreview();msg('Bolita añadida. Marca el siguiente punto del mismo recorrido.')};
 function drawUpdate(){
  if(drawLine)map.removeLayer(drawLine);drawDots.forEach(x=>map.removeLayer(x));drawDots=[];
  if(drawn.length)drawLine=L.polyline(drawn,{color:'#1685ff',weight:5,opacity:.95}).addTo(map);else drawLine=null;
@@ -87,21 +104,13 @@ function rebuildDrawn(){
  for(let i=1;i<drawIndexes.length;i++){const from=drawIndexes[i-1],to=drawIndexes[i],dir=from<=to?1:-1;for(let j=from+dir;dir>0?j<=to:j>=to;j+=dir)drawn.push(points[j].slice(0,2))}
  drawUpdate();
 }
-function pickDraw(p){
- if(!allTracks.length){msg('Las rutas aún no están cargadas.',true);return}
- const hit=snapDrawPoint(p);
- if(!hit){msg('Toca más cerca de una línea de Trabakutik (máximo 35 m). No dibujo fuera de tus tracks.',true);return}
- if(drawTrackIndex<0)drawTrackIndex=hit.n;
- if(drawIndexes.at(-1)===hit.i)return;
- drawIndexes.push(hit.i);rebuildDrawn();
- msg('Bolita azul añadida sobre '+allTracks[drawTrackIndex].href.replace(/\\.html$/,'')+'. Sigue marcando puntos del mismo track.');
-}
-$('drawStart').onclick=()=>{drawing=true;$('drawPanel').open=false;msg('Modo «mis rutas»: toca un track de Trabakutik. Aparecerán bolitas azules y el tramo seguirá el trazado real.')};
-$('drawHere').onclick=()=>{if(!lastPos){msg('Primero activa el GPS.',true);return}drawing=true;pickDraw(lastPos);$('drawPanel').open=false};
-map.on('click',e=>{if(drawing)pickDraw(e.latlng)});
-$('drawUndo').onclick=()=>{drawIndexes.pop();if(!drawIndexes.length)drawTrackIndex=-1;rebuildDrawn()};
-$('drawClear').onclick=()=>{if(drawIndexes.length&&!confirm('¿Borrar los puntos del trazado?'))return;drawing=false;drawIndexes=[];drawTrackIndex=-1;rebuildDrawn()};
-$('drawFinish').onclick=()=>{drawing=false;drawUpdate();msg('Trazado terminado sobre la ruta seleccionada. Puedes guardarlo en GPX.')};
+function startDrawing(){drawing=true;map.dragging.enable();$('mapCanvas').style.transform='none';$('bearingText').textContent='Edición · norte arriba';$('drawPanel').open=false;msg('Toca cerca de tu track: aparece una bolita azul. Confirma con «Añadir bolita». Puedes mover el mapa y ampliar.');}
+$('drawStart').onclick=startDrawing;
+$('drawHere').onclick=()=>{if(!lastPos){msg('Primero activa el GPS.',true);return}startDrawing();previewDraw(lastPos)};
+map.on('click',e=>{if(drawing)previewDraw(e.latlng)});
+$('drawUndo').onclick=()=>{clearPreview();drawIndexes.pop();if(!drawIndexes.length)drawTrackIndex=-1;rebuildDrawn()};
+$('drawClear').onclick=()=>{if(drawIndexes.length&&!confirm('¿Borrar los puntos del trazado?'))return;drawing=false;clearPreview();drawIndexes=[];drawTrackIndex=-1;rebuildDrawn()};
+$('drawFinish').onclick=()=>{drawing=false;clearPreview();drawUpdate();msg('Trazado terminado sobre la ruta seleccionada. Puedes guardarlo en GPX.')};
 $('drawSave').onclick=()=>{if(drawn.length<2)return;const xml='<?xml version="1.0" encoding="UTF-8"?>\n<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Trabakutik"><trk><name>Track manual sin verificar</name><trkseg>'+drawn.map(p=>'<trkpt lat="'+p[0]+'" lon="'+p[1]+'"/>').join('')+'</trkseg></trk></gpx>';const url=URL.createObjectURL(new Blob([xml],{type:'application/gpx+xml'}));const a=document.createElement('a');a.href=url;a.download='trabakutik-track-manual.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);msg('Descarga del track manual iniciada. Comprueba la carpeta Descargas.')};
 
 function clearReturn(){if(returnLayer){map.removeLayer(returnLayer);returnLayer=null}returnMode=null;$('returnBox').classList.add('hidden');$('clearReturn').disabled=true;if(track)track.setStyle({opacity:.94})}
