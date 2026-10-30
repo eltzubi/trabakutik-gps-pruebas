@@ -459,26 +459,19 @@ function shortJunctionBeep(){
  o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.23);
 }
 function junctionGuidance(p,accuracy){
+ // Avisos de cruce sin alterar el zoom elegido por el usuario.
  if(mode!=='nav'||!routePoints.length||accuracy>12||!junctions.length)return;
  let nearest=null;
  for(let j=0;j<junctions.length;j++){
   const d=dist(p,junctions[j].point);
   if(d<40&&(!nearest||d<nearest.d))nearest={j,d};
  }
- if(nearest&&nearest.d<=35){
-  if(junctionZoom===null)junctionZoom=map.getZoom();
-  if(map.getZoom()<18)map.setZoom(18,{animate:true});
-  // Solo un aviso por cruce, cuando el GPS entra aproximadamente
-  // en la zona de 10 m; no confundirlo con el aviso de desviación (3 pitidos).
-  if(nearest.d<=12&&nearest.d>=4&&!junctionWarned.has(nearest.j)){
-   junctionWarned.add(nearest.j);shortJunctionBeep();
-   notice('Cruce importante próximo · sigue la línea azul');
-  }
- }else if(junctionZoom!==null){
-  map.setZoom(junctionZoom,{animate:true});junctionZoom=null;
+ if(nearest&&nearest.d<=12&&nearest.d>=4&&!junctionWarned.has(nearest.j)){
+  junctionWarned.add(nearest.j);shortJunctionBeep();
+  notice('Cruce importante próximo · sigue la línea azul');
  }
 }
-function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const h=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0?pos.coords.heading:null;const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(!prior||dist(prior,p)>4)map.panTo(p,{animate:false});if(!prior&&map.getZoom()<15)map.setZoom(16);
+function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const h=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0?pos.coords.heading:null;const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(!prior||dist(prior,p)>4)map.panTo(p,{animate:false});
  if(recording){if(!recorded.length||dist(recorded.at(-1),p)>2){recorded.push(p);if(recordLayer){recordLayer.setLatLngs(recorded);recordLayer.bringToFront()}else recordLayer=L.polyline(recorded,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,lineCap:'round',lineJoin:'round',className:'recorded-red'}).addTo(map).bringToFront()}}
  if(mode==='nav'&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')}else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
