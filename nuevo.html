@@ -100,6 +100,61 @@ body:has(#modeCreate[aria-pressed="true"]) .modes button{padding:6px 2px;font-si
 body:has(#modeCreate[aria-pressed="true"]) .legend{display:none}
 body:has(#modeCreate[aria-pressed="true"]) .status{margin-top:3px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
 @media(max-height:650px){.elevation-panel{height:86px}#elevationSvg{height:39px}.elevation-panel.profile-empty{height:45px}}
+
+/* Creador cartográfico: herramientas en el borde y mapa casi completo. */
+#app{position:relative}
+body.creating-route #createActions{
+ position:absolute;z-index:735;left:8px;top:118px;
+ display:flex;flex-direction:column;gap:6px;
+ background:transparent;min-height:0;width:42px;max-width:42px;
+}
+body.creating-route #createActions button{
+ min-width:42px;width:42px;height:42px;min-height:42px;max-height:42px;
+ padding:0;border-radius:11px;font-size:0;flex:none;box-shadow:0 2px 10px #03172380;
+}
+body.creating-route #createActions #undo::before{content:'↶';font-size:23px}
+body.creating-route #createActions #clearCreated::before{content:'×';font-size:25px}
+body.creating-route #createActions #saveCreated::before{content:'✓';font-size:22px}
+body.creating-route #createActions #navCreated::before{content:'➤';font-size:20px}
+body.creating-route #createActions button:disabled{opacity:.48}
+body.creating-route #elevationPanel{
+ position:absolute;z-index:730;bottom:8px;left:8px;right:8px;
+ height:89px;min-height:0;padding:5px 9px 4px;border:1px solid #38677d;
+ border-radius:12px;background:#081e2bec;box-shadow:0 3px 16px #00152188;pointer-events:auto;
+}
+body.creating-route #elevationPanel.profile-empty{
+ height:30px;padding:6px 10px;
+}
+body.creating-route #elevationPanel.profile-empty .elevation-stats,
+body.creating-route #elevationPanel.profile-empty .elevation-foot,
+body.creating-route #elevationPanel.profile-empty #elevationSvg{display:none}
+body.creating-route #elevationSvg{height:46px}
+body.creating-route .bottom{padding:4px 7px 5px}
+body.creating-route .modes{margin:0;gap:5px}
+body.creating-route .modes button{min-height:35px;padding:6px 3px;border-radius:10px;font-size:11px}
+body.creating-route .bottom .status,body.creating-route .bottom .legend{display:none}
+body.creating-route .info{padding:5px 9px}
+body.creating-route .info #distance{display:none}
+body.creating-route .info .info-top b{font-size:11px}
+body.creating-route #drawTip{display:none}
+body.creating-route .tools{top:8px;gap:6px}
+body.creating-route .tools button{width:38px;height:38px;font-size:19px;border-radius:11px}
+body.creating-route #createActions button:focus-visible{outline:2px solid #a4ecff;outline-offset:2px}
+/* Giros suaves, cuadrados pequeños, sin círculos ni flechas de gran tamaño. */
+.map-turn-sign{
+ width:30px;height:30px;border-radius:9px;border:1px solid #85d5e5;
+ background:#10394bdf;color:#dcf9ff;font-size:21px;font-weight:500;
+ display:grid;place-items:center;box-shadow:0 2px 9px #00151e80
+}
+.turn-hint{gap:7px;padding:5px 10px 5px 6px;border-radius:11px;background:#092434e8;border-color:#5994a6a8}
+.turn-arrow{min-width:29px;height:29px;border-radius:8px;font-size:21px;font-weight:500;background:#163e50;border-color:#376d80;color:#d4f8ff}
+.turn-copy b{font-size:12px;font-weight:650}
+.turn-copy small{font-size:11px}
+@media(max-height:670px){
+ body.creating-route #createActions{top:86px}
+ body.creating-route #elevationPanel{height:77px}
+ body.creating-route #elevationSvg{height:36px}
+}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
@@ -153,7 +208,13 @@ $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((lay
 function selectRoute(i){activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
 function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent='Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
-function changeMode(m){if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':routePoints.length>1?'Siguiendo la ruta seleccionada':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
+function changeMode(m){
+ const creating=m==='create';
+ const actions=$('createActions'),profile=$('elevationPanel');
+ (creating?$('map'):document.querySelector('footer.bottom')).appendChild(actions);
+ (creating?$('map'):document.querySelector('#app')).appendChild(profile);
+ document.body.classList.toggle('creating-route',creating);
+ if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':routePoints.length>1?'Siguiendo la ruta seleccionada':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');$('modeRecord').onclick=()=>changeMode('record');
 const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null,createdSavedItem=null;
@@ -597,11 +658,11 @@ function junctionGuidance(p,accuracy){
   junctionActive=best.j;
  }
  const {j,ahead,turn}=best;
- const arrow=turn.direction==='izquierda'?'↰':turn.direction==='derecha'?'↱':'↶';
+ const arrow=turn.direction==='izquierda'?'↖':turn.direction==='derecha'?'↗':'↶';
  $('turnArrow').textContent=arrow;
  if(!turnMarker||turnMarker.options.turnIndex!==j){
   if(turnMarker)map.removeLayer(turnMarker);
-  const sign=L.divIcon({className:'',iconSize:[38,38],iconAnchor:[19,19],html:'<div class="map-turn-sign">'+arrow+'</div>'});
+  const sign=L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="map-turn-sign">'+arrow+'</div>'});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
  $('turnDirection').textContent=turn.direction==='vuelta'?'Cambio de sentido':'Gira a la '+turn.direction;
