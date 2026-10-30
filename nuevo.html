@@ -234,6 +234,13 @@ $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange
 let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
+let lastGpsWarning=0;
+function warnGps(err){
+ const text=err&&err.code===1?'Permiso de ubicación denegado. Activa la ubicación y concede permiso a Trabakutik GPS.':'No se recibe ubicación GPS. Activa la ubicación (satélites/GPS) del móvil y comprueba el permiso de Trabakutik GPS.';
+ notice(text);
+ if(Date.now()-lastGpsWarning>6000){lastGpsWarning=Date.now();alert(text)}
+}
+
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
 let lastCourse=null,courseFix=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
@@ -274,11 +281,11 @@ function nearbyButtonState(){
  $('nearbyAction').setAttribute('aria-pressed',String(nearbyOnly));
  $('nearbyAction').textContent=nearbyOnly?'Todas':'⌖ Cerca de mí';
 }
-function nearbyError(){
+function nearbyError(err){
  if(!nearbyOnly)return;
  nearbyOrigin=null;nearbyLast=null;
  updateNearbyLayers();nearbyButtonState();
- notice('Ubicación no disponible. Revisa el GPS y el permiso de ubicación precisa.');
+ warnGps(err);
 }
 function quickNativePosition(){
  try{
@@ -299,7 +306,7 @@ function locateNearby(){
   if(!nearbyOnly||pos.coords.accuracy>150)return;
   const p=[pos.coords.latitude,pos.coords.longitude];
   position=p;applyNearbyPosition(p);map.panTo(p,{animate:false});
- },err=>{if(!cached)nearbyError()},{
+ },err=>{if(!cached)nearbyError(err)},{
   enableHighAccuracy:false,maximumAge:15000,timeout:4500
  });
  // Afinar en segundo plano; no bloquear la pantalla esperando satélites.
@@ -307,7 +314,7 @@ function locateNearby(){
   if(!nearbyOnly||pos.coords.accuracy>150)return;
   const p=[pos.coords.latitude,pos.coords.longitude];
   position=p;applyNearbyPosition(p);map.panTo(p,{animate:false});
- },err=>{if(!nearbyOrigin)nearbyError()},{
+ },err=>{if(!nearbyOrigin)nearbyError(err)},{
   enableHighAccuracy:true,maximumAge:10000,timeout:12000
  });
 }
@@ -884,8 +891,8 @@ function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=pos
  if(recording){if(!recorded.length||dist(recorded.at(-1),p)>2){recorded.push(p);if(recordLayer){recordLayer.setLatLngs(recorded);recordLayer.bringToFront()}else recordLayer=L.polyline(recorded,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,lineCap:'round',lineJoin:'round',className:'recorded-red'}).addTo(map).bringToFront()}}
  if(mode==='nav'&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')}else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
-function startGPS(forRecording=false){if(!forRecording&&window.TrabakutikAndroid){try{if(routePoints.length>1&&window.TrabakutikAndroid.startNavigationWithRoute)window.TrabakutikAndroid.startNavigationWithRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));else if(routePoints.length>1){syncNativeRoute();window.TrabakutikAndroid.startNavigation()}else notice('Elige una ruta antes de navegar')}catch(e){console.warn(e)}}if(watch!==null)return;if(!navigator.geolocation){notice('Activa ubicación y permite el acceso desde el navegador');return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{notice('Activa la ubicación del móvil y concede permiso al navegador: '+e.message);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
-$('navGo').onclick=()=>startGPS();$('locate').onclick=()=>{if(position)map.setView(position,16);else startGPS()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+function startGPS(forRecording=false){if(!forRecording&&window.TrabakutikAndroid){try{if(routePoints.length>1&&window.TrabakutikAndroid.startNavigationWithRoute)window.TrabakutikAndroid.startNavigationWithRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));else if(routePoints.length>1){syncNativeRoute();window.TrabakutikAndroid.startNavigation()}else notice('Elige una ruta antes de navegar')}catch(e){console.warn(e)}}if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{warnGps(e);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
+$('navGo').onclick=()=>startGPS();$('locate').onclick=()=>{if(position){map.setView(position,16);if(watch===null)startGPS()}else startGPS()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 function recordingControls(state){document.body.classList.toggle('is-recording',state==='recording');
  $('recordStart').classList.toggle('hidden',state!=='ready');
  $('recordStop').classList.toggle('hidden',state!=='recording');
