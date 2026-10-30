@@ -5,28 +5,60 @@ import android.content.*;
 import android.content.pm.PackageManager;
 import android.os.*;
 import android.view.ViewGroup;
+import android.view.View;
+import android.view.WindowInsets;
+import android.graphics.drawable.GradientDrawable;
 import android.webkit.*;
 import android.widget.*;
 import java.io.*;
 import android.webkit.JavascriptInterface;
 public class MainActivity extends Activity {
- WebView web; File exportFile; String pendingGpx=null; String pendingGpsAction=null;
+ WebView web; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/";
  @Override public void onCreate(Bundle b) {
   super.onCreate(b);
   getWindow().setStatusBarColor(0xff07131d);
   getWindow().setNavigationBarColor(0xff07131d);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(0xff07131d);
-  LinearLayout bar=new LinearLayout(this);bar.setGravity(android.view.Gravity.CENTER_VERTICAL);bar.setPadding(dp(12),dp(5),dp(10),dp(5));bar.setBackgroundColor(0xff0c2330);
-  TextView title=new TextView(this);title.setText("TRABAKUTIK  GPS");title.setTextColor(0xffd9f7ff);title.setTextSize(13);title.setTypeface(null,1);bar.addView(title,new LinearLayout.LayoutParams(0,dp(40),1));title.setGravity(android.view.Gravity.CENTER_VERTICAL);
-  TextView switchPage=new TextView(this);switchPage.setText("RUTAS");switchPage.setTextColor(0xff83e6f8);switchPage.setTextSize(12);switchPage.setTypeface(null,1);switchPage.setGravity(android.view.Gravity.CENTER);switchPage.setBackgroundColor(0xff15394a);
-  LinearLayout.LayoutParams switchParams=new LinearLayout.LayoutParams(dp(73),dp(38));switchParams.setMargins(0,0,dp(5),0);bar.addView(switchPage,switchParams);
-  switchPage.setOnClickListener(v->{if(onNavigator()){web.loadUrl("https://trabakutik.com/");switchPage.setText("GPS");}else{web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html");switchPage.setText("RUTAS");}});
-  TextView menu=new TextView(this);menu.setText("⋮");menu.setTextColor(0xffd9f7ff);menu.setTextSize(27);menu.setGravity(android.view.Gravity.CENTER);bar.addView(menu,new LinearLayout.LayoutParams(dp(44),dp(40)));
+  LinearLayout bar=new LinearLayout(this);bar.setGravity(android.view.Gravity.CENTER_VERTICAL);bar.setPadding(dp(12),dp(2),dp(7),dp(2));bar.setBackgroundColor(0xff0b1e28);
+  TextView title=new TextView(this);title.setText("Trabakutik");title.setTextColor(0xffd9edec);title.setTextSize(13);title.setTypeface(null,1);
+  title.setGravity(android.view.Gravity.CENTER_VERTICAL);
+  bar.addView(title,new LinearLayout.LayoutParams(0,dp(34),1));
+  TextView switchPage=new TextView(this);
+  switchPage.setText("Web");switchPage.setTextColor(0xffa7d9e4);switchPage.setTextSize(11);switchPage.setTypeface(null,1);
+  switchPage.setGravity(android.view.Gravity.CENTER);
+  GradientDrawable outline=new GradientDrawable();outline.setColor(0xff112a37);outline.setCornerRadius(dp(13));outline.setStroke(dp(1),0xff355264);switchPage.setBackground(outline);
+  LinearLayout.LayoutParams switchParams=new LinearLayout.LayoutParams(dp(82),dp(29));switchParams.setMargins(0,0,dp(4),0);bar.addView(switchPage,switchParams);
+  switchPage.setOnClickListener(v->{if(onNavigator())web.loadUrl(lastWebUrl);else web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html");});
+  TextView menu=new TextView(this);menu.setText("⋮");menu.setTextColor(0xffb1c8d4);menu.setTextSize(23);menu.setGravity(android.view.Gravity.CENTER);
+  bar.addView(menu,new LinearLayout.LayoutParams(dp(32),dp(34)));
   menu.setOnClickListener(v->{PopupMenu popup=new PopupMenu(this,menu);popup.getMenu().add("● Iniciar grabación GPS").setOnMenuItemClickListener(item->{if(onNavigator())web.evaluateJavascript("document.getElementById('modeRecord').click();document.getElementById('recordStart').click();",null);else startTrack();return true;});popup.getMenu().add("■ Parar grabación").setOnMenuItemClickListener(item->{if(onNavigator())web.evaluateJavascript("if(!document.getElementById('recordStop').classList.contains('hidden'))document.getElementById('recordStop').click();",null);else stopNativeRecording();return true;});popup.getMenu().add("↓ Guardar grabación GPX").setOnMenuItemClickListener(item->{if(onNavigator())web.evaluateJavascript("if(!document.getElementById('saveRecording').classList.contains('hidden'))document.getElementById('saveRecording').click();",null);else saveTrack();return true;});popup.getMenu().add("▤ Ver todas las rutas").setOnMenuItemClickListener(item->{web.loadUrl("https://trabakutik.com/");return true;});popup.getMenu().add("■ Detener GPS").setOnMenuItemClickListener(item->{serviceActive=false;startService(new Intent(this,TrackingService.class).setAction("STOP"));return true;});popup.getMenu().add("↻ Volver al navegador GPS").setOnMenuItemClickListener(item->{web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html");return true;});popup.show();});
-  root.addView(bar,new LinearLayout.LayoutParams(-1,dp(50)));
+  root.addView(bar,new LinearLayout.LayoutParams(-1,dp(39)));
+  // Android moderno dibuja por defecto bajo la barra de estado.
+  // Reservar su área evita que hora y batería tapen la cabecera.
+  if(Build.VERSION.SDK_INT>=30)root.setOnApplyWindowInsetsListener((v,insets)->{
+   int top=insets.getInsets(WindowInsets.Type.statusBars()).top;
+   root.setPadding(0,top,0,0);
+   return insets;
+  });
   web=new WebView(this);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setDomStorageEnabled(true);web.getSettings().setGeolocationEnabled(true);web.getSettings().setUseWideViewPort(true);web.getSettings().setLoadWithOverviewMode(true);web.getSettings().setTextZoom(100);web.addJavascriptInterface(new Bridge(),"TrabakutikAndroid");
   web.setWebChromeClient(new WebChromeClient(){@Override public void onGeolocationPermissionsShowPrompt(String origin,GeolocationPermissions.Callback cb){cb.invoke(origin,checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED,false);}});
-  web.setWebViewClient(new WebViewClient(){@Override public void onPageFinished(WebView w,String url){super.onPageFinished(w,url);switchPage.setText(onNavigator()?"RUTAS":"GPS");}@Override public boolean shouldOverrideUrlLoading(WebView w,WebResourceRequest r){String host=r.getUrl().getHost();if("eltzubi.github.io".equals(host)||"trabakutik.com".equals(host)||"www.trabakutik.com".equals(host))return false;startActivity(new Intent(Intent.ACTION_VIEW,r.getUrl()));return true;}});
+  web.setWebViewClient(new WebViewClient(){
+   @Override public void onPageFinished(WebView w,String url){
+    super.onPageFinished(w,url);
+    if(!onNavigator()&&url!=null&&(url.startsWith("https://trabakutik.com/")||url.startsWith("https://www.trabakutik.com/")))lastWebUrl=url;
+    switchPage.setText(onNavigator()?"Web":"Navegador");
+    // Los enlaces "Navegar esta ruta" de la web deben abrirse
+    // dentro de la aplicación aunque tengan target="_blank".
+    if(!onNavigator()&&url!=null&&url.startsWith("https://trabakutik.com/")){
+     w.evaluateJavascript("(function(){document.addEventListener('click',function(ev){var a=ev.target.closest('a[href]');if(a&&a.href.indexOf('eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html')>=0){ev.preventDefault();window.location.href=a.href;}},true);})()",null);
+    }
+   }
+   @Override public boolean shouldOverrideUrlLoading(WebView w,WebResourceRequest r){
+    String host=r.getUrl().getHost();
+    if("eltzubi.github.io".equals(host)||"trabakutik.com".equals(host)||"www.trabakutik.com".equals(host))return false;
+    startActivity(new Intent(Intent.ACTION_VIEW,r.getUrl()));return true;
+   }
+  });
   root.addView(web,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));setContentView(root);
   web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html");
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},100);
