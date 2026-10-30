@@ -64,9 +64,16 @@ button{min-width:0}
 #navActions.hidden{display:none}
 #navActions button{width:100%}
 @media(max-width:390px){.info{max-width:calc(100% - 65px);width:min(315px,calc(100% - 65px))}.basemap-control span{display:none}.basemap-control select{width:58px}}
+
+.turn-hint{position:absolute;z-index:705;left:10px;bottom:12px;display:flex;align-items:center;gap:10px;max-width:calc(100% - 78px);padding:7px 12px 7px 9px;border:1px solid #66bdd0b3;border-radius:14px;background:#092434ed;color:#f0fcff;box-shadow:0 3px 14px #0008;pointer-events:none}
+.turn-arrow{display:grid;place-items:center;min-width:41px;height:41px;background:#0c5362;border:1px solid #4ba7bc;border-radius:10px;font-size:32px;line-height:1;color:#a7f7ff}
+.turn-copy{display:flex;flex-direction:column;gap:1px;min-width:0}
+.turn-copy b{font-size:13px}
+.turn-copy small{font-size:12px;color:#b2dce5;font-variant-numeric:tabular-nums}
+@media(max-width:390px){.turn-hint{left:7px;bottom:8px;padding:5px 9px}.turn-arrow{min-width:36px;height:36px;font-size:28px}.turn-copy b{font-size:12px}}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -90,7 +97,7 @@ function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLa
 let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
 changeBase(initialBase);
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null;
+let tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[];
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 function drawAll(){
@@ -114,10 +121,10 @@ function drawAll(){
  if(savedLine) savedLine.bringToFront();
 }
 $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').textContent=otherTracksVisible?'◉':'◎';$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
-function selectRoute(i){resetOffRoute();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
+function selectRoute(i){resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
 function showRoutes(){const q=$('search').value.toLowerCase().trim();const list=$('items');list.replaceChildren();let n=0;tracks.forEach((t,i)=>{if(!toName(t).toLowerCase().includes(q))return;n++;const b=document.createElement('button');b.className='routeitem';b.textContent=toName(t);const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b)});if(!n)list.textContent='Sin coincidencias'}
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
-function changeMode(m){mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
+function changeMode(m){if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':'Elige una ruta y pulsa Iniciar GPS');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');$('modeRecord').onclick=()=>changeMode('record');
 const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null;
@@ -363,7 +370,7 @@ function elevationText(points){
  return points.some(p=>Number.isFinite(p[2]))?' · +'+Math.round(up)+' / -'+Math.round(down)+' m aprox.':' · sin alturas disponibles';
 }
 function loadSaved(item){
- resetOffRoute();routePoints=item.points.map(p=>p.slice());chosen=-1;
+ resetOffRoute();resetJunctionView();routePoints=item.points.map(p=>p.slice());chosen=-1;
  $('savedDialog').classList.add('hidden');changeMode('nav');
  
  if(savedLine)map.removeLayer(savedLine);
@@ -423,8 +430,26 @@ function closestMeters(p,path){let best=Infinity;for(let i=1;i<path.length;i++){
 
 // Cruces: solo se consideran giros marcados de la ruta con otra rama registrada
 // en los tracks. No se inventan instrucciones de giro.
+function resetJunctionView(){
+ $('turnHint').classList.add('hidden');
+ junctionActive=-1;junctionBlocked=-1;
+ if(junctionZoom!==null){
+  const original=junctionZoom;junctionZoom=null;
+  autoZooming=true;map.setZoom(original,{animate:false});
+  setTimeout(()=>{autoZooming=false},300);
+ }
+}
+map.on('zoomstart',()=>{
+ if(!autoZooming&&junctionActive>=0){
+  junctionBlocked=junctionActive;
+  junctionZoom=null; // Respetar el zoom que el usuario acaba de elegir.
+ }
+});
 function computeJunctions(){
- junctions=[];junctionWarned.clear();junctionZoom=null;
+ resetJunctionView();
+ junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
+ routeCumulative=[0];
+ for(let k=1;k<routePoints.length;k++)routeCumulative[k]=routeCumulative[k-1]+dist(routePoints[k-1],routePoints[k]);
  if(routePoints.length<7)return;
  const pts=routePoints;
  for(let i=3;i<pts.length-3;i++){
@@ -435,7 +460,6 @@ function computeJunctions(){
   const cosine=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2));
   const angle=Math.acos(Math.max(-1,Math.min(1,cosine)))*180/Math.PI;
   if(angle<48)continue;
-  // Exige una bifurcación cartografiada de otro track cerca del giro.
   let branch=false;
   for(const t of tracks){
    if(branch)break;
@@ -447,8 +471,24 @@ function computeJunctions(){
   }
   if(!branch)continue;
   if(junctions.length&&dist(junctions.at(-1).point,b)<35)continue;
-  junctions.push({i,point:b});
+  const cross=v1[0]*v2[1]-v1[1]*v2[0];
+  const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
+  junctions.push({i,point:b,along:routeCumulative[i],direction});
  }
+}
+// Punto de avance sobre la ruta, no solo distancia en línea recta.
+function progressOnRoute(p){
+ let best=Infinity,along=0;
+ const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
+ for(let i=1;i<routePoints.length;i++){
+  const a=routePoints[i-1],b=routePoints[i];
+  const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale;
+  const dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*latScale;
+  const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));
+  const meters=Math.hypot(ax+t*dx,ay+t*dy);
+  if(meters<best){best=meters;along=routeCumulative[i-1]+t*(routeCumulative[i]-routeCumulative[i-1])}
+ }
+ return {along,distance:best};
 }
 function shortJunctionBeep(){
  if(!audio)return;
@@ -459,17 +499,45 @@ function shortJunctionBeep(){
  o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.23);
 }
 function junctionGuidance(p,accuracy){
- // Avisos de cruce sin alterar el zoom elegido por el usuario.
- if(mode!=='nav'||!routePoints.length||accuracy>12||!junctions.length)return;
- let nearest=null;
+ if(mode!=='nav'||routePoints.length<2||!junctions.length||accuracy>22){
+  if(junctionActive>=0)resetJunctionView();return;
+ }
+ const progress=progressOnRoute(p);
+ if(progress.distance>25){if(junctionActive>=0)resetJunctionView();return}
+ let best=null;
  for(let j=0;j<junctions.length;j++){
-  const d=dist(p,junctions[j].point);
-  if(d<40&&(!nearest||d<nearest.d))nearest={j,d};
+  const turn=junctions[j],ahead=turn.along-progress.along;
+  if(ahead< -12||ahead>58||dist(p,turn.point)>75)continue;
+  if(!best||Math.abs(ahead-15)<Math.abs(best.ahead-15))best={j,ahead,turn};
  }
- if(nearest&&nearest.d<=12&&nearest.d>=4&&!junctionWarned.has(nearest.j)){
-  junctionWarned.add(nearest.j);shortJunctionBeep();
-  notice('Cruce importante próximo · sigue la línea azul');
+ if(!best){
+  if(junctionActive>=0)resetJunctionView();
+  return;
  }
+ if(junctionActive!==best.j){
+  if(junctionActive>=0)resetJunctionView();
+  junctionActive=best.j;
+ }
+ const {j,ahead,turn}=best;
+ const arrow=turn.direction==='izquierda'?'↰':turn.direction==='derecha'?'↱':'↶';
+ $('turnArrow').textContent=arrow;
+ $('turnDirection').textContent=turn.direction==='vuelta'?'Cambio de sentido':'Gira a la '+turn.direction;
+ $('turnDistance').textContent=ahead>0?'En '+Math.max(0,Math.round(ahead/5)*5)+' m':'En el cruce';
+ $('turnHint').classList.remove('hidden');
+ // Solo se amplía UNA vez por cruce. Si se toca el zoom, se respeta.
+ if(ahead>=0&&ahead<=45&&junctionBlocked!==j&&!junctionZoomOnce.has(j)){
+  junctionZoomOnce.add(j);
+  if(map.getZoom()<17){
+   junctionZoom=map.getZoom();
+   autoZooming=true;map.setZoom(17,{animate:false});
+   setTimeout(()=>{autoZooming=false},300);
+  }
+ }
+ if(ahead>=-3&&ahead<=15&&!junctionWarned.has(j)){
+  junctionWarned.add(j);shortJunctionBeep();
+  notice('Cruce próximo · sigue la línea azul');
+ }
+ if(ahead< -9)resetJunctionView();
 }
 function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const h=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0?pos.coords.heading:null;const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(!prior||dist(prior,p)>4)map.panTo(p,{animate:false});
  if(recording){if(!recorded.length||dist(recorded.at(-1),p)>2){recorded.push(p);if(recordLayer){recordLayer.setLatLngs(recorded);recordLayer.bringToFront()}else recordLayer=L.polyline(recorded,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,lineCap:'round',lineJoin:'round',className:'recorded-red'}).addTo(map).bringToFront()}}
