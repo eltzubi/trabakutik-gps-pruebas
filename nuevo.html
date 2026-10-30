@@ -59,7 +59,12 @@ function updateDraw(){
  $('undo').disabled=!drawSteps.length;$('saveCreated').disabled=drawPoints.length<2;$('navCreated').disabled=drawPoints.length<2;
  drawJunctions();
 }
-function appendSegment(n,a,b){const p=tracks[n].points,dir=b>=a?1:-1;for(let j=a+dir;dir>0?j<=b:j+=dir)drawPoints.push(p[j].slice(0,2))}
+function appendSegment(n,a,b){
+ const pts=tracks[n].points;
+ const direction=b>=a?1:-1;
+ let index=a+direction;
+ while(direction>0?index<=b:index>=b){drawPoints.push(pts[index].slice(0,2));index+=direction;}
+}
 function rebuildDraw(){
  drawPoints=[];for(let n=0;n<drawSteps.length;n++){const step=drawSteps[n],p=tracks[step.n].points;
  if(n===0){drawPoints.push(p[step.i].slice(0,2));continue}
