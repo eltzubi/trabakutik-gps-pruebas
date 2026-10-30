@@ -3,6 +3,8 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.*;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.*;
 import android.view.ViewGroup;
 import android.view.View;
@@ -121,6 +123,29 @@ public class MainActivity extends Activity {
   showScreen(true);
  }
  public class Bridge {
+  @JavascriptInterface public String getLastLocation(){
+   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED &&
+      checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED)return "";
+   try{
+    LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);
+    Location best=null;
+    for(String provider:new String[]{LocationManager.GPS_PROVIDER,LocationManager.NETWORK_PROVIDER,LocationManager.PASSIVE_PROVIDER}){
+     try{
+      Location l=lm.getLastKnownLocation(provider);
+      if(l==null)continue;
+      long age=System.currentTimeMillis()-l.getTime();
+      if(age<0||age>120000)continue;
+      if(best==null||l.getTime()>best.getTime()&&l.getAccuracy()<best.getAccuracy()*2)best=l;
+     }catch(Exception ignored){}
+    }
+    if(best==null)return "";
+    org.json.JSONObject o=new org.json.JSONObject();
+    o.put("lat",best.getLatitude());o.put("lon",best.getLongitude());
+    o.put("accuracy",best.hasAccuracy()?best.getAccuracy():9999);
+    o.put("age",Math.max(0,System.currentTimeMillis()-best.getTime()));
+    return o.toString();
+   }catch(Exception e){return "";}
+  }
   @JavascriptInterface public void setRoute(String json){
    try{
     org.json.JSONArray list=new org.json.JSONArray(json);
