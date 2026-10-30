@@ -373,7 +373,7 @@ function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=pos
  if(mode==='nav'&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')}else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
 function startGPS(forRecording=false){if(!forRecording&&window.TrabakutikAndroid){syncNativeRoute();try{window.TrabakutikAndroid.startNavigation()}catch(e){console.warn(e)}}if(watch!==null)return;if(!navigator.geolocation){notice('Activa ubicación y permite el acceso desde el navegador');return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{notice('Activa la ubicación del móvil y concede permiso al navegador: '+e.message);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
-$('navGo').onclick=startGPS;$('locate').onclick=()=>{if(position)map.setView(position,16);else startGPS()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+$('navGo').onclick=()=>startGPS();$('locate').onclick=()=>{if(position)map.setView(position,16);else startGPS()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 function recordingControls(state){document.body.classList.toggle('is-recording',state==='recording');
  $('recordStart').classList.toggle('hidden',state!=='ready');
  $('recordStop').classList.toggle('hidden',state!=='recording');
@@ -382,11 +382,11 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
 $('recordStart').onclick=()=>{if(window.TrabakutikAndroid)window.TrabakutikAndroid.clearRoute();if(watch===null)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
-$('recordStop').onclick=()=>{if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice(recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')};
+$('recordStop').onclick=()=>{if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice(window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')};
 $('saveRecording').onclick=()=>{if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}else{if(recorded.length<2)return;download(recorded,'trabakutik-grabacion')}notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready')};
 $('discardRecording').onclick=()=>{if(!confirm('¿Descartar esta grabación? Se borrará el recorrido sin guardarlo.'))return;if(window.TrabakutikAndroid)window.TrabakutikAndroid.discardRecording();recording=false;recorded=[];if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');notice('Grabación descartada')};
 window.trabakutikNativeGpxSaved=()=>{
- if(mode==='record'&&!recording&&recorded.length){
+ if(mode==='record'&&!recording){
   recorded=[];if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
   recordingControls('ready');notice('GPX guardado en el móvil');
  }
