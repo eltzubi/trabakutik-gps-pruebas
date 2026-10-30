@@ -614,6 +614,7 @@ function updateDraw(){
  createdSavedItem=null;
  $('navCreated').disabled=true;
  $('navCreated').classList.add('hidden');
+ $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2&&drawPoints.length<2);
  updateElevation();
 }
 map.on('click',e=>{
@@ -652,6 +653,7 @@ function loadSaved(item){
  resetOffRoute();resetJunctionView();routePoints=item.points.map(p=>p.slice());chosen=-1;
  $('savedDialog').classList.add('hidden');changeMode('nav');
  
+ if(drawPoints.length||drawLayer)clearDraft();
  if(savedLine)map.removeLayer(savedLine);
  savedLine=L.polyline(routePoints,{color:'#5bebff',weight:8,opacity:1,interactive:false}).addTo(map).bringToFront();
  updateDirectionArrows();
@@ -673,6 +675,7 @@ function clearDraft(){
  if(drawLayer){map.removeLayer(drawLayer);drawLayer=null}
  $('undo').disabled=true;$('clearCreated').disabled=true;
  $('saveCreated').disabled=true;$('navCreated').disabled=true;
+ $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2);
  updateElevation();
 }
 $('clearCreated').onclick=()=>{
@@ -689,7 +692,7 @@ function clearActiveRoute(){
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  // El dibujo provisional del creador es otra capa distinta de la ruta activa.
  // Al quitar la ruta creada hay que eliminar ambas capas.
- if(chosen<0&&drawPoints.length&&sameTrack(drawPoints,routePoints))clearDraft();
+ if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
  routePoints=[];chosen=-1;activeSavedId=null;directionArrows.clearLayers();
  junctions=[];junctionWarned.clear();routeCumulative=[];
  $('clearActiveRoute').classList.add('hidden');
