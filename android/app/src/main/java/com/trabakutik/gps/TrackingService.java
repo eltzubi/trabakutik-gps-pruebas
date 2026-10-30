@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;File file;boolean recording=false,active=false,routeReached=false,offRoute=false;int points=0;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;File file;boolean recording=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
  final String channel="trabakutik-grabacion";
  @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));}
  @Override public IBinder onBind(Intent i){return null;}
@@ -39,6 +39,7 @@ public class TrackingService extends Service implements LocationListener {
   String name=new SimpleDateFormat("yyyyMMdd-HHmmss",Locale.ROOT).format(new Date());
   file=new File(dir,"trabakutik-"+name+".gpx");
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
+  lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;
   recording=true;updateNotice();
  }
  void loadRoute(){
@@ -153,10 +154,13 @@ public class TrackingService extends Service implements LocationListener {
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
    fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
    String time=fmt.format(new Date(l.getTime()));
+   if(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)))w.write("</trkseg><trkseg>\n");
    w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\n");
+   lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
    points++;if(points%10==0)updateNotice();
   }catch(Exception ignored){}
  }
+ Location makePreviousLocation(){Location p=new Location(LocationManager.GPS_PROVIDER);p.setLatitude(lastRecordedLat);p.setLongitude(lastRecordedLon);return p;}
  void endRecording(){
   if(!recording)return;
   try(FileWriter w=new FileWriter(file,true)){w.write("</trkseg></trk></gpx>\n");}
