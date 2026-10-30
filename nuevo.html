@@ -641,7 +641,7 @@ function computeJunctions(){
  junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
  routeCumulative=[0];
  for(let k=1;k<routePoints.length;k++)routeCumulative[k]=routeCumulative[k-1]+dist(routePoints[k-1],routePoints[k]);
- if(routePoints.length<7)return;
+ if(routePoints.length<7){if(window.TrabakutikAndroid?.setJunctions)window.TrabakutikAndroid.setJunctions('[]');return;}
  const pts=routePoints;
  for(let i=3;i<pts.length-3;i++){
   const a=pts[i-3],b=pts[i],c=pts[i+3];
@@ -665,6 +665,11 @@ function computeJunctions(){
   const cross=v1[0]*v2[1]-v1[1]*v2[0];
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
   junctions.push({i,point:b,along:routeCumulative[i],direction});
+ }
+ // En Android, el servicio nativo conserva los giros aunque se bloquee el móvil.
+ if(window.TrabakutikAndroid?.setJunctions){
+  try{window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>({i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0}))))}
+  catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
  }
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
@@ -730,7 +735,7 @@ function junctionGuidance(p,accuracy){
   }
  }
  if(ahead>=-3&&ahead<=15&&!junctionWarned.has(j)){
-  junctionWarned.add(j);shortJunctionBeep();
+  junctionWarned.add(j);if(!window.TrabakutikAndroid)shortJunctionBeep();
   notice('Cruce próximo · sigue la línea azul');
  }
  if(ahead< -9)resetJunctionView();
