@@ -199,6 +199,10 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 .tools #nearby .near-dot{display:block;position:absolute;width:5px;height:5px;border-radius:50%;background:#82e8f8;bottom:10px;right:9px}
 .tools #nearby[aria-pressed="true"]{background:#1c6570;color:#f0ffff;border-color:#89deeb;box-shadow:0 0 0 1px #89deeb80}
 .tools #nearby[aria-pressed="true"] .near-dot{background:#b9ffa8}
+#navActions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+#navActions.hidden{display:none!important}
+#navActions button{min-width:0;font-size:11px;padding:8px 3px;white-space:nowrap}
+#nearbyAction[aria-pressed="true"]{background:#146275;border-color:#75d3e9;color:#eaffff}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="nearby" title="Solo rutas a menos de 8 km de mi ubicación" aria-label="Mostrar rutas cerca de mí" aria-pressed="false">Cerca<span class="near-dot"></span></button><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
@@ -208,7 +212,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
  <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
 </section>
-<footer class="bottom"><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Navegar</button><button id="modeCreate" aria-pressed="false">✎ Crear</button><button id="modeRecord" aria-pressed="false">⏺ Grabación</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="savedRoutes">Mis rutas</button><button class="go hidden" id="navGo">Activar GPS</button></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar GPX</button><button class="go hidden" id="navCreated" disabled>Navegar</button></div><div class="actions hidden" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
+<footer class="bottom"><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Navegar</button><button id="modeCreate" aria-pressed="false">✎ Crear</button><button id="modeRecord" aria-pressed="false">⏺ Grabación</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Rutas cerca</button><button id="savedRoutes">Mis rutas</button><button class="go hidden" id="navGo">Activar GPS</button></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar GPX</button><button class="go hidden" id="navCreated" disabled>Navegar</button></div><div class="actions hidden" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="savedDialog" class="popup hidden"><div class="sheet"><button class="close" id="closeSaved">✕</button><h2>Mis rutas creadas</h2><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><button class="close" id="closeDialog">✕</button><h2>Elegir ruta de Trabakutik</h2><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
 </div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
@@ -244,6 +248,7 @@ function updateNearbyLayers(){
  if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
  if(savedLine)savedLine.bringToFront();
  $('nearby').title='Cerca de mí · '+nearbyCount+' rutas en 8 km · pulsa para ver todas';
+ $('nearbyAction').textContent='⌖ '+nearbyCount+' cerca';
 }
 function applyNearbyPosition(p){
  nearbyOrigin=p.slice();
@@ -255,18 +260,21 @@ function applyNearbyPosition(p){
 $('nearby').onclick=()=>{
  nearbyOnly=!nearbyOnly;
  $('nearby').setAttribute('aria-pressed',String(nearbyOnly));
+ $('nearbyAction').setAttribute('aria-pressed',String(nearbyOnly));
+ $('nearbyAction').textContent=nearbyOnly?'⌖ Cerca ✓':'⌖ Rutas cerca';
  $('nearby').setAttribute('aria-label',nearbyOnly?'Ver todas las rutas':'Mostrar rutas cerca de mí');
  if(!nearbyOnly){
   layers.forEach((l,i)=>{if(i===chosen)return;if(otherTracksVisible){if(!map.hasLayer(l))l.addTo(map)}else if(map.hasLayer(l))map.removeLayer(l)});
   if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
   if(savedLine)savedLine.bringToFront();
+  $('nearbyAction').textContent='⌖ Rutas cerca';
   notice('Todas las rutas visibles');
   return;
  }
  if(position){applyNearbyPosition(position);return}
  notice('Buscando tu ubicación para mostrar rutas cercanas…');
  if(!navigator.geolocation){
-  nearbyOnly=false;$('nearby').setAttribute('aria-pressed','false');$('nearby').setAttribute('aria-label','Mostrar rutas cerca de mí');
+  nearbyOnly=false;$('nearby').setAttribute('aria-pressed','false');$('nearbyAction').setAttribute('aria-pressed','false');$('nearbyAction').textContent='⌖ Rutas cerca';$('nearby').setAttribute('aria-label','Mostrar rutas cerca de mí');
   notice('Activa la ubicación del móvil para usar Cerca de mí');return;
  }
  navigator.geolocation.getCurrentPosition(pos=>{
@@ -278,6 +286,7 @@ $('nearby').onclick=()=>{
   notice('No se pudo localizar tu posición. Permite ubicación precisa para filtrar rutas.');
  },{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
 };
+$('nearbyAction').onclick=()=> $('nearby').click();
 function drawAll(){
  layers.forEach(l=>map.removeLayer(l));layers=[];
  // Primero los naranjas, al final la ruta activa por encima de todos.
