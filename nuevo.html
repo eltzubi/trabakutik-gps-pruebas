@@ -416,7 +416,47 @@ function drawAll(){
  updateDirectionArrows();
 }
 $('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible&&routeListScope!=='current'&&(!nearbyOnly||nearTrack(i))){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
-function selectRoute(i){activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;if(savedLine){map.removeLayer(savedLine);savedLine=null}chosen=i;routePoints=tracks[i].points.map(p=>[p[0],p[1]]);drawAll();computeJunctions();syncNativeRoute();$('routeDialog').classList.add('hidden');startGPS();notice('Ruta seleccionada · GPS activándose')}
+let selectedRouteRequest=0;
+async function loadDetailedSelected(i,request){
+ const slug=tracks[i]?.href?.replace(/\.html$/,'');
+ if(!slug||!/^[a-z0-9_-]+$/i.test(slug))return;
+ try{
+  // El mapa general tiene una simplificación de 10 m; cada ficha conserva 1 m.
+  const url='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/'+slug+'.json';
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const payload=await response.json();
+  const pts=payload.tracks?.[0]?.points;
+  if(!Array.isArray(pts)||pts.length<2||pts.length>15000||!pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])))throw new Error('Trazado detallado no válido');
+  if(chosen!==i||selectedRouteRequest!==request)return;
+  // Sustituir solamente la línea azul. Las naranjas siguen siendo ligeras.
+  routePoints=pts.map(p=>[p[0],p[1]]);
+  if(layers[i]){
+   map.removeLayer(layers[i]);
+   layers[i]=L.polyline(routePoints,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
+  }
+  computeJunctions();
+  syncNativeRoute();
+  updateDirectionArrows();
+  notice('Ruta cargada con detalle del GPX Garmin');
+ }catch(e){
+  if(chosen===i&&selectedRouteRequest===request)notice('Ruta cargada · detalle original no disponible, usando trazado general');
+  console.warn('No se pudo cargar el trazado detallado',e);
+ }
+}
+function selectRoute(i){
+ const request=++selectedRouteRequest;
+ activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
+ resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;
+ if(savedLine){map.removeLayer(savedLine);savedLine=null}
+ chosen=i;
+ routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
+ drawAll();computeJunctions();syncNativeRoute();
+ $('routeDialog').classList.add('hidden');
+ startGPS();
+ notice('Ruta seleccionada · cargando detalle del Garmin');
+ loadDetailedSelected(i,request);
+}
 let routeListScope='all';
 function syncScopeMap(){
  nearbyOnly=routeListScope==='near';nearbyButtonState();
@@ -726,6 +766,7 @@ function elevationText(points){
  return points.some(p=>Number.isFinite(p[2]))?' · +'+Math.round(up)+' / -'+Math.round(down)+' m aprox.':' · sin alturas disponibles';
 }
 function loadSaved(item){
+ selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();routePoints=item.points.map(p=>p.slice());chosen=-1;
  $('savedDialog').classList.add('hidden');changeMode('nav');
@@ -764,6 +805,7 @@ $('clearCreated').onclick=()=>{
  notice('Trazado creado borrado del mapa');
 };
 function clearActiveRoute(){
+ selectedRouteRequest++;
  resetOffRoute();
  resetJunctionView();
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
