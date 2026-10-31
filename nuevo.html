@@ -548,8 +548,24 @@ function selectRoute(i){
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
  updateNativeLaunchLink();
- routePoints=tracks[i].points.map(p=>[p[0],p[1]]);setRouteMapMode(true);syncNavButtons();
- try{drawAll()}catch(error){console.error('No se pudo dibujar el mapa de la ruta',error)}
+ routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
+ // Al cargar una ruta se mantiene el norte arriba. La orientación de ruta empieza al pulsar Navegar y grabar.
+ setRouteMapMode(false);syncNavButtons();
+ let routeVisible=false;
+ try{
+  map.invalidateSize({pan:false});
+  drawAll();
+  routeVisible=!!layers[i]&&map.hasLayer(layers[i]);
+ }catch(error){console.error('No se pudo dibujar el mapa de la ruta',error)}
+ if(!routeVisible){
+  try{
+   if(layers[i])map.removeLayer(layers[i]);
+   layers[i]=L.polyline(routePoints.map(p=>[p[0],p[1]]),{color:'#2878ff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
+   map.fitBounds(layers[i].getBounds(),{padding:[35,35]});
+   routeVisible=map.hasLayer(layers[i]);
+  }catch(error){console.error('Falló también el dibujo directo de la ruta',error)}
+ }
+ if(!routeVisible){$('routeDialog').classList.remove('hidden');notice('No se pudo abrir esta ruta en el mapa. Elige otra o inténtalo de nuevo.');return}
  $('routeDialog').classList.add('hidden');
  notice('Ruta cargada · lista para navegar');
  // Cargar el trazado detallado sin activar GPS ni grabación.
@@ -1319,7 +1335,7 @@ function finishNavigationReview(){
 }
 function stopNavigation(){
  if(!navigationActive)return;
- navigationActive=false;navigationReview=true;
+ navigationActive=false;navigationReview=true;setRouteMapMode(false);
  if(recording){
   if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();
   else saveBrowserDraft(true);
