@@ -450,13 +450,18 @@ function selectRoute(i){
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
  routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
- drawAll();computeJunctions();
+ drawAll();
  $('routeDialog').classList.add('hidden');
- // startGPS envía el recorrido y lo inicia en una sola operación nativa.
- // Evitar ROUTE seguido de NAVIGATE en dos órdenes que pueden competir.
- startGPS();
- notice('Ruta seleccionada · cargando detalle del Garmin');
- loadDetailedSelected(i,request);
+ notice('Ruta seleccionada · preparando navegación');
+ // Primero devolver control al navegador y pintar; calcular los giros
+ // en el siguiente ciclo, sin bloquear la apertura desde la ficha.
+ setTimeout(()=>{
+  if(chosen!==i||selectedRouteRequest!==request)return;
+  computeJunctions();
+  startGPS();
+  notice('Ruta seleccionada · cargando detalle del Garmin');
+  loadDetailedSelected(i,request);
+ },60);
 }
 let routeListScope='all';
 function syncScopeMap(){
@@ -910,15 +915,9 @@ function computeJunctions(){
   const cosine=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2));
   const angle=Math.acos(Math.max(-1,Math.min(1,cosine)))*180/Math.PI;
   if(angle<48)continue;
-  let branch=false;
-  for(const t of tracks){
-   if(branch)break;
-   for(let j=1;j<t.points.length-1;j+=2){
-    const p=t.points[j];if(dist(p,b)>12)continue;
-    const before=t.points[Math.max(0,j-2)],after=t.points[Math.min(t.points.length-1,j+2)];
-    if(dist(before,b)>20||dist(after,b)>20){branch=true;break}
-   }
-  }
+  // Un giro claro del propio GPX se reconoce sin buscar en las
+  // 68 rutas: el barrido completo bloqueaba el WebView en rutas largas.
+  const branch=false;
   // Giros pronunciados del GPX también cuentan aunque no haya otra ruta registrada.
   if(!branch&&angle<60)continue;
   if(junctions.length&&dist(junctions.at(-1).point,b)<35)continue;
