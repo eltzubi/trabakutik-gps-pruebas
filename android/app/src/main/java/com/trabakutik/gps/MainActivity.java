@@ -70,6 +70,14 @@ public class MainActivity extends Activity {
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
   else beginPermissionSetup();
  }
+ void restoreGpsWeb(){
+  if(web==null)return;
+  web.evaluateJavascript("window.trabakutikSyncNative&&window.trabakutikSyncNative()",null);
+ }
+ @Override protected void onResume(){
+  super.onResume();
+  if(web!=null&&showingGps)web.postDelayed(this::restoreGpsWeb,300);
+ }
  void showScreen(boolean gps){
   showingGps=gps;
   if(web==null||webRoutes==null)return;
@@ -78,7 +86,7 @@ public class MainActivity extends Activity {
   web.setImportantForAccessibility(gps?View.IMPORTANT_FOR_ACCESSIBILITY_AUTO:View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
   webRoutes.setImportantForAccessibility(gps?View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS:View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
   switchPage.setText(gps?"Web":"Navegador");
-  web.postDelayed(()->{if(gps)web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);},80);
+  web.postDelayed(()->{if(gps){web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);restoreGpsWeb();}},120);
  }
  void configureWebView(WebView w,boolean navigator){
   w.setBackgroundColor(0xff07131d);
@@ -132,6 +140,31 @@ public class MainActivity extends Activity {
   showScreen(true);
  }
  public class Bridge {
+  @JavascriptInterface public String getTrackingSnapshot(){
+   try{
+    android.content.SharedPreferences pref=getSharedPreferences("tracking_live",MODE_PRIVATE);
+    org.json.JSONObject o=new org.json.JSONObject();
+    o.put("active",pref.getBoolean("active",false));
+    o.put("recording",pref.getBoolean("recording",false));
+    o.put("time",pref.getLong("time",0));
+    o.put("lat",pref.getFloat("lat",Float.NaN));
+    o.put("lon",pref.getFloat("lon",Float.NaN));
+    o.put("accuracy",pref.getFloat("accuracy",9999));
+    org.json.JSONArray pts=new org.json.JSONArray();
+    File f=new File(getFilesDir(),"trazado-vivo.tsv");
+    if(f.exists()&&f.length()<1500000){
+     try(BufferedReader br=new BufferedReader(new FileReader(f))){
+      String line;int count=0;
+      while((line=br.readLine())!=null&&count<25000){
+       String[] p=line.split("\\t");
+       if(p.length==2){try{double lat=Double.parseDouble(p[0]),lon=Double.parseDouble(p[1]);if(Double.isFinite(lat)&&Double.isFinite(lon)){org.json.JSONArray coord=new org.json.JSONArray();coord.put(lat);coord.put(lon);pts.put(coord);count++;}}catch(Exception ignored){}}
+      }
+     }
+    }
+    o.put("points",pts);
+    return o.toString();
+   }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo leer seguimiento nativo",e);return "";}
+  }
   @JavascriptInterface public String getLastLocation(){
    if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED &&
       checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED)return "";
@@ -191,7 +224,7 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void startRecording(){runOnUiThread(()->startTrack());}
   @JavascriptInterface public void stopRecording(){runOnUiThread(()->stopNativeRecording());}
   @JavascriptInterface public void saveRecording(){runOnUiThread(()->saveTrack());}
-  @JavascriptInterface public void discardRecording(){runOnUiThread(()->discardLastRecording());}
+  @JavascriptInterface public void discardRecording(){runOnUiThread(()->{discardLastRecording();new File(getFilesDir(),"trazado-vivo.tsv").delete();});}
   @JavascriptInterface public void saveGpx(String filename,String xml){
    if(xml==null||xml.length()>3000000||!xml.startsWith("<?xml"))return;
    String safe=filename==null?"trabakutik.gpx":filename.replaceAll("[^a-zA-Z0-9._-]","_");
