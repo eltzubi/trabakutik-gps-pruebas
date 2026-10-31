@@ -173,7 +173,9 @@ public class MainActivity extends Activity {
  }
  public class Bridge {
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
-  @JavascriptInterface public String getTrackingSnapshot(){
+  @JavascriptInterface public String getTrackingSnapshot(){return trackingSnapshot("");}
+  @JavascriptInterface public String getTrackingSnapshotIfChanged(String knownVersion){return trackingSnapshot(knownVersion);}
+  private String trackingSnapshot(String knownVersion){
    try{
     android.content.SharedPreferences pref=getSharedPreferences("tracking_live",MODE_PRIVATE);
     org.json.JSONObject o=new org.json.JSONObject();
@@ -183,8 +185,11 @@ public class MainActivity extends Activity {
     o.put("lat",pref.getFloat("lat",0f));
     o.put("lon",pref.getFloat("lon",0f));
     o.put("accuracy",pref.getFloat("accuracy",9999));
-    org.json.JSONArray pts=new org.json.JSONArray();
     File f=new File(getFilesDir(),"trazado-vivo.tsv");
+    String trackVersion=f.exists()?f.lastModified()+":"+f.length():"none";
+    o.put("trackVersion",trackVersion);
+    if(trackVersion.equals(knownVersion))return o.toString();
+    org.json.JSONArray pts=new org.json.JSONArray();
     if(f.exists()&&f.length()<1500000){
      try(BufferedReader br=new BufferedReader(new FileReader(f))){
       String line;int count=0;
