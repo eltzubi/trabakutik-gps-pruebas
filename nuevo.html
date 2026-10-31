@@ -978,11 +978,17 @@ window.trabakutikSyncNative=()=>{
    recordingControls((data.points?.length||0)>1?'stopped':'ready');
   }
   if(Array.isArray(data.points)){
-   const valid=data.points.filter(p=>Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+   const segments=[[]],valid=[];
+   for(const p of data.points){
+    if(Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1])){
+     segments[segments.length-1].push(p);valid.push(p);
+    }else if(segments[segments.length-1].length)segments.push([]);
+   }
+   const connected=segments.filter(segment=>segment.length);
    if(valid.length>1){
     recorded=valid;
-    if(!recordLayer)recordLayer=L.polyline(recorded,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,className:'recorded-red'}).addTo(map);
-    else recordLayer.setLatLngs(recorded);
+    if(!recordLayer)recordLayer=L.polyline(connected,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,className:'recorded-red'}).addTo(map);
+    else recordLayer.setLatLngs(connected);
     recordLayer.bringToFront();
    }
   }
