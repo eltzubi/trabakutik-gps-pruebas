@@ -992,8 +992,16 @@ window.trabakutikSyncNative=()=>{
     recordLayer.bringToFront();
    }
   }
-  if(data.active&&Number.isFinite(data.lat)&&Number.isFinite(data.lon)&&data.accuracy<=60&&Date.now()-data.time<30000){
+  // La grabacion Android puede continuar aunque el servicio no marque
+  // navegacion activa. El mapa debe seguir el ultimo punto recibido.
+  const liveFix=(data.active||data.recording)&&Number.isFinite(data.lat)&&Number.isFinite(data.lon)&&Number.isFinite(data.accuracy)&&data.accuracy<=100&&Number.isFinite(data.time)&&Date.now()-data.time<30000;
+  if(liveFix){
    onFix({coords:{latitude:data.lat,longitude:data.lon,accuracy:data.accuracy,heading:null,speed:0}});
+  }else if(data.recording&&Array.isArray(data.points)&&data.points.length){
+   // Si el servicio entrega el trazado antes que la posicion instantanea,
+   // usar el ultimo punto nuevo para no dejar que la linea salga de pantalla.
+   const last=[...data.points].reverse().find(p=>Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+   if(last&&(!position||dist(position,last)>3))onFix({coords:{latitude:last[0],longitude:last[1],accuracy:35,heading:null,speed:0}});
   }
  }catch(e){console.warn('Seguimiento Android no recuperado',e)}
 };
