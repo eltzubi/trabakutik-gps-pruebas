@@ -222,7 +222,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 .tools #eye[aria-pressed="true"]{border-color:#8bcbd9!important}
 .import-gpx{display:flex;margin:8px 0 14px}.import-gpx button{background:#12374b;color:#d4f7ff;border:1px solid #5689a0;border-radius:11px;padding:11px 14px;font-size:13px;font-weight:650;width:100%;text-align:center}</style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M15.6 3.1 10 13.2"/><path d="m9.3 12.4 3.9 2.1"/><path d="M9.5 12.1c-2.2 0-3.6 1.4-4.8 3.3L2.8 19c3.8 1.4 7.2.9 9.7-2.4l1.2-2.1Z"/><path d="m5 17 3.4 1.8M7 14.6l2.8 1.5"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -247,7 +247,7 @@ function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLa
 let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
 changeBase(initialBase);
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=true,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 let lastGpsWarning=0;
@@ -272,16 +272,8 @@ function nearTrack(i){
 }
 function updateNearbyLayers(){
  if(!nearbyOnly||!tracks.length)return;
- nearbyCount=0;
- layers.forEach((layer,i)=>{
-  const near=nearTrack(i);
-  if(near)nearbyCount++;
-  if(i===chosen){if(!map.hasLayer(layer))layer.addTo(map);return;} // La ruta azul elegida nunca desaparece.
-  if(routeListScope!=='current'&&otherTracksVisible&&near){if(!map.hasLayer(layer))layer.addTo(map)}
-  else if(map.hasLayer(layer))map.removeLayer(layer);
- });
- if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
- if(savedLine)savedLine.bringToFront();
+ nearbyCount=tracks.reduce((n,t,i)=>n+(nearTrack(i)?1:0),0);
+ refreshRouteLayers();
  $('nearbyAction').textContent='Todas';
  $('nearbyAction').title=nearbyCount+' rutas de menos de 15 km con salida a 4 km o trazado a 1,5 km';
 }
@@ -338,22 +330,11 @@ $('nearbyAction').onclick=()=>{
  nearbyOnly=!nearbyOnly;routeListScope=nearbyOnly?'near':'all';nearbyOrigin=null;nearbyLast=null;
  nearbyButtonState();
  if(!nearbyOnly){
-  layers.forEach((layer,i)=>{
-   if(i===chosen)return;
-   if(otherTracksVisible){if(!map.hasLayer(layer))layer.addTo(map)}
-   else if(map.hasLayer(layer))map.removeLayer(layer);
-  });
-  if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
-  if(savedLine)savedLine.bringToFront();
-  showRoutesIfOpen();
-  notice('Mostrando todas las rutas');
+  refreshRouteLayers();showRoutesIfOpen();
+  notice(otherTracksVisible?'Mostrando todas las rutas':'Mapa limpio · rutas disponibles en el listado');
   return;
  }
- // No dejar las 68 rutas visibles mientras se localiza el móvil.
- updateNearbyLayers();
- showRoutesIfOpen();
- notice('Buscando rutas cortas con salida a 4 km o trazado a 1,5 km…');
- locateNearby();
+ updateNearbyLayers();showRoutesIfOpen();locateNearby();
 };
 // Flechas pequeñas sobre el recorrido azul, siguiendo el orden real del GPX.
 let directionArrows=L.layerGroup().addTo(map);
@@ -393,19 +374,26 @@ $('mapTitle').onclick=()=>{
  // La app Android intercepta el enlace y conserva el navegador GPS abierto.
  window.location.href='https://trabakutik.com/'+href;
 };
-function drawAll(){
- layers.forEach(l=>map.removeLayer(l));layers=[];
- // Primero los naranjas, al final la ruta activa por encima de todos.
- tracks.forEach((t,i)=>{
-  const l=L.polyline(t.points.map(p=>[p[0],p[1]]),{
-   color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?7:4.5,
-   opacity:i===chosen?1:.97,interactive:false
-  });
-  layers.push(l);
-  if(i!==chosen&&routeListScope!=='current'&&otherTracksVisible&&(!nearbyOnly||nearTrack(i)))l.addTo(map);
+function getTrackLayer(i){
+ if(!layers[i]&&tracks[i])layers[i]=L.polyline(tracks[i].points.map(p=>[p[0],p[1]]),{
+  color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?7:4.5,
+  opacity:i===chosen?1:.97,interactive:false
  });
+ return layers[i];
+}
+function refreshRouteLayers(){
+ tracks.forEach((t,i)=>{
+  const show=i===chosen||(otherTracksVisible&&routeListScope!=='current'&&(!nearbyOnly||nearTrack(i)));
+  if(show){const layer=getTrackLayer(i);if(layer&&!map.hasLayer(layer))layer.addTo(map);}
+  else if(layers[i]){map.removeLayer(layers[i]);layers[i]=null;}
+ });
+ if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
+ if(savedLine)savedLine.bringToFront();
+}
+function drawAll(){
+ layers.forEach(l=>{if(l)map.removeLayer(l)});layers=[];
+ refreshRouteLayers();
  if(chosen>=0){
-  layers[chosen].addTo(map).bringToFront();
   map.fitBounds(layers[chosen].getBounds(),{padding:[35,35]});
   $('title').textContent=toName(tracks[chosen]);
   setRouteTitle(toName(tracks[chosen]),tracks[chosen].href);
@@ -415,7 +403,14 @@ function drawAll(){
  syncScopeMap();
  updateDirectionArrows();
 }
-$('eye').onclick=()=>{otherTracksVisible=!otherTracksVisible;layers.forEach((layer,i)=>{if(i===chosen)return;if(otherTracksVisible&&routeListScope!=='current'&&(!nearbyOnly||nearTrack(i))){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer)});$('eye').setAttribute('aria-pressed',String(!otherTracksVisible));$('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar otras rutas':'Mostrar otras rutas');if(chosen>=0)layers[chosen].bringToFront();if(savedLine)savedLine.bringToFront();notice(otherTracksVisible?'Rutas naranjas visibles':'Mapa despejado · rutas naranjas ocultas');};
+$('eye').onclick=()=>{
+ otherTracksVisible=!otherTracksVisible;
+ refreshRouteLayers();
+ $('eye').setAttribute('aria-pressed',String(otherTracksVisible));
+ $('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar rutas de Trabakutik':'Mostrar rutas de Trabakutik');
+ $('eye').title=otherTracksVisible?'Ocultar rutas de Trabakutik':'Mostrar rutas de Trabakutik';
+ notice(otherTracksVisible?'Rutas de Trabakutik visibles':'Mapa limpio · rutas de Trabakutik ocultas');
+};
 let selectedRouteRequest=0;
 async function loadDetailedSelected(i,request){
  const slug=tracks[i]?.href?.replace(/\.html$/,'');
@@ -433,10 +428,8 @@ async function loadDetailedSelected(i,request){
   // miles de cruces ni mandar 10.000 puntos al servicio Android en caliente.
   // Los avisos siguen basados en el trazado ligero, que ya está seleccionado.
   const detailedLine=pts.map(p=>[p[0],p[1]]);
-  if(layers[i]){
-   map.removeLayer(layers[i]);
-   layers[i]=L.polyline(detailedLine,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
-  }
+  if(layers[i])map.removeLayer(layers[i]);
+  layers[i]=L.polyline(detailedLine,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
   notice('Ruta Garmin mostrada con detalle · navegación activa');
  }catch(e){
   if(chosen===i&&selectedRouteRequest===request)notice('Ruta cargada · detalle original no disponible, usando trazado general');
@@ -467,17 +460,11 @@ function selectRoute(i){
 let routeListScope='all';
 function syncScopeMap(){
  nearbyOnly=routeListScope==='near';nearbyButtonState();
- nearbyCount=0;
- layers.forEach((layer,i)=>{
-  const visible=i===chosen||(routeListScope!=='current'&&otherTracksVisible&&(!nearbyOnly||nearTrack(i)));
-  if(visible){if(!map.hasLayer(layer))layer.addTo(map)}else if(map.hasLayer(layer))map.removeLayer(layer);
-  if(nearbyOnly&&nearTrack(i))nearbyCount++;
- });
- if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
- if(savedLine)savedLine.bringToFront();
+ nearbyCount=nearbyOnly?tracks.reduce((n,t,i)=>n+(nearTrack(i)?1:0),0):0;
+ refreshRouteLayers();
  if(routeListScope==='current')notice('Mostrando solo la ruta actual');
- else if(routeListScope==='all')notice('Mostrando todas las rutas');
- else notice(nearbyOrigin?nearbyCount+' rutas cercanas en el mapa':'Buscando ubicación GPS…');
+ else if(routeListScope==='near')notice(nearbyOrigin?nearbyCount+' rutas cercanas disponibles':'Buscando ubicación GPS…');
+ else notice(otherTracksVisible?'Mostrando rutas de Trabakutik':'Mapa limpio · pulsa el icono de capas para ver todas las rutas');
 }
 function showRoutes(){
  const q=$('search').value.toLowerCase().trim(),list=$('items');list.replaceChildren();
@@ -824,8 +811,8 @@ function loadSaved(item){
  if(item.imported){
   if(importedMapPreviousVisibility===null)importedMapPreviousVisibility=otherTracksVisible;
   otherTracksVisible=false; // evitar pintar 68 rutas sobre un GPX exterior
-  layers.forEach(layer=>{if(map.hasLayer(layer))map.removeLayer(layer)});
-  $('eye').setAttribute('aria-pressed','true');
+  refreshRouteLayers();
+  $('eye').setAttribute('aria-pressed','false');
  }else if(importedMapPreviousVisibility!==null){
   otherTracksVisible=importedMapPreviousVisibility;importedMapPreviousVisibility=null;
   syncScopeMap();
