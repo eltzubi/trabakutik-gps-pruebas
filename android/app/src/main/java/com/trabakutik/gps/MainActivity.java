@@ -63,7 +63,8 @@ public class MainActivity extends Activity {
   pages.addView(web,new FrameLayout.LayoutParams(-1,-1));
   root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
   setContentView(root);
-  showScreen(true);
+  // Abrir primero Trabakutik.com. El navegador GPS queda cargado en la otra vista.
+  showScreen(false);
   web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
   webRoutes.loadUrl("https://trabakutik.com/");
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
