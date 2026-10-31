@@ -534,9 +534,19 @@ async function loadDetailedSelected(i,request){
   console.warn('No se pudo cargar el trazado detallado',e);
  }
 }
+let deferredRouteSelection=-1;
+function resumeDeferredRoute(){const i=deferredRouteSelection;deferredRouteSelection=-1;if(i>=0&&tracks[i])setTimeout(()=>selectRoute(i),0)}
 function selectRoute(i){
- if(navigationActive||navigationReview){notice('Finaliza la salida y guarda o descarta la grabación antes de cambiar de ruta.');return}
- if(recording||recorded.some(p=>Array.isArray(p))){notice('Guarda o descarta la grabación pendiente antes de cargar otra ruta.');return}
+ if(navigationActive){deferredRouteSelection=i;notice('Termina esta salida y guarda o descarta la grabación; después abriré la ruta elegida.');return}
+ if(navigationReview||recording||recorded.some(p=>Array.isArray(p))){
+  deferredRouteSelection=i;
+  $('routeDialog').classList.add('hidden');
+  changeMode('record');
+  $('recordActions').classList.remove('hidden');
+  if(!recording)recordingControls('stopped');
+  notice('Hay una grabación pendiente. Guárdala o descártala en Grabación y abriré la ruta elegida.');
+  return;
+ }
  if(mode==='create'&&drawPoints.length>1&&!createdSavedItem){notice('Guarda o borra el recorrido creado antes de cargar otra ruta.');return}
  changeMode('nav');
  const request=++selectedRouteRequest;
@@ -616,8 +626,8 @@ document.querySelectorAll('#routeListScope button').forEach(b=>b.onclick=()=>{
 });
 $('choose').onclick=()=>{$('search').value='';routeListScope='all';nearbyOnly=false;nearbyOrigin=null;otherTracksVisible=false;$('eye').setAttribute('aria-pressed','false');refreshRouteLayers();$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
 function changeMode(m){
- if(navigationActive||navigationReview){notice(navigationActive?'Finaliza la salida y guarda o descarta la grabación para cambiar de modo.':'Guarda o descarta la grabación pendiente antes de cambiar de modo.');return}
- if((recording||recorded.filter(p=>Array.isArray(p)).length>0)){notice('Tienes una grabación pendiente. Guárdala o descártala antes de cambiar de modo.');return}
+ if(navigationActive&&m!=='record'){notice('Finaliza la navegación antes de cambiar de modo.');return}
+ if((navigationReview||recording||recorded.filter(p=>Array.isArray(p)).length>0)&&m!=='record'){notice('Tienes una grabación pendiente. Abre Grabación para guardarla o descartarla.');return}
  if(mode==='create'&&m!=='create'&&drawPoints.length>1&&!createdSavedItem){notice('Tienes un recorrido sin guardar. Guárdalo o bórralo antes de cambiar de modo.');return}
  const creating=m==='create';
  const actions=$('createActions'),profile=$('elevationPanel'),modes=document.querySelector('.modes');
@@ -1331,7 +1341,8 @@ function finishNavigationReview(){
  navigationReview=false;recording=false;
  $('recordActions').classList.add('hidden');
  recordingControls('ready');
- syncNavButtons();
+ if(mode==='record')changeMode('nav');else syncNavButtons();
+ resumeDeferredRoute();
 }
 function stopNavigation(){
  if(!navigationActive)return;
@@ -1346,7 +1357,9 @@ function stopNavigation(){
  if(window.TrabakutikAndroid?.stopNavigation)window.TrabakutikAndroid.stopNavigation();
  $('recordActions').classList.remove('hidden');
  recordingControls('stopped');syncNavButtons();
- notice('Salida finalizada · guarda o descarta el recorrido');
+ changeMode('record');
+ $('recordActions').classList.remove('hidden');
+ notice('Navegación detenida · guarda o descarta el recorrido en Grabación');
 }
 function stopGPS(){
  if(recording){notice('No se puede apagar el GPS durante una grabación.');return}
@@ -1411,20 +1424,20 @@ $('saveRecording').onclick=()=>{
  download(recorded,'trabakutik-grabacion');clearBrowserDraft();
  notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
- if(navigationReview)finishNavigationReview();else recordingControls('ready')
+ if(navigationReview)finishNavigationReview();else{recordingControls('ready');resumeDeferredRoute()}
 };
 $('discardRecording').onclick=()=>{
  if(!confirm('¿Descartar esta grabación? Se borrarán los puntos registrados sin guardarlos.'))return;
  if(window.TrabakutikAndroid)window.TrabakutikAndroid.discardRecording();
  recording=false;recorded=[];clearBrowserDraft();
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
- if(navigationReview)finishNavigationReview();else recordingControls('ready');notice('Grabación descartada')
+ if(navigationReview)finishNavigationReview();else{recordingControls('ready');resumeDeferredRoute()}notice('Grabación descartada')
 };
 window.trabakutikNativeGpxSaved=()=>{
  if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
  recorded=[];clearBrowserDraft();
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
- if(navigationReview)finishNavigationReview();else if(mode==='record'&&!recording)recordingControls('ready');
+ if(navigationReview)finishNavigationReview();else if(mode==='record'&&!recording){recordingControls('ready');resumeDeferredRoute()}
  notice('GPX guardado en el móvil');
 };
 window.addEventListener('beforeunload',e=>{if(recording||recorded.filter(p=>Array.isArray(p)).length>0){e.preventDefault();e.returnValue=''}});
