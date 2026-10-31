@@ -20,6 +20,7 @@ public class MainActivity extends Activity {
  WebView web,webRoutes; FrameLayout pages; TextView switchPage; boolean showingGps=true; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/";
  @Override public void onCreate(Bundle b) {
   super.onCreate(b);
+  CrashReport.install(this);
   getWindow().setStatusBarColor(0xff07131d);
   getWindow().setNavigationBarColor(0xff07131d);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(0xff07131d);
@@ -30,6 +31,7 @@ public class MainActivity extends Activity {
   TextView title=new TextView(this);
   title.setText("Trabakutik");title.setTextColor(0xffd9edec);title.setTextSize(12);
   title.setTypeface(null,1);title.setGravity(android.view.Gravity.CENTER_VERTICAL);
+  title.setOnLongClickListener(v->{CrashReport.show(MainActivity.this);return true;});
   bar.addView(title,new LinearLayout.LayoutParams(0,dp(30),1));
 
   switchPage=new TextView(this);switchPage.setText("Web");
@@ -222,7 +224,8 @@ public class MainActivity extends Activity {
     if(list.length()<2||list.length()>15000||json.length()>2000000)return;
     File f=new File(getFilesDir(),"ruta-activa.json");
     try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
-    runOnUiThread(()->{if(serviceActive)getApplicationContext().startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));});
+    // No arrancar ni reactivar un servicio por actualizar los puntos.
+    // NAVIGATE lee el archivo una sola vez al comenzar la navegación.
    }catch(Exception ignored){}
   }
   @JavascriptInterface public void setJunctions(String json){
@@ -231,7 +234,7 @@ public class MainActivity extends Activity {
     if(turns.length()>400||json.length()>40000)return;
     File f=new File(getFilesDir(),"giros-activos.json");
     try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
-    runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("TURNS"));});
+    // Los giros quedan guardados y se leen al iniciar NAVIGATE.
    }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudieron registrar giros",e);}
   }
   @JavascriptInterface public void stopNavigation(){
@@ -245,7 +248,7 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void clearRoute(){
     File f=new File(getFilesDir(),"ruta-activa.json");if(f.exists())f.delete();
     File turns=new File(getFilesDir(),"giros-activos.json");if(turns.exists())turns.delete();
-    runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));});
+    // No crear un servicio solo para limpiar una ruta ya inactiva.
   }
   @JavascriptInterface public void startNavigationWithRoute(String json){
     try{
@@ -253,7 +256,7 @@ public class MainActivity extends Activity {
       if(list.length()<2||list.length()>15000||json.length()>2000000)return;
       File f=new File(getFilesDir(),"ruta-activa.json");
       try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
-      runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));startNavigationService();});
+      runOnUiThread(()->startNavigationService());
     }catch(Exception e){android.util.Log.e("TrabakutikGPS","Ruta de navegacion incorrecta",e);}
   }
   @JavascriptInterface public void startNavigation(){runOnUiThread(()->startNavigationService());}
