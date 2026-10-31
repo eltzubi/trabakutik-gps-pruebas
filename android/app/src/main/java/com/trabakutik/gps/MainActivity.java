@@ -17,7 +17,7 @@ import android.widget.*;
 import java.io.*;
 import android.webkit.JavascriptInterface;
 public class MainActivity extends Activity {
- WebView web,webRoutes; FrameLayout pages; TextView switchPage; boolean showingGps=true; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/";
+ WebView web,webRoutes; FrameLayout pages; TextView switchPage; boolean showingGps=true; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/"; long lastRouteOpenAt=0; String lastRouteOpenUrl="";
  @Override public void onCreate(Bundle b) {
   super.onCreate(b);
   CrashReport.install(this);
@@ -115,6 +115,7 @@ public class MainActivity extends Activity {
     // Retirar el WebView muerto: si devolvemos false, se cierra toda la APK.
     final boolean wasNavigator=view==web;
     final String restore=wasNavigator?(view.getUrl()!=null?view.getUrl():"https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"):lastWebUrl;
+    CrashReport.note(MainActivity.this,"Proceso del mapa cerrado (didCrash="+detail.didCrash()+")");
     pages.removeView(view);
     view.destroy();
     WebView replacement=new WebView(MainActivity.this);
@@ -164,6 +165,9 @@ public class MainActivity extends Activity {
   if(origin!=null&&origin.startsWith("https://trabakutik.com/"))lastWebUrl=origin;
   if(webRoutes!=null)webRoutes.loadUrl("about:blank");
   showScreen(true);
+  long now=android.os.SystemClock.elapsedRealtime();
+  if(url.equals(lastRouteOpenUrl)&&now-lastRouteOpenAt<1200)return;
+  lastRouteOpenUrl=url;lastRouteOpenAt=now;
   String current=web.getUrl();
   if(current==null||!current.equals(url))web.loadUrl(url);
  }
