@@ -429,16 +429,15 @@ async function loadDetailedSelected(i,request){
   const pts=payload.tracks?.[0]?.points;
   if(!Array.isArray(pts)||pts.length<2||pts.length>15000||!pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])))throw new Error('Trazado detallado no válido');
   if(chosen!==i||selectedRouteRequest!==request)return;
-  // Sustituir solamente la línea azul. Las naranjas siguen siendo ligeras.
-  routePoints=pts.map(p=>[p[0],p[1]]);
+  // El GPX detallado es solo para dibujar la línea: no reconstruir
+  // miles de cruces ni mandar 10.000 puntos al servicio Android en caliente.
+  // Los avisos siguen basados en el trazado ligero, que ya está seleccionado.
+  const detailedLine=pts.map(p=>[p[0],p[1]]);
   if(layers[i]){
    map.removeLayer(layers[i]);
-   layers[i]=L.polyline(routePoints,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
+   layers[i]=L.polyline(detailedLine,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
   }
-  computeJunctions();
-  syncNativeRoute();
-  updateDirectionArrows();
-  notice('Ruta cargada con detalle del GPX Garmin');
+  notice('Ruta Garmin mostrada con detalle · navegación activa');
  }catch(e){
   if(chosen===i&&selectedRouteRequest===request)notice('Ruta cargada · detalle original no disponible, usando trazado general');
   console.warn('No se pudo cargar el trazado detallado',e);
@@ -1094,6 +1093,6 @@ window.trabakutikNativeGpxSaved=()=>{
  }
 };
 window.addEventListener('beforeunload',e=>{if(recording){e.preventDefault();e.returnValue=''}});
-fetch('data/trailhead.json').then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{if(window.TrabakutikAndroid?.stopNavigation)try{window.TrabakutikAndroid.stopNavigation()}catch(e){console.warn(e)}drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
+fetch('data/trailhead.json').then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
 })();
 </script></body></html>
