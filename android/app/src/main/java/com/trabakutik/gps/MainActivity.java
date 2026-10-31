@@ -66,7 +66,8 @@ public class MainActivity extends Activity {
   showScreen(true);
   web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
   webRoutes.loadUrl("https://trabakutik.com/");
-  beginPermissionSetup();
+  if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
+  else beginPermissionSetup();
  }
  void showScreen(boolean gps){
   showingGps=gps;
@@ -225,13 +226,26 @@ public class MainActivity extends Activity {
   }
   showBatterySetup();
  }
+ void showBatteryReminderIfNeeded(){
+  if(getPreferences(MODE_PRIVATE).getBoolean("battery_reminder_v13",false))return;
+  getPreferences(MODE_PRIVATE).edit().putBoolean("battery_reminder_v13",true).apply();
+  new AlertDialog.Builder(this).setTitle("GPS con pantalla bloqueada")
+   .setMessage("Para que Samsung no suspenda el seguimiento cuando se apaga la pantalla, configura Trabakutik GPS en Batería > No restringido. Debes elegirlo tú; la aplicación no puede cambiarlo automáticamente. Puede aumentar el consumo de batería.")
+   .setPositiveButton("Abrir ajustes", (d,w)->openBatteryAppSettings())
+   .setNegativeButton("Ahora no",null).show();
+ }
+ void openBatteryAppSettings(){
+  try{
+   Intent intent=new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName()));
+   startActivity(intent);
+  }catch(Exception e){Toast.makeText(this,"Ajustes > Aplicaciones > Trabakutik GPS > Batería",Toast.LENGTH_LONG).show();}
+ }
  void showBatterySetup(){
-  getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply();
+  getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).putBoolean("battery_reminder_v13",true).apply();
   new AlertDialog.Builder(this).setTitle("Grabación con pantalla apagada")
    .setMessage("Para reducir cortes del track, en Ajustes de Trabakutik GPS revisa Batería y selecciona Sin restricciones si tu Samsung lo permite. Android no deja que la aplicación active esta opción por sí sola.")
    .setPositiveButton("Abrir ajustes", (d,w)->{
-    Intent intent=new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName()));
-    startActivity(intent);
+    openBatteryAppSettings();
    })
    .setNegativeButton("Ahora no",null).show();
  }
