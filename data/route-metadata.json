@@ -1,0 +1,344 @@
+{
+  "routes": {
+    "zengotitamaguna": {
+      "title": "Zengotitagane, los dólmenes, Maguna y San Kristobal Txiki",
+      "distanceKm": 32.46,
+      "gainM": 1218
+    },
+    "zaldutrail": {
+      "title": "Zaldutrail: una ruta exigente por los montes de Zaldibar",
+      "distanceKm": 19.62,
+      "gainM": 1178
+    },
+    "askakosantakataline": {
+      "title": "Tramos del Asto Trail de Garai, por Askako, Santa Kataline y Andikoa",
+      "distanceKm": 29.56,
+      "gainM": 1029
+    },
+    "aixolaintxorta": {
+      "title": "Aixola, Santamañazar, Erdella, Intxorta y Egoarbitza",
+      "distanceKm": 19.61,
+      "gainM": 1093
+    },
+    "ixuakalamua": {
+      "title": "Trabakua, Aginaga, Ixua, Kalamua y bajada a Barinaga",
+      "distanceKm": 29.12,
+      "gainM": 1346
+    },
+    "garaikanala": {
+      "title": "Paseo por Garai y el antiguo canal de agua",
+      "distanceKm": 4.07,
+      "gainM": 95
+    },
+    "longaurjauziak": {
+      "title": "Trabakua, Longa y las cascadas de Gerea",
+      "distanceKm": 9.75,
+      "gainM": 368
+    },
+    "garaigaztelu": {
+      "title": "Trabakua, Andikoa, Garai y Gaztelu",
+      "distanceKm": 35.92,
+      "gainM": 1100
+    },
+    "ahuntzen": {
+      "title": "Ahuntzen Mendi Lasterketa",
+      "distanceKm": 15.02,
+      "gainM": 870
+    },
+    "markinaurjauziak": {
+      "title": "Markina-Xemein, Bolibar, Muniozguren y las cascadas de Gerea",
+      "distanceKm": 17.33,
+      "gainM": 908
+    },
+    "galdaraminio": {
+      "title": "Trabakua, Elgeta, Galdaramiño y Eibar por Ipurua",
+      "distanceKm": 36.92,
+      "gainM": 1136
+    },
+    "trabakuaondarroa": {
+      "title": "Trabakua, Atxagarai, Kurutzegana y Ondarroa",
+      "distanceKm": 32.04,
+      "gainM": 859
+    },
+    "trabakuadeba": {
+      "title": "Trabakua, Urko, Kalamua, Arno y Deba",
+      "distanceKm": 28.38,
+      "gainM": 1080
+    },
+    "karabieta": {
+      "title": "Trabakua, Elgeta, Karabieta y Eibar por Unbe",
+      "distanceKm": 39.54,
+      "gainM": 1011
+    },
+    "astorkigane": {
+      "title": "Trabakua, Astorkigane, Zenarruza y Bolibar",
+      "distanceKm": 38.9,
+      "gainM": 1400
+    },
+    "santaeufemia": {
+      "title": "Markina-Xemein, Santa Eufemia",
+      "distanceKm": 18.16,
+      "gainM": 662
+    },
+    "mallukitoko": {
+      "title": "Markina-Xemein, Mallukitoko, Zapola y Puente Bolu",
+      "distanceKm": 9.3,
+      "gainM": 467
+    },
+    "markinakobau": {
+      "title": "Markina, Kobaria koba, Berriatua y Larruskain",
+      "distanceKm": 27.8,
+      "gainM": 1050
+    },
+    "santamanazarandikoa": {
+      "title": "Trabakua, Santamañazar, Mendraka y Andikoa",
+      "distanceKm": 35.9,
+      "gainM": 1200
+    },
+    "zengotitaiturzuri": {
+      "title": "Zengotita, Iturzuri y Zengotitagane",
+      "distanceKm": 7.31,
+      "gainM": 435
+    },
+    "sancristobalgaraiandikoa": {
+      "title": "Trabakua, San Kristobal Txiki, Garai y Andikoa",
+      "distanceKm": 25.83,
+      "gainM": 957
+    },
+    "gereaoculta": {
+      "title": "Gerea, las rutas desconocidas",
+      "distanceKm": 15.13,
+      "gainM": 630
+    },
+    "asuntzabira": {
+      "title": "Asuntza bira por Arteta",
+      "distanceKm": 17.44,
+      "gainM": 589
+    },
+    "markinabolibar": {
+      "title": "Zenarruza, Zeinka, Urregarai y Markina",
+      "distanceKm": 38.47,
+      "gainM": 1204
+    },
+    "axmakurandikoa": {
+      "title": "Zengotitagane, Axmakur y Andikoa",
+      "distanceKm": 26.19,
+      "gainM": 841
+    },
+    "sancristobaloiz": {
+      "title": "San Kristobal (Oiz), Zenarruza y Muniozguren",
+      "distanceKm": 30.89,
+      "gainM": 1028
+    },
+    "sanpedrobidarte": {
+      "title": "Arteta, Drogeten Iturria y Ermita San Pedro de Bidarte",
+      "distanceKm": 14.12,
+      "gainM": 521
+    },
+    "garaimaguna": {
+      "title": "Garai, Maguna, Axmakur y Zengotitagane",
+      "distanceKm": 33.69,
+      "gainM": 1288
+    },
+    "astarlokoatxa": {
+      "title": "Cascada y Astarloko Atxa",
+      "distanceKm": 12.67,
+      "gainM": 540
+    },
+    "amaraune": {
+      "title": "Amaraune Mendi Lasterketa",
+      "distanceKm": 19.52,
+      "gainM": 930
+    },
+    "axmakuriturrizuri": {
+      "title": "Axmakur, Iturzuri y Zengotitagane",
+      "distanceKm": 15.08,
+      "gainM": 563
+    },
+    "zengotitaosmagain": {
+      "title": "Trabakua, Zengotita, Osmagain y Arietzu",
+      "distanceKm": 13.3,
+      "gainM": 411
+    },
+    "longa": {
+      "title": "Trabakua, Zengotitagane, Iturzuri y Longa",
+      "distanceKm": 8.8,
+      "gainM": 580
+    },
+    "sarrimendi": {
+      "title": "Oiz, Sarrionamendia, Arietxu y Mendibil",
+      "distanceKm": 28.35,
+      "gainM": 1366
+    },
+    "betzun": {
+      "title": "Zengotita, Iturzurigaina y Betzun",
+      "distanceKm": 10.1,
+      "gainM": 577
+    },
+    "trabakuamallabia": {
+      "title": "Trabakua, Zengotita, Aitzu, Mallabia y Osmagain",
+      "distanceKm": 19.46,
+      "gainM": 769
+    },
+    "artetaasuntza": {
+      "title": "Arteta, Asuntza y los pasos entre ambos",
+      "distanceKm": 20.56,
+      "gainM": 962
+    },
+    "intxorta": {
+      "title": "Trabakua, Zengotitagane, Erdella, Intxorta y Egoarbitza",
+      "distanceKm": 37.31,
+      "gainM": 1750
+    },
+    "aixola": {
+      "title": "Trabakua, Goierri, Aixola y Eitzaga",
+      "distanceKm": 37.06,
+      "gainM": 829
+    },
+    "potrera": {
+      "title": "Muniozguren, Oiz y San Kristobal Txiki por la Potrera",
+      "distanceKm": 20.66,
+      "gainM": 660
+    },
+    "exigente": {
+      "title": "Trabakua, Barinaga, Iturreta, Bolibar, Zenarruza, Oiz y Zengotitagane",
+      "distanceKm": 39.63,
+      "gainM": 1700
+    },
+    "muniozguren": {
+      "title": "Trabakua, Longa, Muniozguren",
+      "distanceKm": 10.97,
+      "gainM": 282
+    },
+    "barinaga": {
+      "title": "Trabakua, Urko, Kalamua, Barinaga, Iturreta y Mendibil",
+      "distanceKm": 26.46,
+      "gainM": 1453
+    },
+    "7pago16": {
+      "title": "7 Pago Mendi Lasterketa 16K",
+      "distanceKm": 15.7,
+      "gainM": 750
+    },
+    "7pago": {
+      "title": "7 Pago Mendi Lasterketa 25km",
+      "distanceKm": 25.01,
+      "gainM": 1400
+    },
+    "maguna": {
+      "title": "Trabakua, Zengotitagane y Maguna",
+      "distanceKm": 34.41,
+      "gainM": 1215
+    },
+    "zaldibar": {
+      "title": "Trabakua, Aixola y Berriz",
+      "distanceKm": 42.33,
+      "gainM": 1115
+    },
+    "hirutxikiak": {
+      "title": "Hiru Txikiak, Urko, Oiz y Egoarbitza desde Ermua",
+      "distanceKm": 43.96,
+      "gainM": 2291
+    },
+    "goita": {
+      "title": "Trabakua, paseo por el barrio Goita",
+      "distanceKm": 6.25,
+      "gainM": 200
+    },
+    "arteta": {
+      "title": "Trabakua, Mendibil, Olamendi y Arteta",
+      "distanceKm": 10.7,
+      "gainM": 565
+    },
+    "mendibil": {
+      "title": "Trabakua Mendibil",
+      "distanceKm": 6.08,
+      "gainM": 432
+    },
+    "iruzubieta": {
+      "title": "Trabakua, Iturreta e Iruzubieta",
+      "distanceKm": 18.39,
+      "gainM": 769
+    },
+    "mundiokokoba": {
+      "title": "Asuntza y Mundioko Koba",
+      "distanceKm": 12.38,
+      "gainM": 404
+    },
+    "kalamua": {
+      "title": "Urko, Kalamua, San Migel y Mendibil",
+      "distanceKm": 35.61,
+      "gainM": 1676
+    },
+    "urregarai": {
+      "title": "Iturreta, Markina y Urregarai",
+      "distanceKm": 30.05,
+      "gainM": 1163
+    },
+    "egoarbitza": {
+      "title": "Urko, Egoarbitza, Santamañazar y Zengotitagane",
+      "distanceKm": 33.77,
+      "gainM": 2201
+    },
+    "iturreta": {
+      "title": "Trabakua, Barinaga y Iturreta",
+      "distanceKm": 19.65,
+      "gainM": 975
+    },
+    "sancristobal": {
+      "title": "Zengotitagane, Askako y Garai",
+      "distanceKm": 27.05,
+      "gainM": 1248
+    },
+    "urko": {
+      "title": "Trabakua, Asuntza y Urko",
+      "distanceKm": 14.9,
+      "gainM": 873
+    },
+    "arietzu": {
+      "title": "Osmagain y Arietzu desde Zengotita",
+      "distanceKm": 4.3,
+      "gainM": 235
+    },
+    "oiz": {
+      "title": "Zengotitagane, Axmakur y Oiz",
+      "distanceKm": 10.68,
+      "gainM": 752
+    },
+    "zengotitagane": {
+      "title": "Zengotitagane, Iturzurigaina y San Kristobal Txiki",
+      "distanceKm": 23.07,
+      "gainM": 1029
+    },
+    "trabakua": {
+      "title": "Asuntza bira por Aginaga",
+      "distanceKm": 15.65,
+      "gainM": 712
+    },
+    "iturrizuri": {
+      "title": "Iturzuri, Zengotitagane subida por la cascada de Gerea",
+      "distanceKm": 10.41,
+      "gainM": 627
+    },
+    "zenarruza": {
+      "title": "Zenarruza, San Kristobal y Zengotitagane",
+      "distanceKm": 30.61,
+      "gainM": 1161
+    },
+    "argineta": {
+      "title": "Trabakua, Elgeta y Argiñeta",
+      "distanceKm": 38.07,
+      "gainM": 1002
+    },
+    "gerea": {
+      "title": "Cascada de Gerea",
+      "distanceKm": 5.66,
+      "gainM": 415
+    },
+    "artetaberanoarandono": {
+      "title": "Arteta, Berano Nagusi y Arandoño",
+      "distanceKm": 12.5,
+      "gainM": 600
+    }
+  }
+}

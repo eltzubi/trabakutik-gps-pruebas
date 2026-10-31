@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
   setContentView(root);
   // Abrir primero Trabakutik.com. El navegador GPS queda cargado en la otra vista.
   showScreen(false);
-  web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
+  loadGpsPage(web,"https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261031a");
   webRoutes.loadUrl("https://trabakutik.com/");
   handleExternalRoute(getIntent());
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
@@ -155,7 +155,7 @@ public class MainActivity extends Activity {
     if(wasNavigator)pages.addView(replacement,new FrameLayout.LayoutParams(-1,-1));
     else pages.addView(replacement,0,new FrameLayout.LayoutParams(-1,-1));
     replacement.setVisibility(wasNavigator==showingGps?View.VISIBLE:View.GONE);
-    replacement.loadUrl(restore);
+    if(wasNavigator)loadGpsPage(replacement,restore);else replacement.loadUrl(restore);
     android.util.Log.e("TrabakutikGPS","Reiniciado WebView tras cierre de renderizador; memoria",null);
     Toast.makeText(MainActivity.this,"El mapa se ha recargado tras un problema de memoria",Toast.LENGTH_LONG).show();
     return true;
@@ -188,6 +188,25 @@ public class MainActivity extends Activity {
     runOnUiThread(()->openRouteUrl(url));
   }
  }
+ String readAsset(String name)throws IOException{
+  try(java.io.InputStream in=getAssets().open(name);java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){
+   byte[] buffer=new byte[8192];int count;while((count=in.read(buffer))!=-1)out.write(buffer,0,count);
+   return new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
+  }
+ }
+ void loadGpsPage(WebView target,String requestedUrl){
+  String base="https://eltzubi.github.io/trabakutik-gps-pruebas/";
+  try(java.io.InputStream in=getAssets().open("nuevo.html");java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){
+   byte[] buffer=new byte[8192];int count;while((count=in.read(buffer))!=-1)out.write(buffer,0,count);
+   String html=new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
+   html=html.replace("<link rel=\"stylesheet\" href=\"vendor/leaflet/leaflet.css\">","<style>"+readAsset("vendor/leaflet/leaflet.css")+"</style>");
+   html=html.replace("<script src=\"vendor/leaflet/leaflet.js\"></script>","<script>"+readAsset("vendor/leaflet/leaflet.js")+"</script>");
+   target.loadDataWithBaseURL(requestedUrl,html,"text/html","UTF-8",null);
+  }catch(Exception error){
+   android.util.Log.w("TrabakutikGPS","No se pudo abrir el GPS incluido en la aplicación; se usa la página publicada",error);
+   target.loadUrl(requestedUrl);
+  }
+ }
  void openRouteUrl(String url){
   if(url==null||!url.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"))return;
   // Las fichas contienen galerias grandes; no conservar dos paginas pesadas
@@ -200,9 +219,15 @@ public class MainActivity extends Activity {
   if(url.equals(lastRouteOpenUrl)&&now-lastRouteOpenAt<1200)return;
   lastRouteOpenUrl=url;lastRouteOpenAt=now;
   String current=web.getUrl();
-  if(current==null||!current.equals(url))web.loadUrl(url);
+  if(current==null||!current.equals(url))loadGpsPage(web,url);
  }
  public class Bridge {
+  @JavascriptInterface public String getRouteMetadata(){
+   try(java.io.InputStream in=getAssets().open("route-metadata.json");java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){
+    byte[] buffer=new byte[4096];int count;while((count=in.read(buffer))!=-1)out.write(buffer,0,count);
+    return new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
+   }catch(Exception error){android.util.Log.w("TrabakutikGPS","No se pudo leer metadata de rutas",error);return "";}
+  }
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
   @JavascriptInterface public String getTrackingSnapshot(){return trackingSnapshot("");}
   @JavascriptInterface public String getTrackingSnapshotIfChanged(String knownVersion){return trackingSnapshot(knownVersion);}
