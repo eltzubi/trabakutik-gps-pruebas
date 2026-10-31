@@ -157,6 +157,7 @@ public class MainActivity extends Activity {
      try(BufferedReader br=new BufferedReader(new FileReader(f))){
       String line;int count=0;
       while((line=br.readLine())!=null&&count<25000){
+       if(line.isEmpty()){pts.put(org.json.JSONObject.NULL);continue;}
        String[] p=line.split("\\t");
        if(p.length==2){try{double lat=Double.parseDouble(p[0]),lon=Double.parseDouble(p[1]);if(Double.isFinite(lat)&&Double.isFinite(lon)){org.json.JSONArray coord=new org.json.JSONArray();coord.put(lat);coord.put(lon);pts.put(coord);count++;}}catch(Exception ignored){}}
       }
