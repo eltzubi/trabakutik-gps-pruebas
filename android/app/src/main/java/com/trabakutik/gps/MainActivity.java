@@ -208,6 +208,14 @@ public class MainActivity extends Activity {
     runOnUiThread(()->{if(serviceActive)startService(new Intent(MainActivity.this,TrackingService.class).setAction("TURNS"));});
    }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudieron registrar giros",e);}
   }
+  @JavascriptInterface public void stopNavigation(){
+   runOnUiThread(()->{
+    new File(getFilesDir(),"ruta-activa.json").delete();
+    new File(getFilesDir(),"giros-activos.json").delete();
+    try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("STOP_NAVIGATION"));}
+    catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo detener la navegacion",e);}
+   });
+  }
   @JavascriptInterface public void clearRoute(){
     File f=new File(getFilesDir(),"ruta-activa.json");if(f.exists())f.delete();
     File turns=new File(getFilesDir(),"giros-activos.json");if(turns.exists())turns.delete();
