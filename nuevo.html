@@ -450,8 +450,10 @@ function selectRoute(i){
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
  routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
- drawAll();computeJunctions();syncNativeRoute();
+ drawAll();computeJunctions();
  $('routeDialog').classList.add('hidden');
+ // startGPS envía el recorrido y lo inicia en una sola operación nativa.
+ // Evitar ROUTE seguido de NAVIGATE en dos órdenes que pueden competir.
  startGPS();
  notice('Ruta seleccionada · cargando detalle del Garmin');
  loadDetailedSelected(i,request);
