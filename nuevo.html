@@ -377,7 +377,7 @@ map.on('zoomend',updateDirectionArrows);
 function setRouteTitle(name,href){
  const title=$('mapTitle');
  title.textContent=name;
- const valid=typeof href==='string'&&/^[a-z0-9_-]+\\.html$/i.test(href);
+ const valid=typeof href==='string'&&/^[a-z0-9_-]+\.html$/i.test(href);
  title.disabled=!valid;
  title.dataset.href=valid?href:'';
  title.title=valid?'Abrir ficha de '+name:'Esta ruta no tiene ficha publicada';
@@ -385,7 +385,7 @@ function setRouteTitle(name,href){
 }
 $('mapTitle').onclick=()=>{
  const href=$('mapTitle').dataset.href;
- if(!href||!/^[a-z0-9_-]+\\.html$/i.test(href))return;
+ if(!href||!/^[a-z0-9_-]+\.html$/i.test(href))return;
  // La app Android intercepta el enlace y conserva el navegador GPS abierto.
  window.location.href='https://trabakutik.com/'+href;
 };
