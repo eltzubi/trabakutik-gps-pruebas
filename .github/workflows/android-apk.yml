@@ -3,6 +3,9 @@ on:
   push:
     paths:
       - 'android/**'
+      - 'nuevo.html'
+      - 'data/route-metadata.json'
+      - 'vendor/leaflet/**'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 permissions:

@@ -228,6 +228,11 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 .sheet .sheet-header .close{float:none;position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;min-height:44px;padding:0;font-size:22px;line-height:1;z-index:3}
 #navActions:has(.open-native:not(.hidden)){flex-wrap:wrap}
 #navActions .open-native{flex:1 0 100%;display:block;text-align:center;text-decoration:none;padding:11px 8px;min-height:42px;border-radius:12px;background:#124a4a;color:#d9fff6;border:1px solid #3e9291;font-size:12px;font-weight:700}
+</style><style>
+body.navigation-active .modes,body.navigation-review .modes{display:none!important}
+body.navigation-active #choose,body.navigation-active #nearbyAction,body.navigation-active #savedRoutes,body.navigation-active #navGo,body.navigation-active #gpsStop,body.navigation-active #openNativeGps,body.navigation-active #clearActiveRoute{display:none!important}
+body.navigation-review #navActions{display:none!important}
+body.navigation-review #recordActions{display:flex!important}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">La ruta gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta seleccionada en azul</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
@@ -272,7 +277,7 @@ function gpsErrorText(err){
 function warnGps(err){notice(gpsErrorText(err));$('locate').title='Reintentar ubicación GPS'}
 
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
-let lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null,navigationActive=false,gpsTracking=false,nativeGpsActive=false;
+let lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null,navigationActive=false,navigationReview=false,gpsTracking=false,nativeGpsActive=false;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
 const nearbyMaxLength=15000;
@@ -522,7 +527,8 @@ document.querySelectorAll('#routeListScope button').forEach(b=>b.onclick=()=>{
 });
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
 function changeMode(m){
- if(mode==='record'&&m!=='record'&&(recording||recorded.filter(p=>Array.isArray(p)).length>0)){notice('Tienes una grabación pendiente. Guárdala o descártala antes de cambiar de modo.');return}
+ if(navigationActive||navigationReview){notice(navigationActive?'Finaliza la salida y guarda o descarta la grabación para cambiar de modo.':'Guarda o descarta la grabación pendiente antes de cambiar de modo.');return}
+ if((recording||recorded.filter(p=>Array.isArray(p)).length>0)){notice('Tienes una grabación pendiente. Guárdala o descártala antes de cambiar de modo.');return}
  if(mode==='create'&&m!=='create'&&drawPoints.length>1&&!createdSavedItem){notice('Tienes un recorrido sin guardar. Guárdalo o bórralo antes de cambiar de modo.');return}
  const creating=m==='create';
  const actions=$('createActions'),profile=$('elevationPanel'),modes=document.querySelector('.modes');
@@ -1160,7 +1166,7 @@ function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=pos
    lastBrowserRecordTime=ts;
   }
  }
- if(mode==='nav'&&navigationActive&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea azul');else if(junctionActive<0)notice(pos.coords.accuracy>22?'GPS impreciso · ±'+Math.round(pos.coords.accuracy)+' m':'Navegación activa · GPS ±'+Math.round(pos.coords.accuracy)+' m')}else if(mode==='nav')notice(navigationActive?'Ubicación encontrada · selecciona una ruta':'GPS activo · navegación detenida')}
+ if(mode==='nav'&&navigationActive&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea azul');else if(junctionActive<0)notice(pos.coords.accuracy>22?'GPS impreciso · ±'+Math.round(pos.coords.accuracy)+' m' :'Navegando y grabando · GPS ±'+Math.round(pos.coords.accuracy)+' m')}else if(mode==='nav')notice(navigationActive?'Ubicación encontrada · selecciona una ruta':'GPS activo · navegación detenida')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
 window.trabakutikSyncNative=()=>{
  if(!window.TrabakutikAndroid?.getTrackingSnapshot)return;
@@ -1171,16 +1177,20 @@ window.trabakutikSyncNative=()=>{
   if(!raw)return;
   const data=JSON.parse(raw);
   if(typeof data.trackVersion==='string')lastNativeTrackVersion=data.trackVersion;
-  nativeGpsActive=!!data.active;syncNavButtons();
+  nativeGpsActive=!!data.active;
+  if(data.active&&data.recording&&mode==='nav'&&routePoints.length>1)navigationActive=true;
+  syncNavButtons();
   const receivedPoints=(Array.isArray(data.points)?data.points.filter(p=>Array.isArray(p)&&p.length===2).length:0)||recorded.filter(p=>Array.isArray(p)).length;
-  if(data.recording){
+  if(data.recording&&!navigationReview){
    recording=true;
-   if(mode==='record')recordingControls(receivedPoints?'recording':'waiting');
+   if(mode==='record'||navigationActive)recordingControls(receivedPoints?'recording':'waiting');
+  }else if(navigationReview){
+   recording=false;recordingControls('stopped');
   }else if(mode==='record'&&(recording||receivedPoints>0)){
    recording=false;recordingControls('stopped');
   }
   if(data.gpsState==='searching'&&data.active&&mode==='nav')notice('Buscando ubicación GPS…');
-  else if(data.gpsState==='available'&&data.active&&mode==='nav'&&navigationActive)notice('Navegación activa · GPS disponible');
+  else if(data.gpsState==='available'&&data.active&&mode==='nav'&&navigationActive)notice('Navegando y grabando · GPS disponible');
   if(Array.isArray(data.points)){
    const segments=[[]],valid=[];
    for(const p of data.points){
@@ -1215,14 +1225,34 @@ setInterval(()=>{if(!document.hidden&&window.TrabakutikAndroid)window.trabakutik
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
 function syncNavButtons(){
  const hasRoute=routePoints.length>1&&mode==='nav';
- $('navGo').classList.toggle('hidden',!hasRoute||navigationActive);
+ document.body.classList.toggle('navigation-active',navigationActive);
+ document.body.classList.toggle('navigation-review',navigationReview);
+ $('navGo').textContent='Navegar y grabar';
+ $('navStop').textContent='Finalizar navegación y grabación';
+ $('navGo').classList.toggle('hidden',!hasRoute||navigationActive||navigationReview);
  $('navStop').classList.toggle('hidden',!hasRoute||!navigationActive);
- $('gpsStop').classList.toggle('hidden',!gpsTracking&&!nativeGpsActive);
+ $('gpsStop').classList.toggle('hidden',navigationActive||navigationReview||(!gpsTracking&&!nativeGpsActive));
+}
+function finishNavigationReview(){
+ navigationReview=false;recording=false;
+ $('recordActions').classList.add('hidden');
+ recordingControls('ready');
+ syncNavButtons();
 }
 function stopNavigation(){
- navigationActive=false;
+ if(!navigationActive)return;
+ navigationActive=false;navigationReview=true;
+ if(recording){
+  if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();
+  else saveBrowserDraft(true);
+ }
+ recording=false;
+ if(watch!==null)navigator.geolocation.clearWatch(watch);
+ watch=null;gpsTracking=false;nativeGpsActive=false;
  if(window.TrabakutikAndroid?.stopNavigation)window.TrabakutikAndroid.stopNavigation();
- syncNavButtons();notice('Navegación detenida · la ruta sigue visible');
+ $('recordActions').classList.remove('hidden');
+ recordingControls('stopped');syncNavButtons();
+ notice('Salida finalizada · guarda o descarta el recorrido');
 }
 function stopGPS(){
  if(recording){notice('No se puede apagar el GPS durante una grabación.');return}
@@ -1241,7 +1271,13 @@ function startGPS(forRecording=false){
  getAudio();gpsTracking=true;syncNavButtons();notice('Buscando ubicación GPS…');
  watch=navigator.geolocation.watchPosition(onFix,e=>{warnGps(e);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;gpsTracking=false;syncNavButtons();},{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
 }
-$('navGo').onclick=()=>{if(routePoints.length<2)return;navigationActive=true;syncNavButtons();startGPS()};
+$('navGo').onclick=()=>{
+ if(routePoints.length<2)return;
+ if(recording||recorded.some(p=>Array.isArray(p))){notice('Guarda o descarta la grabación pendiente antes de empezar otra salida.');return}
+ if(watch===null)startGPS(true);
+ if(!beginRecordingFlow())return;
+ navigationActive=true;syncNavButtons();startGPS();notice('Buscando ubicación GPS · navegación y grabación iniciadas');
+};
 $('navStop').onclick=stopNavigation;$('gpsStop').onclick=stopGPS;
 $('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.()};
 $('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
@@ -1254,14 +1290,19 @@ function recordingControls(state){
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.filter(p=>Array.isArray(p)).length<2;
 }
-restoreBrowserDraft();
-$('recordStart').onclick=()=>{
- if(recorded.filter(p=>Array.isArray(p)).length>0){notice('Hay una grabación pendiente. Guárdala o descártala antes de empezar otra.');return}
- if(watch===null)startGPS(true);
+function beginRecordingFlow(){
+ if(recorded.some(p=>Array.isArray(p))){notice('Hay una grabación pendiente. Guárdala o descártala antes de empezar otra.');return false}
  if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();
  recorded=[];clearBrowserDraft();lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
- recordingControls('waiting');notice('Esperando ubicación GPS para iniciar la grabación…')
+ recordingControls('waiting');return true;
+}
+restoreBrowserDraft();
+$('recordStart').onclick=()=>{
+ if(recording||recorded.some(p=>Array.isArray(p))){notice('Hay una grabación pendiente. Guárdala o descártala antes de empezar otra.');return}
+ if(watch===null)startGPS(true);
+ if(!beginRecordingFlow())return;
+ notice('Esperando ubicación GPS para iniciar la grabación…')
 };
 $('recordStop').onclick=()=>{
  if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();
@@ -1274,19 +1315,22 @@ $('saveRecording').onclick=()=>{
  if(recorded.filter(p=>Array.isArray(p)).length<2)return;
  download(recorded,'trabakutik-grabacion');clearBrowserDraft();
  notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;
- if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready')
+ if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
+ if(navigationReview)finishNavigationReview();else recordingControls('ready')
 };
 $('discardRecording').onclick=()=>{
  if(!confirm('¿Descartar esta grabación? Se borrarán los puntos registrados sin guardarlos.'))return;
  if(window.TrabakutikAndroid)window.TrabakutikAndroid.discardRecording();
  recording=false;recorded=[];clearBrowserDraft();
- if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');notice('Grabación descartada')
+ if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
+ if(navigationReview)finishNavigationReview();else recordingControls('ready');notice('Grabación descartada')
 };
 window.trabakutikNativeGpxSaved=()=>{
  if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
  recorded=[];clearBrowserDraft();
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
- if(mode==='record'&&!recording){recordingControls('ready');notice('GPX guardado en el móvil')}
+ if(navigationReview)finishNavigationReview();else if(mode==='record'&&!recording)recordingControls('ready');
+ notice('GPX guardado en el móvil');
 };
 window.addEventListener('beforeunload',e=>{if(recording||recorded.filter(p=>Array.isArray(p)).length>0){e.preventDefault();e.returnValue=''}});
 async function loadRouteMetadata(){
