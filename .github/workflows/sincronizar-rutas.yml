@@ -1,0 +1,67 @@
+name: Sincronizar rutas de Trabakutik
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sincronizar-rutas
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio GPS
+        uses: actions/checkout@v4
+      - name: Descargar y validar las rutas publicadas
+        env:
+          URL_ORIGEN: https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/trailhead.json
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import urllib.request
+
+          url = os.environ["URL_ORIGEN"]
+          req = urllib.request.Request(url, headers={"User-Agent": "Trabakutik-GPS-Sync/1.0", "Cache-Control": "no-cache"})
+          with urllib.request.urlopen(req, timeout=30) as response:
+              raw = response.read()
+          data = json.loads(raw)
+          tracks = data.get("tracks")
+          if not isinstance(tracks, list) or not tracks:
+              raise SystemExit("Archivo origen sin rutas; no se sustituye el actual")
+          for index, track in enumerate(tracks):
+              if not isinstance(track, dict) or not isinstance(track.get("href"), str) or not track["href"].endswith(".html"):
+                  raise SystemExit(f"Ruta {index}: falta ficha HTML")
+              pts = track.get("points")
+              if not isinstance(pts, list) or len(pts) < 2:
+                  raise SystemExit(f"Ruta {index}: sin trazado suficiente")
+              for point in pts:
+                  if not isinstance(point, list) or len(point) < 2 or not all(isinstance(x, (int, float)) for x in point[:2]):
+                      raise SystemExit(f"Ruta {index}: coordenadas incorrectas")
+          # Mantener los datos originales, sin simplificar ni cambiar trazados.
+          target = pathlib.Path("data/trailhead.json")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          if target.exists() and json.loads(target.read_text(encoding="utf-8")) == data:
+              print(f"Ya están sincronizadas las {len(tracks)} rutas")
+          else:
+              target.write_bytes(raw)
+              print(f"Actualizados los datos de {len(tracks)} rutas")
+          PY
+      - name: Publicar cambios en el navegador GPS
+        run: |
+          if git diff --quiet -- data/trailhead.json; then
+            echo "Sin cambios en las rutas"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/trailhead.json
+          git commit -m "Sincronizar rutas nuevas desde Trabakutik"
+          git push
