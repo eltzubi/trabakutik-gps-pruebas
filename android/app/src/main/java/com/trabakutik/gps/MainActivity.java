@@ -69,8 +69,23 @@ public class MainActivity extends Activity {
   showScreen(false);
   web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
   webRoutes.loadUrl("https://trabakutik.com/");
+  handleExternalRoute(getIntent());
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
   else beginPermissionSetup();
+ }
+ void handleExternalRoute(Intent incoming){
+  if(incoming==null||incoming.getData()==null)return;
+  android.net.Uri uri=incoming.getData();
+  if(!"trabakutikgps".equals(uri.getScheme())||!"navegar".equals(uri.getHost()))return;
+  String slug=uri.getQueryParameter("ruta");
+  if(slug==null||!slug.matches("[a-zA-Z0-9_-]{1,120}"))return;
+  String url="https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?ruta="+android.net.Uri.encode(slug);
+  openRouteUrl(url);
+ }
+ @Override protected void onNewIntent(Intent incoming){
+  super.onNewIntent(incoming);
+  setIntent(incoming);
+  handleExternalRoute(incoming);
  }
  void restoreGpsWeb(){
   if(web==null)return;
