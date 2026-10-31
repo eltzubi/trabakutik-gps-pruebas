@@ -254,7 +254,16 @@ const routeKey=t=>String(t?.href||'').replace(/\.html$/,'');
 const routeInfo=t=>routeMetadata[routeKey(t)]||{};
 const toName=t=>routeInfo(t).title||String(t?.href||'').replace(/\.html$/,'').replace(/[-_]/g,' ');
 function routeStats(t){const m=routeInfo(t),parts=[];if(Number.isFinite(m.distanceKm))parts.push(Number(m.distanceKm).toFixed(2).replace('.',',')+' km');if(Number.isFinite(m.gainM))parts.push('+'+Math.round(m.gainM)+' m');return parts.join(' · ')}
-const map=L.map('map',{zoomControl:false,preferCanvas:true,rotate:true,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false,pitchDrag:false}).setView([43.19,-2.55],12);
+let mapRotationAvailable=typeof L.Map.prototype.setHeading==='function',map;
+try{map=L.map('map',{zoomControl:false,preferCanvas:true,rotate:mapRotationAvailable,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false,pitchDrag:false}).setView([43.19,-2.55],12)}
+catch(error){
+ console.warn('La rotación del mapa no está disponible; se abrirá en norte arriba',error);
+ mapRotationAvailable=false;
+ const el=$('map');
+ el.querySelectorAll('.leaflet-pane,.leaflet-control-container').forEach(node=>node.remove());
+ if(el._leaflet_id)delete el._leaflet_id;
+ map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([43.19,-2.55],12);
+}
 map.on('dragstart',()=>{manualMapUntil=Date.now()+8000});
 const baseMaps={
  osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
@@ -272,22 +281,30 @@ const notice=t=>{$('status').textContent=t};
 let lastGpsWarning=0;
 function syncCompass(){
  const button=$('compass'),arrow=$('compassArrow');if(!button||!arrow)return;
- button.classList.toggle('hidden',routePoints.length<2);
+ button.classList.toggle('hidden',routePoints.length<2||!mapRotationAvailable);
  button.setAttribute('aria-pressed',String(mapFollowsRoute));
  button.setAttribute('aria-label',mapFollowsRoute?'Mapa siguiendo la ruta · pulsar para poner el norte arriba':'Norte arriba · pulsar para seguir la ruta');
  button.title=button.getAttribute('aria-label');
  const bearing=map.getBearing?.()||0;arrow.style.transform='rotate('+bearing+'deg)';
 }
+function disableMapRotation(error){
+ mapRotationAvailable=false;mapFollowsRoute=false;
+ try{map.stopHeadingUp?.();map.setBearing?.(0)}catch(_){}
+ console.warn('Se desactiva la orientación giratoria del mapa',error);syncCompass();
+}
 function updateRouteHeading(p){
  if(!mapFollowsRoute||routePoints.length<2||typeof map.setHeading!=='function')return;
  const match=p?closestRoutePosition(p,routePoints):{index:1};
  const index=Math.max(1,Math.min(routePoints.length-1,match.index||1));
- map.setHeading(bearingBetween(routePoints[index-1],routePoints[index]),{ease:.28,deadzone:1.2});
+ try{map.setHeading(bearingBetween(routePoints[index-1],routePoints[index]),{ease:.28,deadzone:1.2})}
+ catch(error){disableMapRotation(error)}
 }
 function setRouteMapMode(follow){
- mapFollowsRoute=!!follow&&routePoints.length>1;
- if(mapFollowsRoute)updateRouteHeading(position);
- else{map.stopHeadingUp?.();map.setBearing?.(0)}
+ mapFollowsRoute=!!follow&&routePoints.length>1&&mapRotationAvailable&&typeof map.setHeading==='function';
+ try{
+  if(mapFollowsRoute)updateRouteHeading(position);
+  else{map.stopHeadingUp?.();map.setBearing?.(0)}
+ }catch(error){disableMapRotation(error)}
  syncCompass();
 }
 map.on('rotate',syncCompass);
@@ -496,7 +513,7 @@ function selectRoute(i){
  chosen=i;
  updateNativeLaunchLink();
  routePoints=tracks[i].points.map(p=>[p[0],p[1]]);setRouteMapMode(true);syncNavButtons();
- drawAll();
+ try{drawAll()}catch(error){console.error('No se pudo dibujar el mapa de la ruta',error)}
  $('routeDialog').classList.add('hidden');
  notice('Ruta cargada · lista para navegar');
  // Cargar el trazado detallado sin activar GPS ni grabación.
@@ -532,7 +549,7 @@ function showRoutes(){
   n++;const b=document.createElement('button');b.className='routeitem';
   const name=document.createElement('span');name.className='routeitem-name';name.textContent=toName(t);b.append(name);
   const stats=routeStats(t);if(stats){const meta=document.createElement('small');meta.className='routeitem-meta';meta.textContent=stats;b.append(meta)}
-  const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b);
+  const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>{try{selectRoute(i)}catch(e){console.error('No se pudo dibujar la ruta elegida',e);notice('La ruta está disponible, pero el mapa tuvo un error al dibujarla.');}};list.append(b);
  });
  if(!n)list.textContent=routeListScope==='near'?'No hay rutas próximas de hasta 15 km':'Sin coincidencias';
 }
@@ -1371,37 +1388,45 @@ async function loadRouteMetadata(){
 }
 async function loadRouteCatalog(){
  if(window.TrabakutikAndroid?.getRouteCatalog){
-  try{const raw=window.TrabakutikAndroid.getRouteCatalog();if(raw)return JSON.parse(raw)}catch(e){console.warn('Catálogo incluido no disponible',e)}
+  try{const raw=window.TrabakutikAndroid.getRouteCatalog();if(raw){const data=JSON.parse(raw);if(Array.isArray(data.tracks))return data}}catch(e){console.warn('Catálogo incluido no disponible; se probará la carga web',e)}
  }
- const response=await fetch('data/trailhead.json',{cache:'no-store'});
- if(!response.ok)throw new Error('HTTP '+response.status);
- return response.json();
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+ try{
+  const response=await fetch('data/trailhead.json',{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  return await response.json();
+ }finally{clearTimeout(timeout)}
 }
 async function loadTracks(){
  const request=++tracksLoadRequest;
  tracksLoading=true;tracksLoadError='';showRoutesIfOpen();
+ let data;
  try{
-  const data=await loadRouteCatalog();
+  data=await loadRouteCatalog();
   if(request!==tracksLoadRequest)return;
   if(!Array.isArray(data.tracks))throw new Error('El catálogo no contiene rutas');
-  tracks=data.tracks.filter(t=>t.points?.length>1);
+  tracks=data.tracks.filter(t=>Array.isArray(t.points)&&t.points.length>1);
   if(!tracks.length)throw new Error('El catálogo está vacío');
-  tracksLoading=false;tracksLoadError='';
-  drawAll();map.setView([43.19,-2.55],12);showRoutesIfOpen();
-  loadRouteMetadata().then(meta=>{
-   routeMetadata=meta;
-   if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href);$('distance').textContent=routeStats(tracks[chosen])||'Ruta seleccionada en azul'}
-   showRoutesIfOpen();
-  }).catch(e=>console.warn('No se pudieron cargar los metadatos; se mantienen los títulos del catálogo',e));
-  const slug=new URLSearchParams(location.search).get('ruta');
-  const index=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;
-  if(index>=0)selectRoute(index);
-  else notice('Elige una ruta o pulsa Mi posición para consultar tu ubicación');
  }catch(e){
   if(request!==tracksLoadRequest)return;
-  tracks=[];tracksLoading=false;tracksLoadError=e.message||'Error desconocido';
-  showRoutesIfOpen();notice('No se han podido cargar las rutas. Comprueba la conexión y reintenta.');
+  tracks=[];tracksLoading=false;tracksLoadError=e.name==='AbortError'?'La carga de rutas tardó demasiado. Reintenta.':(e.message||'Error desconocido');
+  showRoutesIfOpen();notice('No se han podido cargar las rutas. '+tracksLoadError);
+  return;
  }
+ tracksLoading=false;tracksLoadError='';
+ // El catálogo queda disponible aunque falle una capa del mapa.
+ try{drawAll();map.setView([43.19,-2.55],12)}
+ catch(e){console.error('Rutas cargadas, pero falló el dibujo inicial del mapa',e);notice('Rutas cargadas; el mapa tuvo un error. Puedes elegir una ruta en la lista.')}
+ showRoutesIfOpen();
+ loadRouteMetadata().then(meta=>{
+  routeMetadata=meta;
+  if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href);$('distance').textContent=routeStats(tracks[chosen])||'Ruta seleccionada en azul'}
+  showRoutesIfOpen();
+ }).catch(e=>console.warn('No se pudieron cargar los metadatos; se mantienen los títulos del catálogo',e));
+ const slug=new URLSearchParams(location.search).get('ruta');
+ const index=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;
+ if(index>=0){try{selectRoute(index)}catch(e){console.error('No se pudo dibujar la ruta elegida',e);$('routeDialog').classList.remove('hidden');showRoutes();notice('La ruta está cargada; el mapa tuvo un error al dibujarla.')}}
+ else notice('Elige una ruta o pulsa Mi posición para consultar tu ubicación');
 }
 loadTracks();
 })();
