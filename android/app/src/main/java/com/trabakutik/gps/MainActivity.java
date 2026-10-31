@@ -39,8 +39,12 @@ public class MainActivity extends Activity {
   outline.setColor(0xff122936);outline.setCornerRadius(dp(10));
   outline.setStroke(dp(1),0xff375767);
   switchPage.setBackground(outline);
-  switchPage.setPadding(dp(10),0,dp(10),0);
-  bar.addView(switchPage,new LinearLayout.LayoutParams(dp(86),dp(27)));
+  switchPage.setPadding(dp(9),0,dp(9),0);
+  switchPage.setSingleLine(true);
+  switchPage.setEllipsize(null);
+  switchPage.setIncludeFontPadding(false);
+  switchPage.setMinWidth(dp(110));
+  bar.addView(switchPage,new LinearLayout.LayoutParams(-2,dp(29)));
   switchPage.setOnClickListener(v->showScreen(!showingGps));
 
   root.addView(bar,new LinearLayout.LayoutParams(-1,dp(35)));
