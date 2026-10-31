@@ -33,7 +33,7 @@ public class MainActivity extends Activity {
   bar.addView(title,new LinearLayout.LayoutParams(0,dp(30),1));
 
   switchPage=new TextView(this);switchPage.setText("Web");
-  switchPage.setTextColor(0xffb9eaf1);switchPage.setTextSize(11);
+  switchPage.setTextColor(0xffb9eaf1);switchPage.setTextSize(10);
   switchPage.setGravity(android.view.Gravity.CENTER);
   GradientDrawable outline=new GradientDrawable();
   outline.setColor(0xff122936);outline.setCornerRadius(dp(10));
@@ -43,8 +43,9 @@ public class MainActivity extends Activity {
   switchPage.setSingleLine(true);
   switchPage.setEllipsize(null);
   switchPage.setIncludeFontPadding(false);
-  switchPage.setMinWidth(dp(110));
-  bar.addView(switchPage,new LinearLayout.LayoutParams(-2,dp(29)));
+  switchPage.setMinWidth(dp(125));
+  switchPage.setMaxLines(1);
+  bar.addView(switchPage,new LinearLayout.LayoutParams(dp(138),dp(29)));
   switchPage.setOnClickListener(v->showScreen(!showingGps));
 
   root.addView(bar,new LinearLayout.LayoutParams(-1,dp(35)));
