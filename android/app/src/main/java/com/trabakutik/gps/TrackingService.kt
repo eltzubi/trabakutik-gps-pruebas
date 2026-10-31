@@ -55,7 +55,7 @@ class TrackingService : Service(), LocationListener {
             stopTracking()
             return START_NOT_STICKY
         }
-        if (intent?.action != START) return START_NOT_STICKY
+        if (intent?.action != START && intent?.action != null) return START_NOT_STICKY
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             stopSelf()
             return START_NOT_STICKY
