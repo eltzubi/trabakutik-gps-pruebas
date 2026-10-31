@@ -17,7 +17,7 @@ import android.widget.*;
 import java.io.*;
 import android.webkit.JavascriptInterface;
 public class MainActivity extends Activity {
- WebView web,webRoutes; FrameLayout pages; TextView switchPage; boolean showingGps=true; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/"; long lastRouteOpenAt=0; String lastRouteOpenUrl="";
+ WebView web,webRoutes; FrameLayout pages; TextView switchPage; boolean showingGps=true; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/"; long lastRouteOpenAt=0; String lastRouteOpenUrl=""; ValueCallback<android.net.Uri[]> pendingFileChooser;
  @Override public void onCreate(Bundle b) {
   super.onCreate(b);
   CrashReport.install(this);
@@ -105,6 +105,22 @@ public class MainActivity extends Activity {
   if(navigator)w.addJavascriptInterface(new Bridge(),"TrabakutikAndroid");
   else w.addJavascriptInterface(new RouteBridge(),"TrabakutikRoutes");
   w.setWebChromeClient(new WebChromeClient(){
+   @Override public boolean onShowFileChooser(WebView view,ValueCallback<android.net.Uri[]> callback,FileChooserParams params){
+    if(pendingFileChooser!=null){pendingFileChooser.onReceiveValue(null);pendingFileChooser=null;}
+    pendingFileChooser=callback;
+    try{
+     Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+     picker.addCategory(Intent.CATEGORY_OPENABLE);
+     picker.setType("*/*");
+     picker.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/gpx+xml","application/xml","text/xml","application/octet-stream"});
+     startActivityForResult(picker,302);
+     return true;
+    }catch(Exception e){
+     pendingFileChooser=null;callback.onReceiveValue(null);
+     Toast.makeText(MainActivity.this,"No se pudo abrir Archivos",Toast.LENGTH_SHORT).show();
+     return true;
+    }
+   }
    @Override public void onGeolocationPermissionsShowPrompt(String origin,GeolocationPermissions.Callback cb){
     cb.invoke(origin,checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED,false);
    }
@@ -365,6 +381,6 @@ public class MainActivity extends Activity {
  }
  void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;exportFile=latest;
  Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_TITLE,latest.getName());startActivityForResult(i,200);}
- @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();}finally{pendingGpx=null;}}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
+ @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();}finally{pendingGpx=null;}}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
  @Override public void onBackPressed(){WebView current=showingGps?web:webRoutes;if(current.canGoBack())current.goBack();else if(!showingGps)showScreen(true);else super.onBackPressed();}
 }
