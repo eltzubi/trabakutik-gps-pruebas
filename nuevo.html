@@ -467,9 +467,10 @@ async function loadDetailedSelected(i,request){
  }
 }
 function selectRoute(i){
- if(mode==='record'&&(recording||recorded.filter(p=>Array.isArray(p)).length>0)){notice('Guarda o descarta la grabación pendiente antes de cargar otra ruta.');return}
+ if(recording||recorded.some(p=>Array.isArray(p))){notice('Guarda o descarta la grabación pendiente antes de cargar otra ruta.');return}
  if(mode==='create'&&drawPoints.length>1&&!createdSavedItem){notice('Guarda o borra el recorrido creado antes de cargar otra ruta.');return}
  const request=++selectedRouteRequest;
+ if(!beginRecordingFlow())return;
  activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
  navigationActive=true;syncNavButtons();
  resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;
@@ -479,14 +480,13 @@ function selectRoute(i){
  routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
  drawAll();
  $('routeDialog').classList.add('hidden');
- notice('Ruta seleccionada · preparando navegación');
- // Primero devolver control al navegador y pintar; calcular los giros
- // en el siguiente ciclo, sin bloquear la apertura desde la ficha.
+ notice('Ruta elegida · iniciando navegación y grabación');
+ // Pintar primero la ruta; después pedir ubicación y cargar el trazado detallado.
  setTimeout(()=>{
   if(chosen!==i||selectedRouteRequest!==request)return;
   computeJunctions();
   startGPS();
-  notice('Ruta cargada · buscando ubicación GPS');
+  notice('Buscando GPS · navegación y grabación activas');
   loadDetailedSelected(i,request);
  },60);
 }
@@ -1227,9 +1227,9 @@ function syncNavButtons(){
  const hasRoute=routePoints.length>1&&mode==='nav';
  document.body.classList.toggle('navigation-active',navigationActive);
  document.body.classList.toggle('navigation-review',navigationReview);
- $('navGo').textContent='Navegar y grabar';
+ $('navGo').classList.add('hidden');
  $('navStop').textContent='Finalizar navegación y grabación';
- $('navGo').classList.toggle('hidden',!hasRoute||navigationActive||navigationReview);
+ $('navGo').classList.add('hidden');
  $('navStop').classList.toggle('hidden',!hasRoute||!navigationActive);
  $('gpsStop').classList.toggle('hidden',navigationActive||navigationReview||(!gpsTracking&&!nativeGpsActive));
 }
