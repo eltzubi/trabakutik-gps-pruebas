@@ -112,7 +112,7 @@ public class MainActivity extends Activity {
      Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT);
      picker.addCategory(Intent.CATEGORY_OPENABLE);
      picker.setType("*/*");
-     picker.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/gpx+xml","application/xml","text/xml","application/octet-stream"});
+     // Mostrar todos los documentos: algunos proveedores marcan GPX con MIME desconocido.
      startActivityForResult(picker,302);
      return true;
     }catch(Exception e){
