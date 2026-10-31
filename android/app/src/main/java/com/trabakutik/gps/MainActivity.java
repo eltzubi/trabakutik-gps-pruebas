@@ -86,6 +86,9 @@ public class MainActivity extends Activity {
   web.setImportantForAccessibility(gps?View.IMPORTANT_FOR_ACCESSIBILITY_AUTO:View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
   webRoutes.setImportantForAccessibility(gps?View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS:View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
   switchPage.setText(gps?"Web":"Navegador");
+  if(!gps&&webRoutes!=null&&"about:blank".equals(webRoutes.getUrl())){
+   webRoutes.loadUrl(lastWebUrl);
+  }
   web.postDelayed(()->{if(gps){web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);restoreGpsWeb();}},120);
  }
  void configureWebView(WebView w,boolean navigator){
@@ -105,6 +108,24 @@ public class MainActivity extends Activity {
    }
   });
   w.setWebViewClient(new WebViewClient(){
+   @Override public boolean onRenderProcessGone(WebView view,android.webkit.RenderProcessGoneDetail detail){
+    // Android puede matar el renderizador de WebView por falta de memoria.
+    // Retirar el WebView muerto: si devolvemos false, se cierra toda la APK.
+    final boolean wasNavigator=view==web;
+    final String restore=wasNavigator?(view.getUrl()!=null?view.getUrl():"https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"):lastWebUrl;
+    pages.removeView(view);
+    view.destroy();
+    WebView replacement=new WebView(MainActivity.this);
+    if(wasNavigator)web=replacement;else webRoutes=replacement;
+    configureWebView(replacement,wasNavigator);
+    if(wasNavigator)pages.addView(replacement,new FrameLayout.LayoutParams(-1,-1));
+    else pages.addView(replacement,0,new FrameLayout.LayoutParams(-1,-1));
+    replacement.setVisibility(wasNavigator==showingGps?View.VISIBLE:View.GONE);
+    replacement.loadUrl(restore);
+    android.util.Log.e("TrabakutikGPS","Reiniciado WebView tras cierre de renderizador; memoria",null);
+    Toast.makeText(MainActivity.this,"El mapa se ha recargado tras un problema de memoria",Toast.LENGTH_LONG).show();
+    return true;
+   }
    @Override public void onPageFinished(WebView view,String url){
     super.onPageFinished(view,url);
     if(!navigator&&url!=null&&url.startsWith("https://trabakutik.com/")){
@@ -135,9 +156,14 @@ public class MainActivity extends Activity {
  }
  void openRouteUrl(String url){
   if(url==null||!url.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"))return;
-  String current=web.getUrl();
-  if(current!=null&&!current.equals(url))web.loadUrl(url);
+  // Las fichas contienen galerias grandes; no conservar dos paginas pesadas
+  // en memoria al mismo tiempo. La ficha se recarga al pulsar Web.
+  String origin=webRoutes==null?null:webRoutes.getUrl();
+  if(origin!=null&&origin.startsWith("https://trabakutik.com/"))lastWebUrl=origin;
+  if(webRoutes!=null)webRoutes.loadUrl("about:blank");
   showScreen(true);
+  String current=web.getUrl();
+  if(current==null||!current.equals(url))web.loadUrl(url);
  }
  public class Bridge {
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
