@@ -2,6 +2,7 @@ package com.trabakutik.gps
 
 import android.Manifest
 import android.app.Activity
+import android.os.Build
 import android.content.*
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -37,11 +38,23 @@ class MainActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webViewClient = WebViewClient()
-            webChromeClient = WebChromeClient()
+            webChromeClient = object : WebChromeClient() {
+                override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
+                    if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                        callback?.invoke(origin, true, false)
+                    } else {
+                        callback?.invoke(origin, false, false)
+                        status.text = "Concede ubicación precisa para utilizar el mapa GPS"
+                    }
+                }
+            }
         }
         root.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
         web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/")
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 26)
+        }
         if (getSharedPreferences("gps", MODE_PRIVATE).getBoolean(TrackingService.STATE, false)) {
             status.text = "Grabación nativa activa · puedes bloquear la pantalla"
         }
