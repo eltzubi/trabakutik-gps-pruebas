@@ -228,6 +228,10 @@ public class MainActivity extends Activity {
     return new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
    }catch(Exception error){android.util.Log.w("TrabakutikGPS","No se pudo leer metadata de rutas",error);return "";}
   }
+  @JavascriptInterface public String getRouteCatalog(){
+   try{return readAsset("data/trailhead.json");}
+   catch(Exception error){android.util.Log.w("TrabakutikGPS","No se pudo leer catálogo de rutas incluido",error);return "";}
+  }
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
   @JavascriptInterface public String getTrackingSnapshot(){return trackingSnapshot("");}
   @JavascriptInterface public String getTrackingSnapshotIfChanged(String knownVersion){return trackingSnapshot(knownVersion);}

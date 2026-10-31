@@ -5,6 +5,7 @@ on:
       - 'android/**'
       - 'nuevo.html'
       - 'data/route-metadata.json'
+      - 'data/trailhead.json'
       - 'vendor/leaflet/**'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
@@ -35,6 +36,8 @@ jobs:
           mkdir -p app/src/main/assets
           cp ../nuevo.html app/src/main/assets/nuevo.html
           cp ../data/route-metadata.json app/src/main/assets/route-metadata.json
+          mkdir -p app/src/main/assets/data
+          cp ../data/trailhead.json app/src/main/assets/data/trailhead.json
           mkdir -p app/src/main/assets/vendor/leaflet
           cp ../vendor/leaflet/leaflet.css app/src/main/assets/vendor/leaflet/leaflet.css
           cp ../vendor/leaflet/leaflet.js app/src/main/assets/vendor/leaflet/leaflet.js
