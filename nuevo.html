@@ -233,6 +233,11 @@ body.navigation-active .modes,body.navigation-review .modes{display:none!importa
 body.navigation-active #choose,body.navigation-active #nearbyAction,body.navigation-active #savedRoutes,body.navigation-active #navGo,body.navigation-active #gpsStop,body.navigation-active #openNativeGps,body.navigation-active #clearActiveRoute{display:none!important}
 body.navigation-review #navActions{display:none!important}
 body.navigation-review #recordActions{display:flex!important}
+body.navigation-ready #navActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+body.navigation-ready #navGo{grid-column:1/-1;grid-row:1;background:#66e5ff;color:#051824;border-color:#66e5ff}
+body.navigation-ready #choose{grid-column:1;grid-row:2}
+body.navigation-ready #nearbyAction{grid-column:2;grid-row:2}
+body.navigation-ready #savedRoutes{grid-column:3;grid-row:2}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">La ruta gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta seleccionada en azul</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
@@ -1226,6 +1231,7 @@ function syncNavButtons(){
  const hasRoute=routePoints.length>1&&mode==='nav';
  document.body.classList.toggle('navigation-active',navigationActive);
  document.body.classList.toggle('navigation-review',navigationReview);
+ document.body.classList.toggle('navigation-ready',hasRoute&&!navigationActive&&!navigationReview&&mode==='nav');
  $('navGo').textContent='Navegar y grabar';
  $('navStop').textContent='Finalizar navegación y grabación';
  $('navGo').classList.toggle('hidden',!hasRoute||navigationActive||navigationReview);
