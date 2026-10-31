@@ -19,11 +19,17 @@ public class TrackingService extends Service implements LocationListener {
  Intent openIntent=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
  PendingIntent open=PendingIntent.getActivity(this,2,openIntent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
  Intent intent=new Intent(this,TrackingService.class).setAction("STOP");PendingIntent stop=PendingIntent.getService(this,1,intent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
- return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentIntent(open).setContentTitle(recording?"Trabakutik GPS grabando":"Trabakutik GPS navegando").setContentText(offRoute?"FUERA DE RUTA · vuelve a la línea azul":(!upcomingTurn.isEmpty()?upcomingTurn:(route.size()>1?"Siguiendo ruta · GPS activo":points+" puntos registrados"))).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
+ return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentIntent(open).setContentTitle(recording?"Trabakutik GPS grabando":navigating?"Trabakutik GPS navegando":"Trabakutik GPS").setContentText(offRoute?"FUERA DE RUTA · vuelve a la línea azul":(!upcomingTurn.isEmpty()?upcomingTurn:(route.size()>1?"Siguiendo ruta · GPS activo":points+" puntos registrados"))).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
  @Override public int onStartCommand(Intent i,int flags,int id){
   String action=i==null?null:i.getAction();
   if(action==null){finish();return START_NOT_STICKY;}
   if("STOP".equals(action)){finish();return START_NOT_STICKY;}
+  if("STOP_NAVIGATION".equals(action)){
+   navigating=false;routeReached=false;offRoute=false;farSince=0;
+   turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
+   if(!recording){finish();return START_NOT_STICKY;}
+   updateNotice();return START_NOT_STICKY;
+  }
   if("STOP_RECORD".equals(action)){
    endRecording();
    if(!navigating){finish();return START_NOT_STICKY;}
