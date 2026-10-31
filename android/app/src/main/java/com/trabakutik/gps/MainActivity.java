@@ -301,7 +301,17 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void clearRoute(){
     File f=new File(getFilesDir(),"ruta-activa.json");if(f.exists())f.delete();
     File turns=new File(getFilesDir(),"giros-activos.json");if(turns.exists())turns.delete();
-    // No crear un servicio solo para limpiar una ruta ya inactiva.
+    // Borrar los ficheros NO basta: el servicio ya tiene la ruta y los giros
+    // cargados en memoria y sigue pitando giros y «fuera de ruta» de una ruta
+    // que el usuario acaba de quitar. Hay que decirselo.
+    // Se sigue sin crear un servicio para nada: si no hay ninguno vivo
+    // (TrackingService.ACTIVO) no se manda nada, que es lo que buscaba el
+    // comentario que habia aqui.
+    if(!TrackingService.ACTIVO)return;
+    runOnUiThread(()->{
+     try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("STOP_NAVIGATION"));}
+     catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo parar la navegacion al quitar la ruta",e);}
+    });
   }
   @JavascriptInterface public void startNavigationWithRoute(String json){
     try{

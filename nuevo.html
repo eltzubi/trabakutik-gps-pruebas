@@ -870,7 +870,13 @@ function clearDraft(){
 $('clearCreated').onclick=()=>{
  if(!anclasGps.length)return;
  if(!confirm('¿Borrar el trazado que estás creando?'))return;
- const wasActive=chosen<0&&sameTrack(drawPoints,routePoints);
+ // «Estoy navegando este borrador» se miraba solo comparando geometrias, y
+ // eso se rompe en cuanto tocas un punto despues de darle a Navegar: el
+ // borrador se borraba y la navegacion seguia viva, pitando giros de una
+ // ruta que ya no esta en pantalla. Vale tambien si la ruta activa es la
+ // copia guardada que salio de este mismo borrador.
+ const wasActive=chosen<0&&routePoints.length>1&&(sameTrack(drawPoints,routePoints)
+   ||(createdSavedItem&&activeSavedId&&activeSavedId===createdSavedItem.created));
  clearDraft();
  if(wasActive)clearActiveRoute();
  notice('Trazado creado borrado del mapa');
