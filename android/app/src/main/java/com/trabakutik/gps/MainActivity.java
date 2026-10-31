@@ -140,6 +140,7 @@ public class MainActivity extends Activity {
   showScreen(true);
  }
  public class Bridge {
+  @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
   @JavascriptInterface public String getTrackingSnapshot(){
    try{
     android.content.SharedPreferences pref=getSharedPreferences("tracking_live",MODE_PRIVATE);
@@ -147,8 +148,8 @@ public class MainActivity extends Activity {
     o.put("active",pref.getBoolean("active",false));
     o.put("recording",pref.getBoolean("recording",false));
     o.put("time",pref.getLong("time",0));
-    o.put("lat",pref.getFloat("lat",Float.NaN));
-    o.put("lon",pref.getFloat("lon",Float.NaN));
+    o.put("lat",pref.getFloat("lat",0f));
+    o.put("lon",pref.getFloat("lon",0f));
     o.put("accuracy",pref.getFloat("accuracy",9999));
     org.json.JSONArray pts=new org.json.JSONArray();
     File f=new File(getFilesDir(),"trazado-vivo.tsv");
@@ -317,6 +318,6 @@ public class MainActivity extends Activity {
  }
  void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;exportFile=latest;
  Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_TITLE,latest.getName());startActivityForResult(i,200);}
- @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();}finally{pendingGpx=null;}}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
+ @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();}finally{pendingGpx=null;}}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
  @Override public void onBackPressed(){WebView current=showingGps?web:webRoutes;if(current.canGoBack())current.goBack();else if(!showingGps)showScreen(true);else super.onBackPressed();}
 }
