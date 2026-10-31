@@ -776,6 +776,9 @@ function clearActiveRoute(){
  $('title').textContent='Trabakutik GPS';
  setRouteTitle('Mapa de rutas',null);
  $('distance').textContent='Elige una ruta para navegar';
+ if(window.TrabakutikAndroid?.stopNavigation){
+  try{window.TrabakutikAndroid.stopNavigation()}catch(e){console.warn('No se pudo parar navegación',e)}
+ }
  if(window.TrabakutikAndroid&&window.TrabakutikAndroid.clearRoute){
   try{window.TrabakutikAndroid.clearRoute()}catch(e){console.warn('No se pudo desactivar la ruta GPS',e)}
  }
@@ -1049,6 +1052,6 @@ window.trabakutikNativeGpxSaved=()=>{
  }
 };
 window.addEventListener('beforeunload',e=>{if(recording){e.preventDefault();e.returnValue=''}});
-fetch('data/trailhead.json').then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
+fetch('data/trailhead.json').then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{if(window.TrabakutikAndroid?.stopNavigation)try{window.TrabakutikAndroid.stopNavigation()}catch(e){console.warn(e)}drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
 })();
 </script></body></html>
