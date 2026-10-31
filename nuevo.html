@@ -437,7 +437,6 @@ async function loadDetailedSelected(i,request){
  }
 }
 function selectRoute(i){
- if(importedMapPreviousVisibility!==null){otherTracksVisible=importedMapPreviousVisibility;importedMapPreviousVisibility=null;}
  const request=++selectedRouteRequest;
  activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;
@@ -801,7 +800,6 @@ function compactRoutePoints(points,maxPoints=2200){
  }
  return compact;
 }
-let importedMapPreviousVisibility=null;
 function loadSaved(item){
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
@@ -809,13 +807,11 @@ function loadSaved(item){
  routePoints=compactRoutePoints(item.points);
  chosen=-1;
  if(item.imported){
-  if(importedMapPreviousVisibility===null)importedMapPreviousVisibility=otherTracksVisible;
-  otherTracksVisible=false; // evitar pintar 68 rutas sobre un GPX exterior
+  otherTracksVisible=false; // cada GPX externo abre el mapa limpio
   refreshRouteLayers();
   $('eye').setAttribute('aria-pressed','false');
- }else if(importedMapPreviousVisibility!==null){
-  otherTracksVisible=importedMapPreviousVisibility;importedMapPreviousVisibility=null;
-  syncScopeMap();
+  $('eye').setAttribute('aria-label','Mostrar rutas de Trabakutik');
+  $('eye').title='Mostrar rutas de Trabakutik';
  }
  $('savedDialog').classList.add('hidden');changeMode('nav');
  
@@ -861,7 +857,6 @@ $('clearCreated').onclick=()=>{
 };
 function clearActiveRoute(){
  selectedRouteRequest++;
- if(importedMapPreviousVisibility!==null){otherTracksVisible=importedMapPreviousVisibility;importedMapPreviousVisibility=null;}
  resetOffRoute();
  resetJunctionView();
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
