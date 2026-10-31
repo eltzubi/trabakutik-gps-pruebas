@@ -444,6 +444,7 @@ async function loadDetailedSelected(i,request){
  }
 }
 function selectRoute(i){
+ if(importedMapPreviousVisibility!==null){otherTracksVisible=importedMapPreviousVisibility;importedMapPreviousVisibility=null;}
  const request=++selectedRouteRequest;
  activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;
@@ -771,10 +772,64 @@ function elevationText(points){
  }
  return points.some(p=>Number.isFinite(p[2]))?' · +'+Math.round(up)+' / -'+Math.round(down)+' m aprox.':' · sin alturas disponibles';
 }
+// Mantener los puntos GPX originales en Mis rutas. Para dibujar y navegar,
+// usar una copia simplificada por desviación (no escoger 1 de cada N).
+function compactRoutePoints(points,maxPoints=2200){
+ if(!Array.isArray(points)||points.length<=2)return points.map(p=>p.slice(0,2));
+ const source=points.map(p=>[p[0],p[1]]);
+ const lat0=source[Math.floor(source.length/2)][0]*R;
+ const scaleX=111195*Math.cos(lat0),scaleY=111195;
+ function simplify(tolerance){
+  const keep=new Uint8Array(source.length);
+  keep[0]=1;keep[source.length-1]=1;
+  const stack=[[0,source.length-1]];
+  while(stack.length){
+   const [start,end]=stack.pop();
+   if(end-start<2)continue;
+   const a=source[start],b=source[end];
+   const dx=(b[1]-a[1])*scaleX,dy=(b[0]-a[0])*scaleY;
+   const lenSq=dx*dx+dy*dy;
+   let worst=-1,index=-1;
+   for(let i=start+1;i<end;i++){
+    const px=(source[i][1]-a[1])*scaleX,py=(source[i][0]-a[0])*scaleY;
+    const t=lenSq?Math.max(0,Math.min(1,(px*dx+py*dy)/lenSq)):0;
+    const error=Math.hypot(px-t*dx,py-t*dy);
+    if(error>worst){worst=error;index=i;}
+   }
+   if(worst>tolerance){keep[index]=1;stack.push([start,index],[index,end]);}
+  }
+  return source.filter((_,i)=>keep[i]);
+ }
+ let compact=source;
+ for(const tolerance of [1,2,3,5,8,12,20,30]){
+  compact=simplify(tolerance);
+  if(compact.length<=maxPoints)break;
+ }
+ if(compact.length>maxPoints){
+  // Si es extremadamente sinuoso, limitar también el número de vértices
+  // sin modificar el GPX guardado; mantener siempre inicio y final.
+  const reduced=[];
+  for(let i=0;i<maxPoints;i++)reduced.push(compact[Math.round(i*(compact.length-1)/(maxPoints-1))]);
+  compact=reduced;
+ }
+ return compact;
+}
+let importedMapPreviousVisibility=null;
 function loadSaved(item){
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
- resetOffRoute();resetJunctionView();routePoints=item.points.map(p=>p.slice());chosen=-1;
+ resetOffRoute();resetJunctionView();
+ routePoints=compactRoutePoints(item.points);
+ chosen=-1;
+ if(item.imported){
+  if(importedMapPreviousVisibility===null)importedMapPreviousVisibility=otherTracksVisible;
+  otherTracksVisible=false; // evitar pintar 68 rutas sobre un GPX exterior
+  layers.forEach(layer=>{if(map.hasLayer(layer))map.removeLayer(layer)});
+  $('eye').setAttribute('aria-pressed','true');
+ }else if(importedMapPreviousVisibility!==null){
+  otherTracksVisible=importedMapPreviousVisibility;importedMapPreviousVisibility=null;
+  syncScopeMap();
+ }
  $('savedDialog').classList.add('hidden');changeMode('nav');
  
  if(drawPoints.length||drawLayer)clearDraft();
@@ -784,7 +839,14 @@ function loadSaved(item){
  map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
  $('title').textContent=item.name;setRouteTitle(item.name,null);
  $('distance').textContent='Ruta propia'+elevationText(routePoints);
- computeJunctions();syncNativeRoute();startGPS();notice('Ruta creada cargada · GPS activándose');
+ const request=selectedRouteRequest;
+ notice('Ruta cargada · preparando navegación con '+routePoints.length+' puntos');
+ setTimeout(()=>{
+  if(request!==selectedRouteRequest||activeSavedId!==item.created)return;
+  computeJunctions();
+  startGPS();
+  notice('Navegando: '+item.name+' · '+routePoints.length+' puntos optimizados');
+ },60);
 }
 let savedLine=null;
 function sameTrack(a,b){
@@ -812,6 +874,7 @@ $('clearCreated').onclick=()=>{
 };
 function clearActiveRoute(){
  selectedRouteRequest++;
+ if(importedMapPreviousVisibility!==null){otherTracksVisible=importedMapPreviousVisibility;importedMapPreviousVisibility=null;}
  resetOffRoute();
  resetJunctionView();
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
