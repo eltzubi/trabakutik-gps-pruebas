@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;File file;boolean recording=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
  final String channel="trabakutik-grabacion";
  @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));}
  @Override public IBinder onBind(Intent i){return null;}
@@ -20,7 +20,33 @@ public class TrackingService extends Service implements LocationListener {
  PendingIntent open=PendingIntent.getActivity(this,2,openIntent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
  Intent intent=new Intent(this,TrackingService.class).setAction("STOP");PendingIntent stop=PendingIntent.getService(this,1,intent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
  return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentIntent(open).setContentTitle(recording?"Trabakutik GPS grabando":"Trabakutik GPS navegando").setContentText(offRoute?"FUERA DE RUTA · vuelve a la línea azul":(!upcomingTurn.isEmpty()?upcomingTurn:(route.size()>1?"Siguiendo ruta · GPS activo":points+" puntos registrados"))).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
- @Override public int onStartCommand(Intent i,int flags,int id){if(i!=null&&"STOP".equals(i.getAction())){finish();return START_NOT_STICKY;}if(i!=null&&"STOP_RECORD".equals(i.getAction())){endRecording();updateNotice();return active?START_STICKY:START_NOT_STICKY;}if(i!=null&&"TURNS".equals(i.getAction())){loadTurns();if(active)updateNotice();return active?START_STICKY:START_NOT_STICKY;}if(i!=null&&"ROUTE".equals(i.getAction())){loadRoute();if(active)updateNotice();return active?START_STICKY:START_NOT_STICKY;}boolean wantsRecord=i!=null&&"START".equals(i.getAction());if(!active)start(wantsRecord);else if(wantsRecord&&!recording){try{beginRecording();}catch(IOException ex){android.util.Log.e("TrabakutikGPS","No se pudo empezar grabacion",ex);}}return active?START_STICKY:START_NOT_STICKY;}
+ @Override public int onStartCommand(Intent i,int flags,int id){
+  String action=i==null?null:i.getAction();
+  if(action==null){finish();return START_NOT_STICKY;}
+  if("STOP".equals(action)){finish();return START_NOT_STICKY;}
+  if("STOP_RECORD".equals(action)){
+   endRecording();
+   if(!navigating){finish();return START_NOT_STICKY;}
+   updateNotice();return START_NOT_STICKY;
+  }
+  if("TURNS".equals(action)){loadTurns();if(active)updateNotice();return START_NOT_STICKY;}
+  if("ROUTE".equals(action)){
+   loadRoute();
+   if(route.size()<2)navigating=false;
+   if(!navigating&&!recording){finish();return START_NOT_STICKY;}
+   if(active)updateNotice();
+   return START_NOT_STICKY;
+  }
+  if("NAVIGATE".equals(action)){
+   navigating=true;
+   if(!active)start(false);
+   else{loadRoute();updateNotice();}
+  }else if("START".equals(action)){
+   if(!active)start(true);
+   else if(!recording){try{beginRecording();}catch(IOException ex){android.util.Log.e("TrabakutikGPS","No se pudo empezar grabacion",ex);}}
+  }
+  return START_NOT_STICKY;
+ }
  void start(boolean withRecording){
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){stopSelf();return;}
   try {
@@ -71,7 +97,7 @@ public class TrackingService extends Service implements LocationListener {
   }catch(Exception e){android.util.Log.w("TrabakutikGPS","Giros no disponibles",e);}
  }
  void checkTurns(Location l){
-  if(route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
+  if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
   double lat=l.getLatitude(),lon=l.getLongitude();
   double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat));
   double closest=Double.POSITIVE_INFINITY,along=0,cumulative=0;
@@ -126,7 +152,7 @@ public class TrackingService extends Service implements LocationListener {
   return best;
  }
  void checkDeviation(Location l){
-  if(route.size()<2||!l.hasAccuracy()||l.getAccuracy()>22){farSince=0;return;}
+  if(!navigating||route.size()<2||!l.hasAccuracy()||l.getAccuracy()>22){farSince=0;return;}
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
   if(d<=Math.max(14,acc+4)){
    routeReached=true;farSince=0;if(offRoute){offRoute=false;updateNotice();}return;
@@ -148,8 +174,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  @Override public void onLocationChanged(Location l){
   if(!active)return;
-  checkDeviation(l);
-  checkTurns(l);
+  if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putBoolean("active",active).putBoolean("recording",recording).apply();
   if(!recording||!l.hasAccuracy()||l.getAccuracy()>35)return;
   try(FileWriter w=new FileWriter(file,true)){
@@ -171,6 +196,6 @@ public class TrackingService extends Service implements LocationListener {
   recording=false;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
- void finish(){getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){if(active||recording)finish();super.onDestroy();}
 }
