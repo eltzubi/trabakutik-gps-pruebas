@@ -200,7 +200,7 @@ public class MainActivity extends Activity {
    byte[] buffer=new byte[8192];int count;while((count=in.read(buffer))!=-1)out.write(buffer,0,count);
    String html=new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
    html=html.replace("<link rel=\"stylesheet\" href=\"vendor/leaflet/leaflet.css\">","<style>"+readAsset("vendor/leaflet/leaflet.css")+"</style>");
-   html=html.replace("<script src=\"vendor/leaflet/leaflet.js\"></script>","<script>"+readAsset("vendor/leaflet/leaflet.js")+"</script>");
+   html=html.replace("<script src=\"vendor/leaflet/leaflet.js\"></script>","<script>"+readAsset("vendor/leaflet/leaflet.js")+"</script><script>"+readAsset("vendor/leaflet-rotate/leaflet-rotate.umd.min.js")+"</script>");
    target.loadDataWithBaseURL(requestedUrl,html,"text/html","UTF-8",null);
   }catch(Exception error){
    android.util.Log.w("TrabakutikGPS","No se pudo abrir el GPS incluido en la aplicación; se usa la página publicada",error);

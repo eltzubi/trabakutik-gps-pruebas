@@ -234,9 +234,9 @@ body.navigation-ready #navActions{display:grid;grid-template-columns:repeat(2,mi
 body.navigation-ready #navGo{grid-column:1/-1;grid-row:1;background:#66e5ff;color:#051824;border-color:#66e5ff}
 body.navigation-ready #choose{grid-column:1;grid-row:2}
 body.navigation-ready #savedRoutes{grid-column:2;grid-row:2}
-</style></head><body><div id="app">
+.tools #compass{display:grid;place-items:center;color:#d4f7ff}.tools #compass[aria-pressed="true"]{color:#77e9ff;border-color:#70d9ee}.tools #compass svg{overflow:visible}.tools #compass #compassArrow{transform-origin:12px 12px;transition:transform .18s linear}</style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">La ruta gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta seleccionada en azul</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="compass" class="hidden" type="button" title="Orientar el mapa con la ruta" aria-label="Orientar el mapa con la ruta" aria-pressed="true"><svg viewBox="0 0 24 24" width="25" height="25" aria-hidden="true"><text x="12" y="7" text-anchor="middle" fill="currentColor" font-size="6" font-weight="800">N</text><path id="compassArrow" d="M12 7 16.3 18 12 15.4 7.7 18Z" fill="currentColor"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">La ruta gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta seleccionada en azul</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -245,7 +245,7 @@ body.navigation-ready #savedRoutes{grid-column:2;grid-row:2}
 </section>
 <footer class="bottom"><div class="modes"><button id="modeNav" class="hidden" aria-pressed="true">← Mapa</button><button id="modeCreate" aria-pressed="false">✎ Crear</button><button id="modeRecord" aria-pressed="false">⏺ Grabación</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="savedRoutes">Mis rutas</button><button class="go hidden" id="navGo">Reanudar navegación</button><button class="red hidden" id="navStop" type="button">Detener navegación</button><button class="red hidden" id="gpsStop" type="button">Apagar GPS</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar GPX</button><button class="go hidden" id="navCreated" disabled>Navegar</button></div><div class="actions hidden" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#2878ff"></i>Ruta seleccionada</span><span><i class="dot" style="background:#ff9c3b"></i>Otras rutas</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
-</div><script src="vendor/leaflet/leaflet.js"></script><script>
+</div><script src="vendor/leaflet/leaflet.js"></script><script src="vendor/leaflet-rotate/leaflet-rotate.umd.min.js"></script><script>
 (()=>{'use strict';
 if(window.TrabakutikAndroid)document.documentElement.classList.add('android-app');
 const $=id=>document.getElementById(id),R=Math.PI/180,fmt=m=>m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';
@@ -254,7 +254,7 @@ const routeKey=t=>String(t?.href||'').replace(/\.html$/,'');
 const routeInfo=t=>routeMetadata[routeKey(t)]||{};
 const toName=t=>routeInfo(t).title||String(t?.href||'').replace(/\.html$/,'').replace(/[-_]/g,' ');
 function routeStats(t){const m=routeInfo(t),parts=[];if(Number.isFinite(m.distanceKm))parts.push(Number(m.distanceKm).toFixed(2).replace('.',',')+' km');if(Number.isFinite(m.gainM))parts.push('+'+Math.round(m.gainM)+' m');return parts.join(' · ')}
-const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([43.19,-2.55],12);
+const map=L.map('map',{zoomControl:false,preferCanvas:true,rotate:true,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false,pitchDrag:false}).setView([43.19,-2.55],12);
 map.on('dragstart',()=>{manualMapUntil=Date.now()+8000});
 const baseMaps={
  osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
@@ -266,10 +266,33 @@ function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLa
 let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
 changeBase(initialBase);
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],tracksLoading=true,tracksLoadError='',tracksLoadRequest=0,layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],tracksLoading=true,tracksLoadError='',tracksLoadRequest=0,layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],mapFollowsRoute=false,drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 let lastGpsWarning=0;
+function syncCompass(){
+ const button=$('compass'),arrow=$('compassArrow');if(!button||!arrow)return;
+ button.classList.toggle('hidden',routePoints.length<2);
+ button.setAttribute('aria-pressed',String(mapFollowsRoute));
+ button.setAttribute('aria-label',mapFollowsRoute?'Mapa siguiendo la ruta · pulsar para poner el norte arriba':'Norte arriba · pulsar para seguir la ruta');
+ button.title=button.getAttribute('aria-label');
+ const bearing=map.getBearing?.()||0;arrow.style.transform='rotate('+bearing+'deg)';
+}
+function updateRouteHeading(p){
+ if(!mapFollowsRoute||routePoints.length<2||typeof map.setHeading!=='function')return;
+ const match=p?closestRoutePosition(p,routePoints):{index:1};
+ const index=Math.max(1,Math.min(routePoints.length-1,match.index||1));
+ map.setHeading(bearingBetween(routePoints[index-1],routePoints[index]),{ease:.28,deadzone:1.2});
+}
+function setRouteMapMode(follow){
+ mapFollowsRoute=!!follow&&routePoints.length>1;
+ if(mapFollowsRoute)updateRouteHeading(position);
+ else{map.stopHeadingUp?.();map.setBearing?.(0)}
+ syncCompass();
+}
+map.on('rotate',syncCompass);
+$('compass').onclick=()=>setRouteMapMode(!mapFollowsRoute);
+
 function gpsErrorText(err){
  if(err&&err.code===1)return 'Permiso de ubicación denegado. Activa la ubicación y concede permiso a Trabakutik GPS.';
  if(err&&err.code===2)return 'Ubicación no disponible. Comprueba el GPS y vuelve a intentarlo.';
@@ -446,6 +469,7 @@ async function loadDetailedSelected(i,request){
   if(chosen!==i||selectedRouteRequest!==request)return;
   // El mismo trazado detallado alimenta la línea del mapa, los avisos y el servicio Android.
   routePoints=pts.map(p=>p.slice(0,3));
+  if(mapFollowsRoute)updateRouteHeading(position);
   const detailedLine=routePoints.map(p=>[p[0],p[1]]);
   if(layers[i])map.removeLayer(layers[i]);
   layers[i]=L.polyline(detailedLine,{color:'#2878ff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
@@ -471,7 +495,7 @@ function selectRoute(i){
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
  updateNativeLaunchLink();
- routePoints=tracks[i].points.map(p=>[p[0],p[1]]);syncNavButtons();
+ routePoints=tracks[i].points.map(p=>[p[0],p[1]]);setRouteMapMode(true);syncNavButtons();
  drawAll();
  $('routeDialog').classList.add('hidden');
  notice('Ruta cargada · lista para navegar');
@@ -849,6 +873,7 @@ function loadSaved(item){
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();
  routePoints=compactRoutePoints(item.points);
+ setRouteMapMode(true);
  chosen=-1;otherTracksVisible=false;nearbyOnly=false;routeListScope='all';nearbyOrigin=null;updateNativeLaunchLink();
  $('eye').setAttribute('aria-pressed','false');$('eye').setAttribute('aria-label','Mostrar rutas de Trabakutik');$('eye').title='Mostrar rutas de Trabakutik';
  if(drawPoints.length||drawLayer)clearDraft();
@@ -894,7 +919,7 @@ function clearActiveRoute(){
  // El dibujo provisional del creador es otra capa distinta de la ruta activa.
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
- navigationActive=false;routePoints=[];chosen=-1;activeSavedId=null;updateNativeLaunchLink();directionArrows.clearLayers();syncNavButtons();
+ navigationActive=false;routePoints=[];setRouteMapMode(false);chosen=-1;activeSavedId=null;updateNativeLaunchLink();directionArrows.clearLayers();syncNavButtons();
  junctions=[];junctionWarned.clear();routeCumulative=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
@@ -1005,7 +1030,20 @@ function updateOffRoute(d,accuracy){
 }
 function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
 function beep(){if(!audio)return;const t=audio.currentTime;for(let i=0;i<3;i++){const o=audio.createOscillator(),g=audio.createGain(),at=t+i*.32;o.frequency.value=850;g.gain.setValueAtTime(.0001,at);g.gain.linearRampToValueAtTime(.13,at+.02);g.gain.exponentialRampToValueAtTime(.0001,at+.19);o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.2)}}
-function closestMeters(p,path){let best=Infinity;for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i];const latScale=111195,lonScale=latScale*Math.cos(p[0]*R),ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale,bx=(b[1]-p[1])*lonScale,by=(b[0]-p[0])*latScale,dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));best=Math.min(best,Math.hypot(ax+t*dx,ay+t*dy))}return best}
+function closestRoutePosition(p,path){
+ let best=Infinity,index=-1;
+ if(!Array.isArray(path)||path.length<2)return{distance:best,index};
+ const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
+ for(let i=1;i<path.length;i++){
+  const a=path[i-1],b=path[i];
+  const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale,bx=(b[1]-p[1])*lonScale,by=(b[0]-p[0])*latScale;
+  const dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));
+  const distance=Math.hypot(ax+t*dx,ay+t*dy);
+  if(distance<best){best=distance;index=i}
+ }
+ return{distance:best,index};
+}
+function closestMeters(p,path){return closestRoutePosition(p,path).distance}
 
 // Cruces: solo se consideran giros marcados de la ruta con otra rama registrada
 // en los tracks. No se inventan instrucciones de giro.
@@ -1128,7 +1166,7 @@ function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=pos
  if(gpsHeading!==null)lastCourse=gpsHeading;
  else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
  if(!courseFix||dist(courseFix,p)>=8)courseFix=p.slice();
- const h=lastCourse;const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
+ const h=lastCourse;const routeSnap=routePoints.length>1?closestRoutePosition(p,routePoints):null;if(mapFollowsRoute&&routeSnap?.index>0)updateRouteHeading(p);const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
  if(recording&&!window.TrabakutikAndroid){
   const ts=Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),acc=pos.coords.accuracy;
   // El navegador puede suspender el GPS al bloquear la pantalla.
@@ -1150,7 +1188,7 @@ function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=pos
    lastBrowserRecordTime=ts;
   }
  }
- if(mode==='nav'&&navigationActive&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea azul');else if(junctionActive<0)notice(pos.coords.accuracy>22?'GPS impreciso · ±'+Math.round(pos.coords.accuracy)+' m' :'Navegando y grabando · GPS ±'+Math.round(pos.coords.accuracy)+' m')}else if(mode==='nav')notice(routePoints.length>1?'Ubicación disponible · pulsa Navegar y grabar':'Ubicación disponible · elige una ruta')}
+ if(mode==='nav'&&navigationActive&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=routeSnap?.distance??closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea azul');else if(junctionActive<0)notice(pos.coords.accuracy>22?'GPS impreciso · ±'+Math.round(pos.coords.accuracy)+' m' :'Navegando y grabando · GPS ±'+Math.round(pos.coords.accuracy)+' m')}else if(mode==='nav')notice(routePoints.length>1?'Ubicación disponible · pulsa Navegar y grabar':'Ubicación disponible · elige una ruta')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
 window.trabakutikSyncNative=()=>{
  if(!window.TrabakutikAndroid?.getTrackingSnapshot)return;
@@ -1260,6 +1298,7 @@ function startGPS(forRecording=false){
 $('navGo').onclick=()=>{
  if(routePoints.length<2)return;
  if(recording||recorded.some(p=>Array.isArray(p))){notice('Guarda o descarta la grabación pendiente antes de empezar otra salida.');return}
+ setRouteMapMode(true);
  if(watch===null)startGPS(true);
  if(!beginRecordingFlow())return;
  navigationActive=true;syncNavButtons();startGPS();notice('Buscando ubicación GPS · navegación y grabación iniciadas');

@@ -7,6 +7,7 @@ on:
       - 'data/route-metadata.json'
       - 'data/trailhead.json'
       - 'vendor/leaflet/**'
+      - 'vendor/leaflet-rotate/**'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 permissions:
@@ -41,6 +42,9 @@ jobs:
           mkdir -p app/src/main/assets/vendor/leaflet
           cp ../vendor/leaflet/leaflet.css app/src/main/assets/vendor/leaflet/leaflet.css
           cp ../vendor/leaflet/leaflet.js app/src/main/assets/vendor/leaflet/leaflet.js
+          mkdir -p app/src/main/assets/vendor/leaflet-rotate
+          cp ../vendor/leaflet-rotate/leaflet-rotate.umd.min.js app/src/main/assets/vendor/leaflet-rotate/leaflet-rotate.umd.min.js
+          cp ../vendor/leaflet-rotate/LICENSE app/src/main/assets/vendor/leaflet-rotate/LICENSE
       - name: Compilar APK de prueba
         run: gradle :app:assembleDebug --no-daemon
       - name: Comprobar que existe el APK
