@@ -39,8 +39,9 @@ public class TrackingService extends Service implements LocationListener {
   String name=new SimpleDateFormat("yyyyMMdd-HHmmss",Locale.ROOT).format(new Date());
   file=new File(dir,"trabakutik-"+name+".gpx");
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
-  lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;
-  recording=true;updateNotice();
+  lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
+  try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
+  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
  }
  void loadRoute(){
   route.clear();routeReached=false;offRoute=false;farSince=0;
@@ -149,6 +150,7 @@ public class TrackingService extends Service implements LocationListener {
   if(!active)return;
   checkDeviation(l);
   checkTurns(l);
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putBoolean("active",active).putBoolean("recording",recording).apply();
   if(!recording||!l.hasAccuracy()||l.getAccuracy()>35)return;
   try(FileWriter w=new FileWriter(file,true)){
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
@@ -156,6 +158,7 @@ public class TrackingService extends Service implements LocationListener {
    String time=fmt.format(new Date(l.getTime()));
    if(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)))w.write("</trkseg><trkseg>\n");
    w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\n");
+   try(FileWriter pointsFile=new FileWriter(new File(getFilesDir(),"trazado-vivo.tsv"),true)){pointsFile.write(l.getLatitude()+"\t"+l.getLongitude()+"\n");}
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
    points++;if(points%10==0)updateNotice();
   }catch(Exception ignored){}
@@ -166,7 +169,8 @@ public class TrackingService extends Service implements LocationListener {
   try(FileWriter w=new FileWriter(file,true)){w.write("</trkseg></trk></gpx>\n");}
   catch(Exception e){android.util.Log.e("TrabakutikGPS","No se pudo cerrar GPX",e);}
   recording=false;
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
- void finish(){if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){if(active||recording)finish();super.onDestroy();}
 }
