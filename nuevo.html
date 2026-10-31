@@ -458,35 +458,34 @@ async function loadDetailedSelected(i,request){
   const detailedLine=routePoints.map(p=>[p[0],p[1]]);
   if(layers[i])map.removeLayer(layers[i]);
   layers[i]=L.polyline(detailedLine,{color:'#2878ff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
-  computeJunctions();updateDirectionArrows();
+  computeJunctions();updateDirectionArrows();syncNavButtons();
   if(navigationActive)startGPS();
-  notice('Línea, avisos y navegación ajustados al trazado detallado');
+  notice(navigationActive?'Navegación y grabación ajustadas al trazado detallado':'Trazado detallado cargado · listo para navegar');
  }catch(e){
   if(chosen===i&&selectedRouteRequest===request)notice('Ruta cargada · detalle original no disponible, usando trazado general');
   console.warn('No se pudo cargar el trazado detallado',e);
  }
 }
 function selectRoute(i){
+ if(navigationActive||navigationReview){notice('Finaliza la salida y guarda o descarta la grabación antes de cambiar de ruta.');return}
  if(recording||recorded.some(p=>Array.isArray(p))){notice('Guarda o descarta la grabación pendiente antes de cargar otra ruta.');return}
  if(mode==='create'&&drawPoints.length>1&&!createdSavedItem){notice('Guarda o borra el recorrido creado antes de cargar otra ruta.');return}
  const request=++selectedRouteRequest;
- if(!beginRecordingFlow())return;
  activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
- navigationActive=true;syncNavButtons();
+ navigationActive=false;syncNavButtons();
  resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
  updateNativeLaunchLink();
- routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
+ routePoints=tracks[i].points.map(p=>[p[0],p[1]]);syncNavButtons();
  drawAll();
  $('routeDialog').classList.add('hidden');
- notice('Ruta elegida · iniciando navegación y grabación');
- // Pintar primero la ruta; después pedir ubicación y cargar el trazado detallado.
+ notice('Ruta cargada · lista para navegar');
+ // Cargar el trazado detallado sin activar GPS ni grabación.
  setTimeout(()=>{
   if(chosen!==i||selectedRouteRequest!==request)return;
   computeJunctions();
-  startGPS();
-  notice('Buscando GPS · navegación y grabación activas');
+  notice('Ruta cargada · pulsa Navegar y grabar para empezar');
   loadDetailedSelected(i,request);
  },60);
 }
@@ -1227,9 +1226,9 @@ function syncNavButtons(){
  const hasRoute=routePoints.length>1&&mode==='nav';
  document.body.classList.toggle('navigation-active',navigationActive);
  document.body.classList.toggle('navigation-review',navigationReview);
- $('navGo').classList.add('hidden');
+ $('navGo').textContent='Navegar y grabar';
  $('navStop').textContent='Finalizar navegación y grabación';
- $('navGo').classList.add('hidden');
+ $('navGo').classList.toggle('hidden',!hasRoute||navigationActive||navigationReview);
  $('navStop').classList.toggle('hidden',!hasRoute||!navigationActive);
  $('gpsStop').classList.toggle('hidden',navigationActive||navigationReview||(!gpsTracking&&!nativeGpsActive));
 }
