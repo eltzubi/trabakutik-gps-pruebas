@@ -21,6 +21,19 @@ public class MainActivity extends Activity {
  @Override public void onCreate(Bundle b) {
   super.onCreate(b);
   CrashReport.install(this);
+  // Si el proceso anterior murio grabando, su GPX se quedo sin cerrar y las
+  // marcas de «grabando» siguen puestas en las preferencias, porque solo se
+  // borran en finish(). Aqui no hay ningun servicio vivo -- TrackingService
+  // .ACTIVO es estatica, asi que un proceso nuevo la ve en false--, de modo
+  // que es seguro cerrar lo que quedo a medias y limpiar las marcas.
+  if(!TrackingService.ACTIVO){
+   int cerrados=TrackingService.reparaGrabaciones(this);
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+     .putBoolean("active",false).putBoolean("recording",false).apply();
+   if(cerrados>0)Toast.makeText(this,cerrados==1
+     ?"Se ha cerrado una grabación que quedó a medias"
+     :"Se han cerrado "+cerrados+" grabaciones que quedaron a medias",Toast.LENGTH_LONG).show();
+  }
   getWindow().setStatusBarColor(0xff07131d);
   getWindow().setNavigationBarColor(0xff07131d);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(0xff07131d);
@@ -383,9 +396,15 @@ public class MainActivity extends Activity {
   super.onRequestPermissionsResult(code,permissions,results);
   if(code!=100&&code!=101)return;
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   // Hay que mirar si veniamos de una accion ANTES de borrarla: decia
+   // «if(pendingGpsAction==null)» despues de ponerla a null, o sea que
+   // entraba siempre y el aviso de la bateria saltaba tambien a quien
+   // acababa de denegar la ubicacion, donde no pinta nada. El dialogo de
+   // la bateria solo es el siguiente paso de la configuracion inicial.
+   boolean veniaDeUnaAccion=pendingGpsAction!=null;
    pendingGpsAction=null;
    Toast.makeText(this,"Para navegar necesitas permitir la ubicación precisa.",Toast.LENGTH_LONG).show();
-   if(pendingGpsAction==null)showBatterySetup();
+   if(!veniaDeUnaAccion)showBatterySetup();
    return;
   }
   if(pendingGpsAction!=null){
@@ -394,7 +413,12 @@ public class MainActivity extends Activity {
   }else if(code==100)requestStartupNotifications();
   else if(code==101)showBatterySetup();
  }
- void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;exportFile=latest;
+ void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;
+ if(latest==null){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}
+ // Red de seguridad: nunca exportar un GPX sin cerrar. Solo si no hay
+ // servicio vivo, que si lo hay es el que lo esta escribiendo y lo cerrara el.
+ if(!TrackingService.ACTIVO)TrackingService.cierraGpxSiQuedoAbierto(latest);
+ exportFile=latest;
  Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_TITLE,latest.getName());startActivityForResult(i,200);}
  @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();}finally{pendingGpx=null;}}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
  @Override public void onBackPressed(){WebView current=showingGps?web:webRoutes;if(current.canGoBack())current.goBack();else if(!showingGps)showScreen(true);else super.onBackPressed();}

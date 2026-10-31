@@ -13,6 +13,43 @@ import android.media.*;
 public class TrackingService extends Service implements LocationListener {
  LocationManager manager;PowerManager.WakeLock gpsWakeLock;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
  final String channel="trabakutik-grabacion";
+ /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
+  *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
+  *  que una grabacion quedo a medias. */
+ public static volatile boolean ACTIVO=false;
+ /** Cierra un GPX que se quedo sin «</trkseg></trk></gpx>».
+  *  beginRecording() escribe la cabecera y el cierre solo se escribe en
+  *  endRecording(), asi que si Android mata el proceso mientras se graba
+  *  -- que es justo lo que avisan los dialogos de bateria de Samsung-- el
+  *  fichero queda abierto. Y saveTrack() lo exportaba copiando bytes tal
+  *  cual, de modo que el GPX que se llevaba el usuario no lo abria casi
+  *  ningun programa. Los puntos no se pierden: solo falta cerrarlo.
+  *  Devuelve true si ha tenido que arreglarlo. */
+ public static boolean cierraGpxSiQuedoAbierto(File f){
+  if(f==null||!f.isFile()||f.length()==0)return false;
+  try(RandomAccessFile raf=new RandomAccessFile(f,"rw")){
+   int cola=(int)Math.min(raf.length(),512);
+   raf.seek(raf.length()-cola);
+   byte[] buf=new byte[cola];raf.readFully(buf);
+   String fin=new String(buf,java.nio.charset.StandardCharsets.UTF_8);
+   if(fin.contains("</gpx>"))return false;
+   // Si el proceso murio a mitad de una linea, esa linea no es XML valido:
+   // se corta por el ultimo salto de linea completo. Sin ninguno, no se
+   // recorta nada y se cierra tal cual.
+   int corte=fin.lastIndexOf('\n');
+   long largo=raf.length()-cola+(corte>=0?corte+1:cola);
+   raf.setLength(largo);raf.seek(largo);
+   raf.write("</trkseg></trk></gpx>\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+   return true;
+  }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo cerrar un GPX a medias",e);return false;}
+ }
+ /** Cierra todas las grabaciones que quedaron abiertas. Devuelve cuantas. */
+ public static int reparaGrabaciones(Context c){
+  File[] all=new File(c.getFilesDir(),"grabaciones").listFiles((d,n)->n.endsWith(".gpx"));
+  if(all==null)return 0;
+  int n=0;for(File f:all)if(cierraGpxSiQuedoAbierto(f))n++;
+  return n;
+ }
  @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));}
  @Override public IBinder onBind(Intent i){return null;}
  Notification notification(){
@@ -56,7 +93,7 @@ public class TrackingService extends Service implements LocationListener {
  void start(boolean withRecording){
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){stopSelf();return;}
   try {
-   loadRoute();active=true;
+   loadRoute();active=true;ACTIVO=true;
    startForeground(12,notification());
    PowerManager pm=(PowerManager)getSystemService(POWER_SERVICE);
    gpsWakeLock=pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"TrabakutikGPS:Location");
@@ -202,6 +239,6 @@ public class TrackingService extends Service implements LocationListener {
   recording=false;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
- void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
- @Override public void onDestroy(){if(active||recording)finish();super.onDestroy();}
+ void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ @Override public void onDestroy(){if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }
