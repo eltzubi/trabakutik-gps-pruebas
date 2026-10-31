@@ -537,7 +537,7 @@ async function loadDetailedSelected(i,request){
 let deferredRouteSelection=-1;
 function resumeDeferredRoute(){const i=deferredRouteSelection;deferredRouteSelection=-1;if(i>=0&&tracks[i])setTimeout(()=>selectRoute(i),0)}
 function selectRoute(i){
- if(navigationActive){deferredRouteSelection=i;notice('Termina esta salida y guarda o descarta la grabación; después abriré la ruta elegida.');return}
+ if(navigationActive){deferredRouteSelection=i;$('routeDialog').classList.add('hidden');notice('Termina esta salida y guarda o descarta la grabación; después abriré la ruta elegida.');return}
  if(navigationReview||recording||recorded.some(p=>Array.isArray(p))){
   deferredRouteSelection=i;
   $('routeDialog').classList.add('hidden');
