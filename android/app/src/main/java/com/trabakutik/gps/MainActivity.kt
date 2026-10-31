@@ -28,7 +28,7 @@ class MainActivity : Activity() {
             controls.addView(this, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }
         button("● Grabar GPS") { requestStart() }
-        button("■ Parar") { stopService(Intent(this, TrackingService::class.java).setAction(TrackingService.STOP)); status.text = "Grabación detenida · lista para guardar" }
+        button("■ Parar") { startService(Intent(this, TrackingService::class.java).setAction(TrackingService.STOP)); status.text = "Grabación detenida · lista para guardar" }
         button("↓ Guardar GPX") { exportGpx() }
         root.addView(controls)
         status = TextView(this).apply { setTextColor(Color.WHITE); text = "Grabación nativa · independiente de la web"; setPadding(14, 4, 14, 8) }
