@@ -206,9 +206,20 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #nearbyAction[aria-pressed="true"]{background:#146275;border-color:#75d3e9;color:#eaffff}
 #nearbyAction{font-size:10px!important}
  .route-list-scope{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0 12px}.route-list-scope button{font-size:11px;min-height:38px;padding:7px 2px;border:1px solid #47677a;border-radius:10px;color:#c1dbe6;background:#193646}.route-list-scope button[aria-pressed='true']{background:#48cce7;color:#092331;font-weight:750;border-color:#48cce7}
+
+.info-top .route-title-link{
+ display:block;min-width:0;flex:1;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+ background:transparent;border:0;padding:2px 1px;color:#e6f4ff;
+ text-align:left;font:inherit;font-size:12px;font-weight:750;
+ white-space:nowrap;cursor:pointer;
+}
+.info-top .route-title-link:not(:disabled){color:#c9f5ff;text-decoration:underline;text-decoration-color:#58b7cc70;text-underline-offset:3px}
+.info-top .route-title-link:not(:disabled)::after{content:' ↗';font-size:12px;color:#89dfe9}
+.info-top .route-title-link:disabled{opacity:1;cursor:default}
+.info-top .route-title-link:focus-visible{outline:2px solid #69e2f3;border-radius:3px}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><b id="mapTitle">Mapa de rutas</b><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Ocultar o mostrar otras rutas" aria-label="Ocultar otras rutas" aria-pressed="false">◉</button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -363,6 +374,21 @@ function updateDirectionArrows(){
  }
 }
 map.on('zoomend',updateDirectionArrows);
+function setRouteTitle(name,href){
+ const title=$('mapTitle');
+ title.textContent=name;
+ const valid=typeof href==='string'&&/^[a-z0-9_-]+\\.html$/i.test(href);
+ title.disabled=!valid;
+ title.dataset.href=valid?href:'';
+ title.title=valid?'Abrir ficha de '+name:'Esta ruta no tiene ficha publicada';
+ title.setAttribute('aria-label',valid?'Ver ficha de '+name:name);
+}
+$('mapTitle').onclick=()=>{
+ const href=$('mapTitle').dataset.href;
+ if(!href||!/^[a-z0-9_-]+\\.html$/i.test(href))return;
+ // La app Android intercepta el enlace y conserva el navegador GPS abierto.
+ window.location.href='https://trabakutik.com/'+href;
+};
 function drawAll(){
  layers.forEach(l=>map.removeLayer(l));layers=[];
  // Primero los naranjas, al final la ruta activa por encima de todos.
@@ -378,7 +404,7 @@ function drawAll(){
   layers[chosen].addTo(map).bringToFront();
   map.fitBounds(layers[chosen].getBounds(),{padding:[35,35]});
   $('title').textContent=toName(tracks[chosen]);
-  $('mapTitle').textContent=toName(tracks[chosen]);
+  setRouteTitle(toName(tracks[chosen]),tracks[chosen].href);
   $('distance').textContent='Azul: tu ruta · Naranja: demás rutas';
  }
  if(savedLine) savedLine.bringToFront();
@@ -705,7 +731,7 @@ function loadSaved(item){
  savedLine=L.polyline(routePoints,{color:'#5bebff',weight:8,opacity:1,interactive:false}).addTo(map).bringToFront();
  updateDirectionArrows();
  map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
- $('title').textContent=item.name;$('mapTitle').textContent=item.name;
+ $('title').textContent=item.name;setRouteTitle(item.name,null);
  $('distance').textContent='Ruta propia'+elevationText(routePoints);
  computeJunctions();syncNativeRoute();startGPS();notice('Ruta creada cargada · GPS activándose');
 }
@@ -744,7 +770,7 @@ function clearActiveRoute(){
  junctions=[];junctionWarned.clear();routeCumulative=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
- $('mapTitle').textContent='Mapa de rutas';
+ setRouteTitle('Mapa de rutas',null);
  $('distance').textContent='Elige una ruta para navegar';
  if(window.TrabakutikAndroid&&window.TrabakutikAndroid.clearRoute){
   try{window.TrabakutikAndroid.clearRoute()}catch(e){console.warn('No se pudo desactivar la ruta GPS',e)}
