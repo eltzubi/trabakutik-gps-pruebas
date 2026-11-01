@@ -1202,11 +1202,44 @@ function junctionGuidance(p,accuracy){
  }
  if(ahead< -9)resetJunctionView();
 }
+// Rumbo del tramo de la ruta mas cercano, en el sentido en que esta grabada.
+// Devuelve null a mas de 30 m: ahi ya no la estas siguiendo y vale mas el
+// rumbo del GPS. Se salta los tramos de largo cero, que darian un rumbo sin
+// sentido.
+function rumboDeLaRuta(p){
+ if(!Array.isArray(routePoints)||routePoints.length<2)return null;
+ const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
+ let best=Infinity,bi=-1;
+ for(let i=1;i<routePoints.length;i++){
+  const a=routePoints[i-1],b=routePoints[i];
+  const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale;
+  const dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*latScale;
+  const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
+  const m=Math.hypot(ax+t*dx,ay+t*dy);
+  if(m<best){best=m;bi=i}
+ }
+ if(bi<0||best>30)return null;
+ const a=routePoints[bi-1];
+ for(let j=bi;j<routePoints.length;j++){
+  const b=routePoints[j];
+  if(Math.abs(b[0]-a[0])>1e-9||Math.abs(b[1]-a[1])>1e-9)return bearingBetween(a,b);
+ }
+ return null;
+}
 function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
  if(gpsHeading!==null)lastCourse=gpsHeading;
  else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
  if(!courseFix||dist(courseFix,p)>=8)courseFix=p.slice();
- const h=lastCourse;const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
+ // La flecha apunta EN EL SENTIDO DE LA RUTA mientras la sigues, no al
+ // rumbo del GPS. Lo pidio el autor: «solo quiero, cuando este navegando,
+ // que la flecha que nos indica la direccion vaya en el sentido de la
+ // ruta». El rumbo del GPS solo es fiable andando y con buena senal:
+ // parado o despacio se queda viejo y la flecha puede apuntar incluso al
+ // reves de por donde va el camino. Si estas sobre la ruta, el camino si
+ // sabe hacia donde sigue. Lejos de ella o sin ruta, el rumbo de siempre.
+ let h=lastCourse;
+ if(mode!=='create'&&routePoints.length>1){const r=rumboDeLaRuta(p);if(r!==null)h=r}
+ const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
  if(recording&&!window.TrabakutikAndroid){
   const ts=Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),acc=pos.coords.accuracy;
   // El navegador puede suspender el GPS al bloquear la pantalla.
