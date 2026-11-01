@@ -79,12 +79,28 @@ public class MainActivity extends Activity {
   root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
   setContentView(root);
   // Abrir primero Trabakutik.com. El navegador GPS queda cargado en la otra vista.
-  showScreen(false);
-  web.loadUrl("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
-  webRoutes.loadUrl("https://trabakutik.com/");
+  // Pero si Android ha RECREADO la Activity hay que volver a donde estaba el
+  // visitante, no empezar de cero. El giro de pantalla ya no la recrea
+  // (configChanges en el manifiesto), pero Android puede recrearla por otros
+  // motivos y el resultado era el mismo: nuevo.html sin la ruta y de vuelta a
+  // trabakutik.com, con la navegacion perdida de vista.
+  String urlGps = b == null ? null : b.getString("url_gps");
+  String urlWeb = b == null ? null : b.getString("url_web");
+  boolean verGps = b != null && b.getBoolean("ver_gps", false);
+  showScreen(verGps);
+  web.loadUrl(urlGps != null && urlGps.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html")
+    ? urlGps : "https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
+  webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
+    ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
   else beginPermissionSetup();
+ }
+ @Override protected void onSaveInstanceState(Bundle out){
+  super.onSaveInstanceState(out);
+  if (web != null && web.getUrl() != null) out.putString("url_gps", web.getUrl());
+  if (webRoutes != null && webRoutes.getUrl() != null) out.putString("url_web", webRoutes.getUrl());
+  out.putBoolean("ver_gps", showingGps);
  }
  void handleExternalRoute(Intent incoming){
   if(incoming==null||incoming.getData()==null)return;
