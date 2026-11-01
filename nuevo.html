@@ -1383,7 +1383,33 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
 $('recordStart').onclick=()=>{if(watch===null)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
 $('recordStop').onclick=()=>{if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice(window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')};
 $('saveRecording').onclick=()=>{if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}else{if(recorded.length<2)return;download(recorded,'trabakutik-grabacion')}notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready')};
-$('discardRecording').onclick=()=>{if(!confirm('¿Descartar esta grabación? Se borrará el recorrido sin guardarlo.'))return;if(window.TrabakutikAndroid)window.TrabakutikAndroid.discardRecording();recording=false;recorded=[];if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');notice('Grabación descartada')};
+// Al descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
+// asi que el telefono seguia pidiendo posicion con la salida terminada y
+// la aplicacion se comportaba como si siguieras navegando. Se van la
+// flecha azul, las indicaciones de giro y el aviso de fuera de ruta, y se
+// para tambien el servicio de Android. La ruta elegida se queda dibujada
+// en el mapa, que para eso la elegiste; con el boton de centrar vuelve a
+// encenderse el GPS cuando quieras.
+function apagaGps(){
+ if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
+ try{if(window.TrabakutikAndroid?.stopNavigation)window.TrabakutikAndroid.stopNavigation()}
+ catch(e){console.warn('No se pudo parar la navegación nativa',e)}
+ if(junctionActive>=0)resetJunctionView();
+ resetOffRoute();
+ if(me){map.removeLayer(me);me=null}
+ position=null;lastCourse=null;courseFix=null;ultimoFix=0;refParado=null;refParadoT=0;
+ followGps=true;manualMapUntil=0;
+ $('distance').textContent='GPS apagado';
+}
+$('discardRecording').onclick=()=>{
+ if(!confirm('¿Descartar esta grabación? Se borrará el recorrido sin guardarlo y se apagará el GPS.'))return;
+ if(window.TrabakutikAndroid)window.TrabakutikAndroid.discardRecording();
+ recording=false;recorded=[];
+ if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
+ recordingControls('ready');
+ apagaGps();
+ notice('Grabación descartada · GPS apagado');
+};
 window.trabakutikNativeGpxSaved=()=>{
  if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
  if(!recording){
