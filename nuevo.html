@@ -284,7 +284,7 @@ function warnGps(err){
 }
 
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
-let lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
+let ultimoFix=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
 const nearbyMaxLength=15000;
@@ -1164,14 +1164,29 @@ function shortJunctionBeep(){
  g.gain.exponentialRampToValueAtTime(.0001,t+.22);
  o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.23);
 }
+// Parado no hay giro que anunciar. «Gira a la derecha · En 50 m» solo
+// significa algo si uno avanza, y al autor se le quedo esa ficha en la
+// pantalla con la salida terminada: la ruta seguia abierta y el estaba a
+// 22 m del track —menos de los 25 que pide la guia—, asi que para la app
+// seguia navegando. Se guarda una referencia y solo cuenta como avanzar
+// salir de 15 m de ella, para que el baile del GPS quieto no cuele; 15 m
+// en un minuto son 0,9 km/h, por debajo de cualquiera que ande de verdad,
+// asi que esto no apaga la guia a medio camino.
+const PARADO_MS=60000,PARADO_M=15;
+let refParado=null,refParadoT=0;
+function sigueMoviendose(p,ahora){
+ if(!refParado||dist(p,refParado)>PARADO_M){refParado=p;refParadoT=ahora;return true}
+ return ahora-refParadoT<PARADO_MS;
+}
 function junctionGuidance(p,accuracy){
+ const moviendose=sigueMoviendose(p,Date.now());
  // La guia vale siempre que haya una ruta activa, no solo en el modo
  // «Navegar». El autor: «pero puedo grabar lo que navego, ¿por que no
  // marca giros?». El servicio nativo ya navega y graba a la vez
  // —navigating y recording son independientes en TrackingService— y
  // seguia pitando los giros; la que se callaba era la pantalla. Solo se
  // apaga en «Crear», donde estas dibujando encima del mapa.
- if(mode==='create'||routePoints.length<2||!junctions.length||accuracy>22){
+ if(mode==='create'||!moviendose||routePoints.length<2||!junctions.length||accuracy>22){
   if(junctionActive>=0)resetJunctionView();return;
  }
  const progress=progressOnRoute(p);
@@ -1240,7 +1255,7 @@ function rumboDeLaRuta(p){
  }
  return null;
 }
-function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
+function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
  if(gpsHeading!==null)lastCourse=gpsHeading;
  else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
  if(!courseFix||dist(courseFix,p)>=8)courseFix=p.slice();
@@ -1340,6 +1355,21 @@ window.trabakutikSyncNative=()=>{
 };
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){followGps=true;manualMapUntil=0;setTimeout(()=>window.trabakutikSyncNative(),250)}});
 setInterval(()=>{if(!document.hidden&&window.TrabakutikAndroid)window.trabakutikSyncNative()},4500);
+// La guia caduca si deja de llegar posicion. Antes se quedaba clavada: la
+// ficha del giro y el «A X del track» solo se recalculan dentro de onFix,
+// asi que al pararse el GPS —pantalla apagada, app al fondo, bajo cubierta—
+// se quedaba lo ultimo que dijo. El autor se encontro «Gira a la derecha ·
+// En 50 m» con el movil parado y la salida terminada. Una indicacion vieja
+// es peor que ninguna.
+// Mientras el GPS esta activo llega una posicion cada uno o dos segundos,
+// asi que 25 s sin ninguna quiere decir que ha dejado de llegar; se mira
+// cada 5 para no apurar.
+const GUIA_CADUCA_MS=25000;
+setInterval(()=>{
+ if(!ultimoFix||Date.now()-ultimoFix<GUIA_CADUCA_MS)return;
+ if(junctionActive>=0)resetJunctionView();
+ if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+},5000);
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
 function startGPS(forRecording=false){if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){try{if(routePoints.length>1&&window.TrabakutikAndroid.startNavigationWithRoute)window.TrabakutikAndroid.startNavigationWithRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));else if(routePoints.length>1){syncNativeRoute();window.TrabakutikAndroid.startNavigation()}else notice('Elige una ruta antes de navegar')}catch(e){console.warn(e)}}if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{warnGps(e);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
 $('navGo').onclick=()=>startGPS();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
