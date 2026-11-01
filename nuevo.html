@@ -284,7 +284,7 @@ function warnGps(err){
 }
 
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
-let ultimoFix=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
+let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
 const nearbyMaxLength=15000;
@@ -1342,10 +1342,11 @@ window.trabakutikSyncNative=()=>{
   }
   // La grabacion Android puede continuar aunque el servicio no marque
   // navegacion activa. El mapa debe seguir el ultimo punto recibido.
-  const liveFix=(data.active||data.recording)&&Number.isFinite(data.lat)&&Number.isFinite(data.lon)&&Number.isFinite(data.accuracy)&&data.accuracy<=100&&Number.isFinite(data.time)&&Date.now()-data.time<30000;
+  // Con getPosition manda el sondeo de abajo; esto queda para un APK viejo.
+  const liveFix=!window.TrabakutikAndroid.getPosition&&(data.active||data.recording)&&Number.isFinite(data.lat)&&Number.isFinite(data.lon)&&Number.isFinite(data.accuracy)&&data.accuracy<=100&&Number.isFinite(data.time)&&Date.now()-data.time<30000;
   if(liveFix){
    onFix({coords:{latitude:data.lat,longitude:data.lon,accuracy:data.accuracy,heading:null,speed:0}});
-  }else if(data.recording&&Array.isArray(data.points)&&data.points.length){
+  }else if(!window.TrabakutikAndroid.getPosition&&data.recording&&Array.isArray(data.points)&&data.points.length){
    // Si el servicio entrega el trazado antes que la posicion instantanea,
    // usar el ultimo punto nuevo para no dejar que la linea salga de pantalla.
    const last=[...data.points].reverse().find(p=>Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
@@ -1364,6 +1365,36 @@ setInterval(()=>{if(!document.hidden&&window.TrabakutikAndroid)window.trabakutik
 // Mientras el GPS esta activo llega una posicion cada uno o dos segundos,
 // asi que 25 s sin ninguna quiere decir que ha dejado de llegar; se mira
 // cada 5 para no apurar.
+// Una sola fuente de posicion. Dentro de la aplicacion habia dos GPS a la
+// vez: el watchPosition de la pagina y el servicio de Android, y los dos
+// metian posiciones en onFix. Aparte de gastar el doble, se pisaban: las del
+// servicio llegaban sin rumbo y con velocidad 0, asi que cada vez que colaba
+// una entre dos del navegador la flecha perdia el norte. De ahi venia buena
+// parte de los lios que hemos ido persiguiendo.
+// Ahora, en cuanto el servicio arranca, la pagina apaga su reloj y bebe solo
+// de el; cuando el servicio para, vuelve el del navegador. Nunca los dos.
+function miraPosicionNativa(){
+ if(!window.TrabakutikAndroid?.getPosition||document.hidden)return;
+ if(Date.now()<apagadoHasta)return;
+ let d;
+ try{d=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}')}catch(e){return}
+ if(!d.active){
+  if(fuenteNativa){fuenteNativa=false;ultimoTiempoNativo=0;if(mode!=='create')startGPS()}
+  return;
+ }
+ if(!fuenteNativa){
+  fuenteNativa=true;
+  if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
+ }
+ if(!(d.time>ultimoTiempoNativo))return;
+ if(!Number.isFinite(d.lat)||!Number.isFinite(d.lon)||!Number.isFinite(d.accuracy))return;
+ if(d.accuracy>100||Date.now()-d.time>30000)return;
+ ultimoTiempoNativo=d.time;
+ onFix({timestamp:d.time,coords:{latitude:d.lat,longitude:d.lon,accuracy:d.accuracy,
+  heading:Number.isFinite(d.bearing)&&d.bearing>=0?d.bearing:null,
+  speed:Number.isFinite(d.speed)&&d.speed>=0?d.speed:null}});
+}
+setInterval(miraPosicionNativa,1000);
 const GUIA_CADUCA_MS=25000;
 setInterval(()=>{
  if(!ultimoFix||Date.now()-ultimoFix<GUIA_CADUCA_MS)return;
@@ -1391,7 +1422,8 @@ function startGPS(forRecording=false,conServicio=false){
    }
   }catch(e){console.warn(e)}
  }
-if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{warnGps(e);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
+ if(fuenteNativa)return;
+ if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{warnGps(e);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
 $('navGo').onclick=()=>startGPS();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 function recordingControls(state){document.body.classList.toggle('is-recording',state==='recording');
  $('recordStart').classList.toggle('hidden',state!=='ready');
@@ -1400,7 +1432,7 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
-$('recordStart').onclick=()=>{if(watch===null)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
+$('recordStart').onclick=()=>{apagadoHasta=0;if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
 $('recordStop').onclick=()=>{if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice(window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')};
 $('saveRecording').onclick=()=>{if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}else{if(recorded.length<2)return;download(recorded,'trabakutik-grabacion')}notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready')};
 // Al descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
@@ -1418,6 +1450,9 @@ function apagaGps(){
  resetOffRoute();
  if(me){map.removeLayer(me);me=null}
  position=null;lastCourse=null;courseFix=null;ultimoFix=0;refParado=null;refParadoT=0;
+ // El servicio tarda un momento en pararse de verdad. Sin esta tregua el
+ // sondeo lo vería aún activo y volvería a encender la flecha recién apagada.
+ fuenteNativa=false;ultimoTiempoNativo=0;apagadoHasta=Date.now()+8000;
  followGps=true;manualMapUntil=0;
  $('distance').textContent='GPS apagado';
 }

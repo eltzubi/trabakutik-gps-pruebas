@@ -233,6 +233,26 @@ public class MainActivity extends Activity {
  }
  public class Bridge {
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
+  /** Solo la posicion, sin el trazado. El snapshot entero devuelve los puntos
+   *  cada vez que cambia el archivo, que grabando es con cada punto nuevo, y
+   *  pueden ser miles. Para mover la flecha hay que mirar cada segundo, y cada
+   *  segundo no se puede estar leyendo todo eso. */
+  @JavascriptInterface public String getPosition(){
+   try{
+    android.content.SharedPreferences pref=getSharedPreferences("tracking_live",MODE_PRIVATE);
+    org.json.JSONObject o=new org.json.JSONObject();
+    o.put("active",pref.getBoolean("active",false));
+    o.put("recording",pref.getBoolean("recording",false));
+    long lb=pref.getLong("latBits",0),ob=pref.getLong("lonBits",0);
+    o.put("lat",lb!=0?Double.longBitsToDouble(lb):(double)pref.getFloat("lat",0f));
+    o.put("lon",ob!=0?Double.longBitsToDouble(ob):(double)pref.getFloat("lon",0f));
+    o.put("accuracy",pref.getFloat("accuracy",9999f));
+    o.put("time",pref.getLong("time",0));
+    o.put("bearing",pref.getFloat("bearing",-1f));
+    o.put("speed",pref.getFloat("speed",-1f));
+    return o.toString();
+   }catch(Exception e){return "";}
+  }
   @JavascriptInterface public String getTrackingSnapshot(){return trackingSnapshot("");}
   @JavascriptInterface public String getTrackingSnapshotIfChanged(String knownVersion){return trackingSnapshot(knownVersion);}
   private String trackingSnapshot(String knownVersion){
