@@ -1062,7 +1062,11 @@ $('navCreated').onclick=()=>{
 };
 // El aviso se arma cuando el usuario ya ha llegado al recorrido.
 // Se basa en tiempo y precisión, no en un número de lecturas consecutivas.
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false}
+// sentidoRuta: +1 si vas como la ruta esta grabada, -1 si la haces al reves.
+// Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
+// selectRoute, loadSaved y clearActiveRoute.
+let sentidoRuta=1;
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1}
 function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
@@ -1238,7 +1242,24 @@ function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=pos
  // reves de por donde va el camino. Si estas sobre la ruta, el camino si
  // sabe hacia donde sigue. Lejos de ella o sin ruta, el rumbo de siempre.
  let h=lastCourse;
- if(mode!=='create'&&routePoints.length>1){const r=rumboDeLaRuta(p);if(r!==null)h=r}
+ if(mode!=='create'&&routePoints.length>1){
+  const r=rumboDeLaRuta(p);
+  if(r!==null){
+   // La forma del camino la da la ruta; EL SENTIDO lo das tu. Si vas al
+   // reves de como esta grabada —cosa normal: la misma ruta se anda en
+   // los dos sentidos— la flecha se da la vuelta. Lo vio el autor: «la
+   // flecha va al reves», con la grabacion roja saliendo justo por el
+   // lado contrario al que apuntaba.
+   // Solo se decide cuando hay rumbo de verdad (lastCourse se refresca
+   // andando 8 m), y entre medias se mantiene el ultimo decidido, para
+   // que parado no se ponga a dar vueltas.
+   if(lastCourse!==null){
+    const dif=Math.abs(((r-lastCourse+540)%360)-180);
+    sentidoRuta=dif>90?-1:1;
+   }
+   h=(r+(sentidoRuta<0?180:0))%360;
+  }
+ }
  const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
  if(recording&&!window.TrabakutikAndroid){
   const ts=Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),acc=pos.coords.accuracy;
