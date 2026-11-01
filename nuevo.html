@@ -534,7 +534,7 @@ function changeMode(m){
  if(creating){$('map').appendChild(actions);$('map').appendChild(modes)}else{document.querySelector('footer.bottom').prepend(modes);modes.after(actions)}
  (creating?$('map'):document.querySelector('#app')).appendChild(profile);
  document.body.classList.toggle('creating-route',creating);
- if(m!=='nav'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':routePoints.length>1?'Siguiendo la ruta seleccionada':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
+ if(m==='create'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate'],['record','modeRecord']])$(b).setAttribute('aria-pressed',String(m===key));for(const [key,id] of [['nav','navActions'],['create','createActions'],['record','recordActions']])$(id).classList.toggle('hidden',m!==key);$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':m==='record'?'Inicia una grabación, párala y elige Guardar o Descartar':routePoints.length>1?'Siguiendo la ruta seleccionada':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');$('modeRecord').onclick=()=>changeMode('record');
 const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null,createdSavedItem=null;
@@ -1151,7 +1151,13 @@ function shortJunctionBeep(){
  o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.23);
 }
 function junctionGuidance(p,accuracy){
- if(mode!=='nav'||routePoints.length<2||!junctions.length||accuracy>22){
+ // La guia vale siempre que haya una ruta activa, no solo en el modo
+ // «Navegar». El autor: «pero puedo grabar lo que navego, ¿por que no
+ // marca giros?». El servicio nativo ya navega y graba a la vez
+ // —navigating y recording son independientes en TrackingService— y
+ // seguia pitando los giros; la que se callaba era la pantalla. Solo se
+ // apaga en «Crear», donde estas dibujando encima del mapa.
+ if(mode==='create'||routePoints.length<2||!junctions.length||accuracy>22){
   if(junctionActive>=0)resetJunctionView();return;
  }
  const progress=progressOnRoute(p);
@@ -1222,7 +1228,7 @@ function onFix(pos){const p=[pos.coords.latitude,pos.coords.longitude],prior=pos
    lastBrowserRecordTime=ts;
   }
  }
- if(mode==='nav'&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')}else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
+ if(mode!=='create'&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')}else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
 window.trabakutikSyncNative=()=>{
  if(!window.TrabakutikAndroid?.getTrackingSnapshot)return;
