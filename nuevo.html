@@ -259,8 +259,18 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 <div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
 </div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
+// Los titulos de verdad de cada ruta. Sin esto la lista enseñaba el nombre
+// del archivo —«zengotitagarai», «askakosantakataline»— y no se sabia de que
+// ruta se trataba. Salen de data/rutas.json, que escribe el build de la web
+// y pesa 15 kB. Va aparte de trailhead.json a proposito: ese ya son 500 kB y
+// lo baja todo el que abre el mapa.
+// toName es el unico sitio que hay que tocar: de el beben la lista, el
+// titulo de arriba y el buscador, que asi busca por palabras de verdad
+// («Garai», «dolmenes») y no por trozos del nombre del archivo.
+let nombresDeRuta={};
+
 if(window.TrabakutikAndroid)document.documentElement.classList.add('android-app');
-const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>t.href.replace(/\.html$/,'').replace(/[-_]/g,' '),fmt=m=>m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';
+const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.href]||t.href.replace(/\.html$/,'').replace(/[-_]/g,' '),fmt=m=>m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';
 const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([43.19,-2.55],12);
 map.on('dragstart',()=>{manualMapUntil=Date.now()+8000});
 const baseMaps={
@@ -1473,6 +1483,13 @@ window.trabakutikNativeGpxSaved=()=>{
  }
 };
 window.addEventListener('beforeunload',e=>{if(recording){e.preventDefault();e.returnValue=''}});
+fetch('data/rutas.json').then(r=>r.json()).then(d=>{
+ const es=d.es||{};
+ for(const k in es) if(es[k]&&es[k].h&&es[k].n) nombresDeRuta[es[k].h]=es[k].n;
+ // Puede llegar despues de que se haya pintado algo: se repinta.
+ if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href)}
+ if(!$('routeDialog').classList.contains('hidden'))showRoutes();
+}).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
 fetch('data/trailhead.json').then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
 })();
 </script></body></html>
