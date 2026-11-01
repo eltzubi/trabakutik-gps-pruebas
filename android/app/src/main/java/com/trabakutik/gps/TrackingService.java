@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -97,11 +97,37 @@ public class TrackingService extends Service implements LocationListener {
    startForeground(12,notification());
    PowerManager pm=(PowerManager)getSystemService(POWER_SERVICE);
    gpsWakeLock=pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"TrabakutikGPS:Location");
-   gpsWakeLock.acquire();
+   // Con tope. Un acquire() sin plazo que no llegue a soltarse —porque el
+   // proceso muera antes de finish()— deja el movil sin dormir hasta que lo
+   // reinicies. Doce horas pasan cualquier salida y siguen siendo un techo.
+   gpsWakeLock.acquire(12L*60*60*1000L);
    if(withRecording)beginRecording();
    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1500,2,this,Looper.getMainLooper());
-   try{manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,5,this,Looper.getMainLooper());}catch(Exception ignored){}
+   pideRed();
   }catch(Exception ex){finish();}
+ }
+ /** La red —antenas y wifi— solo esta para no quedarse a ciegas mientras el
+  *  GPS engancha los satelites, que bajo arboles o metido en un valle tarda
+  *  lo suyo. En cuanto entra el primer punto del GPS deja de hacer falta: en
+  *  el monte no afina nada y mantiene la busqueda de wifi y de cobertura
+  *  encendida toda la salida. Lleva oyente propio porque removeUpdates quita
+  *  de golpe todo lo de un oyente, y el GPS tiene que seguir.
+  */
+ void pideRed(){
+  if(red!=null)return;
+  red=new LocationListener(){
+   @Override public void onLocationChanged(Location l){TrackingService.this.onLocationChanged(l);}
+   @Override public void onStatusChanged(String p,int s,Bundle extras){}
+   @Override public void onProviderEnabled(String p){}
+   @Override public void onProviderDisabled(String p){}
+  };
+  try{manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,5,red,Looper.getMainLooper());}
+  catch(Exception ignored){}
+ }
+ void sueltaRed(){
+  if(red==null)return;
+  try{manager.removeUpdates(red);}catch(Exception ignored){}
+  red=null;
  }
  void beginRecording() throws IOException {
   File dir=new File(getFilesDir(),"grabaciones");dir.mkdirs();
@@ -217,6 +243,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  @Override public void onLocationChanged(Location l){
   if(!active)return;
+  if(red!=null&&LocationManager.GPS_PROVIDER.equals(l.getProvider()))sueltaRed();
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putBoolean("active",active).putBoolean("recording",recording).apply();
   if(!recording||!l.hasAccuracy()||l.getAccuracy()>35)return;
@@ -239,6 +266,6 @@ public class TrackingService extends Service implements LocationListener {
   recording=false;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
- void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }
