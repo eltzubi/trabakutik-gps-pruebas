@@ -1107,8 +1107,8 @@ $('navCreated').onclick=()=>{
 // sentidoRuta: +1 si vas como la ruta esta grabada, -1 si la haces al reves.
 // Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
 // selectRoute, loadSaved y clearActiveRoute.
-let sentidoRuta=1;
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1}
+let sentidoRuta=1,refAvance=null,refAvanceT=0;
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0}
 function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
@@ -1276,6 +1276,15 @@ function progressOnRoute(p){
 // salir de 15 m de ella, para que el baile del GPS quieto no cuele; 15 m
 // en un minuto son 0,9 km/h, por debajo de cualquiera que ande de verdad,
 // asi que esto no apaga la guia a medio camino.
+// Y avanzar es avanzar POR LA RUTA, no moverse a secas. Saliendote del camino
+// sigues moviendote, pero «along» se queda clavado: el autor se salio junto a
+// un cruce y la ficha se quedo en «En el cruce · 0 m» para siempre. Doce
+// metros en veinte segundos son 2,2 km/h, por debajo de andar.
+const AVANCE_MS=20000,AVANCE_M=12;
+function avanzaPorLaRuta(along,ahora){
+ if(refAvance===null||along-refAvance>AVANCE_M){refAvance=along;refAvanceT=ahora;return true}
+ return ahora-refAvanceT<AVANCE_MS;
+}
 const PARADO_MS=60000,PARADO_M=15;
 let refParado=null,refParadoT=0;
 function sigueMoviendose(p,ahora){
@@ -1290,12 +1299,14 @@ function junctionGuidance(p,accuracy){
  // —navigating y recording son independientes en TrackingService— y
  // seguia pitando los giros; la que se callaba era la pantalla. Solo se
  // apaga en «Crear», donde estas dibujando encima del mapa.
- if(mode==='create'||!moviendose||routePoints.length<2||!junctions.length||accuracy>22){
+ if(mode==='create'||alerted||!moviendose||routePoints.length<2||!junctions.length||accuracy>22){
   if(junctionActive>=0)resetJunctionView();return;
  }
  const progress=progressOnRoute(p);
  const [d1,d2]=distanciasDeAviso();
- if(progress.distance>25){if(junctionActive>=0)resetJunctionView();return}
+ if(progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
+  if(junctionActive>=0)resetJunctionView();return;
+ }
  let best=null;
  for(let j=0;j<junctions.length;j++){
   const turn=junctions[j],ahead=turn.along-progress.along;
@@ -1462,7 +1473,20 @@ function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords
    lastBrowserRecordTime=ts;
   }
  }
- if(mode!=='create'&&routePoints.length>1){junctionGuidance(p,pos.coords.accuracy);const d=closestMeters(p,routePoints);$('distance').textContent='A '+fmt(d)+' del track';if(!window.TrabakutikAndroid)updateOffRoute(d,pos.coords.accuracy);if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')}else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
+ if(mode!=='create'&&routePoints.length>1){
+  // El fuera de ruta se calcula SIEMPRE, tambien dentro de la app. Estaba
+  // gateado con «if(!window.TrabakutikAndroid)», dejandoselo al servicio, y el
+  // servicio solo lo escribe en la notificacion: en la pantalla no salia nada.
+  // El autor se salio de la ruta a proposito y no se lo marco. El pitido si
+  // sigue gateado, dentro de updateOffRoute, por navegaNativo.
+  // Y va ANTES de junctionGuidance, que esta mira «alerted» para cerrar la
+  // ficha del cruce: asi no va un fix por detras.
+  const d=closestMeters(p,routePoints);
+  $('distance').textContent='A '+fmt(d)+' del track';
+  updateOffRoute(d,pos.coords.accuracy);
+  junctionGuidance(p,pos.coords.accuracy);
+  if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')
+ }else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
 window.trabakutikSyncNative=()=>{
  if(!window.TrabakutikAndroid?.getTrackingSnapshot)return;
