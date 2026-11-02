@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -62,7 +62,7 @@ public class TrackingService extends Service implements LocationListener {
   if(action==null){finish();return START_NOT_STICKY;}
   if("STOP".equals(action)){finish();return START_NOT_STICKY;}
   if("STOP_NAVIGATION".equals(action)){
-   navigating=false;routeReached=false;offRoute=false;farSince=0;
+   navigating=false;routeReached=false;offRoute=false;farSince=0;sentido=1;
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
    if(!recording){finish();return START_NOT_STICKY;}
    updateNotice();return START_NOT_STICKY;
@@ -73,6 +73,14 @@ public class TrackingService extends Service implements LocationListener {
    updateNotice();return START_NOT_STICKY;
   }
   if("TURNS".equals(action)){loadTurns();if(active)updateNotice();return START_NOT_STICKY;}
+  // +1 si vas como la ruta esta grabada, -1 si la haces al reves. Lo decide
+  // la pagina comparando tu rumbo con el del tramo; aqui solo se guarda.
+  if("SENTIDO".equals(action)){
+   int s=i.getIntExtra("sentido",1);
+   sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";
+   if(active)updateNotice();
+   return START_NOT_STICKY;
+  }
   if("ROUTE".equals(action)){
    loadRoute();
    if(route.size()<2)navigating=false;
@@ -194,13 +202,15 @@ public class TrackingService extends Service implements LocationListener {
   }
   if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
   double d1=avisoLargo(),d2=avisoCorto();
+  // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
+  // apuntaban a los cruces que ya habias pasado.
   double progress=0;String next="";
   int k=0;
   for(int i=1;i<route.size();i++){
    double[] a=route.get(i-1),b=route.get(i);
    progress+=Math.hypot((b[1]-a[1])*lonScale,(b[0]-a[0])*scale);
    while(k<turns.size()&&(int)turns.get(k)[0]==i){
-    double ahead=progress-along;
+    double ahead=(progress-along)*sentido;
     // El suelo va con la velocidad, como el techo. Con los -7 m fijos de
     // antes el pitido del propio cruce se perdia: este GPS da una posicion
     // cada 1,5 s, 17 m de salto a 40 km/h, y la ventana de 7 m no la pisaba
@@ -208,7 +218,9 @@ public class TrackingService extends Service implements LocationListener {
     // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
     if(ahead>=-(d2+8)&&ahead<=d1+8){
      int d=(int)turns.get(k)[1];
-     String instruction=d<0?"Izquierda":d>0?"Derecha":"Cambio de sentido";
+     // Al reves, lo que se grabo como derecha es izquierda.
+     int lado=d*sentido;
+     String instruction=lado<0?"Izquierda":lado>0?"Derecha":"Cambio de sentido";
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
      // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a
      // 50 m, 2 a 10 m y 3 en el propio cruce. El numero es el dato, que

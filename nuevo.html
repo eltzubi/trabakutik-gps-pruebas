@@ -1,19 +1,19 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#07131d"><title>Trabakutik · Navegador nuevo</title><link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
-:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#e6f4ff;background:#07131d}*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.4;cursor:default}#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(7px + env(safe-area-inset-top)) 12px 8px;background:#0a1b27;border-bottom:1px solid #284456;min-height:62px}.top strong{font-size:13px;font-weight:760;letter-spacing:.05em}.top small{font-size:10px;color:#91b4c4;display:block}.top .sub{font-size:11px;color:#a6eefe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}.top a{color:#9ed9e7;font-size:11px;text-decoration:none}#map{position:relative;flex:1;min-height:0;background:#172d33}.leaflet-container{background:#172d33}.leaflet-control-attribution{font-size:9px!important}.tools{position:absolute;z-index:700;right:10px;top:12px;display:grid;gap:7px}.tools button{width:42px;height:42px;border:1px solid #5a889b7a;border-radius:13px;background:#0d2339ed;color:#d4f7ff;font-size:21px;box-shadow:0 2px 14px #0006}.info{position:absolute;z-index:700;left:10px;top:12px;max-width:calc(100% - 80px);background:#0a1f2edb;border:1px solid #31576a;border-radius:13px;padding:9px 12px;backdrop-filter:blur(12px);pointer-events:none}.info b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info span{display:block;font-size:10px;color:#a5bece;margin-top:4px}.bottom{background:#091925;border-top:1px solid #315265;padding:8px 9px calc(9px + env(safe-area-inset-bottom));flex:none}.modes{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:8px}.modes button{background:#122e3d;border:1px solid #2d5261;color:#acccd9;border-radius:12px;padding:9px 4px;font-size:12px;font-weight:650}.modes button[aria-pressed=true]{color:#051824;background:#66e5ff;border-color:#66e5ff}.actions{display:flex;gap:6px;align-items:center;justify-content:center;min-height:44px}.actions button{min-height:43px;flex:1;padding:9px 8px;background:#173346;color:#f3fcff;border:1px solid #3f6375;border-radius:12px;font-size:12px;font-weight:700}.actions .go{background:#92fca8;color:#06271b;border-color:#92fca8}.actions .red{background:#e95164;color:#fff;border-color:#e95164}.actions .blue{background:#338be9;color:#fff;border-color:#338be9}.actions .amber{background:#ffbd69;color:#2d1804;border-color:#ffbd69}.actions .light{background:#123046}.hidden{display:none!important}.status{font-size:10px;color:#a7bfcb;margin-top:6px;text-align:center;min-height:13px}.legend{font-size:10px;color:#9cb8c7;display:flex;justify-content:center;gap:12px;margin-top:6px}.dot{width:15px;height:3px;display:inline-block;vertical-align:middle;margin-right:3px}.popup{position:absolute;z-index:900;inset:0;background:#07131dba;display:grid;place-items:end center}.sheet{width:100%;max-height:77%;overflow:auto;background:#102938;border:1px solid #365467;border-radius:19px 19px 0 0;padding:16px 14px 24px}.sheet h2{font-size:16px;margin:0 0 9px}.sheet input{width:100%;border-radius:10px;background:#173747;border:1px solid #638092;color:white;padding:12px;margin-bottom:9px}.sheet button{background:#163a4c;color:white;border:1px solid #4d7385;border-radius:10px;padding:10px}.routeitem{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;text-align:left;margin:5px 0;font-size:12px}.routeitem span{font-size:10px;color:#a4c3d2}
+:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#e6f4ff;background:#07131d}*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.4;cursor:default}#app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(7px + env(safe-area-inset-top)) 12px 8px;background:#0a1b27;border-bottom:1px solid #284456;min-height:62px}.top strong{font-size:13px;font-weight:760;letter-spacing:.05em}.top small{font-size:10px;color:#91b4c4;display:block}.top .sub{font-size:11px;color:#a6eefe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}.top a{color:#9ed9e7;font-size:11px;text-decoration:none}#map{position:relative;flex:1;min-height:0;background:#172d33}.leaflet-container{background:#172d33}.leaflet-control-attribution{font-size:9px!important}.tools{position:absolute;z-index:700;right:10px;top:12px;display:grid;gap:7px}.tools button{width:42px;height:42px;border:1px solid #5a889b7a;border-radius:13px;background:#0d2339ed;color:#d4f7ff;font-size:21px;box-shadow:0 2px 14px #0006}.info{position:absolute;z-index:700;left:10px;top:12px;max-width:calc(100% - 80px);background:#0a1f2edb;border:1px solid #31576a;border-radius:13px;padding:9px 12px;backdrop-filter:blur(12px);pointer-events:none}.info b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info span{display:block;font-size:10px;color:#a5bece;margin-top:4px}.bottom{background:#091925;border-top:1px solid #315265;padding:8px 9px calc(9px + env(safe-area-inset-bottom));flex:none}.modes{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:8px}.modes button{background:#122e3d;border:1px solid #2d5261;color:#acccd9;border-radius:12px;padding:9px 4px;font-size:12px;font-weight:650}.modes button[aria-pressed=true]{color:#051824;background:#66e5ff;border-color:#66e5ff}.actions{display:flex;gap:6px;align-items:center;justify-content:center;min-height:44px}.actions button{min-height:43px;flex:1;padding:9px 8px;background:#173346;color:#f3fcff;border:1px solid #3f6375;border-radius:12px;font-size:12px;font-weight:700}.actions .go{background:#92fca8;color:#06271b;border-color:#92fca8}.actions .red{background:#e95164;color:#fff;border-color:#e95164}.actions .blue{background:#338be9;color:#fff;border-color:#338be9}.actions .amber{background:#ffbd69;color:#2d1804;border-color:#ffbd69}.actions .light{background:#123046}.hidden{display:none!important}.status{font-size:10px;color:#a7bfcb;margin-top:6px;text-align:center;min-height:13px}.legend{font-size:10px;color:#9cb8c7;display:flex;justify-content:center;gap:12px;margin-top:6px}.dot{width:15px;height:3px;display:inline-block;vertical-align:middle;margin-right:3px}.popup{position:absolute;z-index:900;inset:0;background:#07131dba;display:grid;place-items:end center}.sheet{width:100%;max-height:77%;overflow:auto;background:#102938;border:1px solid #365467;border-radius:19px 19px 0 0;padding:16px 14px 24px}.sheet h2{font-size:16px;margin:0 0 9px}.sheet input{width:100%;border-radius:10px;background:#173747;border:1px solid #638092;color:white;padding:12px;margin-bottom:9px}.sheet button{background:#163a4c;color:white;border:1px solid #4d7385;border-radius:10px;padding:10px}.routeitem{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;text-align:left;margin:5px 0;font-size:12px}.routeitem span{font-size:10px;color:#a4c3d2}
 .routeitem .ri-txt{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12px;color:inherit}
 .routeitem .ri-name{font-size:12px;color:inherit}
 .routeitem .ri-km{font-size:10px;color:#8fb3c4;font-variant-numeric:tabular-nums}.sheet .close{float:right}.on-map{position:absolute;bottom:10px;left:10px;z-index:700;border-radius:99px;padding:7px 11px;font-size:11px;background:#0b293bdd;color:#a5e3f3;border:1px solid #3d7485;pointer-events:none}@media(min-width:800px){#app{max-width:900px;margin:auto;border-left:1px solid #1e4453;border-right:1px solid #1e4453}.top{padding-top:12px}}
 
 .android-app .top{display:none}
-.android-app #app{height:100dvh}
+.android-app #app{height:100vh;height:100dvh}
 .android-app .bottom{padding-bottom:max(9px,env(safe-area-inset-bottom))}
 .is-recording .info{border-color:#fc4e64}
 .is-recording .info b::before{content:'● ';color:#ff405c}
 /* Vista Android compacta: el mapa conserva prioridad sobre el panel. */
 html{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
-#app{height:100vh;height:100dvh}
+#app{height:100vh;height:100vh;height:100dvh}
 button{min-width:0}
 .top{gap:8px}
 .top>div{min-width:0;flex:1}
@@ -23,7 +23,7 @@ button{min-width:0}
 .is-recording #recordStop{background:#c52640;border-color:#ff5a6e;color:#fff}
 .is-recording .status{color:#ffb2bd;font-weight:700}
 .recorded-red{filter:drop-shadow(0 0 2px #500e20)}
-.sheet{max-height:min(78dvh,640px);overscroll-behavior:contain}
+.sheet{max-height:78vh;max-height:min(78dvh,640px);overscroll-behavior:contain}
 .sheet button{min-height:42px}
 @media(max-width:390px){
  .top{padding-inline:9px}
@@ -78,6 +78,7 @@ button{min-width:0}
 .map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
 .turn-hint{position:absolute;z-index:1100;left:10px;right:10px;bottom:12px;padding:13px 15px;border-radius:20px;background:linear-gradient(160deg,#0b2b3bf2,#071d29f7);border:1px solid #3d8ea4;box-shadow:0 0 0 1px #4de1ff22,0 10px 34px #000b,inset 0 1px 0 #ffffff14;color:#f0fcff;pointer-events:none}
 #map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
+.reverse-warn{display:block;margin-top:5px;padding:3px 7px;border-radius:7px;background:#4a2f07e6;border:1px solid #c98a2b;color:#ffd99a;font-size:10px;font-weight:700;letter-spacing:.03em;line-height:1.25}
 .turn-fila{display:flex;align-items:center;gap:13px}
 .turn-arrow{flex:0 0 auto;width:78px;height:78px;border-radius:18px;background:radial-gradient(70% 70% at 50% 35%,#10536399,#07222ecc);border:1px solid #4ba7bc;display:grid;place-items:center;box-shadow:inset 0 0 22px #4de1ff26,0 0 18px #4de1ff1f}
 .turn-copy{display:flex;flex-direction:column;min-width:0;flex:1}
@@ -257,7 +258,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -762,16 +763,16 @@ function updateElevation(){
  const coords=known.map(p=>[x(p.d),y(p.h)]);
  const line=coords.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' ');
  $('elevationPath').setAttribute('d',line);
- $('elevationFill').setAttribute('d',line+' L'+coords.at(-1)[0].toFixed(2)+' '+bottom+' L'+coords[0][0].toFixed(2)+' '+bottom+' Z');
+ $('elevationFill').setAttribute('d',line+' L'+coords[coords.length-1][0].toFixed(2)+' '+bottom+' L'+coords[0][0].toFixed(2)+' '+bottom+' Z');
  $('elevationEnd').style.display='';
- $('elevationEnd').setAttribute('cx',coords.at(-1)[0]);$('elevationEnd').setAttribute('cy',coords.at(-1)[1]);
+ $('elevationEnd').setAttribute('cx',coords[coords.length-1][0]);$('elevationEnd').setAttribute('cy',coords[coords.length-1][1]);
  $('profileDistance').textContent=(travelled/1000).toFixed(2).replace('.',',')+' km';
  $('profileGain').textContent='↑ '+Math.round(up)+' m';
  $('profileLoss').textContent='↓ '+Math.round(down)+' m';
  $('profileLow').textContent='Mín. '+Math.round(hMin)+' m';
  $('profileHigh').textContent='Máx. '+Math.round(hMax)+' m';
  // Pendiente media del último tramo marcado, con su distancia real.
- const part=tramosGps.at(-1)||[];
+ const part=tramosGps[tramosGps.length-1]||[];
  let partDist=0,partFirst=null,partLast=null;
  for(let i=0;i<part.length;i++){
   const p=redGps.nodos[part[i]];
@@ -800,7 +801,7 @@ function updateDraw(){
  // Con el trazado cerrado el ultimo punto es el mismo nodo que el primero:
  // se dibuja una sola bola, o quedarian dos superpuestas y no se sabria cual
  // estas arrastrando.
- const cerradoGps=anclasGps.length>2&&anclasGps[0]===anclasGps.at(-1);
+ const cerradoGps=anclasGps.length>2&&anclasGps[0]===anclasGps[anclasGps.length-1];
  anclasGps.forEach((id,i)=>{
   if(cerradoGps&&i===anclasGps.length-1)return;
   const p=redGps.nodos[id];
@@ -826,7 +827,7 @@ map.on('click',e=>{
  const node=nodoCerca(redGps,e.latlng.lat,e.latlng.lng);
  if(node<0){notice('No hay ningún track cerca de ese punto. Toca sobre un camino.');return}
  if(!anclasGps.length){anclasGps.push(node);tramosGps.push([node]);updateDraw();notice('Punto inicial marcado. Toca otro punto del camino.');return}
- const prev=anclasGps.at(-1),segment=camino(redGps,prev,node);
+ const prev=anclasGps[anclasGps.length-1],segment=camino(redGps,prev,node);
  if(!segment){notice('No hay conexión por los caminos de Trabakutik.');return}
  if(segment.length===1)return;
  anclasGps.push(node);tramosGps.push(segment);updateDraw();
@@ -842,7 +843,7 @@ map.on('click',e=>{
 // sigue cumpliendo que tramosGps[k] va de anclasGps[k-1] a anclasGps[k].
 function cierraCirculoGps(){
  if(anclasGps.length<2){notice('Marca al menos dos puntos antes.');return}
- const ini=anclasGps[0],fin=anclasGps.at(-1);
+ const ini=anclasGps[0],fin=anclasGps[anclasGps.length-1];
  if(ini===fin){notice('El trazado ya vuelve al punto de partida.');return}
  const tr=camino(redGps,fin,ini);
  if(!tr){notice('No hay camino de vuelta al principio por los caminos de Trabakutik.');return}
@@ -1108,7 +1109,11 @@ $('navCreated').onclick=()=>{
 // Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
 // selectRoute, loadSaved y clearActiveRoute.
 let sentidoRuta=1,refAvance=null,refAvanceT=0;
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0}
+function marcaAlReves(si){
+ const c=$('reverseWarn');
+ if(c)c.classList.toggle('hidden',!si);
+}
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;marcaAlReves(false)}
 function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
@@ -1243,7 +1248,7 @@ function computeJunctions(){
   // nada que equivocar. A 75 quedan 59, uno cada 514 m y 20 parejas; en las
   // 69 rutas, de 3.952 giros a 2.605.
   if(!branch&&angle<75)continue;
-  if(junctions.length&&dist(junctions.at(-1).point,b)<35)continue;
+  if(junctions.length&&dist(junctions[junctions.length-1].point,b)<35)continue;
   const cross=v1[0]*v2[1]-v1[1]*v2[0];
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
   junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle)});
@@ -1309,7 +1314,12 @@ function junctionGuidance(p,accuracy){
  }
  let best=null;
  for(let j=0;j<junctions.length;j++){
-  const turn=junctions[j],ahead=turn.along-progress.along;
+  // Por el sentido en que VAS, no por el que se grabo. Yendo al reves
+  // «along» decrece, asi que sin esto «ahead» salia negativo para los cruces
+  // que tienes delante y positivo para los que ya pasaste: el navegador
+  // avisaba de giros a tu espalda, o de ninguno. Y en esta web hay rutas que
+  // el propio autor recomienda hacer al reves.
+  const turn=junctions[j],ahead=(turn.along-progress.along)*sentidoRuta;
   // La ventana sigue al primer aviso: a 40 km/h se avisa a 90 m, asi que
   // con los 58 de antes el cruce ni se miraba hasta estar encima.
   // Y el suelo tambien va con la velocidad. El GPS del servicio da una
@@ -1328,7 +1338,13 @@ function junctionGuidance(p,accuracy){
   junctionActive=best.j;
  }
  const {j,ahead,turn}=best;
- const sentido=turn.direction==='izquierda'?-1:1;
+ // Al reves, lo que se grabo como derecha es izquierda. La forma del giro
+ // (los grados) no cambia; el lado, si.
+ const alReves=sentidoRuta<0;
+ const lado=turn.direction==='vuelta'?'vuelta'
+   :alReves?(turn.direction==='izquierda'?'derecha':'izquierda')
+   :turn.direction;
+ const sentido=lado==='izquierda'?-1:1;
  const grados=Number.isFinite(turn.angle)?turn.angle:(turn.direction==='vuelta'?160:85);
  $('turnArrow').innerHTML=flechaGiro(grados,sentido,62,11);
  if(!turnMarker||turnMarker.options.turnIndex!==j){
@@ -1337,7 +1353,7 @@ function junctionGuidance(p,accuracy){
    html:'<div class="map-turn-sign">'+flechaGiro(grados,sentido,24,13)+'</div>'});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
- $('turnDirection').textContent=turn.direction==='vuelta'?'Cambio de sentido':'Gira a la '+turn.direction;
+ $('turnDirection').textContent=lado==='vuelta'?'Cambio de sentido':'Gira a la '+lado;
  $('turnAngle').textContent='Giro de '+grados+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // Las tres luces se encienden segun te acercas, con los mismos cortes que
@@ -1446,7 +1462,20 @@ function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords
    // que parado no se ponga a dar vueltas.
    if(lastCourse!==null){
     const dif=Math.abs(((r-lastCourse+540)%360)-180);
+    const antes=sentidoRuta;
     sentidoRuta=dif>90?-1:1;
+    // El servicio hace su propia cuenta con la pantalla apagada y tambien
+    // necesita saberlo. Un APK viejo no tiene setSentido: se queda como
+    // estaba, que no es peor que antes.
+    if(sentidoRuta!==antes){
+     junctionWarned.clear();
+     try{window.TrabakutikAndroid?.setSentido?.(sentidoRuta)}catch(e){}
+     // Que se sepa, y que se siga sabiendo: la linea de estado la pisa el
+     // siguiente aviso de cruce en segundos, asi que el cartel se queda
+     // puesto mientras vayas al reves.
+     marcaAlReves(sentidoRuta<0);
+     if(sentidoRuta<0)notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');
+    }
    }
    h=(r+(sentidoRuta<0?180:0))%360;
   }
@@ -1460,11 +1489,11 @@ function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords
    const gap=lastBrowserRecordTime>0?ts-lastBrowserRecordTime:0;
    const step=lastBrowserRecordPoint?dist(lastBrowserRecordPoint,p):0;
    const cut=lastBrowserRecordPoint&&(gap>15000||gap<0||step>80||(gap>0&&step/(gap/1000)>12));
-   if(cut&&recorded.length&&recorded.at(-1)!==null)recorded.push(null);
+   if(cut&&recorded.length&&recorded[recorded.length-1]!==null)recorded.push(null);
    if(!lastBrowserRecordPoint||cut||step>2){
     recorded.push(p);
     const segments=[[]];
-    for(const q of recorded){if(q===null){if(segments.at(-1).length)segments.push([])}else segments.at(-1).push(q)}
+    for(const q of recorded){if(q===null){if(segments[segments.length-1].length)segments.push([])}else segments[segments.length-1].push(q)}
     const lines=segments.filter(seg=>seg.length>0);
     if(recordLayer){recordLayer.setLatLngs(lines);recordLayer.bringToFront()}
     else recordLayer=L.polyline(lines,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,lineCap:'round',lineJoin:'round',className:'recorded-red'}).addTo(map).bringToFront();

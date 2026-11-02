@@ -330,6 +330,16 @@ public class MainActivity extends Activity {
     // NAVIGATE lee el archivo una sola vez al comenzar la navegación.
    }catch(Exception ignored){}
   }
+  // La pagina decide si vas al reves comparando tu rumbo con el del tramo.
+  // El servicio lo necesita para sus avisos con la pantalla apagada. No
+  // arranca nada: si no hay servicio vivo, no hay a quien avisar.
+  @JavascriptInterface public void setSentido(int s){
+   try{
+    if(!TrackingService.ACTIVO)return;
+    startService(new Intent(MainActivity.this,TrackingService.class)
+      .setAction("SENTIDO").putExtra("sentido",s<0?-1:1));
+   }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo enviar el sentido",e);}
+  }
   @JavascriptInterface public void setJunctions(String json){
    try{
     org.json.JSONArray turns=new org.json.JSONArray(json);
