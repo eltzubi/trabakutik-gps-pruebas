@@ -17,7 +17,7 @@ import android.widget.*;
 import java.io.*;
 import android.webkit.JavascriptInterface;
 public class MainActivity extends Activity {
- WebView web,webRoutes; FrameLayout pages; TextView switchPage; boolean showingGps=true; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/"; long lastRouteOpenAt=0; String lastRouteOpenUrl=""; ValueCallback<android.net.Uri[]> pendingFileChooser;
+ WebView web,webRoutes; FrameLayout pages; TextView switchPage; boolean showingGps=true; File exportFile; String pendingGpx=null; String pendingGpsAction=null; String lastWebUrl="https://trabakutik.com/"; long lastWebLoadAt=0; long lastRouteOpenAt=0; String lastRouteOpenUrl=""; ValueCallback<android.net.Uri[]> pendingFileChooser;
  @Override public void onCreate(Bundle b) {
   super.onCreate(b);
   CrashReport.install(this);
@@ -132,8 +132,17 @@ public class MainActivity extends Activity {
   web.setImportantForAccessibility(gps?View.IMPORTANT_FOR_ACCESSIBILITY_AUTO:View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
   webRoutes.setImportantForAccessibility(gps?View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS:View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
   switchPage.setText(gps?"Web":"Navegador");
-  if(!gps&&webRoutes!=null&&"about:blank".equals(webRoutes.getUrl())){
-   webRoutes.loadUrl(lastWebUrl);
+  if(!gps&&webRoutes!=null){
+   // Sin esto, la pestana Web ensenaba para siempre la pagina que quedo en
+   // memoria la primera vez que se abrio: solo se cargaba estando en blanco,
+   // asi que una ruta nueva o un texto corregido no aparecian nunca. GitHub
+   // Pages da sus paginas por buenas 10 minutos (max-age=600); pasados esos,
+   // se vuelve a pedir.
+   if("about:blank".equals(webRoutes.getUrl())){
+    webRoutes.loadUrl(lastWebUrl);
+   }else if(lastWebLoadAt==0||System.currentTimeMillis()-lastWebLoadAt>600000L){
+    webRoutes.reload();
+   }
   }
   web.postDelayed(()->{if(gps){web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);restoreGpsWeb();}},120);
  }
@@ -193,6 +202,7 @@ public class MainActivity extends Activity {
     super.onPageFinished(view,url);
     if(!navigator&&url!=null&&url.startsWith("https://trabakutik.com/")){
       lastWebUrl=url;
+      lastWebLoadAt=System.currentTimeMillis();
       view.evaluateJavascript("(function(){if(window.__routeLinkFixed)return;window.__routeLinkFixed=1;document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(a&&a.href.indexOf('https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html')===0){e.preventDefault();e.stopPropagation();TrabakutikRoutes.openNavigator(a.href);}},true)})()",null);
     }
    }

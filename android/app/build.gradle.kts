@@ -2,6 +2,6 @@ plugins { id("com.android.application") }
 android {
  namespace = "com.trabakutik.gps"
  compileSdk = 35
- defaultConfig { applicationId = "com.trabakutik.gps"; minSdk = 26; targetSdk = 35; versionCode = 26; versionName = "2.6" }
+ defaultConfig { applicationId = "com.trabakutik.gps"; minSdk = 26; targetSdk = 35; versionCode = 27; versionName = "2.7" }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 }
