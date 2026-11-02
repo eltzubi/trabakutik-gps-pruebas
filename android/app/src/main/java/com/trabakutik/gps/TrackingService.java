@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<Integer> warnedTurns=new HashSet<>();String upcomingTurn="";
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -165,6 +165,18 @@ public class TrackingService extends Service implements LocationListener {
    }
   }catch(Exception e){android.util.Log.w("TrabakutikGPS","Giros no disponibles",e);}
  }
+ // La velocidad cruda del GPS pega saltos y los avisos se calculan con ella:
+ // un pico estando parado adelantaria el primero noventa metros sin motivo.
+ void actualizaVelocidad(Location l){
+  if(!l.hasSpeed())return;
+  double v=Math.min(l.getSpeed(),20);
+  velocidadSuave=velocidadSuave>0?velocidadSuave*0.7+v*0.3:v;
+ }
+ // Los avisos van por TIEMPO y no por metros: a 30 km/h cincuenta metros son
+ // seis segundos y andando son cuarenta y cinco. 9 s el primero y 3 s el
+ // segundo, con suelo (25 y 8 m, para andar) y techo (90 y 30).
+ double avisoLargo(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(90,Math.max(25,v*9));}
+ double avisoCorto(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(30,Math.max(8,v*3));}
  void checkTurns(Location l){
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
   double lat=l.getLatitude(),lon=l.getLongitude();
@@ -181,6 +193,7 @@ public class TrackingService extends Service implements LocationListener {
    cumulative+=length;
   }
   if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
+  double d1=avisoLargo(),d2=avisoCorto();
   double progress=0;String next="";
   int k=0;
   for(int i=1;i<route.size();i++){
@@ -188,12 +201,25 @@ public class TrackingService extends Service implements LocationListener {
    progress+=Math.hypot((b[1]-a[1])*lonScale,(b[0]-a[0])*scale);
    while(k<turns.size()&&(int)turns.get(k)[0]==i){
     double ahead=progress-along;
-    if(ahead>=-7&&ahead<=55){
+    if(ahead>=-7&&ahead<=d1+8){
      int d=(int)turns.get(k)[1];
      String instruction=d<0?"Izquierda":d>0?"Derecha":"Cambio de sentido";
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
-     if(ahead<=15&&ahead>=-3&&!warnedTurns.contains(k)){
-      warnedTurns.add(k);singleBeep();
+     // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a
+     // 50 m, 2 a 10 m y 3 en el propio cruce. El numero es el dato, que
+     // con la pantalla apagada es lo unico que hay. Cabe en la ventana de
+     // arriba porque llega hasta 55 m.
+     // El tramo del propio cruce va sin suelo por abajo: con -3 m el pitido
+     // se perdia a la mitad de las velocidades, porque a 20 km/h esos 3 m
+     // duran medio segundo y el GPS da una lectura por segundo. Lo acota ya
+     // la ventana de fuera, que empieza en -7 m.
+     String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>0?"2":ahead<=0?"3":null;
+     if(fase!=null){
+      String clave=k+":"+fase;
+      if(!warnedTurns.contains(clave)){
+       warnedTurns.add(clave);
+       pitidos(Integer.parseInt(fase),300);
+      }
      }
     }
     k++;
@@ -201,11 +227,19 @@ public class TrackingService extends Service implements LocationListener {
   }
   if(!next.equals(upcomingTurn)){upcomingTurn=next;updateNotice();}
  }
- void singleBeep(){
+ // Un grupo de n pitidos: 1 = cruce a 50 m, 2 = a 10 m, 3 = en el cruce,
+ // 4 = fuera de ruta. Los cuatro de fuera de ruta van mas seguidos (180 ms)
+ // que los de giro (300 ms), que tres y cuatro al mismo ritmo no se
+ // distinguen de oido.
+ void pitidos(int n,int sep){
   try{
-   ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,90);
-   tone.startTone(ToneGenerator.TONE_PROP_ACK,220);
-   new Handler(Looper.getMainLooper()).postDelayed(tone::release,450);
+   final ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,90);
+   final Handler handler=new Handler(Looper.getMainLooper());
+   for(int i=0;i<n;i++){
+    final int delay=i*sep;
+    handler.postDelayed(()->{try{tone.startTone(ToneGenerator.TONE_PROP_BEEP,160);}catch(Exception ignored){}},delay);
+   }
+   handler.postDelayed(tone::release,n*sep+500);
   }catch(Exception ignored){}
  }
  void updateNotice(){if(active)((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(12,notification());}
@@ -223,27 +257,20 @@ public class TrackingService extends Service implements LocationListener {
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()||l.getAccuracy()>22){farSince=0;return;}
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
-  if(d<=Math.max(14,acc+4)){
+  if(d<=Math.max(11,acc+4)){
    routeReached=true;farSince=0;if(offRoute){offRoute=false;updateNotice();}return;
   }
   if(!routeReached)return;
-  if(d<=Math.max(18,acc+7)){farSince=0;return;}
+  if(d<=Math.max(15,acc+7)){farSince=0;return;}
   if(farSince==0){farSince=SystemClock.elapsedRealtime();return;}
   if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=800){
-   offRoute=true;updateNotice();tripleBeep();
+   offRoute=true;updateNotice();pitidos(4,180);
   }
- }
- void tripleBeep(){
-  try{
-   final ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,85);
-   final Handler handler=new Handler(Looper.getMainLooper());
-   for(int i=0;i<3;i++){final int delay=i*320;handler.postDelayed(()->{try{tone.startTone(ToneGenerator.TONE_PROP_BEEP,180);}catch(Exception ignored){}},delay);}
-   handler.postDelayed(tone::release,1200);
-  }catch(Exception ignored){}
  }
  @Override public void onLocationChanged(Location l){
   if(!active)return;
   if(red!=null&&LocationManager.GPS_PROVIDER.equals(l.getProvider()))sueltaRed();
+  actualizaVelocidad(l);
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).apply();
   if(!recording||!l.hasAccuracy()||l.getAccuracy()>35)return;

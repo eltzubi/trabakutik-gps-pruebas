@@ -76,12 +76,23 @@ button{min-width:0}
 @media(max-width:390px){.info{max-width:calc(100% - 65px);width:min(315px,calc(100% - 65px))}.basemap-control span{display:none}.basemap-control select{width:58px}}
 
 .map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
-.turn-hint{position:absolute;z-index:705;left:10px;bottom:12px;display:flex;align-items:center;gap:10px;max-width:calc(100% - 78px);padding:7px 12px 7px 9px;border:1px solid #66bdd0b3;border-radius:14px;background:#092434ed;color:#f0fcff;box-shadow:0 3px 14px #0008;pointer-events:none}
-.turn-arrow{display:grid;place-items:center;min-width:41px;height:41px;background:#0c5362;border:1px solid #4ba7bc;border-radius:10px;font-size:32px;line-height:1;color:#a7f7ff}
-.turn-copy{display:flex;flex-direction:column;gap:1px;min-width:0}
-.turn-copy b{font-size:13px}
-.turn-copy small{font-size:12px;color:#b2dce5;font-variant-numeric:tabular-nums}
-@media(max-width:390px){.turn-hint{left:7px;bottom:8px;padding:5px 9px}.turn-arrow{min-width:36px;height:36px;font-size:28px}.turn-copy b{font-size:12px}}
+.turn-hint{position:absolute;z-index:1100;left:10px;right:10px;bottom:12px;padding:13px 15px;border-radius:20px;background:linear-gradient(160deg,#0b2b3bf2,#071d29f7);border:1px solid #3d8ea4;box-shadow:0 0 0 1px #4de1ff22,0 10px 34px #000b,inset 0 1px 0 #ffffff14;color:#f0fcff;pointer-events:none}
+#map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
+.turn-fila{display:flex;align-items:center;gap:13px}
+.turn-arrow{flex:0 0 auto;width:78px;height:78px;border-radius:18px;background:radial-gradient(70% 70% at 50% 35%,#10536399,#07222ecc);border:1px solid #4ba7bc;display:grid;place-items:center;box-shadow:inset 0 0 22px #4de1ff26,0 0 18px #4de1ff1f}
+.turn-copy{display:flex;flex-direction:column;min-width:0;flex:1}
+.turn-copy b{font-size:18px;font-weight:700;line-height:1.15}
+.turn-copy small{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#79c6da;margin-top:3px}
+.turn-dist{display:flex;align-items:baseline;gap:5px;margin-top:5px}
+.turn-dist em{font-style:normal;font-size:42px;font-weight:800;line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#a6f3ff;text-shadow:0 0 20px #4de1ff5c}
+.turn-dist i{font-style:normal;font-size:15px;font-weight:600;color:#8fd3e4}
+.turn-fases{display:flex;gap:6px;margin-top:12px}
+.turn-fases i{flex:1;height:5px;border-radius:3px;background:#17404f}
+.turn-fases i.on{background:linear-gradient(90deg,#4de1ff,#a6f3ff);box-shadow:0 0 10px #4de1ff80}
+.turn-rot{display:flex;gap:6px;margin-top:5px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#5d8fa2;font-variant-numeric:tabular-nums}
+.turn-rot span{flex:1}
+.turn-rot span.on{color:#4de1ff}
+@media(max-width:390px){.turn-hint{left:7px;right:7px;bottom:8px;padding:11px 12px;border-radius:17px}.turn-arrow{width:66px;height:66px;border-radius:15px}.turn-copy b{font-size:16px}.turn-dist em{font-size:36px}}
 
 /* Creador compacto: el mapa tiene prioridad. */
 .elevation-panel{padding:5px 10px 4px;min-height:0;height:102px;overflow:hidden}
@@ -147,16 +158,11 @@ body.creating-route #drawTip{display:none}
 body.creating-route .tools{top:8px;gap:6px}
 body.creating-route .tools button{width:38px;height:38px;font-size:19px;border-radius:11px}
 body.creating-route #createActions button:focus-visible{outline:2px solid #a4ecff;outline-offset:2px}
-/* Giros suaves, cuadrados pequeños, sin círculos ni flechas de gran tamaño. */
+/* La senal sobre el mapa: cuadradito pequeno con la flecha dibujada. */
 .map-turn-sign{
- width:30px;height:30px;border-radius:9px;border:1px solid #85d5e5;
- background:#10394bdf;color:#dcf9ff;font-size:21px;font-weight:500;
- display:grid;place-items:center;box-shadow:0 2px 9px #00151e80
+ width:34px;height:34px;border-radius:10px;border:1px solid #85d5e5;
+ background:#10394bdf;display:grid;place-items:center;box-shadow:0 2px 9px #00151e80
 }
-.turn-hint{gap:7px;padding:5px 10px 5px 6px;border-radius:11px;background:#092434e8;border-color:#5994a6a8}
-.turn-arrow{min-width:29px;height:29px;border-radius:8px;font-size:21px;font-weight:500;background:#163e50;border-color:#376d80;color:#d4f8ff}
-.turn-copy b{font-size:12px;font-weight:650}
-.turn-copy small{font-size:11px}
 @media(max-height:670px){
  body.creating-route #createActions{top:86px}
  body.creating-route #elevationPanel{height:77px}
@@ -251,7 +257,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><span id="turnArrow" class="turn-arrow">↱</span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnDistance">En 40 m</small></span></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -1106,16 +1112,88 @@ function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
  if(accuracy>22){farSince=0;return}
- const near=d<=Math.max(14,accuracy+4);
+ const near=d<=Math.max(11,accuracy+4);
  if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;notice('De nuevo en la ruta')}return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
- const far=d>Math.max(18,accuracy+7);
+ const far=d>Math.max(15,accuracy+7);
  if(!far){farSince=0;return}
  if(!farSince)farSince=Date.now();
- if(!alerted&&Date.now()-farSince>=800){alerted=true;getAudio();beep();notice('Fuera del recorrido · vuelve a la línea cian')}
+ if(!alerted&&Date.now()-farSince>=800){alerted=true;getAudio();pitidos(4,.18);notice('Fuera del recorrido · vuelve a la línea cian')}
 }
 function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
-function beep(){if(!audio)return;const t=audio.currentTime;for(let i=0;i<3;i++){const o=audio.createOscillator(),g=audio.createGain(),at=t+i*.32;o.frequency.value=850;g.gain.setValueAtTime(.0001,at);g.gain.linearRampToValueAtTime(.13,at+.02);g.gain.exponentialRampToValueAtTime(.0001,at+.19);o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.2)}}
+// Un grupo de n pitidos agudos, y el numero es el dato: 1 pitido = cruce a
+// 50 m, 2 = a 10 m, 3 = lo tienes encima, 4 = fuera de ruta. Los cuatro de
+// fuera de ruta van mas seguidos (.18 s) que los de giro (.30 s), porque
+// tres y cuatro pitidos al mismo ritmo no se distinguen de oido.
+// La flecha del giro, dibujada con los grados de verdad: un arco tangente a
+// las dos rectas, no un glifo fijo. Las dos ramas se separan solas 2R, asi
+// que una vuelta de 160 grados sale legible y no doblada sobre si misma.
+// deg = cuanto se desvia de seguir recto; dir: -1 izquierda, +1 derecha.
+// El sentido va DENTRO de «a»: multiplicar otra vez por dir dibujaba los
+// giros a la izquierda hacia la derecha.
+function flechaGiro(deg,dir,tam,grosor){
+ const R=17,entra=30,sale=26,cabeza=14,a=deg*Math.PI/180*dir;
+ const bx=0,by=0,ox=bx+R*dir,oy=by;
+ const gira=(x,y,t)=>[ox+(x-ox)*Math.cos(t)-(y-oy)*Math.sin(t),
+                      oy+(x-ox)*Math.sin(t)+(y-oy)*Math.cos(t)];
+ const [cx,cy]=gira(bx,by,a);
+ const dx=Math.sin(a),dy=-Math.cos(a);
+ const px=cx+dx*sale,py=cy+dy*sale,sx=bx,sy=by+entra,nx=-dy,ny=dx;
+ const b1x=px-dx*cabeza+nx*cabeza*.55,b1y=py-dy*cabeza+ny*cabeza*.55;
+ const b2x=px-dx*cabeza-nx*cabeza*.55,b2y=py-dy*cabeza-ny*cabeza*.55;
+ const qx=px-dx*cabeza*.8,qy=py-dy*cabeza*.8,sentido=dir>0?1:0;
+ const d='M'+sx.toFixed(1)+' '+sy.toFixed(1)+' L'+bx.toFixed(1)+' '+by.toFixed(1)+
+         ' A'+R+' '+R+' 0 0 '+sentido+' '+cx.toFixed(1)+' '+cy.toFixed(1)+
+         ' L'+qx.toFixed(1)+' '+qy.toFixed(1);
+ const pts=[[sx,sy],[px,py],[b1x,b1y],[b2x,b2y]];
+ for(let t=0;t<=1.0001;t+=.05)pts.push(gira(bx,by,a*t));
+ const xs=pts.map(q=>q[0]),ys=pts.map(q=>q[1]),m=grosor*.6+2;
+ const x0=Math.min(...xs)-m,y0=Math.min(...ys)-m;
+ const w=Math.max(...xs)-Math.min(...xs)+m*2,h=Math.max(...ys)-Math.min(...ys)+m*2;
+ const lado=Math.max(w,h),vx=x0-(lado-w)/2,vy=y0-(lado-h)/2;
+ const id='fg'+Math.round(deg)+(dir>0?'d':'i');
+ return '<svg viewBox="'+vx.toFixed(1)+' '+vy.toFixed(1)+' '+lado.toFixed(1)+' '+lado.toFixed(1)+
+  '" width="'+tam+'" height="'+tam+'" aria-hidden="true">'+
+  '<defs><linearGradient id="'+id+'" x1="0" y1="1" x2="0" y2="0">'+
+  '<stop offset="0" stop-color="#2aa6c4"/><stop offset="1" stop-color="#c8fbff"/></linearGradient></defs>'+
+  '<path d="'+d+'" fill="none" stroke="url(#'+id+')" stroke-width="'+grosor+'" stroke-linecap="round"/>'+
+  '<path d="M'+px.toFixed(1)+' '+py.toFixed(1)+' L'+b1x.toFixed(1)+' '+b1y.toFixed(1)+
+  ' L'+b2x.toFixed(1)+' '+b2y.toFixed(1)+' Z" fill="#c8fbff"/></svg>';
+}
+// Velocidad suavizada, en m/s. Las indicaciones de giro se calculan con ella
+// y la cruda del GPS pega saltos: un pico de 12 m/s estando parado
+// adelantaria el primer aviso 90 metros sin motivo. Si el aparato no da
+// velocidad se saca del avance entre dos lecturas.
+let velocidadSuave=0,ultimaPosT=0;
+function actualizaVelocidad(coords,prior,ahora){
+ let v=coords&&Number.isFinite(coords.speed)&&coords.speed>=0?coords.speed:null;
+ if(v===null&&prior&&ultimaPosT){
+  const dt=(ahora-ultimaPosT)/1000;
+  if(dt>.4&&dt<12)v=dist([coords.latitude,coords.longitude],prior)/dt;
+ }
+ ultimaPosT=ahora;
+ if(v===null||!Number.isFinite(v))return;
+ velocidadSuave=velocidadSuave?velocidadSuave*.7+Math.min(v,20)*.3:Math.min(v,20);
+}
+// Los avisos van por TIEMPO, no por metros: a 30 km/h cincuenta metros son
+// seis segundos y andando son cuarenta y cinco. 9 s para el primer aviso y
+// 3 s para el segundo, con suelo (25 y 8 m, para andar) y techo (90 y 30).
+function distanciasDeAviso(){
+ const v=velocidadSuave||1.2;
+ return [Math.min(90,Math.max(25,v*9)),Math.min(30,Math.max(8,v*3))];
+}
+function pitidos(n,sep){
+ if(!audio)return;
+ const t=audio.currentTime;
+ for(let i=0;i<n;i++){
+  const o=audio.createOscillator(),g=audio.createGain(),at=t+i*sep;
+  o.frequency.value=880;
+  g.gain.setValueAtTime(.0001,at);
+  g.gain.linearRampToValueAtTime(.13,at+.015);
+  g.gain.exponentialRampToValueAtTime(.0001,at+.19);
+  o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.2);
+ }
+}
 function closestMeters(p,path){let best=Infinity;for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i];const latScale=111195,lonScale=latScale*Math.cos(p[0]*R),ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale,bx=(b[1]-p[1])*lonScale,by=(b[0]-p[0])*latScale,dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));best=Math.min(best,Math.hypot(ax+t*dx,ay+t*dy))}return best}
 
 // Cruces: solo se consideran giros marcados de la ruta con otra rama registrada
@@ -1123,6 +1201,8 @@ function closestMeters(p,path){let best=Infinity;for(let i=1;i<path.length;i++){
 function resetJunctionView(){
  if(turnMarker){map.removeLayer(turnMarker);turnMarker=null}
  $('turnHint').classList.add('hidden');
+ $('map').classList.remove('con-giro');
+ $('map').style.removeProperty('--turn-alto');
  junctionActive=-1;junctionBlocked=-1;
  if(junctionZoom!==null){
   const original=junctionZoom;junctionZoom=null;
@@ -1155,11 +1235,17 @@ function computeJunctions(){
   // 68 rutas: el barrido completo bloqueaba el WebView en rutas largas.
   const branch=false;
   // Giros pronunciados del GPX también cuentan aunque no haya otra ruta registrada.
-  if(!branch&&angle<60)continue;
+  // 75 grados y no 60. Medido sobre los tracks de verdad: a 60 la ruta
+  // nueva daba 91 giros en 30 km, uno cada 333 m, y 37 parejas a menos de
+  // 110 m una de otra, o sea que el aviso de un cruce entraba antes de
+  // acabar con el anterior. La mayoria eran lazadas de bajada, donde no hay
+  // nada que equivocar. A 75 quedan 59, uno cada 514 m y 20 parejas; en las
+  // 69 rutas, de 3.952 giros a 2.605.
+  if(!branch&&angle<75)continue;
   if(junctions.length&&dist(junctions.at(-1).point,b)<35)continue;
   const cross=v1[0]*v2[1]-v1[1]*v2[0];
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
-  junctions.push({i,point:b,along:routeCumulative[i],direction});
+  junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle)});
  }
  // En Android, el servicio nativo conserva los giros aunque se bloquee el móvil.
  if(window.TrabakutikAndroid?.setJunctions){
@@ -1180,14 +1266,6 @@ function progressOnRoute(p){
   if(meters<best){best=meters;along=routeCumulative[i-1]+t*(routeCumulative[i]-routeCumulative[i-1])}
  }
  return {along,distance:best};
-}
-function shortJunctionBeep(){
- if(!audio)return;
- const t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();
- o.frequency.value=880;g.gain.setValueAtTime(.0001,t);
- g.gain.linearRampToValueAtTime(.13,t+.015);
- g.gain.exponentialRampToValueAtTime(.0001,t+.22);
- o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.23);
 }
 // Parado no hay giro que anunciar. «Gira a la derecha · En 50 m» solo
 // significa algo si uno avanza, y al autor se le quedo esa ficha en la
@@ -1215,11 +1293,14 @@ function junctionGuidance(p,accuracy){
   if(junctionActive>=0)resetJunctionView();return;
  }
  const progress=progressOnRoute(p);
+ const [d1,d2]=distanciasDeAviso();
  if(progress.distance>25){if(junctionActive>=0)resetJunctionView();return}
  let best=null;
  for(let j=0;j<junctions.length;j++){
   const turn=junctions[j],ahead=turn.along-progress.along;
-  if(ahead< -12||ahead>58||dist(p,turn.point)>75)continue;
+  // La ventana sigue al primer aviso: a 40 km/h se avisa a 90 m, asi que
+  // con los 58 de antes el cruce ni se miraba hasta estar encima.
+  if(ahead< -12||ahead>d1+8||dist(p,turn.point)>d1+25)continue;
   if(!best||Math.abs(ahead-15)<Math.abs(best.ahead-15))best={j,ahead,turn};
  }
  if(!best){
@@ -1231,16 +1312,33 @@ function junctionGuidance(p,accuracy){
   junctionActive=best.j;
  }
  const {j,ahead,turn}=best;
- const arrow=turn.direction==='izquierda'?'↖':turn.direction==='derecha'?'↗':'↶';
- $('turnArrow').textContent=arrow;
+ const sentido=turn.direction==='izquierda'?-1:1;
+ const grados=Number.isFinite(turn.angle)?turn.angle:(turn.direction==='vuelta'?160:85);
+ $('turnArrow').innerHTML=flechaGiro(grados,sentido,62,11);
  if(!turnMarker||turnMarker.options.turnIndex!==j){
   if(turnMarker)map.removeLayer(turnMarker);
-  const sign=L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="map-turn-sign">'+arrow+'</div>'});
+  const sign=L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],
+   html:'<div class="map-turn-sign">'+flechaGiro(grados,sentido,24,13)+'</div>'});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
  $('turnDirection').textContent=turn.direction==='vuelta'?'Cambio de sentido':'Gira a la '+turn.direction;
- $('turnDistance').textContent=ahead>0?'En '+Math.max(0,Math.round(ahead/5)*5)+' m':'En el cruce';
+ $('turnAngle').textContent='Giro de '+grados+'\u00b0';
+ $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
+ // Las tres luces se encienden segun te acercas, con los mismos cortes que
+ // los pitidos: son lo mismo dicho de otra manera, para cuando no se oiga.
+ const r1=Math.round(d1/5)*5,r2=Math.round(d2/5)*5;
+ $('turnRot1').textContent=r1+' m';
+ $('turnRot2').textContent=r2+' m';
+ for(const [id,enc] of [['1',ahead<=d1],['2',ahead<=d2],['3',ahead<=0]]){
+  $('turnFase'+id).classList.toggle('on',enc);
+  $('turnRot'+id).classList.toggle('on',enc);
+ }
  $('turnHint').classList.remove('hidden');
+ // Se mide DESPUES de quitar «hidden», que escondido no mide nada, y con
+ // getBoundingClientRect, no con offsetHeight: el recuadro lleva relleno y
+ // el borde, y los creditos se quedarian unos pixeles bajos.
+ $('map').classList.add('con-giro');
+ $('map').style.setProperty('--turn-alto',Math.round($('turnHint').getBoundingClientRect().height+16)+'px');
  // Solo se amplía UNA vez por cruce. Si se toca el zoom, se respeta.
  if(ahead>=0&&ahead<=45&&junctionBlocked!==j&&!junctionZoomOnce.has(j)){
   junctionZoomOnce.add(j);
@@ -1250,9 +1348,26 @@ function junctionGuidance(p,accuracy){
    setTimeout(()=>{autoZooming=false},300);
   }
  }
- if(ahead>=-3&&ahead<=15&&!junctionWarned.has(j)){
-  junctionWarned.add(j);if(!window.TrabakutikAndroid)shortJunctionBeep();
-  notice('Cruce próximo · sigue la línea azul');
+ // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a 50 m,
+ // 2 a 10 m y 3 en el propio cruce. Los avisos siguen al cruce que esta
+ // mostrando la ficha, no a todos los que caen en rango: con 20 parejas de
+ // cruces a menos de 110 m, sonar por todos solaparia dos grupos de pitidos
+ // y no sabrias de cual te hablan.
+ // Los cortes salen de la velocidad (ver distanciasDeAviso). El tercero no
+ // lleva suelo por abajo a proposito: con «ahead>=-3» el pitido del propio
+ // cruce se perdia, porque el GPS da una lectura por segundo y a 20 km/h
+ // esos 3 m duran medio segundo. Simulado de 4 a 50 km/h, con suelo fallaba
+ // a 20, 25, 40, 45 y 50; sin el suena siempre. Queda acotado solo: arriba
+ // se descarta el cruce pasados -12 m y la ficha se cierra a -9.
+ let fase=null;
+ if(ahead<=d1&&ahead>d2)fase='1';
+ else if(ahead<=d2&&ahead>0)fase='2';
+ else if(ahead<=0)fase='3';
+ if(fase&&!junctionWarned.has(j+':'+fase)){
+  junctionWarned.add(j+':'+fase);
+  if(!window.TrabakutikAndroid)pitidos(Number(fase),.30);
+  notice(fase==='3'?'En el cruce · sigue la línea azul'
+        :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -9)resetJunctionView();
 }
@@ -1281,6 +1396,7 @@ function rumboDeLaRuta(p){
  return null;
 }
 function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
+ actualizaVelocidad(pos.coords,prior,ultimoFix);
  if(gpsHeading!==null)lastCourse=gpsHeading;
  else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
  if(!courseFix||dist(courseFix,p)>=8)courseFix=p.slice();
