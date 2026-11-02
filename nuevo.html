@@ -1036,7 +1036,7 @@ function openSaveDialog(points,name,kind){
  $('saveToMine').disabled=hasCuts;
  if(hasCuts)$('saveStatus').textContent='La grabación tiene cortes. Descarga el GPX para conservar los tramos separados.';
  $('downloadFromDialog').textContent=kind==='recording'&&window.TrabakutikAndroid?'Guardar archivo GPX…':'Descargar GPX';
- $('shareFromDialog').classList.toggle('hidden',!canShareGpx(points.filter(Boolean),name));
+ $('shareFromDialog').classList.toggle('hidden',!canShareGpx(points,name)||(hasCuts&&window.TrabakutikAndroid));
  $('saveDialog').classList.remove('hidden');
 }
 function finishRecording(){
@@ -1083,7 +1083,7 @@ $('downloadFromDialog').onclick=()=>{
 $('shareFromDialog').onclick=async()=>{
  if(!pendingSave)return;
  const pending=pendingSave;
- const shared=await shareGpx(pending.points.filter(Boolean),pending.name);
+ const shared=await shareGpx(pending.points,pending.name);
  if(!shared)return;
  if(pending.kind==='recording')finishRecording();
  closeSaveDialog();
