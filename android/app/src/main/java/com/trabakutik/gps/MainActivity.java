@@ -155,6 +155,14 @@ public class MainActivity extends Activity {
   w.getSettings().setUseWideViewPort(true);
   w.getSettings().setLoadWithOverviewMode(true);
   w.getSettings().setTextZoom(100);
+  if(!navigator){
+   // Pestana Web: el WebView trae el zoom con los dedos apagado de fabrica, asi
+   // que las fotos del visor no se podian ampliar a pellizco como en Chrome.
+   // Solo aqui: el navegador tiene su propio mapa, que ya gestiona el pellizco.
+   w.getSettings().setSupportZoom(true);
+   w.getSettings().setBuiltInZoomControls(true);
+   w.getSettings().setDisplayZoomControls(false);
+  }
   if(navigator)w.addJavascriptInterface(new Bridge(),"TrabakutikAndroid");
   else w.addJavascriptInterface(new RouteBridge(),"TrabakutikRoutes");
   w.setWebChromeClient(new WebChromeClient(){
