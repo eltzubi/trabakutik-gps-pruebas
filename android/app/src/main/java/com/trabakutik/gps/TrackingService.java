@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -56,7 +56,7 @@ public class TrackingService extends Service implements LocationListener {
  Intent openIntent=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
  PendingIntent open=PendingIntent.getActivity(this,2,openIntent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
  Intent intent=new Intent(this,TrackingService.class).setAction("STOP");PendingIntent stop=PendingIntent.getService(this,1,intent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
- return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentIntent(open).setContentTitle(recording?"Trabakutik GPS grabando":navigating?"Trabakutik GPS navegando":"Trabakutik GPS").setContentText(offRoute?"FUERA DE RUTA · vuelve a la línea azul":(!upcomingTurn.isEmpty()?upcomingTurn:(route.size()>1?"Siguiendo ruta · GPS activo":points+" puntos registrados"))).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
+ return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentIntent(open).setContentTitle(recording?(pausado?"Trabakutik GPS · grabación en pausa":"Trabakutik GPS grabando"):navigating?"Trabakutik GPS navegando":"Trabakutik GPS").setContentText(offRoute?"FUERA DE RUTA · vuelve a la línea azul":(!upcomingTurn.isEmpty()?upcomingTurn:(route.size()>1?"Siguiendo ruta · GPS activo":points+" puntos registrados"))).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
  @Override public int onStartCommand(Intent i,int flags,int id){
   String action=i==null?null:i.getAction();
   if(action==null){finish();return START_NOT_STICKY;}
@@ -67,7 +67,15 @@ public class TrackingService extends Service implements LocationListener {
    if(!recording){finish();return START_NOT_STICKY;}
    updateNotice();return START_NOT_STICKY;
   }
+  // La pausa detiene SOLO anotar puntos. El GPS, los giros y el fuera de
+  // ruta siguen: lo que se para es la grabacion, no la orientacion.
+  if("PAUSE".equals(action)){pausado=true;if(active)updateNotice();return START_NOT_STICKY;}
+  if("RESUME".equals(action)){
+   pausado=false;forzarCorte=true;    // que el descanso no salga como una recta
+   if(active)updateNotice();return START_NOT_STICKY;
+  }
   if("STOP_RECORD".equals(action)){
+   pausado=false;forzarCorte=false;
    endRecording();
    if(!navigating){finish();return START_NOT_STICKY;}
    updateNotice();return START_NOT_STICKY;
@@ -290,15 +298,17 @@ public class TrackingService extends Service implements LocationListener {
   actualizaVelocidad(l);
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).apply();
-  if(!recording||!l.hasAccuracy()||l.getAccuracy()>35)return;
+  if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   try(FileWriter w=new FileWriter(file,true)){
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
    fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
    String time=fmt.format(new Date(l.getTime()));
-   if(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)))w.write("</trkseg><trkseg>\n");
+   boolean corta=forzarCorte||(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)));
+   if(corta&&lastRecordedTime>0)w.write("</trkseg><trkseg>\n");
    w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\n");
    try(FileWriter pointsFile=new FileWriter(new File(getFilesDir(),"trazado-vivo.tsv"),true)){if(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)))pointsFile.write("\n");pointsFile.write(l.getLatitude()+"\t"+l.getLongitude()+"\n");}
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
+   forzarCorte=false;
    points++;if(points%10==0)updateNotice();
   }catch(Exception ignored){}
  }

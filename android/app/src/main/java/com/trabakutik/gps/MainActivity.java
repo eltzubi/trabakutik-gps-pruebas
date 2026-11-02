@@ -384,6 +384,16 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void startNavigation(){runOnUiThread(()->startNavigationService());}
   @JavascriptInterface public void startRecording(){runOnUiThread(()->startTrack());}
   @JavascriptInterface public void stopRecording(){runOnUiThread(()->stopNativeRecording());}
+  // Pausar y reanudar la grabacion. No arrancan nada: si no hay servicio
+  // vivo, no hay nada que pausar.
+  @JavascriptInterface public void pauseRecording(){enviaAlServicio("PAUSE");}
+  @JavascriptInterface public void resumeRecording(){enviaAlServicio("RESUME");}
+  private void enviaAlServicio(String accion){
+   try{
+    if(!TrackingService.ACTIVO)return;
+    startService(new Intent(MainActivity.this,TrackingService.class).setAction(accion));
+   }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo enviar "+accion,e);}
+  }
   @JavascriptInterface public void saveRecording(){runOnUiThread(()->saveTrack());}
   @JavascriptInterface public void discardRecording(){runOnUiThread(()->{discardLastRecording();new File(getFilesDir(),"trazado-vivo.tsv").delete();});}
   @JavascriptInterface public void saveGpx(String filename,String xml){
