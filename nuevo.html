@@ -78,6 +78,8 @@ button{min-width:0}
 .map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
 .turn-hint{position:absolute;z-index:1100;left:10px;right:10px;bottom:12px;padding:13px 15px;border-radius:20px;background:linear-gradient(160deg,#0b2b3bf2,#071d29f7);border:1px solid #3d8ea4;box-shadow:0 0 0 1px #4de1ff22,0 10px 34px #000b,inset 0 1px 0 #ffffff14;color:#f0fcff;pointer-events:none}
 #map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
+.route-progress{display:block;font-size:11px;color:#cdeefb;margin-top:3px;font-variant-numeric:tabular-nums;font-weight:650}
+.route-progress b{color:#8ef0ff;font-weight:800}
 .reverse-warn{display:block;margin-top:5px;padding:3px 7px;border-radius:7px;background:#4a2f07e6;border:1px solid #c98a2b;color:#ffd99a;font-size:10px;font-weight:700;letter-spacing:.03em;line-height:1.25}
 .turn-fila{display:flex;align-items:center;gap:13px}
 .turn-arrow{flex:0 0 auto;width:78px;height:78px;border-radius:18px;background:radial-gradient(70% 70% at 50% 35%,#10536399,#07222ecc);border:1px solid #4ba7bc;display:grid;place-items:center;box-shadow:inset 0 0 22px #4de1ff26,0 0 18px #4de1ff1f}
@@ -258,7 +260,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -285,7 +287,7 @@ let nombresDeRuta={},datosDeRuta={};
 const sinTildes=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 
 if(window.TrabakutikAndroid)document.documentElement.classList.add('android-app');
-const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.href]||t.href.replace(/\.html$/,'').replace(/[-_]/g,' '),fmt=m=>m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';
+const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.href]||t.href.replace(/\.html$/,'').replace(/[-_]/g,' '),fmt=m=>m>=1000?(m/1000).toFixed(2).replace('.',',')+' km':Math.round(m)+' m';
 const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([43.19,-2.55],12);
 map.on('dragstart',()=>{manualMapUntil=Date.now()+8000});
 const baseMaps={
@@ -1116,7 +1118,11 @@ $('navCreated').onclick=()=>{
 // sentidoRuta: +1 si vas como la ruta esta grabada, -1 si la haces al reves.
 // Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
 // selectRoute, loadSaved y clearActiveRoute.
-let sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,alongAcum=0;
+let sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,alongAcum=0,ultimoAlong=null;
+// Cuantas veces se partio el track por quedarse sin senal. Un GPX con
+// huecos no es el recorrido completo y hay que decirlo al terminar, no
+// dejar que parezca entero.
+let cortesGrabacion=0;
 // El sentido se decide por el AVANCE SOBRE LA RUTA, no comparando rumbos.
 // Comparar el rumbo del GPS con el del tramo mas cercano se equivoca en las
 // curvas cerradas —en una lazada, el tramo mas cercano puede ser el de vuelta,
@@ -1142,11 +1148,26 @@ function decideSentido(along){
  marcaAlReves(sentidoRuta<0);
  if(sentidoRuta<0)notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');
 }
+// Lo que llevas y lo que te queda DE LA RUTA, no en linea recta. Sale del
+// avance sobre el trazado, que es el mismo numero con el que se calculan los
+// avisos de giro. Al reves se empieza por el final, asi que lo recorrido es
+// lo que queda por detras.
+function pintaAvance(along){
+ const caja=$('routeProgress');
+ if(!caja)return;
+ if(!Number.isFinite(along)||routeCumulative.length<2){caja.classList.add('hidden');return}
+ const total=routeCumulative[routeCumulative.length-1];
+ ultimoAlong=along;
+ const hecho=Math.max(0,Math.min(total,sentidoRuta>0?along:total-along));
+ const queda=Math.max(0,total-hecho);
+ caja.innerHTML='Llevas <b>'+fmt(hecho)+'</b> \u00b7 faltan <b>'+fmt(queda)+'</b>';
+ caja.classList.remove('hidden');
+}
 function marcaAlReves(si){
  const c=$('reverseWarn');
  if(c)c.classList.toggle('hidden',!si);
 }
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;marcaAlReves(false)}
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden')}
 function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
@@ -1512,6 +1533,7 @@ function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords
     const segments=[[]];
     for(const q of recorded){if(q===null){if(segments[segments.length-1].length)segments.push([])}else segments[segments.length-1].push(q)}
     const lines=segments.filter(seg=>seg.length>0);
+    cortesGrabacion=Math.max(0,lines.length-1);
     if(recordLayer){recordLayer.setLatLngs(lines);recordLayer.bringToFront()}
     else recordLayer=L.polyline(lines,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,lineCap:'round',lineJoin:'round',className:'recorded-red'}).addTo(map).bringToFront();
     lastBrowserRecordPoint=p.slice();
@@ -1529,6 +1551,7 @@ function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords
   // ficha del cruce: asi no va un fix por detras.
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
+  pintaAvance(progressOnRoute(p).along);
   updateOffRoute(d,pos.coords.accuracy);
   junctionGuidance(p,pos.coords.accuracy);
   if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')
@@ -1558,6 +1581,7 @@ window.trabakutikSyncNative=()=>{
     }else if(segments[segments.length-1].length)segments.push([]);
    }
    const connected=segments.filter(segment=>segment.length);
+   cortesGrabacion=Math.max(0,connected.length-1);
    if(valid.length>1){
     recorded=valid;
     if(!recordLayer)recordLayer=L.polyline(connected,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,className:'recorded-red'}).addTo(map);
@@ -1679,7 +1703,24 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
 $('recordStart').onclick=()=>{apagadoHasta=0;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
-$('recordStop').onclick=()=>{if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice(window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')};
+// En un circuito te cruzas con la salida varias veces, y parar por error
+// deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
+function avisoDeCortes(){
+ if(cortesGrabacion<1)return '';
+ return ' \u00b7 ATENCI\u00d3N: el track tiene '+cortesGrabacion+
+  (cortesGrabacion===1?' corte':' cortes')+' por p\u00e9rdida de se\u00f1al';
+}
+function confirmaParar(){
+ let falta='';
+ if(routeCumulative.length>1&&Number.isFinite(ultimoAlong)){
+  const total=routeCumulative[routeCumulative.length-1];
+  const hecho=Math.max(0,Math.min(total,sentidoRuta>0?ultimoAlong:total-ultimoAlong));
+  const queda=total-hecho;
+  if(queda>300)falta='\n\nTe faltan '+fmt(queda)+' de la ruta.';
+ }
+ return confirm('\u00bfParar la grabaci\u00f3n?'+falta);
+}
+$('recordStop').onclick=()=>{if(!confirmaParar())return;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice((window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')+avisoDeCortes())};
 $('saveRecording').onclick=()=>{if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}else{if(recorded.length<2)return;download(recorded,'trabakutik-grabacion')}notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready')};
 // Al descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
 // asi que el telefono seguia pidiendo posicion con la salida terminada y
