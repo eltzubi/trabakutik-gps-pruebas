@@ -1935,7 +1935,7 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
-$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;recordingFinalized=false;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
+$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];cortesGrabacion=0;lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;recordingFinalized=false;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
 // En un circuito te cruzas con la salida varias veces, y parar por error
 // deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
 // La pausa detiene SOLO la grabacion. La ubicacion, los avisos de giro y el
