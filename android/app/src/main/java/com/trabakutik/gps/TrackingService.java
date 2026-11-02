@@ -51,9 +51,12 @@ public class TrackingService extends Service implements LocationListener {
   return n;
  }
  @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));avisoHandler.postDelayed(refrescaAviso,5000);}
- final Runnable refrescaAviso=()->{
-  if(active){String estado=estadoGps();if(!estado.equals(ultimoEstadoAviso))updateNotice();}
-  avisoHandler.postDelayed(refrescaAviso,5000);
+ final Runnable refrescaAviso=new Runnable(){
+  @Override public void run(){
+   if(!active)return;
+   String estado=estadoGps();if(!estado.equals(ultimoEstadoAviso))updateNotice();
+   avisoHandler.postDelayed(this,5000);
+  }
  };
  boolean ubicacionActivada(){
   try{return manager.isProviderEnabled(LocationManager.GPS_PROVIDER)||manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);}
