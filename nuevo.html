@@ -78,8 +78,14 @@ button{min-width:0}
 .map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
 .turn-hint{position:absolute;z-index:1100;left:10px;right:10px;bottom:12px;padding:13px 15px;border-radius:20px;background:linear-gradient(160deg,#0b2b3bf2,#071d29f7);border:1px solid #3d8ea4;box-shadow:0 0 0 1px #4de1ff22,0 10px 34px #000b,inset 0 1px 0 #ffffff14;color:#f0fcff;pointer-events:none}
 #map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
-.route-progress{display:block;font-size:11px;color:#cdeefb;margin-top:3px;font-variant-numeric:tabular-nums;font-weight:650}
-.route-progress b{color:#8ef0ff;font-weight:800}
+/* Por id y no por clase: «.info span» y «.info b» ponen display:block y
+   ganan por especificidad a una clase, asi que la brujula y los kilometros
+   se apilaban en cuatro lineas en vez de ir en fila. */
+#compass{display:flex;align-items:center;gap:8px;margin-top:5px}
+#compass b{display:inline;font-size:14px;font-weight:800;color:#a6f3ff;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;margin:0}
+#compass svg{flex:0 0 auto}
+#routeProgress{display:block;font-size:11px;color:#cdeefb;margin-top:4px;font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+#routeProgress b{display:inline;font-size:11px;color:#8ef0ff;font-weight:800;white-space:nowrap;overflow:visible;margin:0}
 .reverse-warn{display:block;margin-top:5px;padding:3px 7px;border-radius:7px;background:#4a2f07e6;border:1px solid #c98a2b;color:#ffd99a;font-size:10px;font-weight:700;letter-spacing:.03em;line-height:1.25}
 .turn-fila{display:flex;align-items:center;gap:13px}
 .turn-arrow{flex:0 0 auto;width:78px;height:78px;border-radius:18px;background:radial-gradient(70% 70% at 50% 35%,#10536399,#07222ecc);border:1px solid #4ba7bc;display:grid;place-items:center;box-shadow:inset 0 0 22px #4de1ff26,0 0 18px #4de1ff1f}
@@ -260,7 +266,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -1152,6 +1158,22 @@ function decideSentido(along){
 // avance sobre el trazado, que es el mismo numero con el que se calculan los
 // avisos de giro. Al reves se empieza por el final, asi que lo recorrido es
 // lo que queda por detras.
+// La direccion en la que vamos, en grados y en rumbo. El mapa va siempre al
+// norte —Leaflet 1.9.4 no gira y rotarlo dejaria todos los toponimos de lado,
+// que es justo lo que mas valor tiene de esta capa—, asi que la N de la rosa
+// se queda arriba y lo que se mueve es la aguja. El rumbo no sale del
+// magnetometro sino del que ya se calcula para la flecha: sobre la ruta es el
+// del tramo que pisas, corregido por el sentido, y fuera de ella el del GPS.
+const RUMBOS=['N','NE','E','SE','S','SO','O','NO'];
+function pintaBrujula(h){
+ const caja=$('compass');
+ if(!caja)return;
+ if(!Number.isFinite(h)){caja.classList.add('hidden');return}
+ const g=((h%360)+360)%360;
+ $('compassNeedle').setAttribute('transform','rotate('+g.toFixed(0)+' 20 20)');
+ $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' \u00b7 '+Math.round(g)+'\u00b0';
+ caja.classList.remove('hidden');
+}
 function pintaAvance(along){
  const caja=$('routeProgress');
  if(!caja)return;
@@ -1167,7 +1189,7 @@ function marcaAlReves(si){
  const c=$('reverseWarn');
  if(c)c.classList.toggle('hidden',!si);
 }
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden')}
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
 function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
@@ -1518,6 +1540,7 @@ function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords
    h=(r+(sentidoRuta<0?180:0))%360;
   }
  }
+ pintaBrujula(h);
  const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
  if(recording&&!pausado&&!window.TrabakutikAndroid){
   const ts=Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),acc=pos.coords.accuracy;
