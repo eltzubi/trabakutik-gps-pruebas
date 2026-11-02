@@ -569,7 +569,7 @@ function changeMode(m){
  // verdad que queda es «Crear», que cambia la pantalla entera.
  $('navActions').classList.toggle('hidden',m!=='nav');
  $('recordActions').classList.toggle('hidden',m!=='nav');
- $('createActions').classList.toggle('hidden',m!=='create');$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json').then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':routePoints.length>1?'Siguiendo la ruta seleccionada · puedes grabarla a la vez':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
+ $('createActions').classList.toggle('hidden',m!=='create');$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':routePoints.length>1?'Siguiendo la ruta seleccionada · puedes grabarla a la vez':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');
 const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null,createdSavedItem=null;
@@ -1498,13 +1498,20 @@ window.trabakutikNativeGpxSaved=()=>{
  }
 };
 window.addEventListener('beforeunload',e=>{if(recording){e.preventDefault();e.returnValue=''}});
-fetch('data/rutas.json').then(r=>r.json()).then(d=>{
+// 'no-cache' no quiere decir que no se guarde: quiere decir que antes de
+// usar lo guardado se le pregunta al servidor. GitHub Pages manda
+// max-age=600, asi que durante diez minutos el WebView daba por buena la
+// copia vieja sin preguntar, y la lista seguia enseñando rutas de antes
+// aunque la pagina ya fuera la nueva. Con esto, si no ha cambiado nada el
+// servidor contesta 304 y no se descarga ni un byte; si ha cambiado, llega
+// lo nuevo. Importa sobre todo en trailhead.json, que son 500 kB.
+fetch('data/rutas.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
  const es=d.es||{};
  for(const k in es) if(es[k]&&es[k].h){ if(es[k].n)nombresDeRuta[es[k].h]=es[k].n; if(es[k].s)datosDeRuta[es[k].h]=es[k].s; }
  // Puede llegar despues de que se haya pintado algo: se repinta.
  if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href)}
  if(!$('routeDialog').classList.contains('hidden'))showRoutes();
 }).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
-fetch('data/trailhead.json').then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
+fetch('data/trailhead.json',{cache:'no-cache'}).then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
 })();
 </script></body></html>
