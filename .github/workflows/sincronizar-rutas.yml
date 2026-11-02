@@ -85,7 +85,6 @@ jobs:
                   actualizados.append(nombre)
                   print(f"{nombre}: actualizado ({resumen})")
 
-          pathlib.Path("/tmp/sincronizados.txt").write_text("\n".join(actualizados), encoding="utf-8")
           PY
       - name: Publicar cambios en el navegador GPS
         run: |
