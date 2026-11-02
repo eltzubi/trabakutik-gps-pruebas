@@ -308,6 +308,7 @@ function warnGps(err){
 }
 
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
+let navegaNativo=false;
 let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
@@ -1118,7 +1119,7 @@ function updateOffRoute(d,accuracy){
  const far=d>Math.max(15,accuracy+7);
  if(!far){farSince=0;return}
  if(!farSince)farSince=Date.now();
- if(!alerted&&Date.now()-farSince>=800){alerted=true;getAudio();pitidos(4,.18);notice('Fuera del recorrido · vuelve a la línea cian')}
+ if(!alerted&&Date.now()-farSince>=800){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}notice('Fuera del recorrido · vuelve a la línea cian')}
 }
 function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
 // Un grupo de n pitidos agudos, y el numero es el dato: 1 pitido = cruce a
@@ -1374,7 +1375,7 @@ function junctionGuidance(p,accuracy){
   // arriba, nunca estuvo condicionado y por eso ese si se oia.
   // getAudio() aqui tambien: pitidos() se calla si todavia no hay
   // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
-  getAudio();pitidos(Number(fase),.30);
+  if(!navegaNativo){getAudio();pitidos(Number(fase),.30)}
   notice(fase==='3'?'En el cruce · sigue la línea azul'
         :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
@@ -1529,9 +1530,13 @@ function miraPosicionNativa(){
  let d;
  try{d=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}')}catch(e){return}
  if(!d.active){
+  navegaNativo=false;
   if(fuenteNativa){fuenteNativa=false;ultimoTiempoNativo=0;if(mode!=='create')startGPS()}
   return;
  }
+ // Si el servicio navega, pita el; la pagina se calla. Un APK viejo no manda
+ // este dato, asi que queda false y sigue pitando la pagina, como hasta ahora.
+ navegaNativo=!!d.navigating;
  if(!fuenteNativa){
   fuenteNativa=true;
   if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
@@ -1561,20 +1566,28 @@ function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1
 // La ruta si se le deja escrita (setRoute guarda el archivo y no arranca
 // nada), para que al empezar a grabar la tenga ya cargada y pueda avisar
 // de los giros con la pantalla apagada.
+// Enciende el servicio de Android para que avise de giros y de fuera de ruta
+// CON LA PANTALLA APAGADA. La pagina no puede: bloqueado el movil, el WebView
+// se congela. Solo se llama desde «Activar GPS» y desde empezar a grabar, que
+// son dos cosas que uno pulsa a proposito; cargar la ruta sigue sin encender
+// nada, que es lo que molestaba.
+function enciendeNavegacionNativa(){
+ if(!window.TrabakutikAndroid||mode!=='nav'||routePoints.length<2)return;
+ try{
+  syncNativeRoute();
+  if(window.TrabakutikAndroid.startNavigationWithRoute)
+   window.TrabakutikAndroid.startNavigationWithRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));
+  else window.TrabakutikAndroid.startNavigation();
+ }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
+}
 function startGPS(forRecording=false,conServicio=false){
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
-  try{
-   syncNativeRoute();
-   if(conServicio){
-    if(window.TrabakutikAndroid.startNavigationWithRoute)
-     window.TrabakutikAndroid.startNavigationWithRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));
-    else window.TrabakutikAndroid.startNavigation();
-   }
-  }catch(e){console.warn(e)}
+  try{syncNativeRoute()}catch(e){console.warn(e)}
  }
+ if(conServicio)enciendeNavegacionNativa();
  if(fuenteNativa)return;
  if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{warnGps(e);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
-$('navGo').onclick=()=>startGPS();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+$('navGo').onclick=()=>startGPS(false,true);$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 function recordingControls(state){document.body.classList.toggle('is-recording',state==='recording');
  $('recordStart').classList.toggle('hidden',state!=='ready');
  $('recordStop').classList.toggle('hidden',state!=='recording');
@@ -1582,7 +1595,7 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
-$('recordStart').onclick=()=>{apagadoHasta=0;if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
+$('recordStart').onclick=()=>{apagadoHasta=0;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
 $('recordStop').onclick=()=>{if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice(window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')};
 $('saveRecording').onclick=()=>{if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}else{if(recorded.length<2)return;download(recorded,'trabakutik-grabacion')}notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready')};
 // Al descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
