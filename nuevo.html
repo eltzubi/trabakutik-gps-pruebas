@@ -1301,7 +1301,11 @@ function junctionGuidance(p,accuracy){
   const turn=junctions[j],ahead=turn.along-progress.along;
   // La ventana sigue al primer aviso: a 40 km/h se avisa a 90 m, asi que
   // con los 58 de antes el cruce ni se miraba hasta estar encima.
-  if(ahead< -12||ahead>d1+8||dist(p,turn.point)>d1+25)continue;
+  // Y el suelo tambien va con la velocidad. El GPS del servicio da una
+  // posicion cada 1,5 s, o sea 17 m de salto a 40 km/h: con el suelo fijo de
+  // -12 m, el pitido del propio cruce se perdia 2 de cada 10 veces a 40 km/h
+  // y 5 de cada 10 a 50. Con -(d2+8) salen 10 de 10 de 4 a 50 km/h.
+  if(ahead< -(d2+8)||ahead>d1+8||dist(p,turn.point)>d1+25)continue;
   if(!best||Math.abs(ahead-15)<Math.abs(best.ahead-15))best={j,ahead,turn};
  }
  if(!best){
@@ -1379,7 +1383,7 @@ function junctionGuidance(p,accuracy){
   notice(fase==='3'?'En el cruce · sigue la línea azul'
         :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
- if(ahead< -9)resetJunctionView();
+ if(ahead< -(d2+5))resetJunctionView();
 }
 // Rumbo del tramo de la ruta mas cercano, en el sentido en que esta grabada.
 // Devuelve null a mas de 30 m: ahi ya no la estas siguiendo y vale mas el

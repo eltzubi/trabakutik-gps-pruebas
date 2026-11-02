@@ -201,7 +201,12 @@ public class TrackingService extends Service implements LocationListener {
    progress+=Math.hypot((b[1]-a[1])*lonScale,(b[0]-a[0])*scale);
    while(k<turns.size()&&(int)turns.get(k)[0]==i){
     double ahead=progress-along;
-    if(ahead>=-7&&ahead<=d1+8){
+    // El suelo va con la velocidad, como el techo. Con los -7 m fijos de
+    // antes el pitido del propio cruce se perdia: este GPS da una posicion
+    // cada 1,5 s, 17 m de salto a 40 km/h, y la ventana de 7 m no la pisaba
+    // ninguna lectura. Simulado con 10 arranques distintos: 5 de 10 a
+    // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
+    if(ahead>=-(d2+8)&&ahead<=d1+8){
      int d=(int)turns.get(k)[1];
      String instruction=d<0?"Izquierda":d>0?"Derecha":"Cambio de sentido";
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
