@@ -1006,7 +1006,8 @@ function mueveAnclaGps(i,lat,lon){
 $('cerrarCirculo').onclick=cierraCirculoGps;
 $('idaVuelta').onclick=idaYVueltaGps;
 $('undo').onclick=()=>{if(!anclasGps.length)return;anclasGps.pop();tramosGps.pop();updateDraw();notice('Último tramo deshecho')};
-function gpx(points,name){return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Trabakutik"><trk><name>'+name+'</name><trkseg>'+points.map(p=>p===null?'</trkseg><trkseg>':'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>'}
+function xmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function gpx(points,name){return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Trabakutik"><trk><name>'+xmlEscape(name)+'</name><trkseg>'+points.map(p=>p===null?'</trkseg><trkseg>':'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>'}
 function download(points,name){if(points.length<2)return;if(window.TrabakutikAndroid&&window.TrabakutikAndroid.saveGpx){window.TrabakutikAndroid.saveGpx(name+'.gpx',gpx(points,name));return;}const url=URL.createObjectURL(new Blob([gpx(points,name)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=name+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 let pendingSave=null;
@@ -1785,7 +1786,7 @@ window.trabakutikSyncNative=()=>{
   if(!raw)return;
   const data=JSON.parse(raw);
   if(typeof data.trackVersion==='string')lastNativeTrackVersion=data.trackVersion;
-  if(data.recording){
+  if(data.recording&&!recordingFinalized){
    recording=true;
    // Sin esto, el sondeo del servicio pisaba la pausa un segundo despues de
    // pulsarla: el servicio sigue marcando «recording» porque lo que se para
