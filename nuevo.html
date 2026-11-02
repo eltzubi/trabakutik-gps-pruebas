@@ -411,9 +411,12 @@ const notice=t=>{$('status').textContent=t};
 let avisadoPermiso=false;
 function warnGps(err){
  const denegado=err&&err.code===1;
+ const ubicacionNoDisponible=err&&err.code===2;
  const text=denegado
   ?'Permiso de ubicación denegado. Activa la ubicación y concede permiso a Trabakutik GPS.'
-  :'Sin señal GPS ahora mismo · seguimos intentándolo';
+  :ubicacionNoDisponible
+   ?'No se recibe la ubicación. Comprueba que la ubicación del teléfono esté activada.'
+   :'Sin señal GPS ahora mismo · seguimos intentándolo';
  notice(text);
  // Un alert() bloquea la pantalla y hay que tocarla para seguir. Saltaba
  // cada seis segundos, y bajo arbolado el GPS falla a ratos: ibas pedaleando
@@ -1610,7 +1613,12 @@ function rumboDeLaRuta(p){
  }
  return null;
 }
-function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
+function onFix(pos){
+ ultimoFix=Date.now();
+ const estadoGps=$('status').textContent;
+ if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación'))
+  notice(routePoints.length>1?'Posición recibida · siguiendo ruta':'Posición recibida');
+ const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
  if(gpsHeading!==null)lastCourse=gpsHeading;
  else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
@@ -1785,9 +1793,19 @@ function miraPosicionNativa(){
 setInterval(miraPosicionNativa,1000);
 const GUIA_CADUCA_MS=25000;
 setInterval(()=>{
- if(!ultimoFix||Date.now()-ultimoFix<GUIA_CADUCA_MS)return;
+ // Si aun no ha llegado el primer fix, ultimoFix vale 0. Ese caso tambien
+ // necesita aviso: antes el vigilante salia y nunca decia nada.
+ let ubicacionApagada=false;
+ if(window.TrabakutikAndroid?.getPosition){
+  try{ubicacionApagada=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}').locationEnabled===false}catch(e){}
+ }
+ if(!ubicacionApagada&&ultimoFix&&Date.now()-ultimoFix<GUIA_CADUCA_MS)return;
  if(junctionActive>=0)resetJunctionView();
  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+ const mensaje=ubicacionApagada
+  ?'Ubicación del teléfono apagada · actívala para recibir posición GPS'
+  :'Sin posición reciente del GPS · buscando señal';
+ if($('status').textContent!==mensaje)notice(mensaje);
 },5000);
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
 // Abrir una ruta ya no arranca el servicio de Android. Antes elegir la

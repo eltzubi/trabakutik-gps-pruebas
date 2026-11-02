@@ -11,7 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -50,13 +50,30 @@ public class TrackingService extends Service implements LocationListener {
   int n=0;for(File f:all)if(cierraGpxSiQuedoAbierto(f))n++;
   return n;
  }
- @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));}
+ @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));avisoHandler.postDelayed(refrescaAviso,5000);}
+ final Runnable refrescaAviso=()->{
+  if(active){String estado=estadoGps();if(!estado.equals(ultimoEstadoAviso))updateNotice();}
+  avisoHandler.postDelayed(refrescaAviso,5000);
+ };
+ boolean ubicacionActivada(){
+  try{return manager.isProviderEnabled(LocationManager.GPS_PROVIDER)||manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);}
+  catch(Exception ignored){return false;}
+ }
+ boolean gpsReciente(){return ultimoFixGpsElapsed>0&&SystemClock.elapsedRealtime()-ultimoFixGpsElapsed<25000;}
+ String estadoGps(){
+  if(!ubicacionActivada())return "Activa la ubicación del teléfono";
+  if(!gpsReciente())return "Esperando señal GPS";
+  if(offRoute)return "FUERA DE RUTA · vuelve a la línea azul";
+  if(!upcomingTurn.isEmpty())return upcomingTurn;
+  return route.size()>1?"Siguiendo ruta · GPS activo":points+" puntos registrados · GPS activo";
+ }
  @Override public IBinder onBind(Intent i){return null;}
  Notification notification(){
  Intent openIntent=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
  PendingIntent open=PendingIntent.getActivity(this,2,openIntent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
  Intent intent=new Intent(this,TrackingService.class).setAction("STOP");PendingIntent stop=PendingIntent.getService(this,1,intent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
- return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentIntent(open).setContentTitle(recording?(pausado?"Trabakutik GPS · grabación en pausa":"Trabakutik GPS grabando"):navigating?"Trabakutik GPS navegando":"Trabakutik GPS").setContentText(offRoute?"FUERA DE RUTA · vuelve a la línea azul":(!upcomingTurn.isEmpty()?upcomingTurn:(route.size()>1?"Siguiendo ruta · GPS activo":points+" puntos registrados"))).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
+ String estado=estadoGps();ultimoEstadoAviso=estado;
+ return new Notification.Builder(this,channel).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentIntent(open).setContentTitle(recording?(pausado?"Trabakutik GPS · grabación en pausa":"Trabakutik GPS grabando"):navigating?"Trabakutik GPS navegando":"Trabakutik GPS").setContentText(estado).setOngoing(true).addAction(android.R.drawable.ic_media_pause,"Parar",stop).build();}
  @Override public int onStartCommand(Intent i,int flags,int id){
   String action=i==null?null:i.getAction();
   if(action==null){finish();return START_NOT_STICKY;}
@@ -134,8 +151,8 @@ public class TrackingService extends Service implements LocationListener {
   red=new LocationListener(){
    @Override public void onLocationChanged(Location l){TrackingService.this.onLocationChanged(l);}
    @Override public void onStatusChanged(String p,int s,Bundle extras){}
-   @Override public void onProviderEnabled(String p){}
-   @Override public void onProviderDisabled(String p){}
+   @Override public void onProviderEnabled(String p){updateNotice();}
+   @Override public void onProviderDisabled(String p){updateNotice();}
   };
   try{manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,5,red,Looper.getMainLooper());}
   catch(Exception ignored){}
@@ -268,6 +285,8 @@ public class TrackingService extends Service implements LocationListener {
   }catch(Exception ignored){}
  }
  void updateNotice(){if(active)((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(12,notification());}
+ @Override public void onProviderEnabled(String provider){updateNotice();}
+ @Override public void onProviderDisabled(String provider){updateNotice();}
  double closest(double lat,double lon){
   if(route.size()<2)return Double.POSITIVE_INFINITY;
   double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat)),best=Double.POSITIVE_INFINITY;
@@ -294,7 +313,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  @Override public void onLocationChanged(Location l){
   if(!active)return;
-  if(red!=null&&LocationManager.GPS_PROVIDER.equals(l.getProvider()))sueltaRed();
+  if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).apply();
@@ -321,5 +340,5 @@ public class TrackingService extends Service implements LocationListener {
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
  void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
- @Override public void onDestroy(){if(active||recording)finish();ACTIVO=false;super.onDestroy();}
+ @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

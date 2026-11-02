@@ -259,6 +259,11 @@ public class MainActivity extends Activity {
    try{
     android.content.SharedPreferences pref=getSharedPreferences("tracking_live",MODE_PRIVATE);
     org.json.JSONObject o=new org.json.JSONObject();
+    LocationManager locationManager=(LocationManager)getSystemService(LOCATION_SERVICE);
+    boolean locationEnabled;
+    if(android.os.Build.VERSION.SDK_INT>=28)locationEnabled=locationManager.isLocationEnabled();
+    else locationEnabled=locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)||locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+    o.put("locationEnabled",locationEnabled);
     o.put("active",pref.getBoolean("active",false));
     o.put("recording",pref.getBoolean("recording",false));
     // La pagina necesita saberlo para callarse: si pita ella y pita el
