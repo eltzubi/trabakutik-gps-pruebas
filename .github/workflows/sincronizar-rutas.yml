@@ -18,50 +18,83 @@ jobs:
     steps:
       - name: Descargar repositorio GPS
         uses: actions/checkout@v4
-      - name: Descargar y validar las rutas publicadas
-        env:
-          URL_ORIGEN: https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/trailhead.json
+      - name: Descargar y validar los datos publicados
         run: |
           python3 - <<'PY'
           import json
-          import os
           import pathlib
           import urllib.request
 
-          url = os.environ["URL_ORIGEN"]
-          req = urllib.request.Request(url, headers={"User-Agent": "Trabakutik-GPS-Sync/1.0", "Cache-Control": "no-cache"})
-          with urllib.request.urlopen(req, timeout=30) as response:
-              raw = response.read()
-          data = json.loads(raw)
-          tracks = data.get("tracks")
-          if not isinstance(tracks, list) or not tracks:
-              raise SystemExit("Archivo origen sin rutas; no se sustituye el actual")
-          for index, track in enumerate(tracks):
-              if not isinstance(track, dict) or not isinstance(track.get("href"), str) or not track["href"].endswith(".html"):
-                  raise SystemExit(f"Ruta {index}: falta ficha HTML")
-              pts = track.get("points")
-              if not isinstance(pts, list) or len(pts) < 2:
-                  raise SystemExit(f"Ruta {index}: sin trazado suficiente")
-              for point in pts:
-                  if not isinstance(point, list) or len(point) < 2 or not all(isinstance(x, (int, float)) for x in point[:2]):
-                      raise SystemExit(f"Ruta {index}: coordenadas incorrectas")
-          # Mantener los datos originales, sin simplificar ni cambiar trazados.
-          target = pathlib.Path("data/trailhead.json")
-          target.parent.mkdir(parents=True, exist_ok=True)
-          if target.exists() and json.loads(target.read_text(encoding="utf-8")) == data:
-              print(f"Ya están sincronizadas las {len(tracks)} rutas")
-          else:
-              target.write_bytes(raw)
-              print(f"Actualizados los datos de {len(tracks)} rutas")
+          fuentes = {
+              "data/trailhead.json": "https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/trailhead.json",
+              "data/rutas.json": "https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/rutas.json",
+          }
+
+          def descargar(url):
+              req = urllib.request.Request(
+                  url,
+                  headers={"User-Agent": "Trabakutik-GPS-Sync/1.0", "Cache-Control": "no-cache"},
+              )
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  raw = response.read()
+              return raw, json.loads(raw)
+
+          actualizados = []
+          for nombre, url in fuentes.items():
+              raw, data = descargar(url)
+              if nombre.endswith("trailhead.json"):
+                  tracks = data.get("tracks") if isinstance(data, dict) else None
+                  if not isinstance(tracks, list) or not tracks:
+                      raise SystemExit("trailhead.json sin rutas; no se sustituye ningún archivo")
+                  for index, track in enumerate(tracks):
+                      if not isinstance(track, dict) or not isinstance(track.get("href"), str) or not track["href"].endswith(".html"):
+                          raise SystemExit(f"trailhead.json: la ruta {index} no tiene ficha HTML")
+                      points = track.get("points")
+                      if not isinstance(points, list) or len(points) < 2:
+                          raise SystemExit(f"trailhead.json: la ruta {index} no tiene trazado suficiente")
+                      for point in points:
+                          if not isinstance(point, list) or len(point) < 2 or not all(isinstance(x, (int, float)) for x in point[:2]):
+                              raise SystemExit(f"trailhead.json: coordenadas incorrectas en la ruta {index}")
+                  resumen = f"{len(tracks)} trazados"
+              else:
+                  if not isinstance(data, dict):
+                      raise SystemExit("rutas.json no contiene un objeto; no se sustituye ningún archivo")
+                  idiomas = [data.get("es"), data.get("eu")]
+                  if not all(isinstance(rutas, dict) and rutas for rutas in idiomas):
+                      raise SystemExit("rutas.json debe incluir rutas en castellano y euskera")
+                  if set(idiomas[0]) != set(idiomas[1]):
+                      raise SystemExit("rutas.json tiene listas distintas en castellano y euskera")
+                  for idioma, rutas in zip(("es", "eu"), idiomas):
+                      for slug, ruta in rutas.items():
+                          if not isinstance(ruta, dict) or not all(isinstance(ruta.get(campo), str) and ruta[campo] for campo in ("h", "n", "s")):
+                              raise SystemExit(f"rutas.json: datos incompletos para {idioma}/{slug}")
+                          if not ruta["h"].endswith(".html"):
+                              raise SystemExit(f"rutas.json: ficha HTML incorrecta para {idioma}/{slug}")
+                  resumen = f"{len(idiomas[0])} nombres bilingües"
+
+              destino = pathlib.Path(nombre)
+              destino.parent.mkdir(parents=True, exist_ok=True)
+              try:
+                  sin_cambios = destino.exists() and json.loads(destino.read_text(encoding="utf-8")) == data
+              except (OSError, json.JSONDecodeError):
+                  sin_cambios = False
+              if sin_cambios:
+                  print(f"{nombre}: ya sincronizado ({resumen})")
+              else:
+                  destino.write_bytes(raw)
+                  actualizados.append(nombre)
+                  print(f"{nombre}: actualizado ({resumen})")
+
+          pathlib.Path("/tmp/sincronizados.txt").write_text("\n".join(actualizados), encoding="utf-8")
           PY
       - name: Publicar cambios en el navegador GPS
         run: |
-          if git diff --quiet -- data/trailhead.json; then
+          if git diff --quiet -- data/trailhead.json data/rutas.json; then
             echo "Sin cambios en las rutas"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/trailhead.json
-          git commit -m "Sincronizar rutas nuevas desde Trabakutik"
+          git add data/trailhead.json data/rutas.json
+          git commit -m "Sincronizar rutas y nombres desde Trabakutik"
           git push
