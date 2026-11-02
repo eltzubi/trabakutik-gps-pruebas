@@ -39,7 +39,6 @@ jobs:
                   raw = response.read()
               return raw, json.loads(raw)
 
-          actualizados = []
           for nombre, url in fuentes.items():
               raw, data = descargar(url)
               if nombre.endswith("trailhead.json"):
@@ -82,7 +81,6 @@ jobs:
                   print(f"{nombre}: ya sincronizado ({resumen})")
               else:
                   destino.write_bytes(raw)
-                  actualizados.append(nombre)
                   print(f"{nombre}: actualizado ({resumen})")
 
           PY
