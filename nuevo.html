@@ -301,11 +301,19 @@ $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange
 let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
-let lastGpsWarning=0;
+
+let avisadoPermiso=false;
 function warnGps(err){
- const text=err&&err.code===1?'Permiso de ubicación denegado. Activa la ubicación y concede permiso a Trabakutik GPS.':'No se recibe ubicación GPS. Activa la ubicación (satélites/GPS) del móvil y comprueba el permiso de Trabakutik GPS.';
+ const denegado=err&&err.code===1;
+ const text=denegado
+  ?'Permiso de ubicación denegado. Activa la ubicación y concede permiso a Trabakutik GPS.'
+  :'Sin señal GPS ahora mismo · seguimos intentándolo';
  notice(text);
- if(Date.now()-lastGpsWarning>6000){lastGpsWarning=Date.now();alert(text)}
+ // Un alert() bloquea la pantalla y hay que tocarla para seguir. Saltaba
+ // cada seis segundos, y bajo arbolado el GPS falla a ratos: ibas pedaleando
+ // y el movil te pedia un toque cada seis segundos. Ahora solo si el permiso
+ // esta denegado, que eso si hay que arreglarlo a mano, y una sola vez.
+ if(denegado&&!avisadoPermiso){avisadoPermiso=true;alert(text)}
 }
 
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
@@ -1108,12 +1116,37 @@ $('navCreated').onclick=()=>{
 // sentidoRuta: +1 si vas como la ruta esta grabada, -1 si la haces al reves.
 // Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
 // selectRoute, loadSaved y clearActiveRoute.
-let sentidoRuta=1,refAvance=null,refAvanceT=0;
+let sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,alongAcum=0;
+// El sentido se decide por el AVANCE SOBRE LA RUTA, no comparando rumbos.
+// Comparar el rumbo del GPS con el del tramo mas cercano se equivoca en las
+// curvas cerradas —en una lazada, el tramo mas cercano puede ser el de vuelta,
+// que apunta justo al reves— y al arrancar, cuando el rumbo todavia no es
+// fiable. Medido sobre 3 km siguiendo la ruta bien: ocho cambios falsos.
+// Avanzar o retroceder sobre la ruta no tiene esa ambiguedad. Hacen falta
+// 30 m netos para cambiar de opinion, asi que el baile del GPS no decide.
+const AVANCE_DECIDE_M=30;
+function decideSentido(along){
+ if(!Number.isFinite(along))return;
+ if(alongPrevio===null){alongPrevio=along;return}
+ const paso=along-alongPrevio;alongPrevio=along;
+ if(Math.abs(paso)>200)return;             // salto raro: no cuenta
+ alongAcum+=paso;
+ if(Math.abs(alongAcum)<AVANCE_DECIDE_M)return;
+ const nuevo=alongAcum>0?1:-1;alongAcum=0;
+ if(nuevo===sentidoRuta)return;
+ sentidoRuta=nuevo;
+ junctionWarned.clear();
+ // El servicio hace su propia cuenta con la pantalla apagada y tambien lo
+ // necesita. Un APK viejo no tiene setSentido: se queda como estaba.
+ try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(sentidoRuta)}catch(e){}
+ marcaAlReves(sentidoRuta<0);
+ if(sentidoRuta<0)notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');
+}
 function marcaAlReves(si){
  const c=$('reverseWarn');
  if(c)c.classList.toggle('hidden',!si);
 }
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;marcaAlReves(false)}
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;marcaAlReves(false)}
 function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
@@ -1460,23 +1493,7 @@ function onFix(pos){ultimoFix=Date.now();const p=[pos.coords.latitude,pos.coords
    // Solo se decide cuando hay rumbo de verdad (lastCourse se refresca
    // andando 8 m), y entre medias se mantiene el ultimo decidido, para
    // que parado no se ponga a dar vueltas.
-   if(lastCourse!==null){
-    const dif=Math.abs(((r-lastCourse+540)%360)-180);
-    const antes=sentidoRuta;
-    sentidoRuta=dif>90?-1:1;
-    // El servicio hace su propia cuenta con la pantalla apagada y tambien
-    // necesita saberlo. Un APK viejo no tiene setSentido: se queda como
-    // estaba, que no es peor que antes.
-    if(sentidoRuta!==antes){
-     junctionWarned.clear();
-     try{window.TrabakutikAndroid?.setSentido?.(sentidoRuta)}catch(e){}
-     // Que se sepa, y que se siga sabiendo: la linea de estado la pisa el
-     // siguiente aviso de cruce en segundos, asi que el cartel se queda
-     // puesto mientras vayas al reves.
-     marcaAlReves(sentidoRuta<0);
-     if(sentidoRuta<0)notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');
-    }
-   }
+   decideSentido(progressOnRoute(p).along);
    h=(r+(sentidoRuta<0?180:0))%360;
   }
  }
@@ -1643,7 +1660,16 @@ function startGPS(forRecording=false,conServicio=false){
  }
  if(conServicio)enciendeNavegacionNativa();
  if(fuenteNativa)return;
- if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{warnGps(e);if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
+ if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
+ warnGps(e);
+ // Solo se abandona con el permiso denegado: ahi no va a llegar nada nunca.
+ // Antes CUALQUIER error cerraba el watch, y con timeout de 20 s bastaba un
+ // tramo de bosque sin ver satelites para que el GPS se quedara muerto el
+ // resto de la salida, sin volver solo. Una espera agotada o una posicion no
+ // disponible son normales en el monte: el watch sigue y se recupera cuando
+ // entra el siguiente punto.
+ if(e&&e.code===1){if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null}
+},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
 $('navGo').onclick=()=>startGPS(false,true);$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 function recordingControls(state){document.body.classList.toggle('is-recording',state==='recording');
  $('recordStart').classList.toggle('hidden',state!=='ready');
