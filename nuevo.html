@@ -1365,7 +1365,16 @@ function junctionGuidance(p,accuracy){
  else if(ahead<=0)fase='3';
  if(fase&&!junctionWarned.has(j+':'+fase)){
   junctionWarned.add(j+':'+fase);
-  if(!window.TrabakutikAndroid)pitidos(Number(fase),.30);
+  // Pita SIEMPRE la pagina, tambien dentro de la app. Antes se callaba aqui
+  // («if(!window.TrabakutikAndroid)») dandole el turno al servicio de
+  // Android, pero el servicio solo avisa de giros con navigating=true, y eso
+  // solo lo enciende startNavigationWithRoute, que se llama unicamente con
+  // conServicio=true... y nadie pasa ese true. Resultado: dentro de la app no
+  // pitaba nadie los cruces. El de fuera de ruta, que esta dos lineas mas
+  // arriba, nunca estuvo condicionado y por eso ese si se oia.
+  // getAudio() aqui tambien: pitidos() se calla si todavia no hay
+  // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
+  getAudio();pitidos(Number(fase),.30);
   notice(fase==='3'?'En el cruce · sigue la línea azul'
         :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
