@@ -356,13 +356,14 @@ public class MainActivity extends Activity {
     // pero cuando se nota lo que interesa es lo ULTIMO, no lo primero.
     // El GPX no se toca: ahi va todo.
     org.json.JSONArray pts=new org.json.JSONArray();
-    if(f.exists()&&f.length()<50000000){
+    boolean pointsComplete=true;
+    if(f.exists()){
      java.util.ArrayDeque<String> cola=new java.util.ArrayDeque<>();
      try(BufferedReader br=new BufferedReader(new FileReader(f))){
       String line;
       while((line=br.readLine())!=null){
        cola.addLast(line);
-       if(cola.size()>25000)cola.removeFirst();
+       if(cola.size()>25000){cola.removeFirst();pointsComplete=false;}
       }
      }
      for(String line:cola){
@@ -371,6 +372,9 @@ public class MainActivity extends Activity {
       if(p.length==2){try{double lat=Double.parseDouble(p[0]),lon=Double.parseDouble(p[1]);if(Double.isFinite(lat)&&Double.isFinite(lon)){org.json.JSONArray coord=new org.json.JSONArray();coord.put(lat);coord.put(lon);pts.put(coord);}}catch(Exception ignored){}}
      }
     }
+    // La vista es limitada, el GPX no. La página debe saber si falta el
+    // comienzo antes de ofrecer guardar esta copia en «Mis rutas».
+    o.put("pointsComplete",pointsComplete);
     o.put("points",pts);
     return o.toString();
    }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo leer seguimiento nativo",e);return "";}

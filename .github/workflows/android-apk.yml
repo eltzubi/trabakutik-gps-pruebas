@@ -1,5 +1,9 @@
 name: Compilar Trabakutik GPS APK
 on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-apk.yml'
   push:
     branches: [main]
     paths:
@@ -47,6 +51,7 @@ jobs:
       #   .../releases/latest/download/TrabakutikGPS.apk
       # Un toque y se descarga, sin cuenta y sin buscar nada.
       - name: Publicar la Release con el APK
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

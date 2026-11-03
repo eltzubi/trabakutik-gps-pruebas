@@ -427,7 +427,7 @@ const baseMaps={
  pnoa:L.tileLayer('https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=OI.OrthoimageCoverage&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxZoom:19,attribution:'© IGN · PNOA'})
 };
 let currentBase=null;
-function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLayer(currentBase);currentBase=baseMaps[key];currentBase.addTo(map);currentBase.bringToBack();$('mapCredit').textContent=currentBase.options.attribution||'';try{localStorage.setItem('trabakutik-mapa-fondo',key)}catch(e){}}
+function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLayer(currentBase);currentBase=baseMaps[key];currentBase.addTo(map);currentBase.bringToBack();$('mapCredit').textContent=(currentBase.options.attribution||'')+(key==='ign'||key==='pnoa'?' · necesita conexión':'');try{localStorage.setItem('trabakutik-mapa-fondo',key)}catch(e){}}
 let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
 changeBase(initialBase);
 pintaOrient();
@@ -459,6 +459,7 @@ function warnGps(err){
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
 let navegaNativo=false;
 let gpsApagadoPorTi=false;
+let gpsSolicitado=false;
 let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
@@ -1089,25 +1090,29 @@ function closeSaveDialog(){
 }
 function openSaveDialog(points,name,kind){
  if(!Array.isArray(points)||points.filter(Boolean).length<2){notice('No hay suficientes puntos para generar un GPX.');return}
- pendingSave={points:points.map(p=>p===null?null:p.slice()),name,kind};
+ const complete=kind!=='recording'||nativeTrackComplete;
+ pendingSave={points:points.map(p=>p===null?null:p.slice()),name,kind,complete};
  $('saveTitle').textContent=kind==='recording'?'Guardar grabación':'Guardar ruta creada';
  $('saveSummary').textContent=name+' · '+points.filter(Boolean).length+' puntos'+elevationText(points.filter(Boolean));
  $('saveStatus').textContent='';
  const hasCuts=kind==='recording'&&(points.includes(null)||cortesGrabacion>0);
- $('saveToMine').disabled=hasCuts;
+ $('saveToMine').disabled=hasCuts||!complete;
  if(hasCuts)$('saveStatus').textContent='La grabación tiene cortes. Descarga el GPX para conservar los tramos separados.';
+ if(!complete)$('saveStatus').textContent='La vista previa contiene solo el tramo final. Guarda el archivo GPX para conservar la grabación completa.';
  $('downloadFromDialog').textContent=kind==='recording'&&window.TrabakutikAndroid?'Guardar archivo GPX…':'Descargar GPX';
- $('shareFromDialog').classList.toggle('hidden',!canShareGpx(points,name)||(hasCuts&&window.TrabakutikAndroid));
+ $('shareFromDialog').classList.toggle('hidden',!complete||!canShareGpx(points,name)||(hasCuts&&window.TrabakutikAndroid));
  $('saveDialog').classList.remove('hidden');
 }
 function finishRecording(){
  if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
  recording=false;recordingPendingSave=false;recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;
+ nativeTrackComplete=true;
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
  recordingControls('ready');
 }
 function savePendingToMine(){
  if(!pendingSave)return;
+ if(pendingSave.complete===false){notice('Guarda el GPX completo: la vista previa no contiene toda la grabación.');return}
  const pending=pendingSave,points=pending.points.filter(Boolean),list=savedList();
  const match=list.findIndex(item=>String(item.name||'').trim().toLocaleLowerCase()===pending.name.trim().toLocaleLowerCase());
  if(match>=0&&!confirm('Ya existe una ruta guardada con ese nombre. ¿Quieres reemplazarla?'))return;
@@ -1143,6 +1148,7 @@ $('downloadFromDialog').onclick=()=>{
 };
 $('shareFromDialog').onclick=async()=>{
  if(!pendingSave)return;
+ if(pendingSave.complete===false){notice('Guarda el GPX completo para conservar el inicio de la grabación.');return}
  const pending=pendingSave;
  const shared=await shareGpx(pending.points,pending.name);
  if(!shared)return;
@@ -1240,7 +1246,9 @@ function loadSaved(item){
  updateDirectionArrows();
  map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
  $('title').textContent=item.name;setRouteTitle(item.name,null);
- $('distance').textContent='Ruta propia'+elevationText(routePoints);
+ // El resumen se mide sobre el original: simplificar en planta puede quitar
+ // una cima de un camino recto aunque conserve las alturas de sus extremos.
+ $('distance').textContent='Ruta propia'+elevationText(item.points);
  const request=selectedRouteRequest;
  notice('Ruta cargada · preparando navegación con '+routePoints.length+' puntos');
  setTimeout(()=>{
@@ -1389,7 +1397,7 @@ let rumboSuave=null,sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,a
 // Cuantas veces se partio el track por quedarse sin senal. Un GPX con
 // huecos no es el recorrido completo y hay que decirlo al terminar, no
 // dejar que parezca entero.
-let cortesGrabacion=0;
+let cortesGrabacion=0,nativeTrackComplete=true;
 // El sentido se decide por el AVANCE SOBRE LA RUTA, no comparando rumbos.
 // Comparar el rumbo del GPS con el del tramo mas cercano se equivoca en las
 // curvas cerradas —en una lazada, el tramo mas cercano puede ser el de vuelta,
@@ -2114,6 +2122,9 @@ window.trabakutikSyncNative=()=>{
   const raw=window.TrabakutikAndroid.getTrackingSnapshotIfChanged?.(lastNativeTrackVersion)||window.TrabakutikAndroid.getTrackingSnapshot();
   if(!raw)return;
   const data=JSON.parse(raw);
+  if(typeof data.pointsComplete==='boolean')nativeTrackComplete=data.pointsComplete;
+  // Compatibilidad con APK anteriores: en el límite no sabemos si hay más.
+  else if(Array.isArray(data.points))nativeTrackComplete=data.points.length<25000;
   if(typeof data.trackVersion==='string')lastNativeTrackVersion=data.trackVersion;
   if(data.recording&&!recordingPendingSave){
    recording=true;
@@ -2247,6 +2258,7 @@ setInterval(miraPosicionNativa,1000);
 const GUIA_CADUCA_MS=25000;
 setInterval(()=>{
  if(gpsApagadoPorTi)return;   // lo has apagado tu: no hay nada que vigilar
+ if(!gpsSolicitado&&!fuenteNativa&&!navegaNativo)return;
  let ubicacionApagada=false;
  if(window.TrabakutikAndroid?.getPosition){
   try{ubicacionApagada=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}').locationEnabled===false}catch(e){}
@@ -2305,6 +2317,7 @@ function enciendeNavegacionNativa(){
 }
 function startGPS(forRecording=false,conServicio=false){
  gpsApagadoPorTi=false;
+ gpsSolicitado=true;
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
   try{syncNativeRoute()}catch(e){console.warn(e)}
  }
@@ -2393,6 +2406,11 @@ $('recordPause').onclick=()=>pausaGrabacion(true);
 $('recordResume').onclick=()=>pausaGrabacion(false);
 $('recordStop').onclick=()=>{if(!confirmaParar())return;pausado=false;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingPendingSave=true;recordingControls('stopped');notice((window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')+avisoDeCortes())};
 $('saveRecording').onclick=()=>{
+ if(!nativeTrackComplete&&window.TrabakutikAndroid?.saveRecording){
+  window.TrabakutikAndroid.saveRecording();
+  notice('Elige dónde guardar el GPX completo; la pantalla solo muestra el tramo final.');
+  return;
+ }
  if(recorded.filter(p=>p!==null).length<2){notice('No hay suficientes posiciones para guardar. Puedes descartar la grabación.');return}
  const def='Grabación '+new Date().toLocaleDateString('es-ES')+' '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
  const name=prompt('Nombre para la grabación',def);
@@ -2423,6 +2441,7 @@ function apagaGps(){
  // «GPS apagado» se convertia en «Sin posicion reciente del GPS · buscando
  // señal», que es mentira y ademas asusta.
  gpsApagadoPorTi=true;
+ gpsSolicitado=false;
  $('distance').textContent='GPS apagado';
 }
 $('discardRecording').onclick=()=>{
