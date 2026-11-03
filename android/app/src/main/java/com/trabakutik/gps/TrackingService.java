@@ -10,8 +10,9 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import org.json.*;
 import android.media.*;
+import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -50,7 +51,7 @@ public class TrackingService extends Service implements LocationListener {
   int n=0;for(File f:all)if(cierraGpxSiQuedoAbierto(f))n++;
   return n;
  }
- @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));avisoHandler.postDelayed(refrescaAviso,5000);}
+ @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);audioModo=getSharedPreferences("tracking_live",MODE_PRIVATE).getString("audioModo","voz");arrancaVoz();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));avisoHandler.postDelayed(refrescaAviso,5000);}
  final Runnable refrescaAviso=new Runnable(){
   @Override public void run(){
    if(!active)return;
@@ -58,6 +59,39 @@ public class TrackingService extends Service implements LocationListener {
    avisoHandler.postDelayed(this,5000);
   }
  };
+ // La voz vive AQUI y no en la pagina. La pagina se duerme con la pantalla
+ // apagada —es la misma razon por la que los pitidos se mudaron al servicio—
+ // y con el movil en el bolsillo la voz no sonaba justo cuando hace falta.
+ void arrancaVoz(){
+  try{
+   voz=new TextToSpeech(this,estado->{
+    if(estado!=TextToSpeech.SUCCESS)return;
+    try{
+     voz.setLanguage(new Locale("es","ES"));
+     // USAGE_ASSISTANCE_NAVIGATION_GUIDANCE es la clave de que esto suene
+     // como un navegador de verdad: Android baja la musica mientras habla
+     // en vez de cortarla, y lo manda al manos libres si hay uno puesto.
+     voz.setAudioAttributes(new AudioAttributes.Builder()
+       .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+       .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+     vozLista=true;
+    }catch(Exception ignored){}
+   });
+  }catch(Exception ignored){}
+ }
+ void habla(String texto){
+  if(!"voz".equals(audioModo)||!vozLista||voz==null||texto==null)return;
+  // QUEUE_FLUSH a proposito: navegando manda lo ultimo. Si el aviso de los
+  // 10 m llega mientras todavia suena el de 50, el que vale es el de 10.
+  try{voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"trabakutik");}catch(Exception ignored){}
+ }
+ String fraseGiro(int lado,String fase,double d1,double d2){
+  if(lado==0)return "3".equals(fase)?"Cambio de sentido ahora":"En "+metros("1".equals(fase)?d1:d2)+" metros, cambio de sentido";
+  String hacia=lado<0?"izquierda":"derecha";
+  if("3".equals(fase))return "Gira a la "+hacia+" ahora";
+  return "En "+metros("1".equals(fase)?d1:d2)+" metros, gira a la "+hacia;
+ }
+ int metros(double d){return (int)(Math.round(d/5.0)*5);}
  boolean ubicacionActivada(){
   try{return manager.isProviderEnabled(LocationManager.GPS_PROVIDER)||manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);}
   catch(Exception ignored){return false;}
@@ -89,6 +123,14 @@ public class TrackingService extends Service implements LocationListener {
   }
   // La pausa detiene SOLO anotar puntos. El GPS, los giros y el fuera de
   // ruta siguen: lo que se para es la grabacion, no la orientacion.
+  if("AUDIO".equals(action)){
+   String m=i.getStringExtra("modo");
+   if("voz".equals(m)||"pitidos".equals(m)||"silencio".equals(m)){
+    audioModo=m;
+    getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("audioModo",m).apply();
+   }
+   return START_NOT_STICKY;
+  }
   if("PAUSE".equals(action)){pausado=true;if(active)updateNotice();return START_NOT_STICKY;}
   if("RESUME".equals(action)){
    pausado=false;forzarCorte=true;    // que el descanso no salga como una recta
@@ -264,6 +306,7 @@ public class TrackingService extends Service implements LocationListener {
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
        pitidos(Integer.parseInt(fase),300);
+       habla(fraseGiro(lado,fase,d1,d2));
       }
      }
     }
@@ -277,6 +320,7 @@ public class TrackingService extends Service implements LocationListener {
  // que los de giro (300 ms), que tres y cuatro al mismo ritmo no se
  // distinguen de oido.
  void pitidos(int n,int sep){
+  if("silencio".equals(audioModo))return;
   try{
    final ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,90);
    final Handler handler=new Handler(Looper.getMainLooper());
@@ -305,13 +349,13 @@ public class TrackingService extends Service implements LocationListener {
   if(!navigating||route.size()<2||!l.hasAccuracy()||l.getAccuracy()>22){farSince=0;return;}
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
   if(d<=Math.max(11,acc+4)){
-   routeReached=true;farSince=0;if(offRoute){offRoute=false;updateNotice();}return;
+   routeReached=true;farSince=0;if(offRoute){offRoute=false;updateNotice();habla("De nuevo en la ruta");}return;
   }
   if(!routeReached)return;
   if(d<=Math.max(15,acc+7)){farSince=0;return;}
   if(farSince==0){farSince=SystemClock.elapsedRealtime();return;}
   if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=800){
-   offRoute=true;updateNotice();pitidos(4,180);
+   offRoute=true;updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
   }
  }
  @Override public void onLocationChanged(Location l){
@@ -343,5 +387,5 @@ public class TrackingService extends Service implements LocationListener {
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
  void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
- @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);if(active||recording)finish();ACTIVO=false;super.onDestroy();}
+ @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

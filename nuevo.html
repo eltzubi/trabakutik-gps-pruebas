@@ -410,7 +410,7 @@ changeBase(initialBase);
 pintaOrient();
 $('orient').onclick=()=>{cursoArriba=!cursoArriba;pintaOrient();notice(!cursoArriba?'Mapa con el norte arriba':rumboMapa===null?'Mapa orientado al rumbo · girará en cuanto sepa hacia dónde vas':'Mapa orientado al rumbo');try{localStorage.setItem('trabakutik-curso-arriba',cursoArriba?'si':'no')}catch(e){}manualMapUntil=0;aplicaGiroMapa(true);pintaMandos()};
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,wakeLockSentinel=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 
@@ -1388,6 +1388,10 @@ function updateOffRoute(d,accuracy){
  if(!alerted&&Date.now()-farSince>=800){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
 }
 try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
+try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}
+function avisaModoAudioNativo(){
+ try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}
+}
 function pintaModoAudio(){
  const b=$('audioMode');if(!b)return;
  b.dataset.modo=audioModo;
@@ -1395,21 +1399,19 @@ function pintaModoAudio(){
  b.title='Avisos sonoros: '+nombres[audioModo];b.setAttribute('aria-label','Avisos sonoros: '+nombres[audioModo]);
 }
 function hablar(texto){
+ // Si navega el servicio, habla el: tiene TextToSpeech y sigue sonando con la
+ // pantalla apagada, que es cuando hace falta. La pagina se duerme ahi, asi
+ // que su voz solo valia mirando el movil. Es la misma regla que los pitidos.
+ if(navegaNativo)return;
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
  try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
 }
 function conmutaModoAudio(){
  audioModo=audioModo==='voz'?'pitidos':audioModo==='pitidos'?'silencio':'voz';
  try{localStorage.setItem('trabakutik-audio-modo',audioModo)}catch(e){}
- pintaModoAudio();notice('Avisos sonoros: '+(audioModo==='voz'?'voz y pitidos':audioModo==='pitidos'?'solo pitidos':'silencio'));
+ pintaModoAudio();avisaModoAudioNativo();notice('Avisos sonoros: '+(audioModo==='voz'?'voz y pitidos':audioModo==='pitidos'?'solo pitidos':'silencio'));
  if(audioModo==='voz')hablar('Voz activada');
 }
-async function pideWakeLock(){
- if(!navigator.wakeLock||wakeLockSentinel)return;
- try{wakeLockSentinel=await navigator.wakeLock.request('screen');wakeLockSentinel.addEventListener('release',()=>{wakeLockSentinel=null})}catch(e){}
-}
-function sueltaWakeLock(){if(wakeLockSentinel){try{wakeLockSentinel.release()}catch(e){}wakeLockSentinel=null}}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(recording||(watch!==null&&mode==='nav')))pideWakeLock()});
 function compartirGpx(points,name){void shareGpx(points,name)}
 function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
 // Un grupo de n pitidos agudos, y el numero es el dato: 1 pitido = cruce a
@@ -1969,7 +1971,7 @@ function startGPS(forRecording=false,conServicio=false){
  }
  if(conServicio)enciendeNavegacionNativa();
  if(fuenteNativa)return;
- if(watch!==null)return;if(!navigator.geolocation){warnGps();return}ultimoErrorGps=null;ultimoErrorGpsText='';pideWakeLock();getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
+ if(watch!==null)return;if(!navigator.geolocation){warnGps();return}ultimoErrorGps=null;ultimoErrorGpsText='';getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
  warnGps(e);
  // Solo se abandona con el permiso denegado: ahi no va a llegar nada nunca.
  // Antes CUALQUIER error cerraba el watch, y con timeout de 20 s bastaba un
@@ -1989,7 +1991,7 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
-$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;recordingPendingSave=false;pideWakeLock();enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
+$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;recordingPendingSave=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
 // En un circuito te cruzas con la salida varias veces, y parar por error
 // deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
 // La pausa detiene SOLO la grabacion. La ubicacion, los avisos de giro y el
@@ -2044,7 +2046,6 @@ $('saveRecording').onclick=()=>{
 // en el mapa, que para eso la elegiste; con el boton de centrar vuelve a
 // encenderse el GPS cuando quieras.
 function apagaGps(){
- sueltaWakeLock();
  if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
  try{if(window.TrabakutikAndroid?.stopNavigation)window.TrabakutikAndroid.stopNavigation()}
  catch(e){console.warn('No se pudo parar la navegación nativa',e)}

@@ -255,6 +255,17 @@ public class MainActivity extends Activity {
    *  cada vez que cambia el archivo, que grabando es con cada punto nuevo, y
    *  pueden ser miles. Para mover la flecha hay que mirar cada segundo, y cada
    *  segundo no se puede estar leyendo todo eso. */
+  // El boton de sonido de la pagina solo callaba a la pagina, y navegando
+  // dentro de la app quien pita es el servicio: «Silencio» no silenciaba
+  // nada. Ahora el modo se guarda aqui y el servicio lo lee al nacer, asi
+  // que vale tambien si todavia no esta levantado.
+  @JavascriptInterface public void setAudioModo(String modo){
+   if(!"voz".equals(modo)&&!"pitidos".equals(modo)&&!"silencio".equals(modo))return;
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("audioModo",modo).apply();
+   if(!TrackingService.ACTIVO)return;
+   try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("AUDIO").putExtra("modo",modo));}
+   catch(Exception ignored){}
+  }
   @JavascriptInterface public String getPosition(){
    try{
     android.content.SharedPreferences pref=getSharedPreferences("tracking_live",MODE_PRIVATE);
