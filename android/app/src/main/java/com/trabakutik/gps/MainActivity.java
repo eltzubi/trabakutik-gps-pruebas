@@ -390,8 +390,18 @@ public class MainActivity extends Activity {
     if(list.length()<2||list.length()>15000||json.length()>2000000)return;
     File f=new File(getFilesDir(),"ruta-activa.json");
     try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
-    // No arrancar ni reactivar un servicio por actualizar los puntos.
-    // NAVIGATE lee el archivo una sola vez al comenzar la navegación.
+    // Y AVISAR AL SERVICIO. Antes solo se guardaba el fichero, con un
+    // comentario que decia que NAVIGATE lo lee una vez al empezar. Eso dejaba
+    // al servicio midiendo la ruta vieja: al cambiar de ruta con el servicio
+    // vivo, y -peor- al llegar el trazado fino despues de empezar a navegar,
+    // porque desde la 4.0 los GIROS si se refrescaban (accion TURNS) y los
+    // puntos no. Giros del trazado fino sobre los puntos del general: avisos
+    // donde no toca, y con la pantalla bloqueada ni te enteras de por que.
+    // Como TURNS: solo si hay servicio vivo, aqui no se arranca nada.
+    if(TrackingService.ACTIVO){
+     try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));}
+     catch(Exception ignored2){}
+    }
    }catch(Exception ignored){}
   }
   // La pagina decide si vas al reves comparando tu rumbo con el del tramo.
@@ -523,11 +533,16 @@ public class MainActivity extends Activity {
     pendingGpx=xml;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,201);});
   }
  }
- boolean serviceActive=false;
  void startNavigationService(){ensureGpsPermissions("NAVIGATE");}
  boolean onNavigator(){return showingGps;}
  int dp(int px){return Math.round(px*getResources().getDisplayMetrics().density);}
- void stopNativeRecording(){if(serviceActive)startService(new Intent(this,TrackingService.class).setAction("STOP_RECORD"));}
+ // TrackingService.ACTIVO y no «serviceActive»: ese campo es de ESTA
+ // instancia de la Activity y nace en false. Si Android rehace la pantalla
+ // -girarla, o recuperarla despues de un rato en segundo plano- mientras el
+ // servicio sigue vivo, la instancia nueva lo tenia en false y «Parar» no
+ // mandaba nada: la pantalla se quedaba como parada y el servicio seguia
+ // grabando. ACTIVO es estatica del servicio, que va en el mismo proceso.
+ void stopNativeRecording(){if(TrackingService.ACTIVO)startService(new Intent(this,TrackingService.class).setAction("STOP_RECORD"));}
  void discardLastRecording(){File dir=new File(getFilesDir(),"grabaciones");File[] files=dir.listFiles((d,n)->n.endsWith(".gpx"));if(files==null||files.length==0)return;File last=files[0];for(File f:files)if(f.lastModified()>last.lastModified())last=f;if(last.delete())Toast.makeText(this,"Grabación descartada",Toast.LENGTH_SHORT).show();}
  // Configuración inicial: Android concede cada permiso únicamente tras confirmación.
  void beginPermissionSetup(){
@@ -587,8 +602,11 @@ public class MainActivity extends Activity {
  void launchGps(){
   if(pendingGpsAction==null)return;
   String action=pendingGpsAction;pendingGpsAction=null;
-  try{serviceActive=true;startForegroundService(new Intent(this,TrackingService.class).setAction(action));}
-  catch(Exception ex){serviceActive=false;Toast.makeText(this,"No se pudo activar el GPS. Revisa permisos y ubicación.",Toast.LENGTH_LONG).show();}
+  // Sin «serviceActive»: ese campo se ha quitado. Era estado de la Activity
+  // que fingia saber si el servicio estaba vivo, y despues de rehacerse la
+  // pantalla mentia. Quien lo sabe es TrackingService.ACTIVO.
+  try{startForegroundService(new Intent(this,TrackingService.class).setAction(action));}
+  catch(Exception ex){Toast.makeText(this,"No se pudo activar el GPS. Revisa permisos y ubicación.",Toast.LENGTH_LONG).show();}
  }
  @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){
   super.onRequestPermissionsResult(code,permissions,results);
