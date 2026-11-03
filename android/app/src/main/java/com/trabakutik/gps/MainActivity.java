@@ -463,7 +463,7 @@ public class MainActivity extends Activity {
    String safe=filename==null?"trabakutik.gpx":filename.replaceAll("[^a-zA-Z0-9._-]","_");
    if(!safe.endsWith(".gpx"))safe+=".gpx";
    final String name=safe;
-   runOnUiThread(()->{pendingGpx=xml;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,201);});
+   runOnUiThread(()->{pendingGpx=xml;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,201);});
   }
  }
  boolean serviceActive=false;
@@ -560,7 +560,25 @@ public class MainActivity extends Activity {
  // servicio vivo, que si lo hay es el que lo esta escribiendo y lo cerrara el.
  if(!TrackingService.ACTIVO)TrackingService.cierraGpxSiQuedoAbierto(latest);
  exportFile=latest;
- Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/gpx+xml");i.putExtra(Intent.EXTRA_TITLE,latest.getName());startActivityForResult(i,200);}
- @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();}finally{pendingGpx=null;}}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
+ Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");i.putExtra(Intent.EXTRA_TITLE,latest.getName());startActivityForResult(i,200);}
+ // El selector de Android decide el nombre final, y con un tipo que no
+ // conoce se come la extension: el autor acabo con «froga3» a secas, sin
+ // «.gpx», y asi no hay app que lo reconozca. Se comprueba como quedo y, si
+ // falta, se renombra. ExternalStorageProvider admite renombrar.
+ String aseguraExtensionGpx(android.net.Uri uri){
+  String nombre=null;
+  android.database.Cursor c=getContentResolver().query(uri,
+    new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null);
+  if(c!=null)try{if(c.moveToFirst())nombre=c.getString(0);}finally{c.close();}
+  if(nombre==null)return "GPX";
+  if(nombre.toLowerCase().endsWith(".gpx"))return nombre;
+  try{
+   android.net.Uri nueva=android.provider.DocumentsContract.renameDocument(
+     getContentResolver(),uri,nombre+".gpx");
+   if(nueva!=null)return nombre+".gpx";
+  }catch(Exception ignored){}
+  return nombre;
+ }
+ @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();pendingGpx=null;return;}try{String fin=aseguraExtensionGpx(data.getData());Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();}catch(Exception e){Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}pendingGpx=null;}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
  @Override public void onBackPressed(){WebView current=showingGps?web:webRoutes;if(current.canGoBack())current.goBack();else if(!showingGps)showScreen(true);else super.onBackPressed();}
 }
