@@ -32,4 +32,5 @@ jobs:
           name: capturas-pruebas-gps
           path: .test-artifacts/
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 7
