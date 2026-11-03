@@ -286,7 +286,11 @@ public class TrackingService extends Service implements LocationListener {
  // dentro de 25 metros cuando ya estaba girando». 25 m a 10 km/h son nueve
  // segundos. Asi que la voz avisa aparte y antes: 18 segundos de margen, con
  // 60 m de suelo para ir despacio y 200 de techo para no avisar desde lejos.
- double avisoVoz(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(200,Math.max(60,v*18));}
+ // El suelo estaba en 60 m, pensado para la bici. Andando a 4 km/h eso son
+ // 54 segundos de antelacion: oyes «en 60 metros gira» y sigues andando casi
+ // un minuto. El autor va ANDANDO, no en bici. Con 35 m quedan 32 s andando y
+ // de 12 km/h para arriba no cambia nada, porque ahi manda ya el v*18.
+ double avisoVoz(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(200,Math.max(35,v*18));}
  double avisoCorto(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(30,Math.max(8,v*3));}
  void checkTurns(Location l){
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;

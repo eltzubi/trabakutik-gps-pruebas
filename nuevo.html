@@ -352,7 +352,7 @@ const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.
 // Arrastrar es lo unico que Leaflet calcula con restas de pantalla
 // directas, sin pasar por ahi: por eso al empezar a arrastrar el mapa
 // vuelve de golpe al norte y se comporta como siempre.
-const GIRO_MINIMO=4,GIRO_VELOCIDAD=1.95;
+const GIRO_MINIMO=4,GIRO_VELOCIDAD=1.0;
 let cursoArriba=true,rumboMapa=null,anguloMapa=0,ladoMapa=0;
 try{cursoArriba=localStorage.getItem('trabakutik-curso-arriba')!=='no'}catch(e){}
 const rotEl=document.getElementById('mapRot');
@@ -1522,9 +1522,11 @@ function distanciasDeAviso(){
  // El tercero es SOLO para la voz, y va mucho antes. Un pitido informa al
  // instante; una frase tarda dos o tres segundos en decirse y para cuando
  // acaba ya estas en el cruce. 25 m a 10 km/h son nueve segundos: no da.
- // 18 segundos de margen, 60 m de suelo y 200 de techo.
+ // 18 segundos de margen, 35 m de suelo y 200 de techo. El suelo estaba en
+ // 60 y andando a 4 km/h daba 54 s de antelacion: demasiado. Con 35 son 32 s
+ // andando, y de 12 km/h para arriba no cambia nada.
  return [Math.min(90,Math.max(25,v*9)),Math.min(30,Math.max(8,v*3)),
-         Math.min(200,Math.max(60,v*18))];
+         Math.min(200,Math.max(35,v*18))];
 }
 function pitidos(n,sep){
  if(audioModo==='silencio'||!audio)return;
