@@ -1255,7 +1255,7 @@ function decideSentido(along){
  // necesita. Un APK viejo no tiene setSentido: se queda como estaba.
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(sentidoRuta)}catch(e){}
  marcaAlReves(sentidoRuta<0);
- if(sentidoRuta<0){if(!navegaNativo)hablar('Recorrido en sentido inverso, giros corregidos');notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');}
+ if(sentidoRuta<0){hablar('Recorrido en sentido inverso, giros corregidos');notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');}
 }
 // Lo que llevas y lo que te queda DE LA RUTA, no en linea recta. Sale del
 // avance sobre el trazado, que es el mismo numero con el que se calculan los
@@ -1298,12 +1298,12 @@ function updateOffRoute(d,accuracy){
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
  if(accuracy>22){farSince=0;return}
  const near=d<=Math.max(11,accuracy+4);
- if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;if(!navegaNativo)hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}return}
+ if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
  const far=d>Math.max(15,accuracy+7);
  if(!far){farSince=0;return}
  if(!farSince)farSince=Date.now();
- if(!alerted&&Date.now()-farSince>=800){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18);hablar('Atención, fuera del recorrido')}notice('Fuera del recorrido · vuelve a la línea cian')}
+ if(!alerted&&Date.now()-farSince>=800){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
 }
 try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
 function pintaModoAudio(){
@@ -1620,7 +1620,7 @@ function junctionGuidance(p,accuracy){
   // getAudio() aqui tambien: pitidos() se calla si todavia no hay
   // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
   if(!navegaNativo){
-   getAudio();pitidos(Number(fase),.30);
+   if(!navegaNativo){getAudio();pitidos(Number(fase),.30)}
    const giroTxt=lado==='vuelta'?'cambio de sentido':'gira a la '+lado;
    const frase=fase==='3'?(lado==='vuelta'?'Cambio de sentido ahora':'Gira a la '+lado+' ahora')
     :'En '+Math.round((fase==='1'?d1:d2)/5)*5+' metros, '+giroTxt;
@@ -1658,7 +1658,7 @@ function rumboDeLaRuta(p){
 function onFix(pos){
  ultimoFix=Date.now();
  const estadoGps=$('status').textContent;
- if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación'))
+ if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación'))
   notice(routePoints.length>1?'Posición recibida · siguiendo ruta':'Posición recibida');
  const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
