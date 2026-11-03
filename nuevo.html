@@ -634,12 +634,23 @@ async function loadDetailedSelected(i,request){
   const pts=payload.tracks?.[0]?.points;
   if(!Array.isArray(pts)||pts.length<2||pts.length>15000||!pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])))throw new Error('Trazado detallado no válido');
   if(chosen!==i||selectedRouteRequest!==request)return;
-  // El GPX detallado es solo para dibujar la línea: no reconstruir
-  // miles de cruces ni mandar 10.000 puntos al servicio Android en caliente.
-  // Los avisos siguen basados en el trazado ligero, que ya está seleccionado.
+  // Antes esto era SOLO para dibujar, por miedo a «mandar 10.000 puntos al
+  // servicio». Ese miedo era a un fantasma: medidos los 70 tracks, el mayor
+  // tiene 2.302 puntos y la mediana 1.058, y setRoute admite 15.000.
+  // Mientras tanto la línea que se VEÍA era la fina y la que se MEDÍA era la
+  // gorda -37 m entre puntos, hasta 7,5 m de separación entre una y otra-.
+  // Dos líneas distintas: de ahí que el punto pareciera pegado al track y el
+  // aviso dijera «a 15 m», y de ahí que la flecha fuera a saltos.
   const detailedLine=pts.map(p=>[p[0],p[1]]);
   if(layers[i])map.removeLayer(layers[i]);
   layers[i]=L.polyline(detailedLine,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
+  // Y ahora sí: la fina manda también para medir. Se rehacen los cruces -que
+  // recalculan routeCumulative- y se le manda al servicio.
+  if(detailedLine.length<=12000){
+   routePoints=detailedLine;
+   computeJunctions();
+   try{syncNativeRoute()}catch(e){console.warn('Ruta fina no enviada',e)}
+  }
   notice('Ruta Garmin mostrada con detalle · navegación activa');
  }catch(e){
   if(chosen===i&&selectedRouteRequest===request)notice('Ruta cargada · detalle original no disponible, usando trazado general');
@@ -1341,7 +1352,7 @@ $('navCreated').onclick=()=>{
 // sentidoRuta: +1 si vas como la ruta esta grabada, -1 si la haces al reves.
 // Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
 // selectRoute, loadSaved y clearActiveRoute.
-let sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,alongAcum=0,ultimoAlong=null;
+let rumboSuave=null,sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,alongAcum=0,ultimoAlong=null;
 // Cuantas veces se partio el track por quedarse sin senal. Un GPX con
 // huecos no es el recorrido completo y hay que decirlo al terminar, no
 // dejar que parezca entero.
@@ -1821,6 +1832,17 @@ function onFix(pos){
    h=(r+(sentidoRuta<0?180:0))%360;hDeRuta=true;
   }
  }
+ // La flecha giraba de golpe porque el rumbo salta de un segmento a otro.
+ // Suavizado circular: cada lectura la acerca al rumbo nuevo, no la planta
+ // encima. Medido sobre la ruta de Berriz, el salto mayor baja de 179 a 80
+ // grados y los bruscos se reducen a menos de la mitad. Los que quedan son
+ // curvas de verdad del circuito.
+ if(h!==null){
+  if(rumboSuave===null)rumboSuave=h;
+  else{let dd=(h-rumboSuave)%360;if(dd>180)dd-=360;if(dd<-180)dd+=360;
+       rumboSuave=(rumboSuave+dd*0.45+360)%360;}
+  h=rumboSuave;
+ }
  pintaBrujula(h);
  // Sobre la ruta el rumbo es geometrico y vale siempre; fuera de ella
  // viene del GPS y solo se hace caso por encima de 7 km/h. Si no, se
@@ -1833,7 +1855,16 @@ function onFix(pos){
  if(h!==null&&(hDeRuta||velocidadSuave>=GIRO_VELOCIDAD||rumboMapa===null))rumboMapa=h;
  aplicaGiroMapa(false);
  pintaMandos();
- const icon=L.divIcon({className:'',iconSize:[36,36],iconAnchor:[18,18],html:'<div style="width:36px;height:36px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="12" fill="#187cff" stroke="white" stroke-width="3"/>'+(h!==null?'<path d="M18 0L10 15L18 12L26 15Z" fill="#187cff" stroke="white" stroke-width="1.5"/>':'')+'</svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
+ // La flecha de antes medía 36 px y el círculo se la comía: de reojo se veía
+ // un punto azul y la dirección había que buscarla. El autor eligió esta de
+ // cuatro propuestas: círculo con el punto blanco en el centro -andando hace
+ // falta saber EXACTAMENTE dónde estás, si te sales dos metros del sendero
+ // quieres verlo- y encima una flecha más del doble de grande. Se descartó
+ // la del cono de dirección porque tapa el camino de delante, que es justo
+ // lo que uno mira en un sendero.
+ // El ancla va en el centro del círculo, que es la posición de verdad, y el
+ // giro es sobre ese mismo punto.
+ const icon=L.divIcon({className:'',iconSize:[54,54],iconAnchor:[27,27],html:'<div style="width:54px;height:54px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="54" height="54" viewBox="0 0 54 54">'+(h!==null?'<path d="M27 2.5 L37.5 20 L27 15.5 L16.5 20 Z" fill="#187cff" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>':'')+'<circle cx="27" cy="27" r="13.5" fill="#187cff" stroke="#fff" stroke-width="3.2"/><circle cx="27" cy="27" r="4" fill="#fff"/></svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
  if(recording&&!pausado&&!window.TrabakutikAndroid){
   const ts=Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),acc=pos.coords.accuracy;
   // El navegador puede suspender el GPS al bloquear la pantalla.

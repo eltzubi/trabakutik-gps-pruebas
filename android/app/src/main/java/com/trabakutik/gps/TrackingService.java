@@ -206,7 +206,12 @@ public class TrackingService extends Service implements LocationListener {
    // reinicies. Doce horas pasan cualquier salida y siguen siendo un techo.
    gpsWakeLock.acquire(12L*60*60*1000L);
    if(withRecording)beginRecording();
-   manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1500,2,this,Looper.getMainLooper());
+   // Antes: 1500 ms Y 2 m de desplazamiento. El filtro de 2 m era el que
+  // mandaba andando -2 m a 4 km/h son 1,7 s, y cuesta arriba 2,5- y parado
+  // no llegaba NINGUNA posicion. Lo pregunto el autor: «por que no graba
+  // cada segundo?». Ahora una por segundo y sin filtro de distancia; lo que
+  // se GUARDA se filtra mas abajo, al escribir.
+  manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,this,Looper.getMainLooper());
    pideRed();
   }catch(Exception ex){finish();}
  }
@@ -444,6 +449,12 @@ public class TrackingService extends Service implements LocationListener {
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
+  // Con una posicion por segundo y sin filtro de distancia, parado el GPS
+  // deja un nido de puntos de puro ruido. Se guarda si te has movido 1,5 m
+  // o si han pasado 4 s, asi que una parada queda registrada -un punto cada
+  // cuatro segundos- sin ensuciar el trazado.
+  if(lastRecordedTime>0&&Double.isFinite(lastRecordedLat)&&!forzarCorte
+     &&l.getTime()-lastRecordedTime<4000&&l.distanceTo(makePreviousLocation())<1.5)return;
   try(FileWriter w=new FileWriter(file,true)){
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
    fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
