@@ -32,8 +32,33 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: Preparar edición aislada para probar el PR
+        if: github.event_name == 'pull_request'
+        env:
+          PR_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 ../scripts/test-apk-prueba.py
+          python3 ../scripts/preparar-apk-prueba.py --root .. --version "$PR_COMMIT"
       - name: Compilar APK de prueba
         run: gradle :app:assembleDebug --no-daemon
+      - name: Verificar la APK aislada y su interfaz
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess, zipfile
+          apk = 'app/build/outputs/apk/debug/app-debug.apk'
+          with zipfile.ZipFile(apk) as z:
+              prefix = 'assets/gps-prueba/'
+              info = json.loads(z.read(prefix + 'version.json'))
+              for name, digest in info['empaquetado'].items():
+                  assert hashlib.sha256(z.read(prefix + name)).hexdigest() == digest, name
+          aapt = os.environ['ANDROID_HOME'] + '/build-tools/35.0.0/aapt'
+          badging = subprocess.check_output([aapt, 'dump', 'badging', apk], text=True)
+          assert "package: name='com.trabakutik.gps.pruebas'" in badging
+          assert "launchable-activity: name='com.trabakutik.gps.MainActivity'" in badging
+          assert "application-label:'GPS Pruebas'" in badging
+          print('APK GPS Pruebas verificada; interfaz del commit ' + info['commit'])
+          PY
       - name: Comprobar que existe el APK
         run: |
           echo "Archivos generados:"
