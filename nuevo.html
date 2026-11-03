@@ -404,11 +404,11 @@ changeBase(initialBase);
 pintaOrient();
 $('orient').onclick=()=>{cursoArriba=!cursoArriba;pintaOrient();notice(!cursoArriba?'Mapa con el norte arriba':rumboMapa===null?'Mapa orientado al rumbo · girará en cuanto sepa hacia dónde vas':'Mapa orientado al rumbo');try{localStorage.setItem('trabakutik-curso-arriba',cursoArriba?'si':'no')}catch(e){}manualMapUntil=0;aplicaGiroMapa(true);pintaMandos()};
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,wakeLockSentinel=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,wakeLockSentinel=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 
-let avisadoPermiso=false;
+let avisadoPermiso=false,ultimoErrorGps=null,ultimoErrorGpsText='';
 function warnGps(err){
  const denegado=err&&err.code===1;
  const ubicacionNoDisponible=err&&err.code===2;
@@ -417,6 +417,8 @@ function warnGps(err){
   :ubicacionNoDisponible
    ?'No se recibe la ubicación. Comprueba que la ubicación del teléfono esté activada.'
    :'Sin señal GPS ahora mismo · seguimos intentándolo';
+ ultimoErrorGps=err&&Number.isFinite(err.code)?err.code:null;
+ ultimoErrorGpsText=err?text:'';
  notice(text);
  // Un alert() bloquea la pantalla y hay que tocarla para seguir. Saltaba
  // cada seis segundos, y bajo arbolado el GPS falla a ratos: ibas pedaleando
@@ -1060,6 +1062,7 @@ function compactRoutePoints(points,maxPoints=2200){
  return compact;
 }
 function loadSaved(item){
+ if(drawPoints.length>1&&!createdSavedItem&&!confirm('El trazado que estás creando aún no está guardado. ¿Quieres descartarlo y abrir esta ruta?'))return;
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();
@@ -1214,9 +1217,10 @@ $('saveCreated').onclick=()=>{
  const finalName=name.trim()||def,list=savedList();
  const ix=list.findIndex(it=>it.name.toLowerCase()===finalName.toLowerCase());
  if(ix>=0){if(!confirm('Ya existe «'+list[ix].name+'». ¿Quieres sustituir esa ruta guardada?'))return;list.splice(ix,1)}
+ if(ix<0&&list.length>=30){notice('Mis rutas está lleno (30). Elimina una ruta antes de guardar otra.');return}
  const points=drawPoints.map(p=>p.slice()),item={name:finalName,points,created:Date.now()};
  list.unshift(item);
- if(putSaved(list.slice(0,30))){createdSavedItem=item;$('navCreated').classList.remove('hidden');$('navCreated').disabled=false;notice('Ruta guardada en Mis rutas · exporta o comparte desde la lista'+elevationText(points))}
+ if(putSaved(list)){createdSavedItem=item;$('navCreated').classList.remove('hidden');$('navCreated').disabled=false;notice('Ruta guardada en Mis rutas · exporta o comparte desde la lista'+elevationText(points))}
 };
 $('navCreated').onclick=()=>{
  if(!createdSavedItem)return;
@@ -1619,13 +1623,11 @@ function junctionGuidance(p,accuracy){
   // arriba, nunca estuvo condicionado y por eso ese si se oia.
   // getAudio() aqui tambien: pitidos() se calla si todavia no hay
   // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
-  if(!navegaNativo){
-   if(!navegaNativo){getAudio();pitidos(Number(fase),.30)}
-   const giroTxt=lado==='vuelta'?'cambio de sentido':'gira a la '+lado;
-   const frase=fase==='3'?(lado==='vuelta'?'Cambio de sentido ahora':'Gira a la '+lado+' ahora')
-    :'En '+Math.round((fase==='1'?d1:d2)/5)*5+' metros, '+giroTxt;
-   hablar(frase);
-  }
+  if(!navegaNativo){getAudio();pitidos(Number(fase),.30)}
+  const giroTxt=lado==='vuelta'?'cambio de sentido':'gira a la '+lado;
+  const frase=fase==='3'?(lado==='vuelta'?'Cambio de sentido ahora':'Gira a la '+lado+' ahora')
+   :'En '+Math.round((fase==='1'?d1:d2)/5)*5+' metros, '+giroTxt;
+  hablar(frase);
   notice(fase==='3'?'En el cruce · sigue la línea azul'
         :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
@@ -1658,8 +1660,9 @@ function rumboDeLaRuta(p){
 function onFix(pos){
  ultimoFix=Date.now();
  const estadoGps=$('status').textContent;
- if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación'))
+ if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
   notice(routePoints.length>1?'Posición recibida · siguiendo ruta':'Posición recibida');
+ ultimoErrorGps=null;ultimoErrorGpsText='';
  const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
  if(gpsHeading!==null)lastCourse=gpsHeading;
@@ -1748,7 +1751,7 @@ window.trabakutikSyncNative=()=>{
   if(!raw)return;
   const data=JSON.parse(raw);
   if(typeof data.trackVersion==='string')lastNativeTrackVersion=data.trackVersion;
-  if(data.recording){
+  if(data.recording&&!recordingPendingSave){
    recording=true;
    // Sin esto, el sondeo del servicio pisaba la pausa un segundo despues de
    // pulsarla: el servicio sigue marcando «recording» porque lo que se para
@@ -1756,6 +1759,7 @@ window.trabakutikSyncNative=()=>{
    recordingControls(pausado?'paused':'recording');
   }else if(recording){
    recording=false;
+   recordingPendingSave=(data.points?.length||0)>1;
    recordingControls((data.points?.length||0)>1?'stopped':'ready');
   }
   if(Array.isArray(data.points)){
@@ -1835,13 +1839,24 @@ function miraPosicionNativa(){
 setInterval(miraPosicionNativa,1000);
 const GUIA_CADUCA_MS=25000;
 setInterval(()=>{
- // Si aun no ha llegado el primer fix, ultimoFix vale 0. Ese caso tambien
- // necesita aviso: antes el vigilante salia y nunca decia nada.
  let ubicacionApagada=false;
  if(window.TrabakutikAndroid?.getPosition){
   try{ubicacionApagada=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}').locationEnabled===false}catch(e){}
  }
- if(!ubicacionApagada&&ultimoFix){
+ if(ubicacionApagada){
+  if(junctionActive>=0)resetJunctionView();
+  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+  const mensaje='Ubicación del teléfono apagada · actívala para recibir posición GPS';
+  if($('status').textContent!==mensaje)notice(mensaje);
+  return;
+ }
+ if(ultimoErrorGps!==null){
+  if(junctionActive>=0)resetJunctionView();
+  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+  if($('status').textContent!==ultimoErrorGpsText)notice(ultimoErrorGpsText);
+  return;
+ }
+ if(ultimoFix){
   const sinMs=Date.now()-ultimoFix;
   if(sinMs>=12000&&sinMs<GUIA_CADUCA_MS){
    const seg=Math.round(sinMs/1000),mensajeGps='Sin posición GPS reciente · '+seg+' s';
@@ -1853,9 +1868,7 @@ setInterval(()=>{
  }
  if(junctionActive>=0)resetJunctionView();
  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
- const mensaje=ubicacionApagada
-  ?'Ubicación del teléfono apagada · actívala para recibir posición GPS'
-  :'Sin posición reciente del GPS · buscando señal';
+ const mensaje='Sin posición reciente del GPS · buscando señal';
  if($('status').textContent!==mensaje)notice(mensaje);
 },5000);
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1)window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])))}catch(e){console.warn('Ruta nativa no enviada',e)}}
@@ -1888,7 +1901,7 @@ function startGPS(forRecording=false,conServicio=false){
  }
  if(conServicio)enciendeNavegacionNativa();
  if(fuenteNativa)return;
- if(watch!==null)return;if(!navigator.geolocation){warnGps();return}pideWakeLock();getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
+ if(watch!==null)return;if(!navigator.geolocation){warnGps();return}ultimoErrorGps=null;ultimoErrorGpsText='';pideWakeLock();getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
  warnGps(e);
  // Solo se abandona con el permiso denegado: ahi no va a llegar nada nunca.
  // Antes CUALQUIER error cerraba el watch, y con timeout de 20 s bastaba un
@@ -1908,7 +1921,7 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
-$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;pideWakeLock();enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
+$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;recordingPendingSave=false;pideWakeLock();enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
 // En un circuito te cruzas con la salida varias veces, y parar por error
 // deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
 // La pausa detiene SOLO la grabacion. La ubicacion, los avisos de giro y el
@@ -1947,7 +1960,7 @@ function confirmaParar(){
 }
 $('recordPause').onclick=()=>pausaGrabacion(true);
 $('recordResume').onclick=()=>pausaGrabacion(false);
-$('recordStop').onclick=()=>{if(!confirmaParar())return;pausado=false;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice((window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')+avisoDeCortes())};
+$('recordStop').onclick=()=>{if(!confirmaParar())return;pausado=false;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingPendingSave=true;recordingControls('stopped');notice((window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')+avisoDeCortes())};
 $('saveRecording').onclick=()=>{
  if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}
  if(recorded.filter(p=>p!==null).length<2)return;
@@ -1958,16 +1971,17 @@ $('saveRecording').onclick=()=>{
   const safe=finalName.toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-')||'trabakutik-grabacion';
   download(recorded,safe);
   notice('GPX descargado con sus cortes GPS · no se añadió a Mis rutas para no unir tramos separados');
-  recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');
+  recordingPendingSave=false;recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');
   return;
  }
  const list=savedList();
  const ix=list.findIndex(it=>it.name.toLowerCase()===finalName.toLowerCase());
  if(ix>=0){if(!confirm('Ya existe «'+list[ix].name+'». ¿Quieres sustituir esa ruta guardada?'))return;list.splice(ix,1)}
+ if(ix<0&&list.length>=30){notice('Mis rutas está lleno (30). Elimina una ruta antes de guardar otra.');return}
  const points=recorded.map(p=>p===null?null:p.slice());list.unshift({name:finalName,points,created:Date.now()});
- if(!putSaved(list.slice(0,30)))return;
+ if(!putSaved(list))return;
  notice('Grabación guardada en Mis rutas · exporta o comparte desde la lista');
- recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');
+ recordingPendingSave=false;recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');
 };
 // Al descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
 // asi que el telefono seguia pidiendo posicion con la salida terminada y
@@ -1994,7 +2008,7 @@ function apagaGps(){
 $('discardRecording').onclick=()=>{
  if(!confirm('¿Descartar esta grabación? Se borrará el recorrido sin guardarlo y se apagará el GPS.'))return;
  if(window.TrabakutikAndroid)window.TrabakutikAndroid.discardRecording();
- recording=false;recorded=[];
+ recording=false;recordingPendingSave=false;recorded=[];
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
  recordingControls('ready');
  apagaGps();
@@ -2003,11 +2017,11 @@ $('discardRecording').onclick=()=>{
 window.trabakutikNativeGpxSaved=()=>{
  if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
  if(!recording){
-  recorded=[];if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
+  recordingPendingSave=false;recorded=[];if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
   recordingControls('ready');notice('GPX guardado en el móvil');
  }
 };
-window.addEventListener('beforeunload',e=>{if(recording){e.preventDefault();e.returnValue=''}});
+window.addEventListener('beforeunload',e=>{if(recording||recordingPendingSave||(drawPoints.length>1&&!createdSavedItem)){e.preventDefault();e.returnValue=''}});
 // 'no-cache' no quiere decir que no se guarde: quiere decir que antes de
 // usar lo guardado se le pregunta al servidor. GitHub Pages manda
 // max-age=600, asi que durante diez minutos el WebView daba por buena la
