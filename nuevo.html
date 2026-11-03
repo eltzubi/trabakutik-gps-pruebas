@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#07131d"><title>Trabakutik · Navegador nuevo</title><link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
-:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#e6f4ff;background:#07131d}*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.4;cursor:default}#app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(7px + env(safe-area-inset-top)) 12px 8px;background:#0a1b27;border-bottom:1px solid #284456;min-height:62px}.top strong{font-size:13px;font-weight:760;letter-spacing:.05em}.top small{font-size:10px;color:#91b4c4;display:block}.top .sub{font-size:11px;color:#a6eefe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}.top a{color:#9ed9e7;font-size:11px;text-decoration:none}#map{position:relative;flex:1;min-height:0;background:#172d33}#map{overflow:hidden}#mapRot{position:absolute;left:50%;top:50%;width:var(--lado,780px);height:var(--lado,780px);margin-left:calc(var(--lado,780px)/-2);margin-top:calc(var(--lado,780px)/-2);transform-origin:50% 50%;transition:transform .4s linear;will-change:transform}#mapRot.sin-giro{transition:none}#mapCredit{position:absolute;z-index:620;right:0;bottom:var(--turn-alto,0px);font-size:9px;line-height:1.6;color:#9fb8c6;background:#07131db8;padding:0 5px;border-radius:5px 0 0 0;pointer-events:none}#orient[aria-pressed=true]{background:#66e5ff!important;color:#051824!important;border-color:#66e5ff!important}#eye[aria-pressed=true]{background:#ffa94d!important;color:#2b1603!important;border-color:#ffa94d!important}#locate.siguiendo{background:#187cff!important;color:#fff!important;border-color:#187cff!important}.leaflet-container{background:#172d33}.leaflet-control-attribution{font-size:9px!important}.tools{position:absolute;z-index:700;right:10px;top:12px;display:grid;gap:7px}.tools button{width:42px;height:42px;border:1px solid #5a889b7a;border-radius:13px;background:#0d2339ed;color:#d4f7ff;font-size:21px;box-shadow:0 2px 14px #0006}.info{position:absolute;z-index:700;left:10px;top:12px;max-width:calc(100% - 80px);background:#0a1f2edb;border:1px solid #31576a;border-radius:13px;padding:9px 12px;backdrop-filter:blur(12px);pointer-events:none}.info b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info span{display:block;font-size:10px;color:#a5bece;margin-top:4px}.bottom{background:#091925;border-top:1px solid #315265;padding:8px 9px calc(9px + env(safe-area-inset-bottom));flex:none}.modes{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:8px}.modes button{background:#122e3d;border:1px solid #2d5261;color:#acccd9;border-radius:12px;padding:9px 4px;font-size:12px;font-weight:650}.modes button[aria-pressed=true]{color:#051824;background:#66e5ff;border-color:#66e5ff}.actions{display:flex;gap:6px;align-items:center;justify-content:center;min-height:44px}.actions button{min-height:43px;flex:1;padding:9px 8px;background:#173346;color:#f3fcff;border:1px solid #3f6375;border-radius:12px;font-size:12px;font-weight:700}.actions .go{background:#92fca8;color:#06271b;border-color:#92fca8}.actions .red{background:#e95164;color:#fff;border-color:#e95164}.actions .blue{background:#338be9;color:#fff;border-color:#338be9}.actions .amber{background:#ffbd69;color:#2d1804;border-color:#ffbd69}.actions .light{background:#123046}.hidden{display:none!important}.status{font-size:10px;color:#a7bfcb;margin-top:6px;text-align:center;min-height:13px}.legend{font-size:10px;color:#9cb8c7;display:flex;justify-content:center;gap:12px;margin-top:6px}.dot{width:15px;height:3px;display:inline-block;vertical-align:middle;margin-right:3px}.popup{position:absolute;z-index:900;inset:0;background:#07131dba;display:grid;place-items:end center}.sheet{width:100%;max-height:77%;overflow:auto;background:#102938;border:1px solid #365467;border-radius:19px 19px 0 0;padding:16px 14px 24px}.sheet h2{font-size:16px;margin:0 0 9px}.sheet input{width:100%;border-radius:10px;background:#173747;border:1px solid #638092;color:white;padding:12px;margin-bottom:9px}.sheet button{background:#163a4c;color:white;border:1px solid #4d7385;border-radius:10px;padding:10px}.routeitem{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;text-align:left;margin:5px 0;font-size:12px}.routeitem span{font-size:10px;color:#a4c3d2}
+:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#e6f4ff;background:#07131d}*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.4;cursor:default}#app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(7px + env(safe-area-inset-top)) 12px 8px;background:#0a1b27;border-bottom:1px solid #284456;min-height:62px}.top strong{font-size:13px;font-weight:760;letter-spacing:.05em}.top small{font-size:10px;color:#91b4c4;display:block}.top .sub{font-size:11px;color:#a6eefe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}.top a{color:#9ed9e7;font-size:11px;text-decoration:none}#map{position:relative;flex:1;min-height:0;background:#172d33}#map{overflow:hidden}#mapRot{position:absolute;left:50%;top:50%;width:var(--lado,780px);height:var(--lado,780px);margin-left:calc(var(--lado,780px)/-2);margin-top:calc(var(--lado,780px)/-2);transform-origin:50% 50%;transition:transform .4s linear;will-change:transform}#mapRot.sin-giro{transition:none}#mapCredit{position:absolute;z-index:620;right:0;bottom:var(--turn-alto,0px);font-size:9px;line-height:1.6;color:#9fb8c6;background:#07131db8;padding:0 5px;border-radius:5px 0 0 0;pointer-events:none}#orient[aria-pressed=true]{background:#66e5ff!important;color:#051824!important;border-color:#66e5ff!important}#audioMode[data-modo="voz"]{border-color:#66e5ff!important;color:#66e5ff!important}#audioMode[data-modo="pitidos"]{border-color:#ffa94d!important;color:#ffa94d!important}#audioMode[data-modo="silencio"]{color:#819ba8!important}.routeitem .btn-sub{padding:6px 7px;font-size:11px;border-radius:8px;background:#173747;border:1px solid #4a7186;color:#d4f7ff;white-space:nowrap}#eye[aria-pressed=true]{background:#ffa94d!important;color:#2b1603!important;border-color:#ffa94d!important}#locate.siguiendo{background:#187cff!important;color:#fff!important;border-color:#187cff!important}.leaflet-container{background:#172d33}.leaflet-control-attribution{font-size:9px!important}.tools{position:absolute;z-index:700;right:10px;top:12px;display:grid;gap:7px}.tools button{width:42px;height:42px;border:1px solid #5a889b7a;border-radius:13px;background:#0d2339ed;color:#d4f7ff;font-size:21px;box-shadow:0 2px 14px #0006}.info{position:absolute;z-index:700;left:10px;top:12px;max-width:calc(100% - 80px);background:#0a1f2edb;border:1px solid #31576a;border-radius:13px;padding:9px 12px;backdrop-filter:blur(12px);pointer-events:none}.info b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info span{display:block;font-size:10px;color:#a5bece;margin-top:4px}.bottom{background:#091925;border-top:1px solid #315265;padding:8px 9px calc(9px + env(safe-area-inset-bottom));flex:none}.modes{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:8px}.modes button{background:#122e3d;border:1px solid #2d5261;color:#acccd9;border-radius:12px;padding:9px 4px;font-size:12px;font-weight:650}.modes button[aria-pressed=true]{color:#051824;background:#66e5ff;border-color:#66e5ff}.actions{display:flex;gap:6px;align-items:center;justify-content:center;min-height:44px}.actions button{min-height:43px;flex:1;padding:9px 8px;background:#173346;color:#f3fcff;border:1px solid #3f6375;border-radius:12px;font-size:12px;font-weight:700}.actions .go{background:#92fca8;color:#06271b;border-color:#92fca8}.actions .red{background:#e95164;color:#fff;border-color:#e95164}.actions .blue{background:#338be9;color:#fff;border-color:#338be9}.actions .amber{background:#ffbd69;color:#2d1804;border-color:#ffbd69}.actions .light{background:#123046}.hidden{display:none!important}.status{font-size:10px;color:#a7bfcb;margin-top:6px;text-align:center;min-height:13px}.legend{font-size:10px;color:#9cb8c7;display:flex;justify-content:center;gap:12px;margin-top:6px}.dot{width:15px;height:3px;display:inline-block;vertical-align:middle;margin-right:3px}.popup{position:absolute;z-index:900;inset:0;background:#07131dba;display:grid;place-items:end center}.sheet{width:100%;max-height:77%;overflow:auto;background:#102938;border:1px solid #365467;border-radius:19px 19px 0 0;padding:16px 14px 24px}.sheet h2{font-size:16px;margin:0 0 9px}.sheet input{width:100%;border-radius:10px;background:#173747;border:1px solid #638092;color:white;padding:12px;margin-bottom:9px}.sheet button{background:#163a4c;color:white;border:1px solid #4d7385;border-radius:10px;padding:10px}.routeitem{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;text-align:left;margin:5px 0;font-size:12px}.routeitem span{font-size:10px;color:#a4c3d2}
 .routeitem .ri-txt{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12px;color:inherit}
 .routeitem .ri-name{font-size:12px;color:inherit}
 .routeitem .ri-km{font-size:10px;color:#8fb3c4;font-variant-numeric:tabular-nums}.sheet .close{float:right}.on-map{position:absolute;bottom:10px;left:10px;z-index:700;border-radius:99px;padding:7px 11px;font-size:11px;background:#0b293bdd;color:#a5e3f3;border:1px solid #3d7485;pointer-events:none}@media(min-width:800px){#app{max-width:900px;margin:auto;border-left:1px solid #1e4453;border-right:1px solid #1e4453}.top{padding-top:12px}}
@@ -266,14 +266,14 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
  <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
 </section>
-<footer class="bottom"><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Cerca de mí</button><button id="savedRoutes">Mis rutas</button><button class="go hidden" id="navGo">Activar GPS</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar GPX</button><button class="go hidden" id="navCreated" disabled>Navegar</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
+<footer class="bottom"><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Cerca de mí</button><button id="savedRoutes">Mis rutas</button><button class="go hidden" id="navGo">Activar GPS</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Navegar</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar GPX</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
 </div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
@@ -404,7 +404,7 @@ changeBase(initialBase);
 pintaOrient();
 $('orient').onclick=()=>{cursoArriba=!cursoArriba;pintaOrient();notice(!cursoArriba?'Mapa con el norte arriba':rumboMapa===null?'Mapa orientado al rumbo · girará en cuanto sepa hacia dónde vas':'Mapa orientado al rumbo');try{localStorage.setItem('trabakutik-curso-arriba',cursoArriba?'si':'no')}catch(e){}manualMapUntil=0;aplicaGiroMapa(true);pintaMandos()};
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordLayer=null,wakeLockSentinel=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 
@@ -1198,23 +1198,25 @@ function showSaved(){
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
   const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
-  const del=document.createElement('button');del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
-  row.append(open,del);target.append(row);
+  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name.toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-')||'ruta');
+  const share=document.createElement('button');share.className='btn-sub';share.textContent='Compartir';share.title='Compartir archivo GPX';share.onclick=()=>compartirGpx(item.points,item.name);
+  const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
+  row.append(open,dl,share,del);target.append(row);
  });
 }
 $('savedRoutes').onclick=()=>{$('savedDialog').classList.remove('hidden');showSaved()};
 $('closeSaved').onclick=()=>$('savedDialog').classList.add('hidden');
 $('saveCreated').onclick=()=>{
  if(drawPoints.length<2)return;
- const name=prompt('Nombre para guardar la ruta','Mi ruta '+new Date().toLocaleDateString('es-ES'));
+ const def='Mi ruta '+new Date().toLocaleDateString('es-ES');
+ const name=prompt('Nombre para guardar en Mis rutas:',def);
  if(name===null)return;
- const finalName=name.trim()||'Mi ruta';
- const points=drawPoints.map(p=>p.slice());
- const list=savedList();list.unshift({name:finalName,points,created:Date.now()});
- const stored=putSaved(list.slice(0,30));
- if(stored){createdSavedItem={name:finalName,points,created:list[0].created};$('navCreated').classList.remove('hidden');$('navCreated').disabled=false;}
- download(points,finalName.toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-'));
- notice((stored?'Ruta guardada en Mis rutas y GPX descargado.':'GPX descargado.')+elevationText(points));
+ const finalName=name.trim()||def,list=savedList();
+ const ix=list.findIndex(it=>it.name.toLowerCase()===finalName.toLowerCase());
+ if(ix>=0){if(!confirm('Ya existe «'+list[ix].name+'». ¿Quieres sustituir esa ruta guardada?'))return;list.splice(ix,1)}
+ const points=drawPoints.map(p=>p.slice()),item={name:finalName,points,created:Date.now()};
+ list.unshift(item);
+ if(putSaved(list.slice(0,30))){createdSavedItem=item;$('navCreated').classList.remove('hidden');$('navCreated').disabled=false;notice('Ruta guardada en Mis rutas · exporta o comparte desde la lista'+elevationText(points))}
 };
 $('navCreated').onclick=()=>{
  if(!createdSavedItem)return;
@@ -1253,7 +1255,7 @@ function decideSentido(along){
  // necesita. Un APK viejo no tiene setSentido: se queda como estaba.
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(sentidoRuta)}catch(e){}
  marcaAlReves(sentidoRuta<0);
- if(sentidoRuta<0)notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');
+ if(sentidoRuta<0){if(!navegaNativo)hablar('Recorrido en sentido inverso, giros corregidos');notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');}
 }
 // Lo que llevas y lo que te queda DE LA RUTA, no en linea recta. Sale del
 // avance sobre el trazado, que es el mismo numero con el que se calculan los
@@ -1296,12 +1298,46 @@ function updateOffRoute(d,accuracy){
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
  if(accuracy>22){farSince=0;return}
  const near=d<=Math.max(11,accuracy+4);
- if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;notice('De nuevo en la ruta')}return}
+ if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;if(!navegaNativo)hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
  const far=d>Math.max(15,accuracy+7);
  if(!far){farSince=0;return}
  if(!farSince)farSince=Date.now();
- if(!alerted&&Date.now()-farSince>=800){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}notice('Fuera del recorrido · vuelve a la línea cian')}
+ if(!alerted&&Date.now()-farSince>=800){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18);hablar('Atención, fuera del recorrido')}notice('Fuera del recorrido · vuelve a la línea cian')}
+}
+try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
+function pintaModoAudio(){
+ const b=$('audioMode');if(!b)return;
+ b.dataset.modo=audioModo;
+ const nombres={voz:'Voz y pitidos',pitidos:'Solo pitidos',silencio:'Silencio'};
+ b.title='Avisos sonoros: '+nombres[audioModo];b.setAttribute('aria-label','Avisos sonoros: '+nombres[audioModo]);
+}
+function hablar(texto){
+ if(audioModo!=='voz'||!('speechSynthesis' in window))return;
+ try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
+}
+function conmutaModoAudio(){
+ audioModo=audioModo==='voz'?'pitidos':audioModo==='pitidos'?'silencio':'voz';
+ try{localStorage.setItem('trabakutik-audio-modo',audioModo)}catch(e){}
+ pintaModoAudio();notice('Avisos sonoros: '+(audioModo==='voz'?'voz y pitidos':audioModo==='pitidos'?'solo pitidos':'silencio'));
+ if(audioModo==='voz')hablar('Voz activada');
+}
+async function pideWakeLock(){
+ if(!navigator.wakeLock||wakeLockSentinel)return;
+ try{wakeLockSentinel=await navigator.wakeLock.request('screen');wakeLockSentinel.addEventListener('release',()=>{wakeLockSentinel=null})}catch(e){}
+}
+function sueltaWakeLock(){if(wakeLockSentinel){try{wakeLockSentinel.release()}catch(e){}wakeLockSentinel=null}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(recording||(watch!==null&&mode==='nav')))pideWakeLock()});
+function compartirGpx(points,name){
+ if(!Array.isArray(points)||points.length<2)return;
+ const safe=name.toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-')||'ruta';
+ try{
+  if(navigator.share&&navigator.canShare){
+   const file=new File([gpx(points,name)],safe+'.gpx',{type:'application/gpx+xml'});
+   if(navigator.canShare({files:[file]})){navigator.share({files:[file],title:name,text:'Ruta '+name+' · Trabakutik'}).catch(e=>{if(e.name!=='AbortError')notice('No se pudo compartir el GPX')});return}
+  }
+ }catch(e){}
+ notice('Compartir archivos GPX no está disponible en este navegador · usa Descargar GPX');
 }
 function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
 // Un grupo de n pitidos agudos, y el numero es el dato: 1 pitido = cruce a
@@ -1366,7 +1402,7 @@ function distanciasDeAviso(){
  return [Math.min(90,Math.max(25,v*9)),Math.min(30,Math.max(8,v*3))];
 }
 function pitidos(n,sep){
- if(!audio)return;
+ if(audioModo==='silencio'||!audio)return;
  const t=audio.currentTime;
  for(let i=0;i<n;i++){
   const o=audio.createOscillator(),g=audio.createGain(),at=t+i*sep;
@@ -1583,7 +1619,13 @@ function junctionGuidance(p,accuracy){
   // arriba, nunca estuvo condicionado y por eso ese si se oia.
   // getAudio() aqui tambien: pitidos() se calla si todavia no hay
   // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
-  if(!navegaNativo){getAudio();pitidos(Number(fase),.30)}
+  if(!navegaNativo){
+   getAudio();pitidos(Number(fase),.30);
+   const giroTxt=lado==='vuelta'?'cambio de sentido':'gira a la '+lado;
+   const frase=fase==='3'?(lado==='vuelta'?'Cambio de sentido ahora':'Gira a la '+lado+' ahora')
+    :'En '+Math.round((fase==='1'?d1:d2)/5)*5+' metros, '+giroTxt;
+   hablar(frase);
+  }
   notice(fase==='3'?'En el cruce · sigue la línea azul'
         :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
@@ -1799,7 +1841,15 @@ setInterval(()=>{
  if(window.TrabakutikAndroid?.getPosition){
   try{ubicacionApagada=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}').locationEnabled===false}catch(e){}
  }
- if(!ubicacionApagada&&ultimoFix&&Date.now()-ultimoFix<GUIA_CADUCA_MS)return;
+ if(!ubicacionApagada&&ultimoFix){
+  const sinMs=Date.now()-ultimoFix;
+  if(sinMs>=12000&&sinMs<GUIA_CADUCA_MS){
+   const seg=Math.round(sinMs/1000);
+   if(routePoints.length>1&&$('distance').textContent!=='GPS apagado')$('distance').textContent='Buscando señal GPS · '+seg+' s';
+   return;
+  }
+  if(sinMs<GUIA_CADUCA_MS)return;
+ }
  if(junctionActive>=0)resetJunctionView();
  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
  const mensaje=ubicacionApagada
@@ -1837,7 +1887,7 @@ function startGPS(forRecording=false,conServicio=false){
  }
  if(conServicio)enciendeNavegacionNativa();
  if(fuenteNativa)return;
- if(watch!==null)return;if(!navigator.geolocation){warnGps();return}getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
+ if(watch!==null)return;if(!navigator.geolocation){warnGps();return}pideWakeLock();getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
  warnGps(e);
  // Solo se abandona con el permiso denegado: ahi no va a llegar nada nunca.
  // Antes CUALQUIER error cerraba el watch, y con timeout de 20 s bastaba un
@@ -1847,7 +1897,7 @@ function startGPS(forRecording=false,conServicio=false){
  // entra el siguiente punto.
  if(e&&e.code===1){if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null}
 },{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
-$('navGo').onclick=()=>startGPS(false,true);$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+$('navGo').onclick=()=>startGPS(false,true);$('audioMode').onclick=conmutaModoAudio;pintaModoAudio();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 function recordingControls(state){document.body.classList.toggle('is-recording',state==='recording'||state==='paused');
  $('recordStart').classList.toggle('hidden',state!=='ready');
  $('recordPause').classList.toggle('hidden',state!=='recording');
@@ -1857,7 +1907,7 @@ function recordingControls(state){document.body.classList.toggle('is-recording',
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
-$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
+$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;pideWakeLock();enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
 // En un circuito te cruzas con la salida varias veces, y parar por error
 // deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
 // La pausa detiene SOLO la grabacion. La ubicacion, los avisos de giro y el
@@ -1897,7 +1947,19 @@ function confirmaParar(){
 $('recordPause').onclick=()=>pausaGrabacion(true);
 $('recordResume').onclick=()=>pausaGrabacion(false);
 $('recordStop').onclick=()=>{if(!confirmaParar())return;pausado=false;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingControls('stopped');notice((window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')+avisoDeCortes())};
-$('saveRecording').onclick=()=>{if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}else{if(recorded.length<2)return;download(recorded,'trabakutik-grabacion')}notice('Descarga GPX iniciada · comprueba Descargas');recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready')};
+$('saveRecording').onclick=()=>{
+ if(window.TrabakutikAndroid){window.TrabakutikAndroid.saveRecording();notice('Elige dónde guardar el archivo GPX');return}
+ if(recorded.filter(p=>p!==null).length<2)return;
+ const def='Grabación '+new Date().toLocaleDateString('es-ES')+' '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+ const name=prompt('Nombre para guardar la grabación en Mis rutas:',def);if(name===null)return;
+ const finalName=name.trim()||def,list=savedList();
+ const ix=list.findIndex(it=>it.name.toLowerCase()===finalName.toLowerCase());
+ if(ix>=0){if(!confirm('Ya existe «'+list[ix].name+'». ¿Quieres sustituir esa ruta guardada?'))return;list.splice(ix,1)}
+ const points=recorded.map(p=>p===null?null:p.slice());list.unshift({name:finalName,points,created:Date.now()});
+ if(!putSaved(list.slice(0,30)))return;
+ notice('Grabación guardada en Mis rutas · exporta o comparte desde la lista');
+ recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');
+};
 // Al descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
 // asi que el telefono seguia pidiendo posicion con la salida terminada y
 // la aplicacion se comportaba como si siguieras navegando. Se van la
@@ -1906,6 +1968,7 @@ $('saveRecording').onclick=()=>{if(window.TrabakutikAndroid){window.TrabakutikAn
 // en el mapa, que para eso la elegiste; con el boton de centrar vuelve a
 // encenderse el GPS cuando quieras.
 function apagaGps(){
+ sueltaWakeLock();
  if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
  try{if(window.TrabakutikAndroid?.stopNavigation)window.TrabakutikAndroid.stopNavigation()}
  catch(e){console.warn('No se pudo parar la navegación nativa',e)}
