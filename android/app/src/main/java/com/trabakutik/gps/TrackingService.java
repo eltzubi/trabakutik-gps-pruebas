@@ -104,11 +104,11 @@ public class TrackingService extends Service implements LocationListener {
   // 10 m llega mientras todavia suena el de 50, el que vale es el de 10.
   try{voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"trabakutik");}catch(Exception ignored){}
  }
- String fraseGiro(int lado,String fase,double d1,double d2){
-  if(lado==0)return "3".equals(fase)?"Cambio de sentido ahora":"En "+metros("1".equals(fase)?d1:d2)+" metros, cambio de sentido";
-  String hacia=lado<0?"izquierda":"derecha";
-  if("3".equals(fase))return "Gira a la "+hacia+" ahora";
-  return "En "+metros("1".equals(fase)?d1:d2)+" metros, gira a la "+hacia;
+ String fraseGiro(int lado,String fase,double ahead){
+  String hacia=lado==0?"cambio de sentido":lado<0?"gira a la izquierda":"gira a la derecha";
+  if("3".equals(fase))return Character.toUpperCase(hacia.charAt(0))+hacia.substring(1)+" ahora";
+  // La distancia de VERDAD, no el umbral: decia «en 200 metros» estando a 170.
+  return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+hacia;
  }
  int metros(double d){return (int)(Math.round(d/5.0)*5);}
  boolean ubicacionActivada(){
@@ -277,6 +277,13 @@ public class TrackingService extends Service implements LocationListener {
  // seis segundos y andando son cuarenta y cinco. 9 s el primero y 3 s el
  // segundo, con suelo (25 y 8 m, para andar) y techo (90 y 30).
  double avisoLargo(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(90,Math.max(25,v*9));}
+ // La voz necesita MUCHO mas sitio que un pitido. Un pitido informa al
+ // instante; una frase tarda dos o tres segundos en decirse, y para cuando
+ // acaba ya estas en el cruce. El autor lo vio: «estaba diciendo que girara
+ // dentro de 25 metros cuando ya estaba girando». 25 m a 10 km/h son nueve
+ // segundos. Asi que la voz avisa aparte y antes: 18 segundos de margen, con
+ // 60 m de suelo para ir despacio y 200 de techo para no avisar desde lejos.
+ double avisoVoz(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(200,Math.max(60,v*18));}
  double avisoCorto(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(30,Math.max(8,v*3));}
  void checkTurns(Location l){
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
@@ -294,7 +301,7 @@ public class TrackingService extends Service implements LocationListener {
    cumulative+=length;
   }
   if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
-  double d1=avisoLargo(),d2=avisoCorto();
+  double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
   double progress=0;String next="";
@@ -309,7 +316,7 @@ public class TrackingService extends Service implements LocationListener {
     // cada 1,5 s, 17 m de salto a 40 km/h, y la ventana de 7 m no la pisaba
     // ninguna lectura. Simulado con 10 arranques distintos: 5 de 10 a
     // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
-    if(ahead>=-(d2+8)&&ahead<=d1+8){
+    if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8){
      int d=(int)turns.get(k)[1];
      // Al reves, lo que se grabo como derecha es izquierda.
      int lado=d*sentido;
@@ -323,13 +330,18 @@ public class TrackingService extends Service implements LocationListener {
      // se perdia a la mitad de las velocidades, porque a 20 km/h esos 3 m
      // duran medio segundo y el GPS da una lectura por segundo. Lo acota ya
      // la ventana de fuera, que empieza en -7 m.
-     String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>0?"2":ahead<=0?"3":null;
+     // Fase "v": solo voz, y la primera de todas. Los pitidos siguen
+     // exactamente donde estaban, que para eso van bien.
+     String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>0?"2":ahead<=0?"3"
+       :ahead<=dv?"v":null;
      if(fase!=null){
       String clave=k+":"+fase;
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
-       pitidos(Integer.parseInt(fase),300);
-       habla(fraseGiro(lado,fase,d1,d2));
+       if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
+       // En la fase 1 ya no se repite la distancia: a 25 m, decir «en 25
+       // metros» llega tarde y ademas pisa al aviso bueno, el del cruce.
+       if("v".equals(fase)||"3".equals(fase))habla(fraseGiro(lado,fase,ahead));
       }
      }
     }

@@ -146,6 +146,38 @@ public class MainActivity extends Activity {
   }
   web.postDelayed(()->{if(gps){web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);restoreGpsWeb();}},120);
  }
+ boolean guardaEnDescargas(String name,String xml){
+  android.net.Uri uri=null;
+  try{
+   android.content.ContentValues v=new android.content.ContentValues();
+   v.put(android.provider.MediaStore.Downloads.DISPLAY_NAME,name);
+   v.put(android.provider.MediaStore.Downloads.MIME_TYPE,"application/gpx+xml");
+   v.put(android.provider.MediaStore.Downloads.RELATIVE_PATH,android.os.Environment.DIRECTORY_DOWNLOADS);
+   uri=getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,v);
+   if(uri==null)return false;
+   java.io.OutputStream out=getContentResolver().openOutputStream(uri);
+   if(out==null)return false;
+   try{out.write(xml.getBytes(java.nio.charset.StandardCharsets.UTF_8));}finally{out.close();}
+   String fin=nombreDe(uri);
+   if(fin!=null&&!fin.toLowerCase().endsWith(".gpx")){
+    android.content.ContentValues r=new android.content.ContentValues();
+    r.put(android.provider.MediaStore.Downloads.DISPLAY_NAME,name);
+    try{getContentResolver().update(uri,r,null,null);}catch(Exception ignored){}
+    fin=nombreDe(uri);
+   }
+   Toast.makeText(this,"Guardado en Descargas como "+(fin!=null?fin:name),Toast.LENGTH_LONG).show();
+   return true;
+  }catch(Exception e){
+   if(uri!=null)try{getContentResolver().delete(uri,null,null);}catch(Exception ignored){}
+   return false;
+  }
+ }
+ String nombreDe(android.net.Uri uri){
+  android.database.Cursor c=getContentResolver().query(uri,
+    new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null);
+  if(c==null)return null;
+  try{return c.moveToFirst()?c.getString(0):null;}finally{c.close();}
+ }
  void configureWebView(WebView w,boolean navigator){
   w.setBackgroundColor(0xff07131d);
   w.getSettings().setJavaScriptEnabled(true);
@@ -480,7 +512,15 @@ public class MainActivity extends Activity {
    String safe=filename==null?"trabakutik.gpx":filename.replaceAll("[^a-zA-Z0-9._-]","_");
    if(!safe.endsWith(".gpx"))safe+=".gpx";
    final String name=safe;
-   runOnUiThread(()->{pendingGpx=xml;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,201);});
+   // Ya no se pasa por el selector si se puede evitar. El selector decide el
+   // nombre final y con un tipo que no conoce se comia el «.gpx»: el autor
+   // acabo con un fichero llamado «froga3» que no abria nada. Escribiendolo
+   // en Descargas por MediaStore el nombre lo ponemos nosotros, y por si
+   // acaso se comprueba como quedo y se corrige. El selector queda de
+   // reserva para Android 9 y anteriores.
+   runOnUiThread(()->{
+    if(android.os.Build.VERSION.SDK_INT>=29&&guardaEnDescargas(name,xml))return;
+    pendingGpx=xml;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,201);});
   }
  }
  boolean serviceActive=false;
