@@ -1844,8 +1844,9 @@ setInterval(()=>{
  if(!ubicacionApagada&&ultimoFix){
   const sinMs=Date.now()-ultimoFix;
   if(sinMs>=12000&&sinMs<GUIA_CADUCA_MS){
-   const seg=Math.round(sinMs/1000);
+   const seg=Math.round(sinMs/1000),mensajeGps='Sin posición GPS reciente · '+seg+' s';
    if(routePoints.length>1&&$('distance').textContent!=='GPS apagado')$('distance').textContent='Buscando señal GPS · '+seg+' s';
+   if($('status').textContent!==mensajeGps)notice(mensajeGps);
    return;
   }
   if(sinMs<GUIA_CADUCA_MS)return;
@@ -1952,7 +1953,15 @@ $('saveRecording').onclick=()=>{
  if(recorded.filter(p=>p!==null).length<2)return;
  const def='Grabación '+new Date().toLocaleDateString('es-ES')+' '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
  const name=prompt('Nombre para guardar la grabación en Mis rutas:',def);if(name===null)return;
- const finalName=name.trim()||def,list=savedList();
+ const finalName=name.trim()||def;
+ if(recorded.some(p=>p===null)){
+  const safe=finalName.toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-')||'trabakutik-grabacion';
+  download(recorded,safe);
+  notice('GPX descargado con sus cortes GPS · no se añadió a Mis rutas para no unir tramos separados');
+  recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('ready');
+  return;
+ }
+ const list=savedList();
  const ix=list.findIndex(it=>it.name.toLowerCase()===finalName.toLowerCase());
  if(ix>=0){if(!confirm('Ya existe «'+list[ix].name+'». ¿Quieres sustituir esa ruta guardada?'))return;list.splice(ix,1)}
  const points=recorded.map(p=>p===null?null:p.slice());list.unshift({name:finalName,points,created:Date.now()});
