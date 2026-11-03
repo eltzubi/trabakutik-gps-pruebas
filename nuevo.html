@@ -1378,7 +1378,11 @@ function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;s
 function updateOffRoute(d,accuracy){
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
- if(accuracy>22){farSince=0;return}
+ // Mismo fallo que en el servicio: cortaba en 22 m y ademas borraba el
+ // cronometro, asi que bajo arbolado el aviso no llegaba nunca. Los
+ // umbrales de abajo ya crecen con la precision; aqui solo queda el corte
+ // de cordura, y salta la lectura sin tocar la cuenta.
+ if(accuracy>60)return;
  const near=d<=Math.max(11,accuracy+4);
  if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
@@ -1591,7 +1595,7 @@ function junctionGuidance(p,accuracy){
  // —navigating y recording son independientes en TrackingService— y
  // seguia pitando los giros; la que se callaba era la pantalla. Solo se
  // apaga en «Crear», donde estas dibujando encima del mapa.
- if(mode==='create'||alerted||!moviendose||routePoints.length<2||!junctions.length||accuracy>22){
+ if(mode==='create'||alerted||!moviendose||routePoints.length<2||!junctions.length||accuracy>60){
   if(junctionActive>=0)resetJunctionView();return;
  }
  const progress=progressOnRoute(p);
@@ -1893,7 +1897,11 @@ function miraPosicionNativa(){
  }
  // Si el servicio navega, pita el; la pagina se calla. Un APK viejo no manda
  // este dato, asi que queda false y sigue pitando la pagina, como hasta ahora.
- navegaNativo=!!d.navigating;
+ // La pagina solo debe callarse si el servicio PUEDE avisar, no solo si
+ // dice que navega: sin la ruta cargada no comprueba ni giros ni desvio,
+ // y callandose los dos no avisaba nadie. Un APK viejo no manda «guiando»,
+ // y entonces vale lo de antes.
+ navegaNativo=d.guiando===undefined?!!d.navigating:!!d.guiando;
  if(!fuenteNativa){
   fuenteNativa=true;
   if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}

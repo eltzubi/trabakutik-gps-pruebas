@@ -280,6 +280,9 @@ public class MainActivity extends Activity {
     // La pagina necesita saberlo para callarse: si pita ella y pita el
     // servicio, cada cruce suena dos veces.
     o.put("navigating",pref.getBoolean("navigating",false));
+    // No basta con «navigating»: el servicio solo avisa si ademas tiene la
+    // ruta cargada. Si no, callaban los dos.
+    o.put("guiando",pref.getBoolean("guiando",false));
     long lb=pref.getLong("latBits",0),ob=pref.getLong("lonBits",0);
     o.put("lat",lb!=0?Double.longBitsToDouble(lb):(double)pref.getFloat("lat",0f));
     o.put("lon",ob!=0?Double.longBitsToDouble(ob):(double)pref.getFloat("lon",0f));

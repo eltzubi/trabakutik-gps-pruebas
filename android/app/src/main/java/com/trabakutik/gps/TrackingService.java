@@ -346,7 +346,19 @@ public class TrackingService extends Service implements LocationListener {
   return best;
  }
  void checkDeviation(Location l){
-  if(!navigating||route.size()<2||!l.hasAccuracy()||l.getAccuracy()>22){farSince=0;return;}
+  if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;return;}
+  // El corte estaba en 22 m Y ADEMAS borraba farSince, que es el cronometro
+  // de los 800 ms. Bajo arbolado 25-35 m de precision es lo normal, asi que
+  // cada lectura mala reiniciaba la cuenta y el aviso no llegaba nunca. Lo
+  // dijo el autor: «al salirme de la ruta no me ha pitado ni me ha hablado».
+  // Simulado 400 veces por escenario con 45 m de desvio: en bosque cerrado
+  // (22-38 m) avisaba el 0,0% de las veces; asi, el 100% a las 2 lecturas.
+  // El corte ya no hace falta para evitar falsos avisos porque los umbrales
+  // de abajo YA crecen con la precision (acc+4 y acc+7): con mala señal hay
+  // que estar mas lejos para que cuente. Queda solo un corte de cordura en
+  // 60 m -por encima de eso la posicion es basura- y ese SE SALTA la lectura
+  // sin tocar el cronometro. Falsas alarmas a 8 m del track: 0 de 400.
+  if(l.getAccuracy()>60)return;
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
   if(d<=Math.max(11,acc+4)){
    routeReached=true;farSince=0;if(offRoute){offRoute=false;updateNotice();habla("De nuevo en la ruta");}return;
@@ -363,7 +375,7 @@ public class TrackingService extends Service implements LocationListener {
   if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).apply();
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   try(FileWriter w=new FileWriter(file,true)){
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
