@@ -1017,13 +1017,22 @@ function download(points,name){if(points.length<2)return;if(window.TrabakutikAnd
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
 function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
-let pendingSave=null;
+let pendingSave=null,estadoBotonera='ready';
 function gpxFilename(name){return (name||'ruta').toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-').replace(/^-+|-+$/g,'')||'ruta'}
 function canShareGpx(points,name){
+ // Dentro de la app NO existe navigator.share -el WebView no lo implementa-,
+ // asi que esto daba false y el boton se quedaba en «este navegador no
+ // permite compartir». El puente nativo si puede, y es el camino que lleva
+ // la ruta a Wikiloc o a OsmAnd.
+ if(window.TrabakutikAndroid&&window.TrabakutikAndroid.shareGpx)return true;
  if(typeof navigator.share!=='function'||typeof navigator.canShare!=='function'||typeof File==='undefined')return false;
  try{const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});return navigator.canShare({files:[file]})}catch(e){return false}
 }
 async function shareGpx(points,name){
+ if(window.TrabakutikAndroid&&window.TrabakutikAndroid.shareGpx){
+  try{window.TrabakutikAndroid.shareGpx(gpxFilename(name)+'.gpx',gpx(points,name));return true}
+  catch(e){notice('No se pudo compartir el GPX.');return false}
+ }
  if(!canShareGpx(points,name)){notice('Este navegador no permite compartir archivos GPX. Puedes descargarlo.');return false}
  const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});
  try{await navigator.share({files:[file],title:name,text:'Ruta GPX'});return true}
@@ -1835,7 +1844,7 @@ window.trabakutikSyncNative=()=>{
    recording=false;
    recordingPendingSave=(data.points?.length||0)>1;
    recordingControls((data.points?.length||0)>1?'stopped':'ready');
-  }
+  }else reconciliaBotonera();
   if(Array.isArray(data.points)){
    const segments=[[]],valid=[];
    for(const p of data.points){
@@ -1893,6 +1902,7 @@ function miraPosicionNativa(){
  if(!d.active){
   navegaNativo=false;
   if(fuenteNativa){fuenteNativa=false;ultimoTiempoNativo=0;if(mode!=='create')startGPS()}
+  reconciliaBotonera();
   return;
  }
  // Si el servicio navega, pita el; la pagina se calla. Un APK viejo no manda
@@ -1990,7 +2000,17 @@ function startGPS(forRecording=false,conServicio=false){
  if(e&&e.code===1){if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null}
 },{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
 $('navGo').onclick=()=>startGPS(false,true);$('audioMode').onclick=conmutaModoAudio;pintaModoAudio();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
-function recordingControls(state){document.body.classList.toggle('is-recording',state==='recording'||state==='paused');
+// Esto solo sabia manejar TRANSICIONES: si el servicio no grababa y la pagina
+// tampoco creia grabar, no entraba en ninguna rama y la botonera se quedaba
+// como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin
+// estar grabando y sin que apareciera «Iniciar»: sin salida. Esto reconcilia
+// con la verdad en vez de confiar en haber visto todos los pasos.
+function reconciliaBotonera(){
+ if(recording)return;
+ const debe=recordingPendingSave?'stopped':'ready';
+ if(estadoBotonera!==debe)recordingControls(debe);
+}
+function recordingControls(state){estadoBotonera=state;document.body.classList.toggle('is-recording',state==='recording'||state==='paused');
  $('recordStart').classList.toggle('hidden',state!=='ready');
  $('recordPause').classList.toggle('hidden',state!=='recording');
  $('recordResume').classList.toggle('hidden',state!=='paused');

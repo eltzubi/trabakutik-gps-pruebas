@@ -423,6 +423,41 @@ public class MainActivity extends Activity {
   }
   @JavascriptInterface public void saveRecording(){runOnUiThread(()->saveTrack());}
   @JavascriptInterface public void discardRecording(){runOnUiThread(()->{discardLastRecording();new File(getFilesDir(),"trazado-vivo.tsv").delete();});}
+  // Guardar dejaba el fichero en el almacenamiento y ahi se acababa: Android
+  // lo ofrecia con el tipo application/gpx+xml, que casi ninguna app
+  // registra, asi que no habia con que abrirlo. Wikiloc y OsmAnd reciben
+  // rutas por la hoja de compartir, y para eso hace falta una URI de
+  // contenido: desde Android 7 no se puede pasar un file:// a otra app.
+  @JavascriptInterface public void shareGpx(String filename,String xml){
+   if(xml==null||xml.length()>3000000||!xml.startsWith("<?xml"))return;
+   String safe=filename==null?"trabakutik.gpx":filename.replaceAll("[^a-zA-Z0-9._-]","_");
+   if(!safe.endsWith(".gpx"))safe+=".gpx";
+   final String name=safe;
+   runOnUiThread(()->{
+    try{
+     java.io.File dir=new java.io.File(getCacheDir(),"compartir");
+     if(!dir.exists()&&!dir.mkdirs())throw new java.io.IOException("sin carpeta");
+     // Buzon de salida, no archivo: se vacia antes de cada envio para no ir
+     // dejando copias de todas las rutas en la cache.
+     java.io.File[] viejos=dir.listFiles();
+     if(viejos!=null)for(java.io.File v:viejos)v.delete();
+     java.io.File f=new java.io.File(dir,name);
+     java.io.Writer w=new java.io.OutputStreamWriter(new java.io.FileOutputStream(f),"UTF-8");
+     try{w.write(xml);}finally{w.close();}
+     android.net.Uri uri=androidx.core.content.FileProvider.getUriForFile(
+       MainActivity.this,"com.trabakutik.gps.fileprovider",f);
+     Intent envio=new Intent(Intent.ACTION_SEND)
+       .setType("application/gpx+xml")
+       .putExtra(Intent.EXTRA_STREAM,uri)
+       .putExtra(Intent.EXTRA_SUBJECT,name)
+       .putExtra(Intent.EXTRA_TITLE,name)
+       .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+     startActivity(Intent.createChooser(envio,"Enviar la ruta"));
+    }catch(Exception e){
+     Toast.makeText(MainActivity.this,"No se pudo preparar el GPX para compartir",Toast.LENGTH_SHORT).show();
+    }
+   });
+  }
   @JavascriptInterface public void saveGpx(String filename,String xml){
    if(xml==null||xml.length()>3000000||!xml.startsWith("<?xml"))return;
    String safe=filename==null?"trabakutik.gpx":filename.replaceAll("[^a-zA-Z0-9._-]","_");
