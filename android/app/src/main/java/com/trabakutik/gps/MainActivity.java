@@ -285,6 +285,9 @@ public class MainActivity extends Activity {
     o.put("guiando",pref.getBoolean("guiando",false));
     // Por que no habla, si no habla. Antes fallaba en silencio.
     o.put("vozEstado",pref.getString("vozEstado","iniciando"));
+    // Cuantos giros tiene cargados. Sin esto la pagina se callaba los
+    // giros aunque el servicio no tuviera ninguno que avisar.
+    o.put("giros",pref.getInt("giros",-1));
     long lb=pref.getLong("latBits",0),ob=pref.getLong("lonBits",0);
     o.put("lat",lb!=0?Double.longBitsToDouble(lb):(double)pref.getFloat("lat",0f));
     o.put("lon",ob!=0?Double.longBitsToDouble(ob):(double)pref.getFloat("lon",0f));
@@ -375,13 +378,25 @@ public class MainActivity extends Activity {
     if(turns.length()>400||json.length()>40000)return;
     File f=new File(getFilesDir(),"giros-activos.json");
     try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
-    // Los giros quedan guardados y se leen al iniciar NAVIGATE.
+    // Antes esto se quedaba aqui: «se leen al iniciar NAVIGATE». Pero si ya
+    // se estaba navegando, el servicio no se enteraba nunca y se quedaba sin
+    // giros -o con los de la ruta anterior-, mientras la pagina se callaba
+    // por cederle el turno. Resultado: los giros no los avisaba nadie. La
+    // orden TURNS existia en el servicio y no la mandaba nadie.
+    if(!TrackingService.ACTIVO)return;
+    try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("TURNS"));}
+    catch(Exception ignored){}
    }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudieron registrar giros",e);}
   }
   @JavascriptInterface public void stopNavigation(){
    runOnUiThread(()->{
     new File(getFilesDir(),"ruta-activa.json").delete();
     new File(getFilesDir(),"giros-activos.json").delete();
+    // La misma guarda que clearRoute, y por la misma razon: sin ella esto
+    // puede LEVANTAR un servicio -con su motor de voz- solo para matarlo.
+    // Antes solo lo llamaba una persona tocando la equis; ahora tambien lo
+    // llama la pagina sola, asi que la guarda hace falta de verdad.
+    if(!TrackingService.ACTIVO)return;
     try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("STOP_NAVIGATION"));}
     catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo detener la navegacion",e);}
    });

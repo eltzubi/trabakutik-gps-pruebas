@@ -137,6 +137,7 @@ public class TrackingService extends Service implements LocationListener {
   if("STOP_NAVIGATION".equals(action)){
    navigating=false;routeReached=false;offRoute=false;farSince=0;sentido=1;
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
+   publicaEstado();
    if(!recording){finish();return START_NOT_STICKY;}
    updateNotice();return START_NOT_STICKY;
   }
@@ -162,7 +163,7 @@ public class TrackingService extends Service implements LocationListener {
    if(!navigating){finish();return START_NOT_STICKY;}
    updateNotice();return START_NOT_STICKY;
   }
-  if("TURNS".equals(action)){loadTurns();if(active)updateNotice();return START_NOT_STICKY;}
+  if("TURNS".equals(action)){loadTurns();publicaEstado();if(active)updateNotice();return START_NOT_STICKY;}
   // +1 si vas como la ruta esta grabada, -1 si la haces al reves. Lo decide
   // la pagina comparando tu rumbo con el del tramo; aqui solo se guarda.
   if("SENTIDO".equals(action)){
@@ -172,8 +173,9 @@ public class TrackingService extends Service implements LocationListener {
    return START_NOT_STICKY;
   }
   if("ROUTE".equals(action)){
-   loadRoute();
+   loadRoute();loadTurns();
    if(route.size()<2)navigating=false;
+   publicaEstado();
    if(!navigating&&!recording){finish();return START_NOT_STICKY;}
    if(active)updateNotice();
    return START_NOT_STICKY;
@@ -182,6 +184,7 @@ public class TrackingService extends Service implements LocationListener {
    navigating=true;
    if(!active)start(false);
    else{loadRoute();updateNotice();}
+   publicaEstado();
   }else if("START".equals(action)){
    if(!active)start(true);
    else if(!recording){try{beginRecording();}catch(IOException ex){android.util.Log.e("TrabakutikGPS","No se pudo empezar grabacion",ex);}}
@@ -358,6 +361,18 @@ public class TrackingService extends Service implements LocationListener {
    handler.postDelayed(tone::release,n*sep+500);
   }catch(Exception ignored){}
  }
+ // «guiando» y «navigating» se escribian SOLO dentro de onLocationChanged.
+ // Si dejan de llegar posiciones -y dejan de llegar en cuanto se para la
+ // navegacion y no se graba- se quedaban viejos, y la pagina seguia creyendo
+ // que el servicio guia. Se publican en el momento en que cambian.
+ void publicaEstado(){
+  try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+    .putBoolean("active",active).putBoolean("recording",recording)
+    .putBoolean("navigating",navigating)
+    .putBoolean("guiando",navigating&&route.size()>1)
+    .putInt("giros",turns.size()).apply();}
+  catch(Exception ignored){}
+ }
  void updateNotice(){if(active)((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(12,notification());}
  @Override public void onProviderEnabled(String provider){updateNotice();}
  @Override public void onProviderDisabled(String provider){updateNotice();}
@@ -402,7 +417,7 @@ public class TrackingService extends Service implements LocationListener {
   if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).apply();
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   try(FileWriter w=new FileWriter(file,true)){
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
@@ -425,6 +440,6 @@ public class TrackingService extends Service implements LocationListener {
   recording=false;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
- void finish(){navigating=false;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

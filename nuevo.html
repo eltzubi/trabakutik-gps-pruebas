@@ -1017,7 +1017,7 @@ function download(points,name){if(points.length<2)return;if(window.TrabakutikAnd
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
 function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
-let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='',abiertaEn=Date.now(),ultimoParoNativo=0;
+let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='',rutasListas=false,ultimoParoNativo=0,giraNativo=false;
 function gpxFilename(name){return (name||'ruta').toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-').replace(/^-+|-+$/g,'')||'ruta'}
 function canShareGpx(points,name){
  // Dentro de la app NO existe navigator.share -el WebView no lo implementa-,
@@ -1411,11 +1411,15 @@ function pintaModoAudio(){
  const nombres={voz:'Voz y pitidos',pitidos:'Solo pitidos',silencio:'Silencio'};
  b.title='Avisos sonoros: '+nombres[audioModo];b.setAttribute('aria-label','Avisos sonoros: '+nombres[audioModo]);
 }
+function hablarGiro(texto){if(!giraNativo)hablaPagina(texto)}
 function hablar(texto){
  // Si navega el servicio, habla el: tiene TextToSpeech y sigue sonando con la
  // pantalla apagada, que es cuando hace falta. La pagina se duerme ahi, asi
  // que su voz solo valia mirando el movil. Es la misma regla que los pitidos.
  if(navegaNativo)return;
+ hablaPagina(texto);
+}
+function hablaPagina(texto){
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
  try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
 }
@@ -1706,11 +1710,11 @@ function junctionGuidance(p,accuracy){
   // arriba, nunca estuvo condicionado y por eso ese si se oia.
   // getAudio() aqui tambien: pitidos() se calla si todavia no hay
   // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
-  if(!navegaNativo){getAudio();pitidos(Number(fase),.30)}
+   if(!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'?'cambio de sentido':'gira a la '+lado;
   const frase=fase==='3'?(lado==='vuelta'?'Cambio de sentido ahora':'Gira a la '+lado+' ahora')
    :'En '+Math.round((fase==='1'?d1:d2)/5)*5+' metros, '+giroTxt;
-  hablar(frase);
+  hablarGiro(frase);
   notice(fase==='3'?'En el cruce · sigue la línea azul'
         :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
@@ -1912,15 +1916,25 @@ function miraPosicionNativa(){
  // y callandose los dos no avisaba nadie. Un APK viejo no manda «guiando»,
  // y entonces vale lo de antes.
  navegaNativo=d.guiando===undefined?!!d.navigating:!!d.guiando;
+ // Callarse en los giros SOLO si el servicio tiene giros que avisar.
+ // «guiando» mira la ruta, no los giros, asi que el servicio podia estar
+ // guiando con cero giros cargados y la pagina callada: no avisaba nadie.
+ // Un APK viejo manda -1 y entonces vale lo de siempre.
+ giraNativo=navegaNativo&&(d.giros==null||d.giros<0||d.giros>0);
  // El servicio se queda con SU copia de la ruta. Si la pagina se recarga
  // -cambiar de pestaña la recarga- o se quita la ruta y algo falla al
  // avisarle, el servicio sigue guiando una ruta que ya no esta en
  // pantalla: pita en cruces que no ves. Lo dijo el autor: «me esta
  // pitando... sin ruta cargada». Si aqui no hay ruta, ahi tampoco.
- // Con margen desde que abrio la pagina, que al principio la ruta aun se
- // esta cargando y seria parar justo lo que acaba de empezar.
+ // La condicion NO puede ser el reloj. Lo era -12 s desde que abrio- y es
+ // una carrera perdida: la ruta se restaura cuando llega trailhead.json,
+ // que son 481 kB y se piden con revalidacion. Si tarda o no llega -en el
+ // monte, sin cobertura- a los 12 s esto paraba el servicio, y pararlo sin
+ // grabacion lo MATA entero: adios navegacion con la pantalla apagada, que
+ // no necesitaba red para nada. Ahora se espera a que las rutas esten de
+ // verdad, y si la carga falla no se arma nunca.
  if(d.guiando&&chosen<0&&routePoints.length<2&&mode!=='create'
-    &&Date.now()-abiertaEn>12000&&Date.now()-ultimoParoNativo>15000){
+    &&rutasListas&&Date.now()-ultimoParoNativo>15000){
   ultimoParoNativo=Date.now();
   try{window.TrabakutikAndroid.stopNavigation?.()}catch(e){}
  }
@@ -2137,6 +2151,6 @@ fetch('data/rutas.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
  if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href)}
  if(!$('routeDialog').classList.contains('hidden'))showRoutes();
 }).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
-fetch('data/trailhead.json',{cache:'no-cache'}).then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
+fetch('data/trailhead.json',{cache:'no-cache'}).then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} rutasListas=true; }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
 })();
 </script></body></html>
