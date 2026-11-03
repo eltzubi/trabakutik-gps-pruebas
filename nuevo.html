@@ -377,7 +377,12 @@ function dimensionaMapa(){
 function pintaMandos(){
  // Azul mientras el mapa te sigue de verdad; apagado si lo has arrastrado y
  // se ha quedado donde tu lo dejaste.
- $('locate').classList.toggle('siguiendo',watch!==null&&followGps&&Date.now()>=manualMapUntil);
+ // Dentro de la app NO hay watch: cuando el servicio toma el mando, la
+ // pagina lo borra a proposito (fuenteNativa) para no pedir la posicion
+ // dos veces. Mirar solo watch dejaba este boton apagado para siempre en
+ // la app, con el mapa siguiendote delante. Lo vio el autor en su captura.
+ // Lo que cuenta es que llegue posicion, venga de donde venga.
+ $('locate').classList.toggle('siguiendo',(watch!==null||fuenteNativa)&&followGps&&Date.now()>=manualMapUntil);
 }
 function pintaOrient(){
  const on=cursoArriba;
