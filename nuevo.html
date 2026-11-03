@@ -1017,7 +1017,7 @@ function download(points,name){if(points.length<2)return;if(window.TrabakutikAnd
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
 function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
-let pendingSave=null,estadoBotonera='ready';
+let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='';
 function gpxFilename(name){return (name||'ruta').toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-').replace(/^-+|-+$/g,'')||'ruta'}
 function canShareGpx(points,name){
  // Dentro de la app NO existe navigator.share -el WebView no lo implementa-,
@@ -1912,6 +1912,13 @@ function miraPosicionNativa(){
  // y callandose los dos no avisaba nadie. Un APK viejo no manda «guiando»,
  // y entonces vale lo de antes.
  navegaNativo=d.guiando===undefined?!!d.navigating:!!d.guiando;
+ // Si el motor de voz no esta listo, decirlo en vez de callar: el autor se
+ // encontro con que los pitidos sonaban y la voz no, sin ninguna pista de
+ // por que. El motivo lo manda el servicio.
+ if(audioModo==='voz'&&typeof d.vozEstado==='string'&&d.vozEstado!=='ok'
+    &&d.vozEstado!=='iniciando'&&d.vozEstado!==ultimoVozEstado){
+  ultimoVozEstado=d.vozEstado;notice('Voz: '+d.vozEstado);
+ }
  if(!fuenteNativa){
   fuenteNativa=true;
   if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}

@@ -263,7 +263,7 @@ public class MainActivity extends Activity {
    if(!"voz".equals(modo)&&!"pitidos".equals(modo)&&!"silencio".equals(modo))return;
    getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("audioModo",modo).apply();
    if(!TrackingService.ACTIVO)return;
-   try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("AUDIO").putExtra("modo",modo));}
+   try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("AUDIO").putExtra("modo",modo).putExtra("probar",true));}
    catch(Exception ignored){}
   }
   @JavascriptInterface public String getPosition(){
@@ -283,6 +283,8 @@ public class MainActivity extends Activity {
     // No basta con «navigating»: el servicio solo avisa si ademas tiene la
     // ruta cargada. Si no, callaban los dos.
     o.put("guiando",pref.getBoolean("guiando",false));
+    // Por que no habla, si no habla. Antes fallaba en silencio.
+    o.put("vozEstado",pref.getString("vozEstado","iniciando"));
     long lb=pref.getLong("latBits",0),ob=pref.getLong("lonBits",0);
     o.put("lat",lb!=0?Double.longBitsToDouble(lb):(double)pref.getFloat("lat",0f));
     o.put("lon",ob!=0?Double.longBitsToDouble(ob):(double)pref.getFloat("lon",0f));

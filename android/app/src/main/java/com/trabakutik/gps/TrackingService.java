@@ -12,7 +12,7 @@ import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -65,19 +65,38 @@ public class TrackingService extends Service implements LocationListener {
  void arrancaVoz(){
   try{
    voz=new TextToSpeech(this,estado->{
-    if(estado!=TextToSpeech.SUCCESS)return;
+    // Antes esto se tragaba el resultado de setLanguage y fallaba en
+    // silencio: el autor oia los pitidos y la voz no, sin saber por que.
+    // Ahora el motivo se guarda y la pagina lo puede enseñar.
+    if(estado!=TextToSpeech.SUCCESS){apuntaVoz("No hay motor de voz instalado");return;}
     try{
-     voz.setLanguage(new Locale("es","ES"));
+     int r=voz.setLanguage(new Locale("es","ES"));
+     if(r==TextToSpeech.LANG_MISSING_DATA){apuntaVoz("Falta descargar la voz en castellano");return;}
+     if(r==TextToSpeech.LANG_NOT_SUPPORTED){
+      int r2=voz.setLanguage(new Locale("es"));
+      if(r2==TextToSpeech.LANG_MISSING_DATA||r2==TextToSpeech.LANG_NOT_SUPPORTED){
+       apuntaVoz("El motor de voz no tiene castellano");return;}
+     }
      // USAGE_ASSISTANCE_NAVIGATION_GUIDANCE es la clave de que esto suene
      // como un navegador de verdad: Android baja la musica mientras habla
      // en vez de cortarla, y lo manda al manos libres si hay uno puesto.
      voz.setAudioAttributes(new AudioAttributes.Builder()
        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
-     vozLista=true;
-    }catch(Exception ignored){}
+     vozLista=true;apuntaVoz("ok");
+    }catch(Exception e){apuntaVoz("No se pudo preparar la voz");}
    });
-  }catch(Exception ignored){}
+  }catch(Exception e){apuntaVoz("No hay motor de voz instalado");}
+ }
+ void apuntaVoz(String motivo){
+  vozEstado=motivo;
+  try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("vozEstado",motivo).apply();}
+  catch(Exception ignored){}
+ }
+ // Para que al tocar el boton se oiga algo y no haya que adivinar.
+ void pruebaVoz(){
+  if(vozLista)habla("Voz activada");
+  else apuntaVoz(vozEstado==null||"ok".equals(vozEstado)?"La voz aún se está preparando":vozEstado);
  }
  void habla(String texto){
   if(!"voz".equals(audioModo)||!vozLista||voz==null||texto==null)return;
@@ -128,6 +147,7 @@ public class TrackingService extends Service implements LocationListener {
    if("voz".equals(m)||"pitidos".equals(m)||"silencio".equals(m)){
     audioModo=m;
     getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("audioModo",m).apply();
+    if("voz".equals(m)&&i.getBooleanExtra("probar",false))pruebaVoz();
    }
    return START_NOT_STICKY;
   }
