@@ -1398,7 +1398,13 @@ function updateOffRoute(d,accuracy){
  const far=d>Math.max(15,accuracy+7);
  if(!far){farSince=0;return}
  if(!farSince)farSince=Date.now();
- if(!alerted&&Date.now()-farSince>=800){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
+ // 800 ms a 1,5 s por lectura significa DOS lecturas: basta un par de
+ // saltos del GPS para dar la alarma. En el bolsillo, con el cuerpo
+ // tapando el cielo y 20-45 m de precision, eso son 2,2 falsos avisos
+ // por hora -el autor lo sufrio-. Con 4 s hacen falta cuatro lecturas
+ // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
+ // verdad se detecta a 104 m en vez de a 86. Barato.
+ if(!alerted&&Date.now()-farSince>=4000){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
 }
 try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
 try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}

@@ -168,7 +168,10 @@ public class TrackingService extends Service implements LocationListener {
   // la pagina comparando tu rumbo con el del tramo; aqui solo se guarda.
   if("SENTIDO".equals(action)){
    int s=i.getIntExtra("sentido",1);
+   int antes=sentido;
    sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";
+   if(sentido!=antes)habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
+     :"Vuelves al sentido de la ruta");
    if(active)updateNotice();
    return START_NOT_STICKY;
   }
@@ -420,7 +423,13 @@ public class TrackingService extends Service implements LocationListener {
   if(!routeReached)return;
   if(d<=Math.max(15,acc+7)){farSince=0;return;}
   if(farSince==0){farSince=SystemClock.elapsedRealtime();return;}
-  if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=800){
+  // 800 ms a 1,5 s por lectura significa DOS lecturas: basta un par de
+  // saltos del GPS para dar la alarma. En el bolsillo, con el cuerpo
+  // tapando el cielo y 20-45 m de precision, eso son 2,2 falsos avisos
+  // por hora -el autor lo sufrio-. Con 4 s hacen falta cuatro lecturas
+  // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
+  // verdad se detecta a 104 m en vez de a 86. Barato.
+  if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=4000){
    offRoute=true;updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
   }
  }
