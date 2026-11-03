@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalar Trabakutik GPS</title>
+<meta name="description" content="Descarga e instala la aplicación Trabakutik GPS para navegar las rutas con el móvil bloqueado.">
+<meta name="robots" content="noindex">
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Arial,sans-serif;color:#e6f4ff;background:#07131d}
+*{box-sizing:border-box}
+body{margin:0;padding:0 0 40px}
+header{background:#0a1b27;border-bottom:1px solid #284456;padding:calc(14px + env(safe-area-inset-top)) 16px 14px}
+header strong{font-size:15px;font-weight:760;letter-spacing:.04em;display:block}
+header small{font-size:11px;color:#91b4c4}
+main{max-width:620px;margin:0 auto;padding:16px}
+.baja{display:block;text-align:center;background:#92fca8;color:#06271b;font-weight:800;font-size:17px;
+ text-decoration:none;border-radius:14px;padding:18px 16px;margin:4px 0 8px;box-shadow:0 4px 18px #0007}
+.baja small{display:block;font-weight:600;font-size:11px;color:#0a3a26;margin-top:3px}
+.nota{font-size:11px;color:#8fb0c0;text-align:center;margin:0 0 22px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#8fd3e4;margin:26px 0 10px}
+ol{margin:0;padding-left:0;list-style:none;counter-reset:p}
+li{counter-increment:p;position:relative;padding:0 0 14px 40px;margin-bottom:14px;border-bottom:1px solid #1d3747}
+li:last-child{border-bottom:0}
+li::before{content:counter(p);position:absolute;left:0;top:0;width:27px;height:27px;border-radius:50%;
+ background:#15313f;border:1px solid #3b6579;color:#9fe6ff;font-size:13px;font-weight:700;
+ display:grid;place-items:center}
+li b{display:block;font-size:14px;margin-bottom:3px}
+li span{display:block;font-size:12.5px;line-height:1.55;color:#a9c6d5}
+li em{color:#cdeaf6;font-style:normal;font-weight:650}
+.aviso{background:#15313fdb;border:1px solid #3b6579;border-radius:12px;padding:12px 14px;margin-top:24px}
+.aviso b{display:block;font-size:12.5px;color:#bfefff;margin-bottom:4px}
+.aviso span{display:block;font-size:11.5px;line-height:1.5;color:#9fc0d0}
+footer{text-align:center;margin-top:28px;font-size:11px}
+footer a{color:#9ed9e7}
+</style>
+</head>
+<body>
+<header><strong>TRABAKUTIK <span style="color:#66e5ff">GPS</span></strong>
+<small>Instalar la aplicación en el móvil</small></header>
+<main>
+
+<a class="baja" href="https://github.com/eltzubi/trabakutik-gps-pruebas/releases/latest/download/TrabakutikGPS.apk">
+ Descargar la aplicación
+ <small>Android · descarga directa</small></a>
+<p class="nota">El enlace lleva siempre a la última versión.</p>
+
+<h2>Instalación, paso a paso</h2>
+<ol>
+ <li><b>Toca el archivo descargado</b>
+  <span>Al acabar la descarga, ábrelo desde el aviso o desde la carpeta <em>Descargas</em>.</span></li>
+
+ <li><b>Permite instalarla</b>
+  <span>Android avisará de que viene de fuera de su tienda. Toca <em>Ajustes</em> y activa
+  <em>Permitir desde esta fuente</em>. Es normal: la aplicación no está en Google Play.</span></li>
+
+ <li><b>Concede los dos permisos</b>
+  <span>Al abrirla por primera vez pide <em>Ubicación precisa</em> y <em>Notificaciones</em>.
+  Los dos hacen falta: sin la ubicación no hay navegación, y sin las notificaciones Android
+  no deja que el GPS siga con la pantalla apagada.</span></li>
+
+ <li><b>Quita la restricción de batería</b>
+  <span>Este es el paso que más se olvida y el que más problemas da. Mantén pulsado el icono de
+  la aplicación, entra en <em>Información de la app</em> → <em>Batería</em> y elige
+  <em>Sin restricciones</em>. Si no, el sistema duerme la aplicación en el bolsillo y se quedan
+  sin sonar los avisos de giro.</span></li>
+</ol>
+
+<div class="aviso">
+ <b>Por qué hace falta la aplicación</b>
+ <span>En un navegador, al bloquear el móvil la página se duerme: no suenan los avisos de giro
+ ni el de fuera de ruta, y la grabación se corta. La aplicación sigue trabajando con la pantalla
+ apagada y el móvil en el bolsillo, que es como se usa de verdad.</span>
+</div>
+
+<div class="aviso">
+ <b>Si no habla</b>
+ <span>Los avisos por voz necesitan el motor de voz del teléfono en castellano. Si oyes los
+ pitidos pero no la voz, la propia aplicación te dirá qué falta en el aviso de abajo.</span>
+</div>
+
+<footer><a href="nuevo.html">Volver al navegador</a> · <a href="https://trabakutik.com">trabakutik.com</a></footer>
+</main>
+</body>
+</html>

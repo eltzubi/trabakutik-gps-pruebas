@@ -7,7 +7,7 @@ on:
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write   # hace falta para publicar la Release con el APK
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -41,3 +41,20 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
           if-no-files-found: error
+      # El artefacto de arriba solo lo puede bajar quien tenga cuenta de
+      # GitHub. La Release es publica y, sobre todo, da un enlace FIJO que
+      # siempre apunta a la ultima version:
+      #   .../releases/latest/download/TrabakutikGPS.apk
+      # Un toque y se descarga, sin cuenta y sin buscar nada.
+      - name: Publicar la Release con el APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | cut -d'"' -f2)
+          echo "Version: $VERSION"
+          cp app/build/outputs/apk/debug/app-debug.apk TrabakutikGPS.apk
+          gh release create "v$VERSION" TrabakutikGPS.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Trabakutik GPS $VERSION" \
+            --notes "Descarga directa: TrabakutikGPS.apk. Instrucciones de instalacion en https://eltzubi.github.io/trabakutik-gps-pruebas/instalar.html" \
+            || gh release upload "v$VERSION" TrabakutikGPS.apk --repo "$GITHUB_REPOSITORY" --clobber
