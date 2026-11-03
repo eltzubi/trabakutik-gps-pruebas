@@ -28,6 +28,12 @@ jobs:
           fuentes = {
               "data/trailhead.json": "https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/trailhead.json",
               "data/rutas.json": "https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/rutas.json",
+              # Las alturas van CON los trazados y en el mismo viaje: el editor
+              # las lee por posicion dentro del array, asi que unas alturas de
+              # otra version de los tracks no valen. Faltaban: el GPS tenia 68
+              # de las 70 rutas -sin lejarreta ni zengotitagarai- porque este
+              # workflow no las traia.
+              "data/alturas.json": "https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/alturas.json",
           }
 
           descargados = {}
@@ -40,7 +46,16 @@ jobs:
                   raw = response.read()
               data = json.loads(raw)
 
-              if nombre.endswith("trailhead.json"):
+              if nombre.endswith("alturas.json"):
+                  if not isinstance(data, dict) or not data:
+                      raise SystemExit("alturas.json no contiene rutas; no se sustituye ningun archivo")
+                  for slug, alturas in data.items():
+                      if not isinstance(alturas, list) or not alturas:
+                          raise SystemExit(f"alturas.json: {slug} sin alturas")
+                      if not all(isinstance(x, (int, float)) for x in alturas):
+                          raise SystemExit(f"alturas.json: {slug} tiene alturas que no son numeros")
+                  resumen = f"{len(data)} perfiles"
+              elif nombre.endswith("trailhead.json"):
                   tracks = data.get("tracks") if isinstance(data, dict) else None
                   if not isinstance(tracks, list) or not tracks:
                       raise SystemExit("trailhead.json sin rutas; no se sustituye ningún archivo")
@@ -72,7 +87,25 @@ jobs:
 
               descargados[nombre] = (raw, data, resumen)
 
-          # Solo se escriben archivos después de validar las dos descargas.
+          # Y las alturas tienen que cuadrar CON ESTOS trazados, una a una: el
+          # editor las usa por posicion. Si no cuadran no se escribe nada, que
+          # es mejor quedarse con lo de antes que mezclar dos versiones.
+          tracks = descargados["data/trailhead.json"][1]["tracks"]
+          alturas = descargados["data/alturas.json"][1]
+          faltan = []
+          descuadradas = []
+          for track in tracks:
+              slug = track["href"].rsplit("/", 1)[-1][:-5]
+              if slug not in alturas:
+                  faltan.append(slug)
+              elif len(alturas[slug]) != len(track["points"]):
+                  descuadradas.append(slug)
+          if descuadradas:
+              raise SystemExit("alturas.json no cuadra con trailhead.json: " + ", ".join(descuadradas))
+          if faltan:
+              print("AVISO: sin alturas para " + ", ".join(faltan))
+
+          # Solo se escriben archivos despues de validar las descargas.
           for nombre, (raw, data, resumen) in descargados.items():
               destino = pathlib.Path(nombre)
               destino.parent.mkdir(parents=True, exist_ok=True)
@@ -88,12 +121,12 @@ jobs:
           PY
       - name: Publicar cambios en el navegador GPS
         run: |
-          if git diff --quiet -- data/trailhead.json data/rutas.json; then
+          if git diff --quiet -- data/trailhead.json data/rutas.json data/alturas.json; then
             echo "Sin cambios en las rutas"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/trailhead.json data/rutas.json
-          git commit -m "Sincronizar rutas y nombres desde Trabakutik"
+          git add data/trailhead.json data/rutas.json data/alturas.json
+          git commit -m "Sincronizar rutas, nombres y alturas desde Trabakutik"
           git push

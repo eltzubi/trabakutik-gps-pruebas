@@ -475,7 +475,11 @@ public class TrackingService extends Service implements LocationListener {
    boolean corta=forzarCorte||(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)));
    if(corta&&lastRecordedTime>0)w.write("</trkseg><trkseg>\n");
    w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\n");
-   try(FileWriter pointsFile=new FileWriter(new File(getFilesDir(),"trazado-vivo.tsv"),true)){if(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)))pointsFile.write("\n");pointsFile.write(l.getLatitude()+"\t"+l.getLongitude()+"\n");}
+   // El MISMO corte que el GPX, «corta», y no una copia de la condicion sin
+   // forzarCorte. Al reanudar una pausa se enciende forzarCorte: el GPX abria
+   // tramo nuevo y el trazado de la pantalla no, asi que si parabas y seguias
+   // en menos de 20 s y 100 m la linea roja unia el descanso con una recta.
+   try(FileWriter pointsFile=new FileWriter(new File(getFilesDir(),"trazado-vivo.tsv"),true)){if(corta&&lastRecordedTime>0)pointsFile.write("\n");pointsFile.write(l.getLatitude()+"\t"+l.getLongitude()+"\n");}
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
    forzarCorte=false;
    points++;if(points%10==0)updateNotice();

@@ -458,6 +458,7 @@ function warnGps(err){
 
 // Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
 let navegaNativo=false;
+let gpsApagadoPorTi=false;
 let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
@@ -1148,20 +1149,37 @@ $('shareFromDialog').onclick=async()=>{
  if(pending.kind==='recording')finishRecording();
  closeSaveDialog();
 };
+// El desnivel se cuenta contra una REFERENCIA que va subiendo contigo, no
+// mirando solo de un punto al siguiente. Antes era lo segundo y se comia las
+// subidas suaves enteras: una rampa de 100 m ganados de metro en metro daba
+// +0, porque ningun par de puntos seguidos llegaba a los 5 m. Medido contra
+// las cifras publicadas de ocho rutas, el error medio era del 75%:
+// zengotitagarai salia +545 cuando la ficha dice +1.077, y trabakua +146
+// contra +712. Con la referencia movil y el mismo umbral de 5 m el error
+// medio baja al 9% (zengotitagarai +1.173, trabakua +660). El umbral sigue
+// haciendo falta: sin el se suma el temblor del GPS en altura.
+// Esto NO toca las cifras de las fichas de la web, que tienen otra fuente.
 function elevationText(points){
- let up=0,down=0;
- for(let i=1;i<points.length;i++){
-  if(!Number.isFinite(points[i][2])||!Number.isFinite(points[i-1][2]))continue;
-  const difference=points[i][2]-points[i-1][2];
-  if(difference>=5)up+=difference;else if(difference<=-5)down-=difference;
+ let up=0,down=0,ref=null;
+ const UMBRAL=5;
+ for(const p of points){
+  const h=p&&p[2];
+  if(!Number.isFinite(h))continue;
+  if(ref===null){ref=h;continue}
+  if(h>=ref+UMBRAL){up+=h-ref;ref=h}
+  else if(h<=ref-UMBRAL){down+=ref-h;ref=h}
  }
  return points.some(p=>Number.isFinite(p[2]))?' · +'+Math.round(up)+' / -'+Math.round(down)+' m aprox.':' · sin alturas disponibles';
 }
 // Mantener los puntos GPX originales en Mis rutas. Para dibujar y navegar,
 // usar una copia simplificada por desviación (no escoger 1 de cada N).
 function compactRoutePoints(points,maxPoints=2200){
- if(!Array.isArray(points)||points.length<=2)return points.map(p=>p.slice(0,2));
- const source=points.map(p=>[p[0],p[1]]);
+ // Se conserva la ALTURA de los puntos que sobreviven. Antes se tiraba, y
+ // reabrir una ruta de «Mis rutas» -que usa esta copia- hacia que el resumen
+ // dijera «sin alturas disponibles» aunque la ruta las tuviera todas. El GPX
+ // guardado nunca se tocaba, era solo la copia para dibujar y navegar.
+ if(!Array.isArray(points)||points.length<=2)return points.map(p=>p.slice(0,3));
+ const source=points.map(p=>Number.isFinite(p[2])?[p[0],p[1],p[2]]:[p[0],p[1]]);
  const lat0=source[Math.floor(source.length/2)][0]*R;
  const scaleX=111195*Math.cos(lat0),scaleY=111195;
  function simplify(tolerance){
@@ -2228,6 +2246,7 @@ function miraPosicionNativa(){
 setInterval(miraPosicionNativa,1000);
 const GUIA_CADUCA_MS=25000;
 setInterval(()=>{
+ if(gpsApagadoPorTi)return;   // lo has apagado tu: no hay nada que vigilar
  let ubicacionApagada=false;
  if(window.TrabakutikAndroid?.getPosition){
   try{ubicacionApagada=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}').locationEnabled===false}catch(e){}
@@ -2285,6 +2304,7 @@ function enciendeNavegacionNativa(){
  }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
 }
 function startGPS(forRecording=false,conServicio=false){
+ gpsApagadoPorTi=false;
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
   try{syncNativeRoute()}catch(e){console.warn(e)}
  }
@@ -2398,6 +2418,11 @@ function apagaGps(){
  // sondeo lo vería aún activo y volvería a encender la flecha recién apagada.
  fuenteNativa=false;ultimoTiempoNativo=0;apagadoHasta=Date.now()+8000;
  followGps=true;manualMapUntil=0;
+ // Lo has apagado TU. El vigilante de abajo no debe ponerse a anunciar que
+ // busca señal: no la busca nadie. Antes lo hacia, y a los cinco segundos
+ // «GPS apagado» se convertia en «Sin posicion reciente del GPS · buscando
+ // señal», que es mentira y ademas asusta.
+ gpsApagadoPorTi=true;
  $('distance').textContent='GPS apagado';
 }
 $('discardRecording').onclick=()=>{

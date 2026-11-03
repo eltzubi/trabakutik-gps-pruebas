@@ -346,15 +346,29 @@ public class MainActivity extends Activity {
     String trackVersion=f.exists()?f.lastModified()+":"+f.length():"none";
     o.put("trackVersion",trackVersion);
     if(trackVersion.equals(knownVersion))return o.toString();
+    // Se devuelven los ULTIMOS puntos, no los primeros, y ya no hay un corte
+    // por tamaño que dejaba la lista VACIA. Antes: si el fichero pasaba de
+    // 1,5 MB no se devolvia ni un punto -la linea roja desaparecia de golpe-,
+    // y con menos se leian los 25.000 PRIMEROS, asi que en una salida muy
+    // larga el trazado dejaba de avanzar en pantalla mientras el GPX seguia
+    // creciendo. Andando se anota un punto cada dos segundos: 25.000 son unas
+    // catorce horas, de modo que esto solo se nota en salidas muy largas,
+    // pero cuando se nota lo que interesa es lo ULTIMO, no lo primero.
+    // El GPX no se toca: ahi va todo.
     org.json.JSONArray pts=new org.json.JSONArray();
-    if(f.exists()&&f.length()<1500000){
+    if(f.exists()&&f.length()<50000000){
+     java.util.ArrayDeque<String> cola=new java.util.ArrayDeque<>();
      try(BufferedReader br=new BufferedReader(new FileReader(f))){
-      String line;int count=0;
-      while((line=br.readLine())!=null&&count<25000){
-       if(line.isEmpty()){pts.put(org.json.JSONObject.NULL);continue;}
-       String[] p=line.split("\\t");
-       if(p.length==2){try{double lat=Double.parseDouble(p[0]),lon=Double.parseDouble(p[1]);if(Double.isFinite(lat)&&Double.isFinite(lon)){org.json.JSONArray coord=new org.json.JSONArray();coord.put(lat);coord.put(lon);pts.put(coord);count++;}}catch(Exception ignored){}}
+      String line;
+      while((line=br.readLine())!=null){
+       cola.addLast(line);
+       if(cola.size()>25000)cola.removeFirst();
       }
+     }
+     for(String line:cola){
+      if(line.isEmpty()){pts.put(org.json.JSONObject.NULL);continue;}
+      String[] p=line.split("\\t");
+      if(p.length==2){try{double lat=Double.parseDouble(p[0]),lon=Double.parseDouble(p[1]);if(Double.isFinite(lat)&&Double.isFinite(lon)){org.json.JSONArray coord=new org.json.JSONArray();coord.put(lat);coord.put(lon);pts.put(coord);}}catch(Exception ignored){}}
      }
     }
     o.put("points",pts);
