@@ -1,0 +1,45 @@
+name: Comprobar JavaScript de nuevo.html
+
+on:
+  push:
+    branches:
+      - main
+      - mejora-navegador
+  pull_request:
+    branches:
+      - main
+      - mejora-navegador
+  workflow_dispatch:
+
+jobs:
+  sintaxis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar los bloques JavaScript de nuevo.html
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import re
+
+          html = pathlib.Path("nuevo.html").read_text(encoding="utf-8")
+          bloques = re.findall(
+              r"<script\b(?![^>]*\bsrc\s*=)[^>]*>(.*?)</script\s*>",
+              html,
+              flags=re.IGNORECASE | re.DOTALL,
+          )
+          bloques = [bloque for bloque in bloques if bloque.strip()]
+          if not bloques:
+              raise SystemExit("nuevo.html no contiene bloques JavaScript inline para comprobar")
+          for numero, bloque in enumerate(bloques, 1):
+              pathlib.Path(f"/tmp/trabakutik-inline-{numero}.js").write_text(bloque, encoding="utf-8")
+          print(f"Se comprobarán {len(bloques)} bloques JavaScript inline")
+          PY
+          for archivo in /tmp/trabakutik-inline-*.js; do
+            node --check "$archivo"
+          done
