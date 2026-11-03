@@ -1588,17 +1588,24 @@ function computeJunctions(){
   const cosine=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2));
   const angle=Math.acos(Math.max(-1,Math.min(1,cosine)))*180/Math.PI;
   if(angle<48)continue;
-  // Un giro claro del propio GPX se reconoce sin buscar en las
-  // 68 rutas: el barrido completo bloqueaba el WebView en rutas largas.
+  // NO INTENTAR DETECTAR CRUCES MIRANDO SI PASA OTRA RUTA CERCA. Esta
+  // medido y es PEOR: en Mallabia las 70 rutas comparten camino durante
+  // kilometros, asi que «otra ruta a menos de 28 m» es cierto casi todo el
+  // rato y no significa cruce, significa que van juntas. Probado con una
+  // rejilla rapida sobre los 70 tracks: zengotitagarai pasaria de 45 avisos
+  // a 108, de los cuales 101 serian falsos «cruces». Y al reves, el circuito
+  // de Berriz solo cruza otras rutas en 5 puntos, asi que tampoco sirve.
+  // Los cruces de verdad -los de pistas que no son ninguna de las 70- no
+  // estan en estos datos. Harian falta los caminos de OpenStreetMap.
   const branch=false;
-  // Giros pronunciados del GPX también cuentan aunque no haya otra ruta registrada.
-  // 75 grados y no 60. Medido sobre los tracks de verdad: a 60 la ruta
-  // nueva daba 91 giros en 30 km, uno cada 333 m, y 37 parejas a menos de
-  // 110 m una de otra, o sea que el aviso de un cruce entraba antes de
-  // acabar con el anterior. La mayoria eran lazadas de bajada, donde no hay
-  // nada que equivocar. A 75 quedan 59, uno cada 514 m y 20 parejas; en las
-  // 69 rutas, de 3.952 giros a 2.605.
-  if(!branch&&angle<75)continue;
+  // 110 grados, no 75. Lo pidio el autor: «solo queria que me indicaran los
+  // cruces, no las curvas, al menos que sea una curva muy muy cerrada». Como
+  // los cruces de verdad no se pueden detectar (ver arriba), lo unico honesto
+  // es subir el liston: 110 grados de desviacion es casi doblarse sobre uno
+  // mismo. Medido sobre seis rutas reales, de 75 a 110: los avisos bajan de
+  // 180 a 86, de uno cada 587 m a uno cada 1,2 km. zengotitagarai pasa de 45
+  // a 22. Si sigue pareciendo mucho, 120 deja 69 y 130 deja 50.
+  if(!branch&&angle<110)continue;
   if(junctions.length&&dist(junctions[junctions.length-1].point,b)<35)continue;
   const cross=v1[0]*v2[1]-v1[1]*v2[0];
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
