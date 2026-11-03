@@ -1017,7 +1017,7 @@ function download(points,name){if(points.length<2)return;if(window.TrabakutikAnd
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
 function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
-let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='';
+let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='',abiertaEn=Date.now(),ultimoParoNativo=0;
 function gpxFilename(name){return (name||'ruta').toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-').replace(/^-+|-+$/g,'')||'ruta'}
 function canShareGpx(points,name){
  // Dentro de la app NO existe navigator.share -el WebView no lo implementa-,
@@ -1912,6 +1912,18 @@ function miraPosicionNativa(){
  // y callandose los dos no avisaba nadie. Un APK viejo no manda «guiando»,
  // y entonces vale lo de antes.
  navegaNativo=d.guiando===undefined?!!d.navigating:!!d.guiando;
+ // El servicio se queda con SU copia de la ruta. Si la pagina se recarga
+ // -cambiar de pestaña la recarga- o se quita la ruta y algo falla al
+ // avisarle, el servicio sigue guiando una ruta que ya no esta en
+ // pantalla: pita en cruces que no ves. Lo dijo el autor: «me esta
+ // pitando... sin ruta cargada». Si aqui no hay ruta, ahi tampoco.
+ // Con margen desde que abrio la pagina, que al principio la ruta aun se
+ // esta cargando y seria parar justo lo que acaba de empezar.
+ if(d.guiando&&chosen<0&&routePoints.length<2&&mode!=='create'
+    &&Date.now()-abiertaEn>12000&&Date.now()-ultimoParoNativo>15000){
+  ultimoParoNativo=Date.now();
+  try{window.TrabakutikAndroid.stopNavigation?.()}catch(e){}
+ }
  // Si el motor de voz no esta listo, decirlo en vez de callar: el autor se
  // encontro con que los pitidos sonaban y la voz no, sin ninguna pista de
  // por que. El motivo lo manda el servicio.

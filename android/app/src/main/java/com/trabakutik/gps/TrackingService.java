@@ -99,7 +99,7 @@ public class TrackingService extends Service implements LocationListener {
   else apuntaVoz(vozEstado==null||"ok".equals(vozEstado)?"La voz aún se está preparando":vozEstado);
  }
  void habla(String texto){
-  if(!"voz".equals(audioModo)||!vozLista||voz==null||texto==null)return;
+  if(!"voz".equals(modoAudio())||!vozLista||voz==null||texto==null)return;
   // QUEUE_FLUSH a proposito: navegando manda lo ultimo. Si el aviso de los
   // 10 m llega mientras todavia suena el de 50, el que vale es el de 10.
   try{voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"trabakutik");}catch(Exception ignored){}
@@ -339,8 +339,15 @@ public class TrackingService extends Service implements LocationListener {
  // 4 = fuera de ruta. Los cuatro de fuera de ruta van mas seguidos (180 ms)
  // que los de giro (300 ms), que tres y cuatro al mismo ritmo no se
  // distinguen de oido.
+ String modoAudio(){
+  try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getString("audioModo",audioModo);}
+  catch(Exception e){return audioModo;}
+ }
  void pitidos(int n,int sep){
-  if("silencio".equals(audioModo))return;
+  // Se relee del fichero, no del campo: el campo solo se cargaba al nacer
+  // el servicio, asi que un cambio posterior no le llegaba y seguia
+  // pitando con «Silencio» puesto. Lo dijo el autor.
+  if("silencio".equals(modoAudio()))return;
   try{
    final ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,90);
    final Handler handler=new Handler(Looper.getMainLooper());
