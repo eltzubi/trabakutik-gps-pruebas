@@ -104,8 +104,14 @@ public class TrackingService extends Service implements LocationListener {
   // 10 m llega mientras todavia suena el de 50, el que vale es el de 10.
   try{voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"trabakutik");}catch(Exception ignored){}
  }
- String fraseGiro(int lado,String fase,double ahead){
-  String hacia=lado==0?"cambio de sentido":lado<0?"gira a la izquierda":"gira a la derecha";
+ String fraseGiro(int lado,boolean esCruce,String fase,double ahead){
+  // Lo que pidio el autor fue que le avisaran de los CRUCES, asi que la voz
+  // dice si es un cruce o una curva. Y «cambio de sentido» en un sendero
+  // suena a «date la vuelta», que no es lo que pasa en una herradura.
+  String hacia=lado==0
+   ?(esCruce?"cruce, da la vuelta":"curva de herradura")
+   :esCruce?(lado<0?"cruce a la izquierda":"cruce a la derecha")
+           :(lado<0?"curva cerrada a la izquierda":"curva cerrada a la derecha");
   if("3".equals(fase))return Character.toUpperCase(hacia.charAt(0))+hacia.substring(1)+" ahora";
   // La distancia de VERDAD, no el umbral: decia «en 200 metros» estando a 170.
   return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+hacia;
@@ -270,7 +276,11 @@ public class TrackingService extends Service implements LocationListener {
    for(int i=0;i<list.length()&&i<400;i++){
     JSONObject p=list.optJSONObject(i);if(p==null)continue;
     int at=p.optInt("i",-1),direction=p.optInt("dir",0);
-    if(at>=0&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction});
+    // "t": 1 si es un CRUCE de verdad -nodo de OpenStreetMap con tres ramas o
+    // mas-, 0 si es una curva de herradura. No se dicen igual. Un APK viejo
+    // guardaba ficheros sin "t"; por defecto cruce, que es el caso normal.
+    int tipo=p.optInt("t",1);
+    if(at>=0&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo});
    }
   }catch(Exception e){android.util.Log.w("TrabakutikGPS","Giros no disponibles",e);}
  }
@@ -329,10 +339,13 @@ public class TrackingService extends Service implements LocationListener {
     // ninguna lectura. Simulado con 10 arranques distintos: 5 de 10 a
     // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
     if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8){
-     int d=(int)turns.get(k)[1];
+     double[] giro=turns.get(k);
+     int d=(int)giro[1];
+     boolean esCruce=giro.length<3||giro[2]!=0;
      // Al reves, lo que se grabo como derecha es izquierda.
      int lado=d*sentido;
-     String instruction=lado<0?"Izquierda":lado>0?"Derecha":"Cambio de sentido";
+     String instruction=lado<0?"Izquierda":lado>0?"Derecha":esCruce?"Da la vuelta":"Herradura";
+     if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
      // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a
      // 50 m, 2 a 10 m y 3 en el propio cruce. El numero es el dato, que
@@ -353,7 +366,7 @@ public class TrackingService extends Service implements LocationListener {
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
        // En la fase 1 ya no se repite la distancia: a 25 m, decir «en 25
        // metros» llega tarde y ademas pisa al aviso bueno, el del cruce.
-       if("v".equals(fase)||"3".equals(fase))habla(fraseGiro(lado,fase,ahead));
+       if("v".equals(fase)||"3".equals(fase))habla(fraseGiro(lado,esCruce,fase,ahead));
       }
      }
     }

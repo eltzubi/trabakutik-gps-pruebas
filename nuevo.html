@@ -433,7 +433,7 @@ changeBase(initialBase);
 pintaOrient();
 $('orient').onclick=()=>{cursoArriba=!cursoArriba;pintaOrient();notice(!cursoArriba?'Mapa con el norte arriba':rumboMapa===null?'Mapa orientado al rumbo · girará en cuanto sepa hacia dónde vas':'Mapa orientado al rumbo');try{localStorage.setItem('trabakutik-curso-arriba',cursoArriba?'si':'no')}catch(e){}manualMapUntil=0;aplicaGiroMapa(true);pintaMandos()};
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null;
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null,crucesOsm=[];
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 
@@ -650,6 +650,7 @@ async function loadDetailedSelected(i,request){
    routePoints=detailedLine;
    computeJunctions();
    try{syncNativeRoute()}catch(e){console.warn('Ruta fina no enviada',e)}
+   aplicaCruces();   // y los cruces de OSM sobre la linea fina, que es la buena
   }
   notice('Ruta Garmin mostrada con detalle · navegación activa');
  }catch(e){
@@ -664,6 +665,9 @@ function selectRoute(i){
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
  updateNativeLaunchLink();
+ // Los cruces llegan con la ruta fina, no con la gorda: hasta que llegue, sin
+ // cruces, y computeJunctions solo avisa de curvas de herradura.
+ crucesOsm=[];
  routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
  drawAll();
  $('routeDialog').classList.add('hidden');
@@ -673,6 +677,7 @@ function selectRoute(i){
  setTimeout(()=>{
   if(chosen!==i||selectedRouteRequest!==request)return;
   computeJunctions();
+  aplicaCruces();
   startGPS();
   notice('Ruta seleccionada · cargando detalle del Garmin');
   loadDetailedSelected(i,request);
@@ -1194,6 +1199,7 @@ function loadSaved(item){
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();
+ crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);
  chosen=-1;updateNativeLaunchLink();
  if(item.imported){
@@ -1217,6 +1223,9 @@ function loadSaved(item){
  setTimeout(()=>{
   if(request!==selectedRouteRequest||activeSavedId!==item.created)return;
   computeJunctions();
+  // Una ruta tuya o un GPX de Wikiloc tambien tiene cruces: son los mismos de
+  // OpenStreetMap. Por eso el fichero es de toda la zona y no de cada ruta.
+  aplicaCruces();
   startGPS();
   notice('Navegando: '+item.name+' · '+routePoints.length+' puntos optimizados');
  },60);
@@ -1260,7 +1269,7 @@ function clearActiveRoute(){
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
  routePoints=[];chosen=-1;activeSavedId=null;updateNativeLaunchLink();directionArrows.clearLayers();
- junctions=[];junctionWarned.clear();routeCumulative=[];
+ junctions=[];junctionWarned.clear();routeCumulative=[];crucesOsm=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
  setRouteTitle('Mapa de rutas',null);
@@ -1573,6 +1582,98 @@ map.on('zoomstart',()=>{
   junctionZoom=null; // Respetar el zoom que el usuario acaba de elegir.
  }
 });
+// LOS CRUCES DE LA ZONA, de OpenStreetMap. Un fichero para toda Mallabia y no
+// uno por ruta, a proposito: asi un GPX que te bajes de Wikiloc y abras en la
+// app tiene los mismos avisos de cruce que una ruta de la web. Son 17.515
+// cruces, 127 KB -49 KB por el cable-, y se guardan en el movil para cuando no
+// haya cobertura, que es cuando mas falta hacen. Lo genera
+// scripts/make_cruces.py del repo Rutas-Mallabia.
+const URL_CRUCES='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/cruces-zona.json';
+let zonaCruces=null,zonaPide=null,crucesPeticion=0,zonaRefrescada=false;
+// Se guarda TAL COMO VIENE -en diferencias-, no descifrado: en pares de
+// grados sueltos ocupa 338 KB del movil y asi 127, y ahi dentro estan tambien
+// tus rutas guardadas, que se quedan sin sitio («No hay espacio para guardar
+// la ruta»).
+function guardaZona(j){
+ try{localStorage.setItem('cruces-zona',JSON.stringify(j))}
+ catch(e){/* sin sitio: se vuelve a bajar la proxima vez */}
+}
+function zonaGuardada(){
+ try{
+  const t=localStorage.getItem('cruces-zona');if(!t)return null;
+  return descifraZona(JSON.parse(t));
+ }catch(e){return null}
+}
+function descifraZona(j){
+ const esc=j.escala||100000,d=j.dif;
+ if(!Array.isArray(d)||d.length<2||d.length%2)throw new Error('cruces-zona.json no valido');
+ // Van en DIFERENCIAS sobre el cruce anterior: en pares de grados sueltos el
+ // fichero pesa 338 KB, asi pesa 127 KB.
+ const puntos=[];let x=0,y=0;
+ for(let i=0;i<d.length;i+=2){
+  x+=d[i];y+=d[i+1];
+  const lat=x/esc,lon=y/esc;
+  if(Number.isFinite(lat)&&Number.isFinite(lon))puntos.push([lat,lon]);
+ }
+ if(puntos.length<2)throw new Error('cruces-zona.json vacio');
+ return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos};
+}
+function bajaZona(){
+ return fetch(URL_CRUCES,{cache:'default'})
+  .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .then(j=>{const z=descifraZona(j);guardaZona(j);return z});
+}
+function cargaZonaCruces(){
+ if(zonaCruces){
+  // Los guardados valen desde el primer segundo y sin cobertura. Se refrescan
+  // una vez por sesion, de fondo, por si se han vuelto a bajar de OSM.
+  if(!zonaRefrescada){
+   zonaRefrescada=true;
+   bajaZona().then(z=>{
+    if(zonaCruces&&z.puntos.length!==zonaCruces.puntos.length){zonaCruces=z;aplicaCruces()}
+   }).catch(()=>{});
+  }
+  return Promise.resolve(zonaCruces);
+ }
+ if(zonaPide)return zonaPide;
+ const g=zonaGuardada();
+ if(g){zonaCruces=g;return cargaZonaCruces()}
+ zonaPide=bajaZona().then(z=>{zonaCruces=z;zonaRefrescada=true;return z})
+  .catch(e=>{console.warn('Cruces de la zona no disponibles',e);zonaPide=null;return null});
+ return zonaPide;
+}
+// Se queda con los cruces pegados al track que lleves cargado y rehace los
+// avisos. Si el track esta fuera de Mallabia no hay cruces y se dice: mejor
+// eso que avisar de curvas haciendolas pasar por cruces.
+function aplicaCruces(){
+ const pet=++crucesPeticion;
+ if(routePoints.length<7){crucesOsm=[];return}
+ cargaZonaCruces().then(z=>{
+  if(!z||pet!==crucesPeticion||routePoints.length<7)return;
+  const CEL=0.0006,celdas=new Set();
+  for(const p of routePoints)celdas.add(Math.floor(p[0]/CEL)+'/'+Math.floor(p[1]/CEL));
+  // Filtro por celda -unos 50 m-, no por distancia: aqui solo hay que
+  // descartar los 17.000 que estan lejos. La distancia exacta la mira
+  // computeJunctions, que es quien decide.
+  const cerca=[];
+  for(const c of z.puntos){
+   const k0=Math.floor(c[0]/CEL),k1=Math.floor(c[1]/CEL);
+   let toca=false;
+   for(let a=-1;a<=1&&!toca;a++)for(let b=-1;b<=1;b++)
+    if(celdas.has((k0+a)+'/'+(k1+b))){toca=true;break}
+   if(toca)cerca.push(c);
+  }
+  crucesOsm=cerca;
+  computeJunctions();
+  if(!cerca.length){
+   const p=routePoints[Math.floor(routePoints.length/2)],b=z.bbox;
+   if(b&&(p[0]<b[0]||p[0]>b[2]||p[1]<b[1]||p[1]>b[3]))
+    notice('Ruta fuera de la zona de Mallabia · sin avisos de cruces, solo de curvas de herradura');
+   return;
+  }
+  try{syncNativeRoute()}catch(e){console.warn('Cruces no enviados al servicio',e)}
+ });
+}
 function computeJunctions(){
  resetJunctionView();
  junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
@@ -1580,40 +1681,94 @@ function computeJunctions(){
  for(let k=1;k<routePoints.length;k++)routeCumulative[k]=routeCumulative[k-1]+dist(routePoints[k-1],routePoints[k]);
  if(routePoints.length<7){if(window.TrabakutikAndroid?.setJunctions)window.TrabakutikAndroid.setJunctions('[]');return;}
  const pts=routePoints;
- for(let i=3;i<pts.length-3;i++){
-  const a=pts[i-3],b=pts[i],c=pts[i+3];
-  if(dist(a,b)<10||dist(b,c)<10)continue;
+ // LOS CRUCES NO SE DEDUCEN DEL ANGULO DEL TRACK. Esto se intento durante
+ // mucho tiempo -75 grados, luego 110, luego 90 sobre 12 m- y esta MEDIDO que
+ // no funciona: sobre seis rutas y 105 km, con los cruces de OSM delante, el
+ // criterio de 110 grados daba 86 avisos de los que solo 29 caian en un cruce
+ // real -el 66% eran curvas- y de los 117 cruces de verdad avisaba de 31: se
+ // callaba en el 74%. El de 90 grados sobre 12 m no mejoraba: 64% curvas y
+ // callado en el 61%. El autor lo pidio claro: «solo queria que me indicaran
+ // los cruces no las curvas».
+ //
+ // Asi que los cruces se traen de OpenStreetMap, que es lo que hace Komoot
+ // -Komoot no sigue un GPX: calcula sobre los caminos de OSM, por eso tiene
+ // la lista de cruces-. Wikiloc ni lo intenta: su ayuda oficial dice que la
+ // app no da indicaciones de voz y que sus avisos son solo salirse de la
+ // ruta, volver a ella, saltarse un tramo, acercarse a un waypoint y llegar
+ // al final. Ningun giro.
+ //
+ // crucesOsm son los nodos de camino con TRES RAMAS O MAS que estan pegados a
+ // esta ruta; vienen en data/<ruta>.json, escritos por scripts/make_cruces.py
+ // del repo Rutas-Mallabia. Un nodo de dos ramas no es un cruce: es un camino
+ // partido porque cambia el firme.
+ //
+ // Y cuando NO hay cruces -ruta tuya, GPX de fuera, o la ruta fina aun no ha
+ // llegado- no se finge: solo se avisa de curvas de herradura.
+ const VENTANA=12;
+ const CRUCE_GIRO=45;   // en un cruce, avisa si la ruta gira esto o mas
+ const CURVA_SOLA=130;  // sin cruce, solo herraduras
+ const CERCA_CRUCE=25;  // metros del punto del track al nodo de OSM
+ const CELDA=0.0006,rejCruces=new Map();
+ for(const c of crucesOsm){
+  const k=Math.floor(c[0]/CELDA)+'/'+Math.floor(c[1]/CELDA);
+  let l=rejCruces.get(k);if(!l)rejCruces.set(k,l=[]);l.push(c);
+ }
+ // Una herradura de verdad lo sigue siendo mirando mas lejos. Si a 12 m mide
+ // 134 grados y a 20 m mide 11, no era una herradura: era un punto de GPS
+ // descolocado. En lejarreta -circuito de zigzag- pasaba en 3 de 18.
+ const anguloEn=(i,V)=>{
+  let j=i,atras=0;
+  while(j>0&&atras<V){atras+=dist(pts[j-1],pts[j]);j--}
+  let k=i,alante=0;
+  while(k<pts.length-1&&alante<V){alante+=dist(pts[k],pts[k+1]);k++}
+  if(atras<V*0.7||alante<V*0.7)return null;
+  const a=pts[j],b=pts[i],c=pts[k],kx=Math.cos(b[0]*R);
+  const v1=[(b[1]-a[1])*kx,b[0]-a[0]],v2=[(c[1]-b[1])*kx,c[0]-b[0]];
+  const n1=Math.hypot(...v1),n2=Math.hypot(...v2);
+  if(!n1||!n2)return null;
+  return Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/(n1*n2))))*180/Math.PI;
+ };
+ const hayCruce=p=>{
+  if(!crucesOsm.length)return false;
+  const k0=Math.floor(p[0]/CELDA),k1=Math.floor(p[1]/CELDA);
+  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){
+   const l=rejCruces.get((k0+a)+'/'+(k1+b));if(!l)continue;
+   for(const c of l)if(dist(p,c)<=CERCA_CRUCE)return true;
+  }
+  return false;
+ };
+ for(let i=1;i<pts.length-1;i++){
+  let j=i,atras=0;
+  while(j>0&&atras<VENTANA){atras+=dist(pts[j-1],pts[j]);j--}
+  let k=i,alante=0;
+  while(k<pts.length-1&&alante<VENTANA){alante+=dist(pts[k],pts[k+1]);k++}
+  if(atras<VENTANA*0.7||alante<VENTANA*0.7)continue;
+  const a=pts[j],b=pts[i],c=pts[k];
   const latitude=b[0]*R,kx=Math.cos(latitude);
   const v1=[(b[1]-a[1])*kx,b[0]-a[0]],v2=[(c[1]-b[1])*kx,c[0]-b[0]];
   const cosine=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2));
   const angle=Math.acos(Math.max(-1,Math.min(1,cosine)))*180/Math.PI;
-  if(angle<48)continue;
-  // NO INTENTAR DETECTAR CRUCES MIRANDO SI PASA OTRA RUTA CERCA. Esta
-  // medido y es PEOR: en Mallabia las 70 rutas comparten camino durante
-  // kilometros, asi que «otra ruta a menos de 28 m» es cierto casi todo el
-  // rato y no significa cruce, significa que van juntas. Probado con una
-  // rejilla rapida sobre los 70 tracks: zengotitagarai pasaria de 45 avisos
-  // a 108, de los cuales 101 serian falsos «cruces». Y al reves, el circuito
-  // de Berriz solo cruza otras rutas en 5 puntos, asi que tampoco sirve.
-  // Los cruces de verdad -los de pistas que no son ninguna de las 70- no
-  // estan en estos datos. Harian falta los caminos de OpenStreetMap.
-  const branch=false;
-  // 110 grados, no 75. Lo pidio el autor: «solo queria que me indicaran los
-  // cruces, no las curvas, al menos que sea una curva muy muy cerrada». Como
-  // los cruces de verdad no se pueden detectar (ver arriba), lo unico honesto
-  // es subir el liston: 110 grados de desviacion es casi doblarse sobre uno
-  // mismo. Medido sobre seis rutas reales, de 75 a 110: los avisos bajan de
-  // 180 a 86, de uno cada 587 m a uno cada 1,2 km. zengotitagarai pasa de 45
-  // a 22. Si sigue pareciendo mucho, 120 deja 69 y 130 deja 50.
-  if(!branch&&angle<110)continue;
+  if(angle<40)continue; // por debajo de CRUCE_GIRO no hay nada que mirar
+  // NO INTENTAR DETECTAR CRUCES MIRANDO SI PASA OTRA RUTA CERCA. Esta medido
+  // y es PEOR: en Mallabia las 70 rutas comparten camino durante kilometros,
+  // asi que «otra ruta a menos de 28 m» es cierto casi todo el rato y no
+  // significa cruce, significa que van juntas. Por eso los cruces se traen de
+  // OSM y no de las propias rutas.
+  const cruce=hayCruce(b);
+  if(cruce){if(angle<CRUCE_GIRO)continue}
+  else{
+   if(angle<CURVA_SOLA)continue;
+   const confirma=anguloEn(i,20);
+   if(confirma!==null&&confirma<100)continue; // era ruido del GPS
+  }
   if(junctions.length&&dist(junctions[junctions.length-1].point,b)<35)continue;
   const cross=v1[0]*v2[1]-v1[1]*v2[0];
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
-  junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle)});
+  junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle),cruce});
  }
  // En Android, el servicio nativo conserva los giros aunque se bloquee el móvil.
  if(window.TrabakutikAndroid?.setJunctions){
-  try{window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>({i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0}))))}
+  try{window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>({i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0,t:j.cruce?1:0}))))}
   catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
  }
 }
@@ -1711,7 +1866,13 @@ function junctionGuidance(p,accuracy){
    html:'<div class="map-turn-sign">'+flechaGiro(grados,sentido,24,13)+'</div>'});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
- $('turnDirection').textContent=lado==='vuelta'?'Cambio de sentido':'Gira a la '+lado;
+ // Un cruce y una curva de herradura no son lo mismo y no se dicen igual:
+ // «cambio de sentido» en un sendero suena a «date la vuelta», y lo que pidio
+ // el autor fue que le avisaran de los CRUCES.
+ const esCruce=turn.cruce!==false;
+ $('turnDirection').textContent=lado==='vuelta'
+   ?(esCruce?'Cruce · da la vuelta':'Curva de herradura')
+   :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
  $('turnAngle').textContent='Giro de '+grados+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // Las tres luces se encienden segun te acercas, con los mismos cortes que
@@ -1766,18 +1927,21 @@ function junctionGuidance(p,accuracy){
   // getAudio() aqui tambien: pitidos() se calla si todavia no hay
   // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
-  const giroTxt=lado==='vuelta'?'cambio de sentido':'gira a la '+lado;
+  const giroTxt=lado==='vuelta'
+    ?(esCruce?'cruce, da la vuelta':'curva de herradura')
+    :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
   // Solo habla en la fase de voz -mucho antes- y en el propio cruce. En las
   // de 25 y 10 m decir «en 25 metros» llega tarde y ademas pisa al aviso
   // bueno, el de «ahora». Lo vio el autor: «estaba diciendo que girara
   // dentro de 25 metros cuando ya estaba girando».
   if(fase==='v'||fase==='3'){
    hablarGiro(fase==='3'
-     ?(lado==='vuelta'?'Cambio de sentido ahora':'Gira a la '+lado+' ahora')
+     ?(giroTxt.charAt(0).toUpperCase()+giroTxt.slice(1)+' ahora')
      :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt);
   }
-  if(fase!=='v')notice(fase==='3'?'En el cruce · sigue la línea azul'
-        :'Cruce a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
+  if(fase!=='v')notice(fase==='3'
+        ?(esCruce?'En el cruce · sigue la línea azul':'En la curva · sigue la línea azul')
+        :(esCruce?'Cruce':'Curva cerrada')+' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
 }
