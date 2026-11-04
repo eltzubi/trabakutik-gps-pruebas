@@ -276,7 +276,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 </section>
 <footer class="bottom"><div id="soloApp" class="solo-app hidden"><b>La navegación va solo en la aplicación</b><span>En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Cerca de mí</button><button id="savedRoutes">Mis rutas</button><button class="go hidden" id="navGo">▶ Navegar</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Navegar</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
-</div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
+</div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Navegar esta ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
 // Los titulos de verdad de cada ruta. Sin esto la lista enseñaba el nombre
 // del archivo —«zengotitagarai», «askakosantakataline»— y no se sabia de que
@@ -1062,6 +1062,7 @@ function download(points,name){if(points.length<2)return;if(window.TrabakutikAnd
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
 function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
+let savedFromDialog=null;
 let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='',rutasListas=false,ultimoParoNativo=0,giraNativo=false;
 function gpxFilename(name){return (name||'ruta').toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-').replace(/^-+|-+$/g,'')||'ruta'}
 function canShareGpx(points,name){
@@ -1085,10 +1086,11 @@ async function shareGpx(points,name){
 }
 function closeSaveDialog(){
  $('saveDialog').classList.add('hidden');
- pendingSave=null;
+ pendingSave=null;savedFromDialog=null;
 }
 function openSaveDialog(points,name,kind){
  if(!Array.isArray(points)||points.filter(Boolean).length<2){notice('No hay suficientes puntos para generar un GPX.');return}
+ savedFromDialog=null;$('navigateSavedFromDialog').classList.add('hidden');
  pendingSave={points:points.map(p=>p===null?null:p.slice()),name,kind};
  $('saveTitle').textContent=kind==='recording'?'Guardar grabación':'Guardar ruta creada';
  $('saveSummary').textContent=name+' · '+points.filter(Boolean).length+' puntos'+elevationText(points.filter(Boolean));
@@ -1121,10 +1123,20 @@ function savePendingToMine(){
  }else if(pending.kind==='recording'){
   finishRecording();
  }
- closeSaveDialog();
+ if(pending.kind==='created'){
+  savedFromDialog=item;
+  $('saveToMine').disabled=true;
+  $('navigateSavedFromDialog').classList.remove('hidden');
+  $('saveStatus').textContent='Guardada en Mis rutas. Pulsa Navegar esta ruta para seguirla.';
+ }else closeSaveDialog();
  showSaved();
  notice('Guardada en Mis rutas · '+item.name);
 }
+$('navigateSavedFromDialog').onclick=()=>{
+ if(!savedFromDialog)return;
+ const item=savedFromDialog;closeSaveDialog();loadSaved(item);
+ startGPS(false,true);
+};
 $('closeSave').onclick=closeSaveDialog;
 $('saveToMine').onclick=savePendingToMine;
 $('downloadFromDialog').onclick=()=>{
@@ -1222,6 +1234,7 @@ function loadSaved(item){
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();
+ junctions=[];
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);
  chosen=-1;updateNativeLaunchLink();pintaBotonNavegar();
@@ -1241,18 +1254,13 @@ function loadSaved(item){
  map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
  $('title').textContent=item.name;setRouteTitle(item.name,null);
  $('distance').textContent='Ruta propia'+elevationText(routePoints);
- const request=selectedRouteRequest;
- notice('Ruta cargada · preparando navegación con '+routePoints.length+' puntos');
- setTimeout(()=>{
-  if(request!==selectedRouteRequest||activeSavedId!==item.created)return;
-  try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
-  computeJunctions();
-  // Una ruta tuya o un GPX de Wikiloc tambien tiene cruces: son los mismos de
-  // OpenStreetMap. Por eso el fichero es de toda la zona y no de cada ruta.
-  aplicaCruces();
-  startGPS();
-  notice('Navegando: '+item.name+' · '+routePoints.length+' puntos optimizados');
- },60);
+ // Preparar ruta y giros antes de permitir que arranque la grabación.
+ // Primero se envían los puntos; los índices de giro pertenecen a esa copia.
+ syncNativeRoute();
+ computeJunctions();
+ aplicaCruces();
+ startGPS();
+ notice('Ruta activa · '+item.name+' · puedes navegar o grabar');
 }
 let savedLine=null;
 function sameTrack(a,b){
@@ -1586,8 +1594,7 @@ function pitidos(n,sep){
 }
 function closestMeters(p,path){let best=Infinity;for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i];const latScale=111195,lonScale=latScale*Math.cos(p[0]*R),ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale,bx=(b[1]-p[1])*lonScale,by=(b[0]-p[0])*latScale,dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));best=Math.min(best,Math.hypot(ax+t*dx,ay+t*dy))}return best}
 
-// Cruces: solo se consideran giros marcados de la ruta con otra rama registrada
-// en los tracks. No se inventan instrucciones de giro.
+// Separar cruces identificados de giros cerrados calculados sobre el trazado.
 function resetJunctionView(){
  if(turnMarker){map.removeLayer(turnMarker);turnMarker=null}
  $('turnHint').classList.add('hidden');
@@ -1671,9 +1678,9 @@ function cargaZonaCruces(){
 // eso que avisar de curvas haciendolas pasar por cruces.
 function aplicaCruces(){
  const pet=++crucesPeticion;
- if(routePoints.length<7){crucesOsm=[];return}
+ if(routePoints.length<3){crucesOsm=[];return}
  cargaZonaCruces().then(z=>{
-  if(!z||pet!==crucesPeticion||routePoints.length<7)return;
+  if(!z||pet!==crucesPeticion||routePoints.length<3)return;
   const CEL=0.0006,celdas=new Set();
   for(const p of routePoints)celdas.add(Math.floor(p[0]/CEL)+'/'+Math.floor(p[1]/CEL));
   // Filtro por celda -unos 50 m-, no por distancia: aqui solo hay que
@@ -1693,7 +1700,7 @@ function aplicaCruces(){
   if(!cerca.length){
    const p=routePoints[Math.floor(routePoints.length/2)],b=z.bbox;
    if(b&&(p[0]<b[0]||p[0]>b[2]||p[1]<b[1]||p[1]>b[3]))
-    notice('Ruta fuera de la zona de Mallabia · sin avisos de cruces, solo de curvas de herradura');
+    notice('Ruta fuera de la zona de Mallabia · solo avisos de giros cerrados del trazado');
    return;
   }
  });
@@ -1715,54 +1722,44 @@ function computeJunctions(){
  junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
  routeCumulative=[0];
  for(let k=1;k<routePoints.length;k++)routeCumulative[k]=routeCumulative[k-1]+dist(routePoints[k-1],routePoints[k]);
- if(routePoints.length<7){if(window.TrabakutikAndroid?.setJunctions)window.TrabakutikAndroid.setJunctions('[]');return;}
+ if(routePoints.length<3){if(window.TrabakutikAndroid?.setJunctions)window.TrabakutikAndroid.setJunctions('[]');return;}
  const pts=routePoints;
- // LOS CRUCES NO SE DEDUCEN DEL ANGULO DEL TRACK. Esto se intento durante
- // mucho tiempo -75 grados, luego 110, luego 90 sobre 12 m- y esta MEDIDO que
- // no funciona: sobre seis rutas y 105 km, con los cruces de OSM delante, el
- // criterio de 110 grados daba 86 avisos de los que solo 29 caian en un cruce
- // real -el 66% eran curvas- y de los 117 cruces de verdad avisaba de 31: se
- // callaba en el 74%. El de 90 grados sobre 12 m no mejoraba: 64% curvas y
- // callado en el 61%. El autor lo pidio claro: «solo queria que me indicaran
- // los cruces no las curvas».
- //
- // Asi que los cruces se traen de OpenStreetMap, que es lo que hace Komoot
- // -Komoot no sigue un GPX: calcula sobre los caminos de OSM, por eso tiene
- // la lista de cruces-. Wikiloc ni lo intenta: su ayuda oficial dice que la
- // app no da indicaciones de voz y que sus avisos son solo salirse de la
- // ruta, volver a ella, saltarse un tramo, acercarse a un waypoint y llegar
- // al final. Ningun giro.
- //
- // crucesOsm son los nodos de camino con TRES RAMAS O MAS que estan pegados a
- // esta ruta; vienen en data/<ruta>.json, escritos por scripts/make_cruces.py
- // del repo Rutas-Mallabia. Un nodo de dos ramas no es un cruce: es un camino
- // partido porque cambia el firme.
- //
- // Y cuando NO hay cruces -ruta tuya, GPX de fuera, o la ruta fina aun no ha
- // llegado- no se finge: solo se avisa de curvas de herradura.
+ // Los cruces identificados admiten cambios de camino desde 45°.
+ // Sin datos del cruce, solo se anuncian giros cerrados del trazado, desde
+ // 85° sobre 12 m: las curvas suaves no producen una indicación.
  const VENTANA=12;
- const CRUCE_GIRO=45;   // en un cruce, avisa si la ruta gira esto o mas
- const CURVA_SOLA=130;  // sin cruce, solo herraduras
- const CERCA_CRUCE=25;  // metros del punto del track al nodo de OSM
+ const CRUCE_GIRO=45;
+ const CURVA_SOLA=85;
+ const CERCA_CRUCE=25;
  const CELDA=0.0006,rejCruces=new Map();
  for(const c of crucesOsm){
   const k=Math.floor(c[0]/CELDA)+'/'+Math.floor(c[1]/CELDA);
   let l=rejCruces.get(k);if(!l)rejCruces.set(k,l=[]);l.push(c);
  }
- // Una herradura de verdad lo sigue siendo mirando mas lejos. Si a 12 m mide
- // 134 grados y a 20 m mide 11, no era una herradura: era un punto de GPS
- // descolocado. En lejarreta -circuito de zigzag- pasaba en 3 de 18.
- const anguloEn=(i,V)=>{
-  let j=i,atras=0;
-  while(j>0&&atras<V){atras+=dist(pts[j-1],pts[j]);j--}
-  let k=i,alante=0;
-  while(k<pts.length-1&&alante<V){alante+=dist(pts[k],pts[k+1]);k++}
-  if(atras<V*0.7||alante<V*0.7)return null;
-  const a=pts[j],b=pts[i],c=pts[k],kx=Math.cos(b[0]*R);
-  const v1=[(b[1]-a[1])*kx,b[0]-a[0]],v2=[(c[1]-b[1])*kx,c[0]-b[0]];
-  const n1=Math.hypot(...v1),n2=Math.hypot(...v2);
-  if(!n1||!n2)return null;
-  return Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/(n1*n2))))*180/Math.PI;
+ // Medir a distancias fijas evita que la densidad de puntos del GPX
+ // convierta una curva suave en un giro cerrado al simplificarla.
+ const geometriaEn=(i,V)=>{
+  const centro=pts[i];
+  const muestra=paso=>{
+   let j=i,recorrido=0;
+   while(j+paso>=0&&j+paso<pts.length){
+    const k=j+paso,d=dist(pts[j],pts[k]);
+    if(d>0&&recorrido+d>=V){
+     const t=(V-recorrido)/d;
+     return [pts[j][0]+t*(pts[k][0]-pts[j][0]),pts[j][1]+t*(pts[k][1]-pts[j][1])];
+    }
+    recorrido+=d;j=k;
+   }
+   return recorrido>=V*0.7?pts[j]:null;
+  };
+  const a=muestra(-1),c=muestra(1);
+  if(!a||!c)return null;
+  const kx=Math.cos(centro[0]*R);
+  const v1=[(centro[1]-a[1])*kx,centro[0]-a[0]],v2=[(c[1]-centro[1])*kx,c[0]-centro[0]];
+  const norma=Math.hypot(...v1)*Math.hypot(...v2);
+  if(!norma)return null;
+  return {angle:Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/norma)))*180/Math.PI,
+   cross:v1[0]*v2[1]-v1[1]*v2[0]};
  };
  const hayCruce=p=>{
   if(!crucesOsm.length)return false;
@@ -1774,16 +1771,9 @@ function computeJunctions(){
   return false;
  };
  for(let i=1;i<pts.length-1;i++){
-  let j=i,atras=0;
-  while(j>0&&atras<VENTANA){atras+=dist(pts[j-1],pts[j]);j--}
-  let k=i,alante=0;
-  while(k<pts.length-1&&alante<VENTANA){alante+=dist(pts[k],pts[k+1]);k++}
-  if(atras<VENTANA*0.7||alante<VENTANA*0.7)continue;
-  const a=pts[j],b=pts[i],c=pts[k];
-  const latitude=b[0]*R,kx=Math.cos(latitude);
-  const v1=[(b[1]-a[1])*kx,b[0]-a[0]],v2=[(c[1]-b[1])*kx,c[0]-b[0]];
-  const cosine=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2));
-  const angle=Math.acos(Math.max(-1,Math.min(1,cosine)))*180/Math.PI;
+  const giro=geometriaEn(i,VENTANA);
+  if(!giro)continue;
+  const {angle,cross}=giro,b=pts[i];
   if(angle<40)continue; // por debajo de CRUCE_GIRO no hay nada que mirar
   // NO INTENTAR DETECTAR CRUCES MIRANDO SI PASA OTRA RUTA CERCA. Esta medido
   // y es PEOR: en Mallabia las 70 rutas comparten camino durante kilometros,
@@ -1794,11 +1784,10 @@ function computeJunctions(){
   if(cruce){if(angle<CRUCE_GIRO)continue}
   else{
    if(angle<CURVA_SOLA)continue;
-   const confirma=anguloEn(i,20);
-   if(confirma!==null&&confirma<100)continue; // era ruido del GPS
+   const confirma=geometriaEn(i,20);
+   if(confirma!==null&&confirma.angle<(angle>=130?100:85))continue; // descartar picos aislados
   }
   if(junctions.length&&dist(junctions[junctions.length-1].point,b)<35)continue;
-  const cross=v1[0]*v2[1]-v1[1]*v2[0];
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
   junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle),cruce});
  }
@@ -1904,7 +1893,7 @@ function junctionGuidance(p,accuracy){
  const esCruce=turn.cruce!==false;
  $('turnDirection').textContent=lado==='vuelta'
    ?(esCruce?'Cruce · da la vuelta':'Curva de herradura')
-   :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
+   :(esCruce?'Cruce a la '+lado:'Giro cerrado a la '+lado);
  $('turnAngle').textContent='Giro de '+grados+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // Las tres luces se encienden segun te acercas, con los mismos cortes que
@@ -1961,7 +1950,7 @@ function junctionGuidance(p,accuracy){
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'
     ?(esCruce?'cruce, da la vuelta':'curva de herradura')
-    :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
+    :(esCruce?'cruce a la '+lado:'giro cerrado a la '+lado);
   // Solo habla en la fase de voz -mucho antes- y en el propio cruce. En las
   // de 25 y 10 m decir «en 25 metros» llega tarde y ademas pisa al aviso
   // bueno, el de «ahora». Lo vio el autor: «estaba diciendo que girara
@@ -1972,8 +1961,8 @@ function junctionGuidance(p,accuracy){
      :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt);
   }
   if(fase!=='v')notice(fase==='3'
-        ?(esCruce?'En el cruce · sigue la línea azul':'En la curva · sigue la línea azul')
-        :(esCruce?'Cruce':'Curva cerrada')+' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
+        ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
+        :(esCruce?'Cruce':'Giro cerrado')+' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
 }
@@ -2104,7 +2093,7 @@ function onFix(pos){
   updateOffRoute(d,pos.coords.accuracy);
   junctionGuidance(p,pos.coords.accuracy);
   if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')
- }else if(mode==='nav')notice('Ubicación encontrada · selecciona una ruta')}
+ }else if(mode==='nav')notice(recording?'Grabando · sin ruta activa para navegar':'Ubicación encontrada · selecciona una ruta')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
 window.trabakutikSyncNative=()=>{
  if(!window.TrabakutikAndroid?.getTrackingSnapshot)return;
@@ -2352,7 +2341,11 @@ function recordingControls(state){estadoBotonera=state;document.body.classList.t
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
 }
-$('recordStart').onclick=()=>{apagadoHasta=0;pausado=false;recordingPendingSave=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice('Grabando recorrido · pulsa Parar al terminar')};
+$('recordStart').onclick=()=>{
+ // Una ruta recién guardada sigue dibujada como borrador. Si se pulsa
+ // Grabar desde Ruta, activar esa copia guardada antes del servicio.
+ if(routePoints.length<2&&createdSavedItem&&sameTrack(drawPoints,createdSavedItem.points))loadSaved(createdSavedItem);
+ apagadoHasta=0;pausado=false;recordingPendingSave=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice(routePoints.length>1?'Grabando y siguiendo · '+$('mapTitle').textContent:'Grabando · sin ruta activa para navegar')};
 // En un circuito te cruzas con la salida varias veces, y parar por error
 // deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
 // La pausa detiene SOLO la grabacion. La ubicacion, los avisos de giro y el

@@ -43,3 +43,5 @@ jobs:
           for archivo in /tmp/trabakutik-inline-*.js; do
             node --check "$archivo"
           done
+      - name: Comprobar rutas propias y avisos de giro
+        run: node --test tests/navigation.test.cjs
