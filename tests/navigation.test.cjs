@@ -74,7 +74,7 @@ function savedFlow(){
   const hidden=new Set(['hidden']);
   nodes.set(id,{textContent:'',disabled:false,classList:{add:k=>hidden.add(k),remove:k=>hidden.delete(k),contains:k=>hidden.has(k),toggle(k,on){if(on)hidden.add(k);else hidden.delete(k)}}});
  }return nodes.get(id)};
- Object.assign(c,{console,selectedRouteRequest:0,activeSavedId:null,drawPoints:[],drawLayer:null,createdSavedItem:null,savedFromDialog:null,chosen:-1,savedLine:null,pendingSave:null,watch:1,fuenteNativa:false,recordLayer:null,recorded:[],recording:false,stored:[],L:{polyline(){return {addTo(){return this},bringToFront(){return this},getBounds(){return []}}}},map:{removeLayer(){},fitBounds(){}},confirm:()=>true,elevationText:()=>'',savedList:()=>c.stored,putSaved:list=>(c.stored=list,true),setRouteTitle:name=>c.$('mapTitle').textContent=name,changeMode:mode=>c.mode=mode,clearDraft(){c.drawPoints=[];c.createdSavedItem=null},notice:text=>c.status=text,startGPS(...args){calls.push(['gps',args])},syncNativeRoute(){calls.push(['route',c.routePoints.length])},enciendeNavegacionNativa(){calls.push(['navigate',c.routePoints.length,c.junctions.length])}});
+ Object.assign(c,{console,selectedRouteRequest:0,activeSavedId:null,drawPoints:[],drawLayer:null,createdSavedItem:null,savedFromDialog:null,chosen:-1,savedLine:null,pendingSave:null,watch:1,fuenteNativa:false,recordLayer:null,recorded:[],recording:false,guiaIniciada:()=>c.recording,stored:[],L:{polyline(){return {addTo(){return this},bringToFront(){return this},getBounds(){return []}}}},map:{removeLayer(){},fitBounds(){}},confirm:()=>true,elevationText:()=>'',savedList:()=>c.stored,putSaved:list=>(c.stored=list,true),setRouteTitle:name=>c.$('mapTitle').textContent=name,changeMode:mode=>c.mode=mode,clearDraft(){c.drawPoints=[];c.createdSavedItem=null},notice:text=>c.status=text,startGPS(...args){calls.push(['gps',args])},syncNativeRoute(){calls.push(['route',c.routePoints.length])},enciendeNavegacionNativa(){calls.push(['navigate',c.routePoints.length,c.junctions.length])}});
  c.window.TrabakutikAndroid.startRecording=()=>calls.push(['record',c.routePoints.length,c.junctions.length]);
  for(const k of ['showSaved','finishRecording','resetOffRoute','updateNativeLaunchLink','pintaBotonNavegar','updateDirectionArrows','aplicaCruces','recordingControls'])c[k]=()=>{};
  vm.runInContext(source('function closeSaveDialog(){','function openSaveDialog('),c);
@@ -86,7 +86,7 @@ function savedFlow(){
  c.save=(points=corner(90))=>{c.drawPoints=points;c.pendingSave={points,name:'Mi ruta',kind:'created'};c.savePendingToMine()};
  return c;
 }
-test('Guardar ofrece Navegar esta ruta; al abrir envía puntos antes de preparar los giros',()=>{
+test('Abrir una ruta guardada prepara puntos y giros sin iniciar GPS ni navegación',()=>{
  const c=savedFlow();c.save();assert.equal(c.stored.length,1);assert.equal(c.routePoints.length,0);
  assert.equal(c.$('navigateSavedFromDialog').classList.contains('hidden'),false);
  assert.equal(c.$('saveToMine').disabled,true);
@@ -94,7 +94,7 @@ test('Guardar ofrece Navegar esta ruta; al abrir envía puntos antes de preparar
  assert.equal(c.mode,'nav');assert.equal(c.routePoints.length,3);assert.equal(c.junctions.length,1);
  assert.equal(c.$('mapTitle').textContent,'Mi ruta');assert.equal(c.savedFromDialog,null);
  assert.equal(c.$('saveDialog').classList.contains('hidden'),true);
- assert.deepEqual(c.calls[0],['route',3]);assert.deepEqual(c.calls.at(-1),['gps',[false,true]]);
+ assert.deepEqual(c.calls[0],['route',3]);assert(!c.calls.some(call=>['gps','navigate','record'].includes(call[0])));
 });
 test('Guardar, cerrar, volver a Ruta y grabar activa primero la ruta recién guardada',()=>{
  const c=savedFlow();c.save();c.closeSaveDialog();c.mode='nav';c.$('recordStart').onclick();
@@ -176,11 +176,11 @@ test('Guardar en Mis rutas o exportar limpia el track y deja el GPS y la voz apa
   assert(c.calls.includes('stop-navigation'));assert(c.calls.includes('cancel-voice'));
  }
 });
-test('Una nueva pulsación de Navegar permite iniciar otra salida después de guardar',()=>{
+test('Mi posición permite consultar el GPS después de guardar sin reactivar la guía',()=>{
  const c=endSessionFlow();c.recording=false;c.finishRecording();
- c.startGPS(false,true);
+ c.startGPS();
  assert.equal(c.gpsApagadoPorTi,false);assert.equal(c.apagadoHasta,0);assert.equal(c.watch,2);
- assert(c.calls.includes('start-navigation'));assert(c.calls.includes('watch'));
+ assert(!c.calls.includes('start-navigation'));assert(c.calls.includes('watch'));
 });
 
 test('Guardar una grabación en Mis rutas ejecuta el cierre completo y conserva la copia guardada',()=>{
@@ -210,4 +210,45 @@ test('La botonera no recupera un segundo inicio de Navegar al parar o guardar',(
   c.navegaNativo=active;c.enLaApp=true;c.mode='nav';c.routePoints=corner(90);
   c.pintaBotonNavegar();assert(hidden.has('hidden'));
  }
+});
+
+test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progreso antes de grabar',()=>{
+ const calls=[],classes=new Set();
+ const c={mode:'nav',routePoints:corner(90),recording:false,navegaNativo:false,gpsApagadoPorTi:false,
+  $:()=>({classList:{add:k=>classes.add(k)},innerHTML:''}),routeCumulative:[0,100],
+  sigueMoviendose:()=>true,alerted:false,junctions:[{}],junctionActive:1,
+  resetJunctionView:()=>calls.push('reset-turn'),Number,
+  getAudio(){throw Error('No debe activar audio')},hablar(){throw Error('No debe hablar')},pitidos(){throw Error('No debe pitar')}
+ };
+ vm.createContext(c);
+ vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
+ vm.runInContext(source('function updateOffRoute(','try{const modoGuardado='),c);
+ // La guarda debe cerrar una indicación antigua antes de medir el siguiente cruce.
+ vm.runInContext(source('function junctionGuidance(','// Devuelve null a mas de 30 m'),c);
+ assert.equal(c.guiaIniciada(),false);
+ c.updateOffRoute(100,5);c.junctionGuidance(point(0,0),5);c.pintaAvance(20);
+ assert.equal(c.alerted,false);assert(classes.has('hidden'));assert.deepEqual(calls,['reset-turn']);
+ c.recording=true;assert.equal(c.guiaIniciada(),true);
+ c.pausado=true;assert.equal(c.guiaIniciada(),true);
+ c.recording=false;c.navegaNativo=true;assert.equal(c.guiaIniciada(),true);
+ c.gpsApagadoPorTi=true;assert.equal(c.guiaIniciada(),false);
+ c.gpsApagadoPorTi=false;c.mode='create';assert.equal(c.guiaIniciada(),false);
+});
+
+
+test('El vigilante no anuncia pérdida de GPS si solo se ha cargado una ruta',()=>{
+ const notices=[],c={gpsApagadoPorTi:false,watch:null,fuenteNativa:false,recording:false,navegaNativo:false,
+  window:{TrabakutikAndroid:{getPosition(){throw Error('No debe vigilar sin GPS iniciado')}}},
+  setInterval:fn=>c.tick=fn,notice:t=>notices.push(t)};
+ vm.createContext(c);vm.runInContext(source('const GUIA_CADUCA_MS=', 'function syncNativeRoute()'),c);
+ c.tick();assert.deepEqual(notices,[]);
+});
+
+test('Avanzar por la ruta al revés mantiene la guía; estar quieto la caduca',()=>{
+ const c={refAvance:null,refAvanceT:0,sentidoRuta:-1};vm.createContext(c);
+ vm.runInContext(source('const AVANCE_MS=','const PARADO_MS='),c);
+ assert.equal(c.avanzaPorLaRuta(100,0),true);
+ assert.equal(c.avanzaPorLaRuta(85,15000),true);
+ assert.equal(c.avanzaPorLaRuta(70,30000),true);
+ assert.equal(c.avanzaPorLaRuta(70,51000),false);
 });
