@@ -296,7 +296,7 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 </section>
 <footer class="bottom"><div id="soloApp" class="solo-app hidden"><b>La navegación va solo en la aplicación</b><span>En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Cerca de mí</button><button id="savedRoutes">Mis rutas</button><button class="go hidden" id="navGo">▶ Navegar</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Navegar</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
-</div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Navegar esta ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
+</div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Abrir ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
 // Los titulos de verdad de cada ruta. Sin esto la lista enseñaba el nombre
 // del archivo —«zengotitagarai», «askakosantakataline»— y no se sabia de que
@@ -673,7 +673,7 @@ async function loadDetailedSelected(i,request){
    computeJunctions();
    aplicaCruces();   // y los cruces de OSM sobre la linea fina, que es la buena
   }
-  notice('Ruta Garmin mostrada con detalle · navegación activa');
+  notice(guiaIniciada()?'Ruta Garmin mostrada con detalle · navegación activa':'Ruta Garmin cargada · pulsa Iniciar grabación para comenzar');
  }catch(e){
   if(chosen===i&&selectedRouteRequest===request)notice('Ruta cargada · detalle original no disponible, usando trazado general');
   console.warn('No se pudo cargar el trazado detallado',e);
@@ -694,7 +694,7 @@ function selectRoute(i){
  updateElevation();
  drawAll();
  $('routeDialog').classList.add('hidden');
- notice('Ruta seleccionada · preparando navegación');
+ notice('Ruta seleccionada · preparando recorrido');
  // Primero devolver control al navegador y pintar; calcular los giros
  // en el siguiente ciclo, sin bloquear la apertura desde la ficha.
  setTimeout(()=>{
@@ -704,7 +704,6 @@ function selectRoute(i){
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
   aplicaCruces();
-  startGPS();
   notice('Ruta seleccionada · cargando detalle del Garmin');
   loadDetailedSelected(i,request);
  },60);
@@ -768,7 +767,7 @@ function changeMode(m){
  pintaBotonNavegar();
  $('recordActions').classList.toggle('hidden',m!=='nav'||!enLaApp);
  $('soloApp').classList.toggle('hidden',enLaApp||m!=='nav');
- $('createActions').classList.toggle('hidden',m!=='create');$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':routePoints.length>1?'Siguiendo la ruta seleccionada · puedes grabarla a la vez':'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
+ $('createActions').classList.toggle('hidden',m!=='create');$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps&&tracks.length){notice('Preparando caminos y alturas…');fetch('data/alturas.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':routePoints.length>1?(guiaIniciada()?'Siguiendo la ruta seleccionada':'Ruta cargada · pulsa Iniciar grabación para comenzar'):'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');
 const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null,createdSavedItem=null;
@@ -1206,7 +1205,7 @@ function savePendingToMine(){
   savedFromDialog=item;
   $('saveToMine').disabled=true;
   $('navigateSavedFromDialog').classList.remove('hidden');
-  $('saveStatus').textContent='Guardada en Mis rutas. Pulsa Navegar esta ruta para seguirla.';
+  $('saveStatus').textContent='Guardada en Mis rutas. Pulsa Abrir ruta y después Iniciar grabación para comenzar.';
  }else closeSaveDialog();
  showSaved();
  notice('Guardada en Mis rutas · '+item.name);
@@ -1214,7 +1213,6 @@ function savePendingToMine(){
 $('navigateSavedFromDialog').onclick=()=>{
  if(!savedFromDialog)return;
  const item=savedFromDialog;closeSaveDialog();loadSaved(item);
- startGPS(false,true);
 };
 $('closeSave').onclick=closeSaveDialog;
 $('saveToMine').onclick=savePendingToMine;
@@ -1338,8 +1336,7 @@ function loadSaved(item){
  syncNativeRoute();
  computeJunctions();
  aplicaCruces();
- startGPS();
- notice('Ruta activa · '+item.name+' · puedes navegar o grabar');
+ notice(guiaIniciada()?'Siguiendo · '+item.name:'Ruta cargada · '+item.name+' · pulsa Iniciar grabación para comenzar');
 }
 let savedLine=null;
 function sameTrack(a,b){
@@ -1522,10 +1519,14 @@ function pintaBrujula(h){
  $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' \u00b7 '+Math.round(g)+'\u00b0';
  caja.classList.remove('hidden');
 }
+// Cargar una ruta o consultar la ubicación no inicia la guía.
+function guiaIniciada(){
+ return !gpsApagadoPorTi&&mode==='nav'&&routePoints.length>1&&(recording||navegaNativo);
+}
 function pintaAvance(along){
  const caja=$('routeProgress');
  if(!caja)return;
- if(!Number.isFinite(along)||routeCumulative.length<2){caja.classList.add('hidden');return}
+ if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){caja.classList.add('hidden');return}
  const total=routeCumulative[routeCumulative.length-1];
  ultimoAlong=along;
  const hecho=Math.max(0,Math.min(total,sentidoRuta>0?along:total-along));
@@ -1539,6 +1540,7 @@ function marcaAlReves(si){
 }
 function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
 function updateOffRoute(d,accuracy){
+ if(!guiaIniciada())return;
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
  // Evitar falsos positivos debidos a posiciones GPS imprecisas.
  // Mismo fallo que en el servicio: cortaba en 22 m y ademas borraba el
@@ -1901,7 +1903,7 @@ function progressOnRoute(p){
 // metros en veinte segundos son 2,2 km/h, por debajo de andar.
 const AVANCE_MS=20000,AVANCE_M=12;
 function avanzaPorLaRuta(along,ahora){
- if(refAvance===null||along-refAvance>AVANCE_M){refAvance=along;refAvanceT=ahora;return true}
+ if(refAvance===null||(along-refAvance)*sentidoRuta>AVANCE_M){refAvance=along;refAvanceT=ahora;return true}
  return ahora-refAvanceT<AVANCE_MS;
 }
 const PARADO_MS=60000,PARADO_M=15;
@@ -1912,13 +1914,8 @@ function sigueMoviendose(p,ahora){
 }
 function junctionGuidance(p,accuracy){
  const moviendose=sigueMoviendose(p,Date.now());
- // La guia vale siempre que haya una ruta activa, no solo en el modo
- // «Navegar». El autor: «pero puedo grabar lo que navego, ¿por que no
- // marca giros?». El servicio nativo ya navega y graba a la vez
- // —navigating y recording son independientes en TrackingService— y
- // seguia pitando los giros; la que se callaba era la pantalla. Solo se
- // apaga en «Crear», donde estas dibujando encima del mapa.
- if(mode==='create'||alerted||!moviendose||routePoints.length<2||!junctions.length||accuracy>60){
+ // Los giros y el zoom de cruces esperan al inicio de la salida.
+ if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!junctions.length||accuracy>60){
   if(junctionActive>=0)resetJunctionView();return;
  }
  const progress=progressOnRoute(p);
@@ -2018,15 +2015,7 @@ function junctionGuidance(p,accuracy){
  else if(ahead<=dv)fase='v';   // solo voz, y la primera de todas
  if(fase&&!junctionWarned.has(j+':'+fase)){
   junctionWarned.add(j+':'+fase);
-  // Pita SIEMPRE la pagina, tambien dentro de la app. Antes se callaba aqui
-  // («if(!window.TrabakutikAndroid)») dandole el turno al servicio de
-  // Android, pero el servicio solo avisa de giros con navigating=true, y eso
-  // solo lo enciende startNavigationWithRoute, que se llama unicamente con
-  // conServicio=true... y nadie pasa ese true. Resultado: dentro de la app no
-  // pitaba nadie los cruces. El de fuera de ruta, que esta dos lineas mas
-  // arriba, nunca estuvo condicionado y por eso ese si se oia.
-  // getAudio() aqui tambien: pitidos() se calla si todavia no hay
-  // AudioContext, y solo lo creaba el aviso de fuera de ruta y startGPS.
+  // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'
     ?(esCruce?'cruce, da la vuelta':'curva de herradura')
@@ -2075,7 +2064,7 @@ function onFix(pos){
  ultimoFix=Date.now();
  const estadoGps=$('status').textContent;
  if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
-  notice(routePoints.length>1?'Posición recibida · siguiendo ruta':'Posición recibida');
+  notice(guiaIniciada()?'Posición recibida · siguiendo ruta':'Posición recibida');
  ultimoErrorGps=null;ultimoErrorGpsText='';
  const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
@@ -2090,7 +2079,7 @@ function onFix(pos){
  // reves de por donde va el camino. Si estas sobre la ruta, el camino si
  // sabe hacia donde sigue. Lejos de ella o sin ruta, el rumbo de siempre.
  let h=lastCourse,hDeRuta=false;
- if(mode!=='create'&&routePoints.length>1){
+ if(guiaIniciada()){
   const r=rumboDeLaRuta(p);
   if(r!==null){
    // La forma del camino la da la ruta; EL SENTIDO lo das tu. Si vas al
@@ -2171,8 +2160,10 @@ function onFix(pos){
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
   pintaAvance(progressOnRoute(p).along);
-  updateOffRoute(d,pos.coords.accuracy);
-  junctionGuidance(p,pos.coords.accuracy);
+  if(guiaIniciada()){
+   updateOffRoute(d,pos.coords.accuracy);
+   junctionGuidance(p,pos.coords.accuracy);
+  }
   if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')
  }else if(mode==='nav')notice(recording?'Grabando · sin ruta activa para navegar':'Ubicación encontrada · selecciona una ruta')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
@@ -2320,6 +2311,7 @@ setInterval(miraPosicionNativa,1000);
 const GUIA_CADUCA_MS=25000;
 setInterval(()=>{
  if(gpsApagadoPorTi)return;   // lo has apagado tu: no hay nada que vigilar
+ if(watch===null&&!fuenteNativa&&!recording&&!navegaNativo)return; // Ruta cargada, GPS aún sin iniciar.
  let ubicacionApagada=false;
  if(window.TrabakutikAndroid?.getPosition){
   try{ubicacionApagada=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}').locationEnabled===false}catch(e){}
@@ -2353,20 +2345,8 @@ setInterval(()=>{
  if($('status').textContent!==mensaje)notice(mensaje);
 },5000);
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1){window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));enviaGirosNativos();}}catch(e){console.warn('Ruta nativa no enviada',e)}}
-// Abrir una ruta ya no arranca el servicio de Android. Antes elegir la
-// ruta llamaba aqui y esto levantaba el servicio con su notificacion, asi
-// que el autor se encontro navegando —flecha, giros y «navegacion activa»—
-// sin haber tocado nada mas que cargar la ruta. Ahora elegirla solo
-// enciende la posicion del navegador, que es lo que mueve la flecha y las
-// indicaciones mientras miras la pantalla; el servicio espera a que grabes.
-// La ruta si se le deja escrita (setRoute guarda el archivo y no arranca
-// nada), para que al empezar a grabar la tenga ya cargada y pueda avisar
-// de los giros con la pantalla apagada.
-// Enciende el servicio de Android para que avise de giros y de fuera de ruta
-// CON LA PANTALLA APAGADA. La pagina no puede: bloqueado el movil, el WebView
-// se congela. Solo se llama desde «Activar GPS» y desde empezar a grabar, que
-// son dos cosas que uno pulsa a proposito; cargar la ruta sigue sin encender
-// nada, que es lo que molestaba.
+// Elegir una ruta prepara puntos y giros sin arrancar el GPS ni la guía.
+// Iniciar grabación activa también el servicio que avisa con pantalla apagada.
 function enciendeNavegacionNativa(){
  if(!window.TrabakutikAndroid||mode!=='nav'||routePoints.length<2)return;
  try{
@@ -2376,12 +2356,11 @@ function enciendeNavegacionNativa(){
   else window.TrabakutikAndroid.startNavigation();
  }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
 }
-function startGPS(forRecording=false,conServicio=false){
+function startGPS(forRecording=false){
  gpsApagadoPorTi=false;apagadoHasta=0;
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
   try{syncNativeRoute()}catch(e){console.warn(e)}
  }
- if(conServicio)enciendeNavegacionNativa();
  if(fuenteNativa)return;
  if(watch!==null)return;if(!navigator.geolocation){warnGps();return}ultimoErrorGps=null;ultimoErrorGpsText='';getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
  if(gpsApagadoPorTi)return;
@@ -2395,7 +2374,7 @@ function startGPS(forRecording=false,conServicio=false){
  if(e&&e.code===1){if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null}
 },{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
 if(!enLaApp){$('navActions').classList.add('hidden');$('recordActions').classList.add('hidden');$('soloApp').classList.remove('hidden');}
-$('navGo').onclick=()=>startGPS(false,true);$('audioMode').onclick=conmutaModoAudio;pintaModoAudio();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+$('navGo').onclick=()=>{if(!recording)$('recordStart').click()};$('audioMode').onclick=conmutaModoAudio;pintaModoAudio();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 // Esto solo sabia manejar TRANSICIONES: si el servicio no grababa y la pagina
 // tampoco creia grabar, no entraba en ninguna rama y la botonera se quedaba
 // como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin
