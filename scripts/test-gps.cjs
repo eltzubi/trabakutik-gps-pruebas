@@ -420,3 +420,51 @@ test("la vista nativa indica que falta el inicio al limitar a 25000 líneas", ()
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+function creatorContext() {
+  const ctx = run(section('const CELDA_M=', '// Perfil de altura del creador:'), {
+    $: elements(), notice() {}, drawPoints:[],
+  });
+  vm.runInContext(`redGps=construyeRed([{points:[[43,-2,100],[43.001,-2,120]]}],null);
+    globalThis.state=()=>({red:redGps,anchors:anclasGps,segments:tramosGps});
+    globalThis.draft=(a,t)=>{anclasGps=a;tramosGps=t};
+    globalThis.updateDraw=()=>{};`,ctx);
+  run(section('function cierraCirculoGps()', 'let savedLine=null;'),ctx);
+  return ctx;
+}
+test('un inicio manual conserva su posición y no abre atajos en la red pública',()=>{
+  const c=creatorContext(), original=c.state().red.nodos.length;
+  const home=c.nodoManualGps(43.01,-2.01), bend=c.nodoManualGps(43.0103,-2.0105);
+  assert.equal(c.nodoCerca(c.state().red,43.01,-2.01),-1);
+  assert.deepEqual(Array.from(c.state().red.nodos[home]),[43.01,-2.01,null]);
+  assert.deepEqual(Array.from(c.tramoGps(home,bend,true)),[home,bend]);
+  assert.equal(c.camino(c.state().red,home,0),null,'no se añade un acceso público');
+  const junction=c.nodoCerca(c.state().red,43,-2);
+  const link=c.tramoGps(bend,junction,false);
+  assert.equal(link.manual,true,'el enlace a la red conserva la recta manual');
+  assert(c.tramoGps(0,original-1,false).length>2,'después sigue los caminos');
+});
+test('mover, cerrar y deshacer conservan un trazado mixto',()=>{
+  const c=creatorContext(),home=c.nodoManualGps(43.01,-2.01);
+  const link=c.tramoGps(home,0,false),road=c.tramoGps(0,3,false);
+  c.draft([home,0,3],[[home],link,road]);
+  c.mueveAnclaGps(0,43.02,-2.02);
+  let s=c.state();
+  assert.equal(s.red.nodos[s.anchors[0]][0],43.02);
+  assert(s.segments[1].manual);
+  c.cierraCirculoGps();s=c.state();
+  assert.equal(s.anchors.at(-1),s.anchors[0]);assert(s.segments.at(-1).manual);
+  c.$('undo').onclick();assert.equal(c.state().anchors.length,3);
+  c.idaYVueltaGps();s=c.state();
+  assert.equal(s.anchors.at(-1),s.anchors[0]);assert(s.segments.at(-1).manual);
+  assert.deepEqual(Array.from(s.segments.at(-1)),Array.from(s.segments[1]).reverse());
+});
+test('el GPX manual no inventa alturas y el resumen no une huecos',()=>{
+  const c=run(section('function xmlEscape(', 'function download('),{});
+  const points=[[43,-2,100],[43.01,-2.01,null],[43.02,-2.02,300]];
+  const xml=c.gpx(points,'Ruta personal');
+  assert.equal((xml.match(/<trkpt /g)||[]).length,3);
+  assert(!xml.includes('<ele>null</ele>'));assert(!xml.includes('<ele>0</ele>'));
+  const e=run(section('function elevationText(', 'function loadSaved('),{R:Math.PI/180});
+  assert.match(e.elevationText(points),/\+0 \/ -0.*alturas incompletas/);
+});

@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'android/**'
+      - 'nuevo.html'
+      - 'data/**'
+      - 'scripts/*apk*'
       - '.github/workflows/android-apk.yml'
   push:
     branches: [main]
