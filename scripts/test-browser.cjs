@@ -228,12 +228,35 @@ async function setup(context) {
         get tramosGps(){return tramosGps},get routePoints(){return routePoints}};`;
       await route.fulfill({contentType:'text/html',body:source.replace(end,'\n'+bridge+end)});
     });
+    let failPlanner=false,plannerRequests=0;
+    // El servicio está simulado: no se envían posiciones a ningún servidor.
+    await personal.route('https://routing.openstreetmap.de/**',async route=>{
+      plannerRequests++;
+      const list=new URL(route.request().url()).pathname.split('/').pop().split(';').map(p=>p.split(',').map(Number));
+      const body=failPlanner?{code:'NoRoute'}:{code:'Ok',waypoints:list.map(p=>({location:p})),routes:[{legs:list.slice(1).map((p,i)=>({steps:[{geometry:{type:'LineString',coordinates:[list[i],[list[i][0]+.001,list[i][1]],[p[0]+.001,p[1]],p]}}]}))}]};
+      await route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
+    });
     const creator=await personal.newPage(),creatorErrors=[];
     creator.on('pageerror',e=>creatorErrors.push(e.message));
     creator.on('dialog',d=>d.accept(d.type()==='prompt'?'Ruta personal de prueba':undefined));
     await creator.goto(base+'nuevo.html');
     await creator.click('#modeCreate');
     await creator.waitForFunction(()=>window.__creator&&window.__creator.redGps!==null);
+    assert.equal(await creator.locator('#drawMethod').inputValue(),'foot');
+    await creator.evaluate(()=>{
+      const {map}=window.__creator;
+      map.fire('click',{latlng:L.latLng(43.01,-2.01)});
+      map.fire('click',{latlng:L.latLng(43.0103,-2.0105)});
+    });
+    await creator.waitForFunction(()=>window.__creator.tramosGps.length===2);
+    assert.equal(plannerRequests,1);
+    assert.equal(await creator.evaluate(()=>window.__creator.drawPoints.length),4,'conserva la curva del motor');
+    failPlanner=true;
+    await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
+    await creator.waitForFunction(()=>document.querySelector('#plannerStatus').textContent.includes('No hay conexión'));
+    assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2,'un error no añade rectas');
+    await creator.click('#clearCreated');
+    failPlanner=false;
     await creator.selectOption('#drawMethod','manual');
     await creator.evaluate(()=>{
       const {map}=window.__creator;

@@ -423,9 +423,10 @@ test("la vista nativa indica que falta el inicio al limitar a 25000 líneas", ()
 
 function creatorContext() {
   const ctx = run(section('const CELDA_M=', '// Perfil de altura del creador:'), {
-    $: elements(), notice() {}, drawPoints:[],
+    $: elements(), notice() {}, drawPoints:[], AbortController, setTimeout, clearTimeout, confirm:()=>true, dist:(a,b)=>Math.hypot((a[0]-b[0])*111320,(a[1]-b[1])*81000),
   });
   vm.runInContext(`redGps=construyeRed([{points:[[43,-2,100],[43.001,-2,120]]}],null);
+    seguirMapaGps=false;
     globalThis.state=()=>({red:redGps,anchors:anclasGps,segments:tramosGps});
     globalThis.draft=(a,t)=>{anclasGps=a;tramosGps=t};
     globalThis.updateDraw=()=>{};`,ctx);
@@ -478,4 +479,47 @@ test('Manual permite mover un punto de la red fuera de los trazados',()=>{
   assert.equal(s.red.nodos[s.anchors[0]][0],43.03);
   assert.equal(s.red.nodos[s.anchors[0]][1],-2.03);
   assert.equal(s.segments[1].manual,true);
+});
+
+function mapReply(coords){
+ return {code:'Ok',waypoints:coords.map(p=>({location:[p[1],p[0]]})),routes:[{legs:coords.slice(1).map((p,i)=>({steps:[{geometry:{type:'LineString',coordinates:[[coords[i][1],coords[i][0]],[coords[i][1]+.001,coords[i][0]],[p[1]+.001,p[0]],[p[1],p[0]]]}}]}))}]};
+}
+test('el planificador conserva las curvas recibidas y funciona sin tracks guardados',async()=>{
+ const c=creatorContext(),coords=[[43,-2],[43.001,-2]];
+ vm.runInContext('seguirMapaGps=true;redGps=construyeRed([],null)',c);
+ c.fetch=async url=>{assert.match(url,/routed-foot/);assert.match(url,/geometries=geojson/);assert.match(url,/steps=true/);return {ok:true,status:200,json:async()=>mapReply(coords)}};
+ await c.planificaMapaGps(coords);
+ const s=c.state();assert.equal(s.anchors.length,2);assert.equal(s.segments[1].length,4);
+ assert.equal(s.red.nodos[s.segments[1][1]][1],-1.999,'no corta la curva');
+ assert(!s.segments[1].manual,'la respuesta del motor no se etiqueta como recta manual');
+});
+test('si no hay camino o servicio conserva el borrador sin dibujar una recta',async()=>{
+ const c=creatorContext(),before=c.state();
+ c.fetch=async()=>({ok:true,status:200,json:async()=>({code:'NoRoute'})});
+ await c.planificaMapaGps([[43,-2],[43.001,-2]]);
+ assert.equal(c.state().anchors.length,0);assert.equal(c.state().red,before.red);
+ assert.match(c.$('plannerStatus').textContent,/No hay conexión/);
+ assert.throws(()=>c.respuestaMapaGps(mapReply([[43,-2],[43.001,-2]]),[[44,-2],[44.001,-2]]),/cerca/);
+});
+test('cancelar un cálculo impide que su respuesta tardía cambie el borrador',async()=>{
+ const c=creatorContext(),coords=[[43,-2],[43.001,-2]];let finish;
+ c.fetch=()=>new Promise(r=>{finish=r});
+ const pending=c.planificaMapaGps(coords);
+ c.cancelaMapaGps();await c.planificaMapaGps([[44,-3]]);
+ finish({ok:true,status:200,json:async()=>mapReply(coords)});await pending;
+ assert.equal(c.state().anchors.length,1);
+ assert.equal(c.state().red.nodos[c.state().anchors[0]][0],44);
+});
+test('sin aceptar el servicio no se envían coordenadas',async()=>{
+ const c=creatorContext();let sent=0;c.confirm=()=>false;c.fetch=async()=>{sent++;throw Error('no debe enviarse')};
+ await c.planificaMapaGps([[43,-2],[43.001,-2]]);
+ assert.equal(sent,0);assert.equal(c.state().anchors.length,0);
+ assert.match(c.$('plannerStatus').textContent,/No se han enviado/);
+});
+
+test('rechaza geometrías separadas en vez de unirlas con una recta',()=>{
+ const c=creatorContext(),coords=[[43,-2],[43.001,-2]],j=mapReply(coords);
+ j.routes[0].legs[0].steps=[{geometry:{type:'LineString',coordinates:[[-2,43],[-1.999,43]]}},{geometry:{type:'LineString',coordinates:[[-1.998,43],[-2,43.001]]}}];
+ assert.throws(()=>c.respuestaMapaGps(j,coords),/corte/);
+ assert.throws(()=>c.respuestaMapaGps(null,coords),/no es válida/);
 });
