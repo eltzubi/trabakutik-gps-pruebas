@@ -1,163 +1,141 @@
-/* Service worker del navegador GPS.
- *
- * POR QUE EXISTE. La aplicacion de Android no lleva la pagina dentro: la carga
- * de GitHub Pages, y ademas con la cache del WebView desactivada
- * (LOAD_NO_CACHE en MainActivity, para que una version nueva llegue siempre).
- * Sin esto, abrir la aplicacion de cero SIN COBERTURA no daba nada: ni mapa,
- * ni ruta, ni avisos. Y es justo en el monte donde hace falta. Lo que hace
- * esto es guardar la pagina y lo suyo en el movil la primera vez que se abre
- * con cobertura, y servirlo despues aunque no haya red.
- *
- * COMO. Para la pagina y los datos, PRIMERO LA RED: asi una version nueva
- * llega en cuanto hay cobertura y no te quedas con una vieja pegada para
- * siempre -eso ya paso en la web con los tracks corregidos-. Si la red falla,
- * la copia. Para Leaflet y las teselas, primero la copia, que no cambian.
- *
- * LAS TESELAS DEL MAPA se van guardando segun las miras, hasta TESELAS_MAX.
- * No se precargan: son millones. Si antes de salir abres la ruta y le das un
- * repaso al mapa, esa zona la tendras luego sin cobertura. Si no, saldra el
- * fondo gris, pero la linea de la ruta, tu posicion y los avisos de cruce
- * funcionan igual, que es lo que importa.
- */
-const VERSION = 'gps-2';
-const CONCHA = 'concha-' + VERSION;
-const TESELAS = 'teselas-' + VERSION;
+/* Copia sin cobertura del GPS. Una actualización solo se activa si están
+ * todos los recursos imprescindibles. Los trazados visitados y las teselas
+ * usan cachés independientes de la versión de la página.
+ * IGN y PNOA siguen necesitando conexión; no se precargan mapas. */
+const VERSION = "gps-8";
+const CONCHA = "trabakutik-gps-concha-" + VERSION;
+const DATOS = "trabakutik-gps-datos-v1";
+const TESELAS = "trabakutik-gps-teselas-v1";
 const TESELAS_MAX = 900;
-
-// Lo imprescindible para que la pagina abra sin red.
 const BASICOS = [
-  'nuevo.html',
-  'vendor/leaflet/leaflet.css',
-  'vendor/leaflet/leaflet.js',
-  'data/trailhead.json',
-  'data/rutas.json',
-  'data/alturas.json'
+  "nuevo.html",
+  "vendor/leaflet/leaflet.css",
+  "vendor/leaflet/leaflet.js",
+  "data/trailhead.json",
+  "data/rutas.json",
+  "data/alturas.json",
 ];
+const esDatoExterno = (url) =>
+  /^https:\/\/raw\.githubusercontent\.com\/eltzubi\/Rutas-Mallabia\//i.test(
+    url,
+  );
 
-self.addEventListener('install', function (e) {
+self.addEventListener("install", (e) => {
+  // Si falta uno, la instalación falla y el worker anterior sigue sirviendo.
   e.waitUntil(
-    caches.open(CONCHA).then(function (c) {
-      // addAll es todo o nada: si falla uno, no se guarda ninguno. Aqui
-      // interesa lo contrario, que lo que se pueda guardar se guarde.
-      return Promise.all(BASICOS.map(function (u) {
-        return c.add(new Request(u, { cache: 'reload' })).catch(function () {});
-      }));
-    }).then(function () { return self.skipWaiting(); })
+    caches
+      .open(CONCHA)
+      .then((c) =>
+        c.addAll(BASICOS.map((u) => new Request(u, { cache: "reload" }))),
+      )
+      .then(() => self.skipWaiting()),
   );
 });
 
-self.addEventListener('activate', function (e) {
-  e.waitUntil(
-    caches.keys().then(function (claves) {
-      return Promise.all(claves.map(function (k) {
-        if (k !== CONCHA && k !== TESELAS) return caches.delete(k);
-      }));
-    }).then(function () { return self.clients.claim(); })
-  );
+async function migrarAnteriores() {
+  const nombres = await caches.keys();
+  for (const nombre of nombres) {
+    const antiguaConcha = /^concha-gps-\d+$/.test(nombre);
+    const antiguasTeselas = /^teselas-gps-\d+$/.test(nombre);
+    if (!antiguaConcha && !antiguasTeselas) continue;
+    const anterior = await caches.open(nombre);
+    const destino = await caches.open(antiguasTeselas ? TESELAS : DATOS);
+    for (const peticion of await anterior.keys()) {
+      if (!antiguasTeselas && !esDatoExterno(peticion.url)) continue;
+      // No sobrescribir una versión más reciente ya guardada.
+      if (await destino.match(peticion)) continue;
+      const respuesta = await anterior.match(peticion);
+      if (respuesta) await destino.put(peticion, respuesta);
+    }
+    // Solo borrar esta caché después de copiarla entera sin errores.
+    await caches.delete(nombre);
+  }
+  for (const nombre of nombres) {
+    if (nombre.startsWith("trabakutik-gps-concha-") && nombre !== CONCHA) {
+      await caches.delete(nombre);
+    }
+  }
+  await recorta(TESELAS, TESELAS_MAX);
+}
+self.addEventListener("activate", (e) => {
+  e.waitUntil(migrarAnteriores().then(() => self.clients.claim()));
 });
 
 function esTesela(url) {
-  return /^https?:\/\/[a-d]?\.?tile\.openstreetmap\.org\//.test(url) ||
-         /^https?:\/\/(server|services)\.arcgisonline\.com\//.test(url) ||
-         /\/\{?z\}?\/.*\.png$/.test(url);
-}
-
-function recorta(nombre, maximo) {
-  return caches.open(nombre).then(function (c) {
-    return c.keys().then(function (ks) {
-      if (ks.length <= maximo) return;
-      // Las mas viejas primero: keys() las devuelve en orden de insercion.
-      return Promise.all(ks.slice(0, ks.length - maximo).map(function (k) {
-        return c.delete(k);
-      }));
-    });
-  });
-}
-
-self.addEventListener('fetch', function (e) {
-  var peticion = e.request;
-  if (peticion.method !== 'GET') return;
-  var url = peticion.url;
-
-  // Teselas del mapa: primero la copia, y se guarda lo nuevo.
-  if (esTesela(url)) {
-    e.respondWith(
-      caches.match(peticion).then(function (r) {
-        if (r) return r;
-        return fetch(peticion).then(function (red) {
-          // Las teselas vienen de otro dominio: la respuesta es opaca y no se
-          // puede mirar su estado. Se guarda igual, que es lo unico que hay.
-          var copia = red.clone();
-          caches.open(TESELAS).then(function (c) {
-            c.put(peticion, copia).then(function () {
-              recorta(TESELAS, TESELAS_MAX);
-            }).catch(function () {});
-          });
-          return red;
-        });
-      })
-    );
-    return;
-  }
-
-  // Los datos de Rutas-Mallabia: el trazado fino de cada ruta y el fichero de
-  // cruces. Vienen de otro dominio pero con CORS abierto, asi que se pueden
-  // guardar de verdad. Primero la red -que se corrigen- y si no hay, la copia
-  // de la ultima vez. Asi una ruta que ya hayas abierto en casa conserva su
-  // trazado fino en el monte, que es el que mide bien y con el que se calculan
-  // los cruces.
-  if (/^https:\/\/raw\.githubusercontent\.com\/eltzubi\/Rutas-Mallabia\//i.test(url)) {
-    e.respondWith(
-      fetch(peticion).then(function (red) {
-        if (red && red.ok) {
-          var copia = red.clone();
-          caches.open(CONCHA).then(function (c) { c.put(peticion, copia); })
-            .catch(function () {});
-        }
-        return red;
-      }).catch(function () {
-        return caches.match(peticion).then(function (r) { return r || Response.error(); });
-      })
-    );
-    return;
-  }
-
-  // Lo nuestro: la pagina y los datos, primero la red; el resto, primero la
-  // copia.
-  if (new URL(url).origin !== self.location.origin) return;
-
-  var esDato = /\.(html|json)$/.test(new URL(url).pathname) ||
-               peticion.mode === 'navigate';
-  if (esDato) {
-    e.respondWith(
-      fetch(peticion).then(function (red) {
-        if (red && red.ok) {
-          var copia = red.clone();
-          caches.open(CONCHA).then(function (c) { c.put(peticion, copia); });
-        }
-        return red;
-      }).catch(function () {
-        return caches.match(peticion).then(function (r) {
-          if (r) return r;
-          // Una navegacion sin copia exacta -por ejemplo con ?ruta=algo-:
-          // vale la pagina guardada, que lee el parametro ella sola.
-          if (peticion.mode === 'navigate') return caches.match('nuevo.html');
-          return Response.error();
-        });
-      })
-    );
-    return;
-  }
-
-  e.respondWith(
-    caches.match(peticion).then(function (r) {
-      return r || fetch(peticion).then(function (red) {
-        if (red && red.ok) {
-          var copia = red.clone();
-          caches.open(CONCHA).then(function (c) { c.put(peticion, copia); });
-        }
-        return red;
-      });
-    })
+  return (
+    /^https?:\/\/[a-d]?\.?tile\.openstreetmap\.org\//.test(url) ||
+    /^https?:\/\/(server|services)\.arcgisonline\.com\//.test(url) ||
+    /\/\{?z\}?\/.*\.png$/.test(url)
   );
+}
+async function recorta(nombre, maximo) {
+  const c = await caches.open(nombre);
+  const claves = await c.keys();
+  await Promise.all(
+    claves
+      .slice(0, Math.max(0, claves.length - maximo))
+      .map((k) => c.delete(k)),
+  );
+}
+async function leer(nombre, peticion) {
+  try {
+    return await (await caches.open(nombre)).match(peticion);
+  } catch (e) {
+    return undefined;
+  }
+}
+async function guardar(nombre, peticion, respuesta) {
+  try {
+    await (await caches.open(nombre)).put(peticion, respuesta.clone());
+  } catch (e) {
+    /* La falta de espacio no debe impedir usar la respuesta de red. */
+  }
+}
+async function primeroRed(peticion, nombre, esPagina) {
+  let respuesta;
+  try {
+    respuesta = await fetch(peticion);
+    if (respuesta.ok) {
+      // La escritura termina antes que la respuesta: no queda una promesa
+      // suelta que el navegador pueda cancelar al suspender el worker.
+      await guardar(nombre, peticion, respuesta);
+      return respuesta;
+    }
+  } catch (e) {
+    /* Sin cobertura: buscar la última copia válida. */
+  }
+  const copia = await leer(nombre, peticion);
+  if (copia) return copia;
+  if (esPagina) {
+    const pagina = await leer(CONCHA, "nuevo.html");
+    if (pagina) return pagina;
+  }
+  return respuesta || Response.error();
+}
+async function primeroCopia(peticion, nombre, esMapa) {
+  const copia = await leer(nombre, peticion);
+  if (copia) return copia;
+  const respuesta = await fetch(peticion);
+  if (respuesta.ok || (esMapa && respuesta.type === "opaque")) {
+    await guardar(nombre, peticion, respuesta);
+    if (esMapa) await recorta(nombre, TESELAS_MAX).catch(() => {});
+  }
+  return respuesta;
+}
+self.addEventListener("fetch", (e) => {
+  const peticion = e.request;
+  if (peticion.method !== "GET") return;
+  const url = new URL(peticion.url);
+  if (esTesela(url.href)) {
+    e.respondWith(primeroCopia(peticion, TESELAS, true));
+  } else if (esDatoExterno(url.href)) {
+    e.respondWith(primeroRed(peticion, DATOS, false));
+  } else if (url.origin === self.location.origin) {
+    const esPagina = peticion.mode === "navigate";
+    e.respondWith(
+      esPagina || /\.(html|json)$/.test(url.pathname)
+        ? primeroRed(peticion, CONCHA, esPagina)
+        : primeroCopia(peticion, CONCHA, false),
+    );
+  }
 });
