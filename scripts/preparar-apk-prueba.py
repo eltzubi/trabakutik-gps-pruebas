@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 FILES = ('nuevo.html', 'data/rutas.json', 'data/trailhead.json',
@@ -40,7 +41,9 @@ def prepare(root, version):
    }''')
     java = replace_once(java, 'MainActivity.this,"com.trabakutik.gps.fileprovider",f',
                         'MainActivity.this,getPackageName()+".fileprovider",f')
-    java = replace_once(java, 'title.setText("Trabakutik");', 'title.setText("GPS Pruebas");')
+    version_name = re.search(r'versionName = "([^"]+)"', gradle).group(1)
+    java = replace_once(java, 'title.setText("Trabakutik");',
+                        'title.setText("GPS Pruebas '+version_name+'");')
     java = replace_once(java, '"trabakutikgps".equals(uri.getScheme())',
                         '"trabakutikgps-pruebas".equals(uri.getScheme())')
     gradle = replace_once(gradle, 'applicationId = "com.trabakutik.gps"',

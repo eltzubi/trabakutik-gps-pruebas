@@ -127,7 +127,7 @@ async function setup(context) {
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const base = "http://127.0.0.1:" + server.address().port + "/";
   try {
-    browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+    browser = await chromium.launch({ headless: true, executablePath:process.env.GPS_CHROMIUM_PATH||undefined, args: ["--no-sandbox","--disable-dev-shm-usage","--no-zygote"] });
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
     });

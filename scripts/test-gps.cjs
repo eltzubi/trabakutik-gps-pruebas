@@ -61,6 +61,10 @@ function savedContext(points) {
         },
       }),
     },
+    syncNativeRoute() {},
+    computeJunctions() {},
+    aplicaCruces() {},
+    guiaIniciada:()=>false,
     resetOffRoute() {},
     resetJunctionView() {},
     updateNativeLaunchLink() {},
@@ -128,6 +132,7 @@ function watchdog(active) {
     fuenteNativa: false,
     navegaNativo: active,
     gpsSolicitado: active,
+    recording: false,
     notice: (t) => ($("status").textContent = t),
   };
   run(section("const GUIA_CADUCA_MS=", "function syncNativeRoute()"), ctx);
@@ -359,7 +364,7 @@ test("una grabación parcial se exporta desde el GPX nativo, incluso sin vista p
     $,
     prompt: () => null,
   };
-  run(section("$('saveRecording').onclick=", "// Al descartar se apaga"), ctx);
+  run(section("$('saveRecording').onclick=", "// Al terminar o descartar se apaga"), ctx);
   $("saveRecording").onclick();
   assert.equal(exported, true);
 });
