@@ -35,6 +35,7 @@ async function setup(context) {
   await context.addInitScript(() => {
     window.__native = {
       active: false,
+      navigating: false,
       recording: false,
       saves: 0,
       points: [],
@@ -45,8 +46,8 @@ async function setup(context) {
         JSON.stringify({
           active: window.__native.active,
           recording: window.__native.recording,
-          navigating: window.__native.active,
-          guiando: window.__native.active,
+          navigating: window.__native.navigating,
+          guiando: window.__native.navigating,
           locationEnabled: true,
           lat: 43.2,
           lon: -2.5,
@@ -73,6 +74,7 @@ async function setup(context) {
       setAudioModo() {},
       startNavigationWithRoute() {
         window.__native.active = true;
+        window.__native.navigating = true;
       },
       startRecording() {
         window.__native.active = true;
@@ -173,17 +175,22 @@ async function setup(context) {
     await page
       .getByRole("button", { name: /Prueba cima · GPX importado/ })
       .click();
-    await page.waitForFunction(
-      () => document.querySelector("#navGo").offsetHeight > 0,
+    assert.equal(
+      await page
+        .getByRole("button", { name: "▶ Navegar", exact: true })
+        .count(),
+      0,
     );
+    assert(await page.locator("#recordStart").isVisible());
     assert.match(await page.locator("#distance").textContent(), /\+96 \/ -96/);
     fs.mkdirSync(path.join(root, ".test-artifacts"), { recursive: true });
     await page.screenshot({
       path: path.join(root, ".test-artifacts/gps-390.png"),
     });
-    await page.click("#navGo");
-    await page.waitForFunction(() => window.__native.active);
     await page.click("#recordStart");
+    await page.waitForFunction(
+      () => window.__native.navigating && window.__native.recording,
+    );
     await page.evaluate(() => {
       window.__native.points = [
         [43, -2],
@@ -203,7 +210,7 @@ async function setup(context) {
     assert.deepEqual(errors, [], "errores JS");
     await context.close();
     console.log(
-      "PASS Chromium: apertura, 4 anchos, IGN, importar/reabrir GPX, Navegar, Grabar, Parar y exportar completo",
+      "PASS Chromium: apertura, 4 anchos, IGN, importar/reabrir GPX, inicio único de navegación/grabación, Parar y exportar completo",
     );
     const offline = await browser.newContext();
     await setup(offline);
