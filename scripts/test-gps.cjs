@@ -473,7 +473,7 @@ test('el GPX manual no inventa alturas y el resumen no une huecos',()=>{
 test('Manual permite mover un punto de la red fuera de los trazados',()=>{
   const c=creatorContext();
   c.draft([0,3],[[0],c.tramoGps(0,3,false)]);
-  c.$('drawMethod').value='manual';c.$('drawMethod').onchange();
+  vm.runInContext('trazadoManual=true',c);
   c.mueveAnclaGps(0,43.03,-2.03);
   const s=c.state();
   assert.equal(s.red.nodos[s.anchors[0]][0],43.03);
@@ -566,4 +566,10 @@ test('cancelar mientras llegan alturas impide modificar un borrador posterior',a
  c.cancelaMapaGps();await c.planificaMapaGps([[44,-3]]);
  finish({ok:true,json:async()=>({height:batch.map(()=>200)})});await pending;
  assert.equal(c.state().anchors.length,1);assert.equal(c.state().red.nodos[c.state().anchors[0]][0],44);
+});
+
+test('Crear no ofrece selector de métodos ni instrucciones permanentes',()=>{
+ assert(!html.includes('id="drawMethod"'));
+ assert(!html.includes("$('drawMethod')"));
+ assert(!html.includes('Marca puntos en los caminos del mapa · a pie · necesita conexión.'));
 });

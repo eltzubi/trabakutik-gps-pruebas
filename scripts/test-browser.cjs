@@ -249,7 +249,8 @@ async function setup(context) {
     await creator.goto(base+'nuevo.html');
     await creator.click('#modeCreate');
     await creator.waitForFunction(()=>window.__creator&&window.__creator.redGps!==null);
-    assert.equal(await creator.locator('#drawMethod').inputValue(),'foot');
+    assert.equal(await creator.locator('#drawMethod').count(),0,'un único creador sin selector');
+    assert(!(await creator.locator('#plannerStatus').isVisible()),'sin aviso fijo al entrar');
     await creator.evaluate(()=>{
       const {map}=window.__creator;
       map.fire('click',{latlng:L.latLng(43.01,-2.01)});
@@ -257,7 +258,7 @@ async function setup(context) {
     });
     await creator.waitForFunction(()=>window.__creator.tramosGps.length===2);
     assert.equal(plannerRequests,1);
-    await creator.waitForFunction(()=>document.querySelector('#plannerStatus').textContent.includes('desnivel aproximado'));
+    await creator.waitForFunction(()=>window.__creator.drawPoints.length>1&&window.__creator.drawPoints.every(p=>Number.isFinite(p[2]))&&!document.querySelector('#saveCreated').disabled);
     assert(await creator.evaluate(()=>window.__creator.drawPoints.length>=4),'conserva la curva del motor');
     assert(await creator.locator('#elevationSvg').isVisible(),'perfil visible en senderos nuevos');
     assert.match(await creator.locator('#profileGain').textContent(),/↑ [1-9]/);
@@ -276,64 +277,37 @@ async function setup(context) {
     assert(!/sin alturas/.test(await creator.locator('#distance').textContent()));
     await creator.click('#modeCreate');
 
-    await creator.selectOption('#drawMethod','manual');
-    await creator.evaluate(()=>{
-      const {map}=window.__creator;
-      map.fire('click',{latlng:L.latLng(43.01,-2.01)});
-      map.fire('click',{latlng:L.latLng(43.0103,-2.0105)});
-      map.fire('click',{latlng:L.latLng(43.0108,-2.0103)});
-      map.fitBounds(window.__creator.drawLayer.getBounds(),{padding:[60,60]});
-    });
-    await creator.waitForTimeout(300);
-    assert.equal(await creator.evaluate(()=>window.__creator.drawPoints.length),3);
-    assert.notEqual(await creator.locator('#profileDistance').textContent(),'0,00 km');
-    assert(await creator.locator('#profileDistance').isVisible(),'distancia visible sin alturas');
-    assert.equal(await creator.locator('#profileGain').textContent(),'↑ —');
+    // Editar con un solo creador: puntos nuevos, arrastre, cierre y guardado.
+    await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.01,-2.01)}));
+    await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0103,-2.0105)}));
+    await creator.waitForFunction(()=>window.__creator.anclasGps.length===2&&!document.querySelector('#saveCreated').disabled);
+    await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
+    await creator.waitForFunction(()=>window.__creator.anclasGps.length===3&&!document.querySelector('#saveCreated').disabled);
+    await creator.evaluate(()=>{const c=window.__creator;c.map.fitBounds(c.drawLayer.getBounds(),{padding:[60,60]})});
     for(const width of [320,390,768,1280]){
       await creator.setViewportSize({width,height:844});
       assert(await creator.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       const box=await creator.locator('.modes').boundingBox();
-      assert(box.x>=0&&box.x+box.width<=width,'selector dentro de la pantalla');
+      assert(box.x>=0&&box.x+box.width<=width,'botones dentro de la pantalla');
     }
     await creator.setViewportSize({width:390,height:844});
-    await creator.screenshot({path:path.join(root,'.test-artifacts/creador-manual-390.png')});
+    await creator.screenshot({path:path.join(root,'.test-artifacts/creador-unificado-390.png')});
     await creator.click('#undo');
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2);
-    await creator.click('#idaVuelta');
+    await creator.evaluate(()=>window.__creator.mueveAnclaGps(0,43.0101,-2.0101));
+    await creator.waitForFunction(()=>window.__creator.drawPoints[0]?.[0]===43.0101&&!document.querySelector('#saveCreated').disabled);
+    await creator.click('#cerrarCirculo');
+    await creator.waitForFunction(()=>{const c=window.__creator;return c.anclasGps.length===3&&c.anclasGps.at(-1)===c.anclasGps[0]&&!document.querySelector('#saveCreated').disabled});
+    await creator.click('#undo');await creator.click('#idaVuelta');
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.at(-1)===window.__creator.anclasGps[0]),true);
-    await creator.click('#saveCreated');
-    assert.match(await creator.locator('#saveStatus').textContent(),/no se publica en la web/);
-    await creator.click('#saveToMine');
-    await creator.reload();
-    await creator.click('#savedRoutes');
+    await creator.click('#saveCreated');await creator.click('#saveToMine');
+    await creator.reload();await creator.click('#savedRoutes');
     await creator.getByRole('button',{name:/Ruta personal de prueba/}).click();
-    assert.deepEqual(await creator.evaluate(()=>window.__creator.routePoints[0].slice(0,2)),[43.01,-2.01]);
-    assert.match(await creator.locator('#distance').textContent(),/sin alturas/);
-    // Mezclar tramo manual con cálculo por la red y volver a arrastrar.
-    await creator.click('#modeCreate');
-    await creator.waitForFunction(()=>window.__creator&&window.__creator.redGps!==null);
-    await creator.selectOption('#drawMethod','manual');
-    await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.01,-2.01)}));
-    await creator.selectOption('#drawMethod','tracks');
-    await creator.evaluate(()=>{
-      const {map,redGps,mueveAnclaGps}=window.__creator;
-      const p=redGps.nodos[0];map.fire('click',{latlng:L.latLng(p[0],p[1])});
-      const q=redGps.nodos[10];map.fire('click',{latlng:L.latLng(q[0],q[1])});
-      mueveAnclaGps(0,43.02,-2.02);
-    });
-    assert.equal(await creator.evaluate(()=>window.__creator.drawPoints[0][0]),43.02);
-    assert.equal(await creator.evaluate(()=>!!window.__creator.tramosGps[1].manual),true);
-    assert.equal(await creator.evaluate(()=>!!window.__creator.tramosGps[2].manual),false);
-    await creator.selectOption('#drawMethod','manual');
-    await creator.evaluate(()=>window.__creator.mueveAnclaGps(1,43.03,-2.03));
-    assert.deepEqual(await creator.evaluate(()=>{
-      const c=window.__creator;return c.redGps.nodos[c.anclasGps[1]].slice(0,2);
-    }),[43.03,-2.03]);
-    await creator.click('#clearCreated');
-    assert.equal(await creator.evaluate(()=>window.__creator.nodosManualesGps.size),0);
+    assert.deepEqual(await creator.evaluate(()=>window.__creator.routePoints[0].slice(0,2)),[43.0101,-2.0101]);
+    assert(!/sin alturas/.test(await creator.locator('#distance').textContent()));
     assert.deepEqual(creatorErrors,[],'errores del creador');
     await personal.close();
-    console.log('PASS Chromium: crear manual, 4 anchos, deshacer, ida y vuelta, guardar/reabrir, enlazar red y arrastrar');
+    console.log('PASS Chromium: creador único sin selector ni aviso fijo, perfil, 4 anchos, deshacer, arrastrar, cerrar, ida y vuelta y guardar/reabrir con alturas');
     const offline = await browser.newContext();
     await setup(offline);
     const p = await offline.newPage();
