@@ -117,3 +117,86 @@ test('Una ruta que ya estaba activa tiene prioridad al iniciar la grabación',()
  assert.equal(c.junctions[0].direction,'derecha');assert.equal(c.$('mapTitle').textContent,'Otra ruta');
  assert.match(c.status,/Grabando y siguiendo · Otra ruta/);
 });
+
+function endSessionFlow(){
+ const nodes=new Map(),calls=[];
+ const c={console,Date,JSON,Number,Math,Set,Promise,
+  $:id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',classList:{add(){},remove(){},toggle(){}}});return nodes.get(id)},
+  window:{speechSynthesis:{cancel(){calls.push('cancel-voice')}},TrabakutikAndroid:{
+   stopRecording(){calls.push('stop-record')},stopNavigation(){calls.push('stop-navigation')},clearLiveTrack(){calls.push('clear-track')},
+   getPosition(){throw Error('No debe consultar el servicio después de terminar')},
+   getTrackingSnapshot(){calls.push('snapshot');return JSON.stringify({recording:true})}
+  }},navigator:{geolocation:{clearWatch(w){calls.push(['clear-watch',w])},watchPosition(){calls.push('watch');return 2}}},
+  document:{hidden:false},audio:{close(){calls.push('close-audio');return Promise.resolve()}},
+  watch:1,gpsApagadoPorTi:false,navegaNativo:true,giraNativo:true,junctionActive:1,
+  recording:true,recordingPendingSave:false,recorded:[point(0,0),point(10,0)],recordLayer:{},
+  lastBrowserRecordTime:1,lastBrowserRecordPoint:point(10,0),pausado:false,
+  fuenteNativa:true,ultimoTiempoNativo:1,apagadoHasta:0,position:point(10,0),me:{},
+  routePoints:corner(90),lastCourse:1,courseFix:point(0,0),ultimoFix:1,refParado:point(0,0),refParadoT:1,
+  followGps:false,manualMapUntil:1,routeCumulative:[],ultimoAlong:null,lastNativeSync:0,lastNativeTrackVersion:'',cortesGrabacion:0,reconciliaBotonera(){},
+  map:{removeLayer(){calls.push('remove-layer')}},resetJunctionView(){calls.push('reset-turn');c.junctionActive=-1},resetOffRoute(){calls.push('reset-off-route')},
+  pintaBotonNavegar(){calls.push('nav-button')},recordingControls:state=>c.controls=state,
+  notice:text=>c.status=text,confirmaParar:()=>true,avisoDeCortes:()=>'',
+  getAudio(){},mode:'nav',syncNativeRoute(){},enciendeNavegacionNativa(){calls.push('start-navigation')}
+ };
+ vm.createContext(c);
+ vm.runInContext(source('function apagaGps(){',"$('discardRecording').onclick="),c);
+ vm.runInContext(source('function finishRecording(){','function savePendingToMine(){'),c);
+ vm.runInContext(source("$('recordStop').onclick=","$('saveRecording').onclick="),c);
+ vm.runInContext(source('window.trabakutikNativeGpxSaved=()=>{',"window.addEventListener('beforeunload'"),c);
+ vm.runInContext(source('window.trabakutikSyncNative=()=>{',"document.addEventListener('visibilitychange'"),c);
+ vm.runInContext(source('function miraPosicionNativa(){','setInterval(miraPosicionNativa,'),c);
+ vm.runInContext(source('function onFix(pos){','// Recupera los puntos capturados'),c);
+ vm.runInContext(source('function startGPS(',"if(!enLaApp)"),c);
+ c.calls=calls;return c;
+}
+test('Parar finaliza la grabación y la navegación; conserva los puntos pendientes de guardar',()=>{
+ const c=endSessionFlow(),route=c.routePoints;
+ c.$('recordStop').onclick();
+ assert.equal(c.recording,false);assert.equal(c.recordingPendingSave,true);assert.equal(c.recorded.length,2);
+ assert.equal(c.controls,'stopped');assert.equal(c.gpsApagadoPorTi,true);
+ assert.equal(c.watch,null);assert.equal(c.position,null);assert.equal(c.me,null);
+ assert.equal(c.navegaNativo,false);assert.equal(c.giraNativo,false);assert.equal(c.audio,null);
+ assert.equal(c.routePoints,route);assert(c.calls.includes('stop-record'));assert(c.calls.includes('stop-navigation'));
+ assert(c.calls.includes('cancel-voice'));assert(c.calls.includes('close-audio'));
+});
+test('Después de terminar, los sondeos y las posiciones pendientes no reactivan los avisos',()=>{
+ const c=endSessionFlow();c.$('recordStop').onclick();c.apagadoHasta=0;
+ const calls=c.calls.length,status=c.status;
+ c.miraPosicionNativa();c.onFix({});
+ assert.equal(c.calls.length,calls);
+ c.window.trabakutikSyncNative();assert.equal(c.recording,false);assert.equal(c.controls,'stopped');assert.equal(c.status,status);assert.equal(c.ultimoFix,0);
+});
+test('Guardar en Mis rutas o exportar limpia el track y deja el GPS y la voz apagados',()=>{
+ for(const nativeExport of [false,true]){
+  const c=endSessionFlow();c.recording=false;
+  if(nativeExport)c.window.trabakutikNativeGpxSaved();else c.finishRecording();
+  assert.equal(c.recordingPendingSave,false);assert.equal(c.recorded.length,0);assert.equal(c.recordLayer,null);
+  assert.equal(c.controls,'ready');assert.equal(c.gpsApagadoPorTi,true);assert(c.calls.includes('clear-track'));
+  assert(c.calls.includes('stop-navigation'));assert(c.calls.includes('cancel-voice'));
+ }
+});
+test('Una nueva pulsación de Navegar permite iniciar otra salida después de guardar',()=>{
+ const c=endSessionFlow();c.recording=false;c.finishRecording();
+ c.startGPS(false,true);
+ assert.equal(c.gpsApagadoPorTi,false);assert.equal(c.apagadoHasta,0);assert.equal(c.watch,2);
+ assert(c.calls.includes('start-navigation'));assert(c.calls.includes('watch'));
+});
+
+test('Guardar una grabación en Mis rutas ejecuta el cierre completo y conserva la copia guardada',()=>{
+ const c=endSessionFlow();c.recording=false;c.recordingPendingSave=true;
+ Object.assign(c,{pendingSave:{kind:'recording',name:'Salida terminada',points:c.recorded},savedList:()=>[],putSaved:list=>(c.saved=list,true),showSaved(){},closeSaveDialog(){c.pendingSave=null}});
+ vm.runInContext(source('function savePendingToMine(){',"$('navigateSavedFromDialog').onclick="),c);
+ c.savePendingToMine();
+ assert.equal(c.saved.length,1);assert.equal(c.saved[0].points.length,2);
+ assert.equal(c.recorded.length,0);assert.equal(c.gpsApagadoPorTi,true);assert.equal(c.pendingSave,null);
+ assert(c.calls.includes('stop-navigation'));assert(c.calls.includes('cancel-voice'));
+});
+test('Cancelar Parar y usar Pausa mantienen la navegación activa',()=>{
+ const c=endSessionFlow();c.confirmaParar=()=>false;c.$('recordStop').onclick();
+ assert.equal(c.recording,true);assert.equal(c.gpsApagadoPorTi,false);assert.equal(c.calls.length,0);
+ c.window.TrabakutikAndroid.pauseRecording=()=>c.calls.push('pause');
+ vm.runInContext(source('function pausaGrabacion(si){','function avisoDeCortes(){'),c);
+ c.pausaGrabacion(true);assert.equal(c.pausado,true);assert.equal(c.gpsApagadoPorTi,false);
+ assert.deepEqual(c.calls,['pause']);assert.equal(c.navegaNativo,true);
+});

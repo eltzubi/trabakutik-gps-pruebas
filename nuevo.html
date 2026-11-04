@@ -1103,6 +1103,7 @@ function openSaveDialog(points,name,kind){
  $('saveDialog').classList.remove('hidden');
 }
 function finishRecording(){
+ apagaGps();
  if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
  recording=false;recordingPendingSave=false;recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;
  if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
@@ -1501,6 +1502,7 @@ function hablar(texto){
  hablaPagina(texto);
 }
 function hablaPagina(texto){
+ if(gpsApagadoPorTi)return;
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
  try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
 }
@@ -1581,7 +1583,7 @@ function distanciasDeAviso(){
          Math.min(200,Math.max(35,v*18))];
 }
 function pitidos(n,sep){
- if(audioModo==='silencio'||!audio)return;
+ if(gpsApagadoPorTi||audioModo==='silencio'||!audio)return;
  const t=audio.currentTime;
  for(let i=0;i<n;i++){
   const o=audio.createOscillator(),g=audio.createGain(),at=t+i*sep;
@@ -1991,6 +1993,7 @@ function rumboDeLaRuta(p){
  return null;
 }
 function onFix(pos){
+ if(gpsApagadoPorTi)return; // Ignorar una posición pendiente después de finalizar.
  ultimoFix=Date.now();
  const estadoGps=$('status').textContent;
  if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
@@ -2096,6 +2099,8 @@ function onFix(pos){
  }else if(mode==='nav')notice(recording?'Grabando · sin ruta activa para navegar':'Ubicación encontrada · selecciona una ruta')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
 window.trabakutikSyncNative=()=>{
+ // Recuperar los últimos puntos para guardar, sin reactivar el GPS ni la guía.
+ if(gpsApagadoPorTi&&!recordingPendingSave)return;
  if(!window.TrabakutikAndroid?.getTrackingSnapshot)return;
  if(Date.now()-lastNativeSync<1200)return;
  lastNativeSync=Date.now();
@@ -2111,6 +2116,7 @@ window.trabakutikSyncNative=()=>{
    // es anotar puntos, no la grabacion entera.
    recordingControls(pausado?'paused':'recording');
   }else if(recording){
+   apagaGps(); // También cuando se termina desde la notificación de Android.
    recording=false;
    // OJO con «data.points»: getTrackingSnapshotIfChanged devuelve SOLO los
    // metadatos cuando el fichero del trazado no ha cambiado, y al parar desde
@@ -2173,7 +2179,7 @@ setInterval(()=>{if(!document.hidden&&window.TrabakutikAndroid)window.trabakutik
 // de el; cuando el servicio para, vuelve el del navegador. Nunca los dos.
 function miraPosicionNativa(){
  if(!window.TrabakutikAndroid?.getPosition||document.hidden)return;
- if(Date.now()<apagadoHasta)return;
+ if(gpsApagadoPorTi||Date.now()<apagadoHasta)return;
  let d;
  try{d=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}')}catch(e){return}
  if(!d.active){
@@ -2293,13 +2299,14 @@ function enciendeNavegacionNativa(){
  }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
 }
 function startGPS(forRecording=false,conServicio=false){
- gpsApagadoPorTi=false;
+ gpsApagadoPorTi=false;apagadoHasta=0;
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
   try{syncNativeRoute()}catch(e){console.warn(e)}
  }
  if(conServicio)enciendeNavegacionNativa();
  if(fuenteNativa)return;
  if(watch!==null)return;if(!navigator.geolocation){warnGps();return}ultimoErrorGps=null;ultimoErrorGpsText='';getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
+ if(gpsApagadoPorTi)return;
  warnGps(e);
  // Solo se abandona con el permiso denegado: ahi no va a llegar nada nunca.
  // Antes CUALQUIER error cerraba el watch, y con timeout de 20 s bastaba un
@@ -2380,11 +2387,11 @@ function confirmaParar(){
   const queda=total-hecho;
   if(queda>300)falta='\n\nTe faltan '+fmt(queda)+' de la ruta.';
  }
- return confirm('\u00bfParar la grabaci\u00f3n?'+falta);
+ return confirm('\u00bfFinalizar la grabaci\u00f3n y la navegaci\u00f3n?'+falta);
 }
 $('recordPause').onclick=()=>pausaGrabacion(true);
 $('recordResume').onclick=()=>pausaGrabacion(false);
-$('recordStop').onclick=()=>{if(!confirmaParar())return;pausado=false;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();recording=false;recordingPendingSave=true;recordingControls('stopped');notice((window.TrabakutikAndroid?'Grabación detenida · Guardar GPX o Descartar':recorded.length<2?'Grabación detenida · faltan 2 posiciones para guardar GPX':'Grabación detenida · Guardar GPX o Descartar')+avisoDeCortes())};
+$('recordStop').onclick=()=>{if(!confirmaParar())return;pausado=false;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();apagaGps();recording=false;recordingPendingSave=true;recordingControls('stopped');notice((window.TrabakutikAndroid?'Salida finalizada · Guardar GPX o Descartar':recorded.length<2?'Salida finalizada · faltan 2 posiciones para guardar GPX':'Salida finalizada · Guardar GPX o Descartar')+avisoDeCortes())};
 $('saveRecording').onclick=()=>{
  if(recorded.filter(p=>p!==null).length<2){notice('No hay suficientes posiciones para guardar. Puedes descartar la grabación.');return}
  const def='Grabación '+new Date().toLocaleDateString('es-ES')+' '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
@@ -2392,7 +2399,7 @@ $('saveRecording').onclick=()=>{
  if(name===null)return;
  openSaveDialog(recorded,name.trim()||def,'recording');
 };
-// Al descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
+// Al terminar o descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
 // asi que el telefono seguia pidiendo posicion con la salida terminada y
 // la aplicacion se comportaba como si siguieras navegando. Se van la
 // flecha azul, las indicaciones de giro y el aviso de fuera de ruta, y se
@@ -2400,6 +2407,10 @@ $('saveRecording').onclick=()=>{
 // en el mapa, que para eso la elegiste; con el boton de centrar vuelve a
 // encenderse el GPS cuando quieras.
 function apagaGps(){
+ // Bloquear primero las posiciones y sondeos que ya estaban pendientes.
+ gpsApagadoPorTi=true;navegaNativo=false;giraNativo=false;
+ try{window.speechSynthesis?.cancel()}catch(e){}
+ if(audio){try{audio.close().catch(()=>{})}catch(e){}audio=null}
  if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
  try{if(window.TrabakutikAndroid?.stopNavigation)window.TrabakutikAndroid.stopNavigation()}
  catch(e){console.warn('No se pudo parar la navegación nativa',e)}
@@ -2417,6 +2428,7 @@ function apagaGps(){
  // señal», que es mentira y ademas asusta.
  gpsApagadoPorTi=true;
  $('distance').textContent='GPS apagado';
+ pintaBotonNavegar();
 }
 $('discardRecording').onclick=()=>{
  if(!confirm('¿Descartar esta grabación? Se borrará el recorrido sin guardarlo y se apagará el GPS.'))return;
@@ -2428,10 +2440,8 @@ $('discardRecording').onclick=()=>{
  notice('Grabación descartada · GPS apagado');
 };
 window.trabakutikNativeGpxSaved=()=>{
- if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
  if(!recording){
-  recordingPendingSave=false;recorded=[];if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
-  recordingControls('ready');notice('GPX guardado en el móvil');
+  finishRecording();notice('GPX guardado en el móvil · navegación detenida');
  }
 };
 window.addEventListener('beforeunload',e=>{if(recording||recordingPendingSave||(drawPoints.length>1&&!createdSavedItem)){e.preventDefault();e.returnValue=''}});
