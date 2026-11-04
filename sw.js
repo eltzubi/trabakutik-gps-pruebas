@@ -2,7 +2,7 @@
  * todos los recursos imprescindibles. Los trazados visitados y las teselas
  * usan cachés independientes de la versión de la página.
  * IGN y PNOA siguen necesitando conexión; no se precargan mapas. */
-const VERSION = "gps-6";
+const VERSION = "gps-7";
 const CONCHA = "trabakutik-gps-concha-" + VERSION;
 const DATOS = "trabakutik-gps-datos-v1";
 const TESELAS = "trabakutik-gps-teselas-v1";

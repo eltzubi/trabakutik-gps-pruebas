@@ -236,6 +236,13 @@ async function setup(context) {
       const body=failPlanner?{code:'NoRoute'}:{code:'Ok',waypoints:list.map(p=>({location:p})),routes:[{legs:list.slice(1).map((p,i)=>({steps:[{geometry:{type:'LineString',coordinates:[list[i],[list[i][0]+.001,list[i][1]],[p[0]+.001,p[1]],p]}}]}))}]};
       await route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
     });
+    let failHeights=false;
+    await personal.route('https://valhalla1.openstreetmap.de/height?**',async route=>{
+      const q=JSON.parse(new URL(route.request().url()).searchParams.get('json'));
+      if(failHeights){await route.fulfill({status:503,body:'No disponible'});return}
+      // Terreno sintético: subida y bajada a lo largo del recorrido.
+      await route.fulfill({contentType:'application/json',body:JSON.stringify({shape:q.shape,height:q.shape.map((p,i)=>100+3*Math.min(i,q.shape.length-1-i))})});
+    });
     const creator=await personal.newPage(),creatorErrors=[];
     creator.on('pageerror',e=>creatorErrors.push(e.message));
     creator.on('dialog',d=>d.accept(d.type()==='prompt'?'Ruta personal de prueba':undefined));
@@ -250,13 +257,24 @@ async function setup(context) {
     });
     await creator.waitForFunction(()=>window.__creator.tramosGps.length===2);
     assert.equal(plannerRequests,1);
-    assert.equal(await creator.evaluate(()=>window.__creator.drawPoints.length),4,'conserva la curva del motor');
+    await creator.waitForFunction(()=>document.querySelector('#plannerStatus').textContent.includes('desnivel aproximado'));
+    assert(await creator.evaluate(()=>window.__creator.drawPoints.length>=4),'conserva la curva del motor');
+    assert(await creator.locator('#elevationSvg').isVisible(),'perfil visible en senderos nuevos');
+    assert.match(await creator.locator('#profileGain').textContent(),/↑ [1-9]/);
+    assert.match(await creator.locator('#profileLoss').textContent(),/↓ [1-9]/);
+    assert(!/sin datos|Sin alturas/.test(await creator.locator('#elevationSlope').textContent()),'pendiente al marcar');
+    await creator.screenshot({path:path.join(root,'.test-artifacts/planificador-con-desnivel.png')});
     failPlanner=true;
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
     await creator.waitForFunction(()=>document.querySelector('#plannerStatus').textContent.includes('No hay conexión'));
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2,'un error no añade rectas');
-    await creator.click('#clearCreated');
     failPlanner=false;
+    await creator.click('#saveCreated');await creator.click('#saveToMine');
+    await creator.getByRole('button',{name:/Ruta personal de prueba/}).click();
+    assert.match(await creator.locator('#distance').textContent(),/m aprox/);
+    assert(!/sin alturas/.test(await creator.locator('#distance').textContent()));
+    await creator.click('#modeCreate');
+
     await creator.selectOption('#drawMethod','manual');
     await creator.evaluate(()=>{
       const {map}=window.__creator;

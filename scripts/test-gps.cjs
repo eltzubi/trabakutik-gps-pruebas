@@ -487,10 +487,14 @@ function mapReply(coords){
 test('el planificador conserva las curvas recibidas y funciona sin tracks guardados',async()=>{
  const c=creatorContext(),coords=[[43,-2],[43.001,-2]];
  vm.runInContext('seguirMapaGps=true;redGps=construyeRed([],null)',c);
- c.fetch=async url=>{assert.match(url,/routed-foot/);assert.match(url,/geometries=geojson/);assert.match(url,/steps=true/);return {ok:true,status:200,json:async()=>mapReply(coords)}};
+ c.fetch=async url=>{
+  if(url.includes('/height?')){const q=JSON.parse(new URL(url).searchParams.get('json'));return {ok:true,json:async()=>({height:q.shape.map((p,i)=>100+i*2),shape:q.shape})};}
+  assert.match(url,/routed-foot/);assert.match(url,/geometries=geojson/);assert.match(url,/steps=true/);return {ok:true,status:200,json:async()=>mapReply(coords)};
+ };
  await c.planificaMapaGps(coords);
- const s=c.state();assert.equal(s.anchors.length,2);assert.equal(s.segments[1].length,4);
- assert.equal(s.red.nodos[s.segments[1][1]][1],-1.999,'no corta la curva');
+ const s=c.state();assert.equal(s.anchors.length,2);assert(s.segments[1].length>=4);
+ assert(s.segments[1].every(id=>Number.isFinite(s.red.nodos[id][2])),'el recorrido conserva alturas');
+ assert(s.segments[1].some(id=>s.red.nodos[id][1]===-1.999),'no corta la curva');
  assert(!s.segments[1].manual,'la respuesta del motor no se etiqueta como recta manual');
 });
 test('si no hay camino o servicio conserva el borrador sin dibujar una recta',async()=>{
@@ -522,4 +526,44 @@ test('rechaza geometrías separadas en vez de unirlas con una recta',()=>{
  j.routes[0].legs[0].steps=[{geometry:{type:'LineString',coordinates:[[-2,43],[-1.999,43]]}},{geometry:{type:'LineString',coordinates:[[-1.998,43],[-2,43.001]]}}];
  assert.throws(()=>c.respuestaMapaGps(j,coords),/corte/);
  assert.throws(()=>c.respuestaMapaGps(null,coords),/no es válida/);
+});
+
+test('detecta una cima intermedia en una recta nueva y exporta sus alturas',async()=>{
+ const c=creatorContext(),result={anchors:[[43,-2],[43.009,-2]],parts:[[[43,-2],[43.009,-2]]]};
+ c.fetch=async url=>{const q=JSON.parse(new URL(url).searchParams.get('json'));return {ok:true,json:async()=>({height:q.shape.map(p=>100+100*(1-Math.abs((p.lat-43)/.009-.5)*2))})}};
+ await c.alturasTerrenoGps(result,new AbortController().signal);
+ assert(result.parts[0].length>20,'muestras dentro de la recta');
+ const e=run(section('function elevationText(', 'function loadSaved('),{R:Math.PI/180});
+ const summary=e.elevationText(result.parts[0]);assert.match(summary,/\+9\d \/ -9\d/);
+ const xml=run(section('function xmlEscape(', 'function download('),{}).gpx(result.parts[0],'Cima nueva');
+ assert.equal((xml.match(/<ele>/g)||[]).length,result.parts[0].length);
+ assert(result.anchors.every(p=>Number.isFinite(p[2])));
+});
+test('una altura ausente no se sustituye por cero ni se interpola sobre el hueco',async()=>{
+ const c=creatorContext(),result={anchors:[[43,-2],[43.001,-2]],parts:[[[43,-2],[43.001,-2]]]};let calls=0;
+ c.fetch=async url=>{calls++;const q=JSON.parse(new URL(url).searchParams.get('json'));return {ok:true,json:async()=>({height:q.shape.map((p,i)=>i===2?null:100)})}};
+ const original=JSON.parse(JSON.stringify(result));
+ await c.alturasTerrenoGps(result,new AbortController().signal);
+ assert(result.parts[0].some(p=>p[2]===null));assert(!result.parts[0].some(p=>p[2]===0));
+ await c.alturasTerrenoGps(original,new AbortController().signal);assert.equal(calls,1,'se reutilizan las alturas consultadas');
+});
+test('si falla el servicio de alturas conserva el camino y permite guardarlo',async()=>{
+ const c=creatorContext(),coords=[[43,-2],[43.001,-2]];
+ c.fetch=async url=>url.includes('/height?')?{ok:false,status:503}:{ok:true,status:200,json:async()=>mapReply(coords)};
+ await c.planificaMapaGps(coords);
+ assert.equal(c.state().anchors.length,2);assert.match(c.$('plannerStatus').textContent,/Recorrido conservado/);
+ assert(c.state().segments[1].every(id=>c.state().red.nodos[id][2]===null));
+});
+test('cancelar mientras llegan alturas impide modificar un borrador posterior',async()=>{
+ const c=creatorContext(),coords=[[43,-2],[43.001,-2]];let finish,batch;
+ c.fetch=async url=>{
+  if(!url.includes('/height?'))return {ok:true,status:200,json:async()=>mapReply(coords)};
+  batch=JSON.parse(new URL(url).searchParams.get('json')).shape;
+  return new Promise(r=>{finish=r});
+ };
+ const pending=c.planificaMapaGps(coords);
+ while(!finish)await new Promise(r=>setTimeout(r,1));
+ c.cancelaMapaGps();await c.planificaMapaGps([[44,-3]]);
+ finish({ok:true,json:async()=>({height:batch.map(()=>200)})});await pending;
+ assert.equal(c.state().anchors.length,1);assert.equal(c.state().red.nodos[c.state().anchors[0]][0],44);
 });

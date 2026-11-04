@@ -780,9 +780,9 @@ $('drawMethod').onchange=()=>{
  $('saveCreated').disabled=drawPoints.length<2;
  if(seguirMapaGps&&anclasGps.length>1)planificaMapaGps(anclasGps.map(id=>redGps.nodos[id].slice(0,2)));
 };
-function nodoManualGps(lat,lon){
+function nodoManualGps(lat,lon,elevation=null){
  const n=redGps.nodos.length;
- redGps.nodos.push([lat,lon,null]);redGps.ady.push([]);nodosManualesGps.add(n);
+ redGps.nodos.push([lat,lon,Number.isFinite(elevation)?elevation:null]);redGps.ady.push([]);nodosManualesGps.add(n);
  return n;
 }
 function tramoGps(a,b,manual=trazadoManual){
@@ -853,14 +853,86 @@ async function solicitaMapaGps(coords,signal){
  if(!r.ok&&r.status!==400)throw Error('No se pudo conectar con el planificador. Conservamos el trazado anterior.');
  return respuestaMapaGps(await r.json(),coords);
 }
+// Muestrear el terreno cada 30 m, con un límite por recorrido. Se conservan
+// todas las esquinas de la geometría y los puntos de paso del usuario.
+const cacheAlturasMapaGps=new Map();
+let ultimaAlturaMapaGps=0;
+function interpolaMapaGps(a,b,f){
+ let dl=b[1]-a[1];if(dl>180)dl-=360;if(dl< -180)dl+=360;
+ const lon=((a[1]+dl*f+540)%360)-180;
+ return [a[0]+(b[0]-a[0])*f,lon];
+}
+function muestrasAlturaGps(result){
+ let total=0,prev=null;const rows=[],limits=[0];
+ result.parts.forEach((part,leg)=>{
+  for(const p of part){if(prev)total+=dist(prev,p);rows.push({p,d:total,leg});prev=p}
+  limits.push(total);
+ });
+ const targets=new Set(limits.map(d=>d.toFixed(4))),paso=Math.max(30,total/500);
+ for(let d=paso;d<total;d+=paso)targets.add(d.toFixed(4));
+ let i=0;
+ const samples=[...targets].map(Number).sort((a,b)=>a-b).map(d=>{
+  while(i+1<rows.length&&rows[i+1].d<d)i++;
+  const a=rows[i],b=rows[Math.min(i+1,rows.length-1)];
+  const f=b.d>a.d?Math.max(0,Math.min(1,(d-a.d)/(b.d-a.d))):0;
+  return {d,p:interpolaMapaGps(a.p,b.p,f),h:null};
+ });
+ return {rows,samples};
+}
+async function alturasTerrenoGps(result,signal){
+ const {rows,samples}=muestrasAlturaGps(result);
+ const key=p=>p[0].toFixed(6)+','+p[1].toFixed(6);
+ const missing=samples.filter(s=>!cacheAlturasMapaGps.has(key(s.p)));
+ for(let off=0;off<missing.length;off+=80){
+  const batch=missing.slice(off,off+80),wait=Math.max(0,1100-(Date.now()-ultimaAlturaMapaGps));
+  if(wait)await new Promise((resolve,reject)=>{
+   const cancel=()=>{clearTimeout(timer);reject(Error('Alturas canceladas.'))};
+   const timer=setTimeout(()=>{signal.removeEventListener('abort',cancel);resolve()},wait);
+   if(signal.aborted)cancel();else signal.addEventListener('abort',cancel,{once:true});
+  });
+  if(signal.aborted)throw Error('Alturas canceladas.');
+  ultimaAlturaMapaGps=Date.now();
+  const shape=batch.map(s=>({lat:Number(s.p[0].toFixed(6)),lon:Number(s.p[1].toFixed(6))}));
+  const url='https://valhalla1.openstreetmap.de/height?json='+encodeURIComponent(JSON.stringify({shape,height_precision:1}));
+  const response=await fetch(url,{signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json','X-Client-Id':'trabakutik.com'}});
+  if(!response.ok)throw Error('No se han podido obtener las alturas del terreno.');
+  const data=await response.json();
+  if(!Array.isArray(data.height)||data.height.length!==batch.length||data.height.some(h=>h!==null&&(!Number.isFinite(h)||h< -12000||h>10000)))throw Error('El servicio de alturas devolvió datos incompletos.');
+  if(signal.aborted)throw Error('Alturas canceladas.');
+  batch.forEach((s,i)=>cacheAlturasMapaGps.set(key(s.p),data.height[i]));
+ }
+ samples.forEach(s=>s.h=cacheAlturasMapaGps.get(key(s.p))??null);
+ let i=0;
+ function elevation(d){
+  while(i+1<samples.length&&samples[i+1].d<d-.001)i++;
+  const a=samples[i],b=samples[Math.min(i+1,samples.length-1)];
+  if(Math.abs(d-a.d)<.01)return a.h;
+  if(Math.abs(d-b.d)<.01)return b.h;
+  if(!Number.isFinite(a.h)||!Number.isFinite(b.h))return null;
+  return a.h+(b.h-a.h)*(d-a.d)/(b.d-a.d);
+ }
+ // Añadir también las muestras intermedias permite ver una cima situada
+ // en mitad de una recta larga, sin cambiar el camino calculado.
+ const parts=result.parts.map(()=>[]);
+ for(let r=0;r<rows.length;r++){
+  const row=rows[r];parts[row.leg].push({d:row.d,p:row.p});
+  const next=rows[r+1];
+  if(next&&next.leg===row.leg)for(const s of samples)if(s.d>row.d+.01&&s.d<next.d-.01)parts[row.leg].push({d:s.d,p:s.p});
+ }
+ result.parts=parts.map(part=>part.map(row=>[row.p[0],row.p[1],elevation(row.d)]));
+ result.anchors=result.parts.length?[result.parts[0][0],...result.parts.map(part=>part[part.length-1])]:result.anchors;
+ while(cacheAlturasMapaGps.size>4000)cacheAlturasMapaGps.delete(cacheAlturasMapaGps.keys().next().value);
+ return result;
+}
+
 function aplicaMapaGps(result){
  // Solo después de validar la respuesta se sustituye el borrador.
  if(nodosManualesGps.size){const base=nodosManualesGps.values().next().value;redGps.nodos.length=base;redGps.ady.length=base;nodosManualesGps.clear()}
- const ids=result.anchors.map(p=>nodoManualGps(p[0],p[1]));
+ const ids=result.anchors.map(p=>nodoManualGps(p[0],p[1],p[2]));
  if(ids.length>2&&dist(result.anchors[0],result.anchors[ids.length-1])<.01)ids[ids.length-1]=ids[0];
  anclasGps=ids;tramosGps=ids.length?[[ids[0]]]:[];
  result.parts.forEach((pts,i)=>{
-  const tr=[ids[i],...pts.slice(1,-1).map(p=>nodoManualGps(p[0],p[1])),ids[i+1]];
+  const tr=[ids[i],...pts.slice(1,-1).map(p=>nodoManualGps(p[0],p[1],p[2])),ids[i+1]];
   tr.mapa=true;tramosGps.push(tr);
  });
  updateDraw();
@@ -870,16 +942,25 @@ async function planificaMapaGps(coords){
  cancelaMapaGps();const version=calculoMapaGps;
  if(coords.length<2){aplicaMapaGps({anchors:coords,parts:[]});estadoMapaGps('Marca el siguiente punto sobre un camino. El cálculo necesita conexión.');return}
  if(!permisoMapaGps){
-  permisoMapaGps=confirm('Para calcular por caminos se enviarán los puntos que marques a FOSSGIS (OpenStreetMap). Guardar en Mis rutas no publica el recorrido en Trabakutik. ¿Continuar?');
+  permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap y Valhalla). Guardar en Mis rutas no publica el recorrido en Trabakutik. ¿Continuar?');
   if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
  }
  const controller=new AbortController();peticionMapaGps=controller;calculandoMapaGps=true;
  $('saveCreated').disabled=true;estadoMapaGps('Calculando por caminos de OpenStreetMap…');
- const timer=setTimeout(()=>controller.abort(),20000);
+ const timer=setTimeout(()=>controller.abort(),30000);
  try{
   const result=await solicitaMapaGps(coords,controller.signal);
   if(version!==calculoMapaGps)return;
-  aplicaMapaGps(result);estadoMapaGps('Recorrido a pie calculado · alturas no disponibles.');
+  aplicaMapaGps(result);$('saveCreated').disabled=true;estadoMapaGps('Recorrido calculado · obteniendo alturas del terreno…');
+  try{
+   await alturasTerrenoGps(result,controller.signal);
+   if(version!==calculoMapaGps)return;
+   aplicaMapaGps(result);
+   const complete=result.parts.every(part=>part.every(p=>Number.isFinite(p[2])));
+   estadoMapaGps(complete?'Recorrido calculado · desnivel aproximado del terreno.':'Recorrido calculado · faltan alturas en algunos tramos.');
+  }catch(e){
+   if(version===calculoMapaGps)estadoMapaGps('Recorrido conservado · no se pudieron cargar las alturas. Vuelve a calcular con conexión.');
+  }
  }catch(e){
   if(version===calculoMapaGps)estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':e.message||'No se pudo calcular.');
  }finally{
