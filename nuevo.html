@@ -2401,16 +2401,10 @@ $('navGo').onclick=()=>startGPS(false,true);$('audioMode').onclick=conmutaModoAu
 // como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin
 // estar grabando y sin que apareciera «Iniciar»: sin salida. Esto reconcilia
 // con la verdad en vez de confiar en haber visto todos los pasos.
-// EL BOTON DE NAVEGAR SIN GRABAR. Nacio oculto el primer dia y nadie le
-// quitaba nunca la clase: dentro de la app, la unica forma de encender la
-// navegacion del servicio -la que avisa con la pantalla bloqueada- era pulsar
-// «Iniciar grabacion». Eso lo decidio el autor en su dia («con dar grabacion
-// y yo me mueva ya estaria navegando»), asi que esto no cambia esa costumbre:
-// solo abre la otra puerta, para seguir una ruta sin dejar un GPX grabado.
-// Se ve cuando hay ruta y el servicio no esta guiando ya.
+// Un único inicio en la botonera: grabar activa también la navegación.
+// Mantener oculto el antiguo acceso para que los sondeos no lo hagan reaparecer.
 function pintaBotonNavegar(){
- const b=$('navGo');if(!b)return;
- b.classList.toggle('hidden',!(enLaApp&&mode==='nav'&&routePoints.length>1&&!navegaNativo));
+ const b=$('navGo');if(b)b.classList.add('hidden');
 }
 function reconciliaBotonera(){
  if(recording)return;

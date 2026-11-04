@@ -200,3 +200,14 @@ test('Cancelar Parar y usar Pausa mantienen la navegación activa',()=>{
  c.pausaGrabacion(true);assert.equal(c.pausado,true);assert.equal(c.gpsApagadoPorTi,false);
  assert.deepEqual(c.calls,['pause']);assert.equal(c.navegaNativo,true);
 });
+
+
+test('La botonera no recupera un segundo inicio de Navegar al parar o guardar',()=>{
+ const hidden=new Set();
+ const c={$:()=>({classList:{add:k=>hidden.add(k)}})};vm.createContext(c);
+ vm.runInContext(source('function pintaBotonNavegar(){','function reconciliaBotonera(){'),c);
+ for(const active of [false,true,false]){
+  c.navegaNativo=active;c.enLaApp=true;c.mode='nav';c.routePoints=corner(90);
+  c.pintaBotonNavegar();assert(hidden.has('hidden'));
+ }
+});
