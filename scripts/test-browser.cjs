@@ -271,6 +271,8 @@ async function setup(context) {
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2,'un error no añade rectas');
     failPlanner=false;
     await creator.click('#saveCreated');await creator.click('#saveToMine');
+    assert(await creator.locator('#navigateSavedFromDialog').isVisible());
+    await creator.click('#closeSave');
     await creator.click('#modeNav');await creator.click('#savedRoutes');
     await creator.getByRole('button',{name:/Ruta personal de prueba/}).click();
     assert.match(await creator.locator('#distance').textContent(),/m aprox/);
