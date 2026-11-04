@@ -265,11 +265,31 @@ body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #createActions{flex-wrap:wrap}
 #createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
 .save-choices{display:grid;gap:7px;margin-top:12px}.save-choices button{width:100%;text-align:left}.save-summary{font-size:12px;line-height:1.45;color:#b6d0dc;margin:8px 0}.save-status{font-size:11px;line-height:1.4;color:#a5c5d3;margin:10px 0 0}
+/* Perfil de la ruta elegida: barra plegable, sin cubrir los mandos del mapa. */
+#elevationPanel.navigation-profile{height:132px;min-height:0;padding:4px 10px 6px}
+#elevationPanel.navigation-profile .elevation-head{min-height:36px;cursor:pointer}
+#elevationPanel.navigation-profile .elevation-head strong{font-size:10px;letter-spacing:.06em}
+#elevationPanel.navigation-profile #toggleProfile{width:44px;height:36px;min-height:36px;font-size:20px}
+#toggleProfile:focus-visible{outline:2px solid #a4ecff;outline-offset:2px}
+#elevationPanel.navigation-profile #elevationSvg{height:57px}
+#elevationPanel.navigation-profile .elevation-stats{font-size:11px;margin-top:0}
+#elevationPanel.navigation-profile .elevation-foot{font-size:10px;margin-top:1px}
+#elevationPanel.navigation-profile.collapsed{height:44px;padding:3px 10px}
+#elevationPanel.navigation-profile.collapsed .elevation-stats,
+#elevationPanel.navigation-profile.collapsed #elevationSvg,
+#elevationPanel.navigation-profile.collapsed .elevation-foot{display:none}
+#elevationPanel.navigation-profile.profile-empty:not(.collapsed){height:92px}
+#elevationPanel.navigation-profile.profile-empty .elevation-stats{display:none}
+#elevationPanel.navigation-profile.profile-empty:not(.collapsed) .elevation-foot{display:flex;line-height:1.4}
+@media(max-height:650px){
+ #elevationPanel.navigation-profile:not(.collapsed):not(.profile-empty){height:112px}
+ #elevationPanel.navigation-profile #elevationSvg{height:37px}
+}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div></div>
-<section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de la ruta en creación">
- <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar o desplegar perfil" aria-expanded="true">⌄</button></div>
+<section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
+ <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
  <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
@@ -671,6 +691,7 @@ function selectRoute(i){
  // cruces, y computeJunctions solo avisa de curvas de herradura.
  crucesOsm=[];
  routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
+ updateElevation();
  drawAll();
  $('routeDialog').classList.add('hidden');
  notice('Ruta seleccionada · preparando navegación');
@@ -733,9 +754,9 @@ function changeMode(m){
  const creating=m==='create';
  const actions=$('createActions'),profile=$('elevationPanel'),modes=document.querySelector('.modes');
  if(creating){$('map').appendChild(actions);$('map').appendChild(modes)}else{document.querySelector('footer.bottom').prepend(modes);modes.after(actions)}
- (creating?$('map'):document.querySelector('#app')).appendChild(profile);
+ if(creating)$('map').appendChild(profile);else document.querySelector('footer.bottom').before(profile);
  document.body.classList.toggle('creating-route',creating);
- if(m==='create'&&junctionActive>=0)resetJunctionView();mode=m;document.getElementById('elevationPanel').classList.toggle('hidden',m!=='create');for(const [key,b] of [['nav','modeNav'],['create','modeCreate']])$(b).setAttribute('aria-pressed',String(m===key));
+ if(m==='create'&&junctionActive>=0)resetJunctionView();mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate']])$(b).setAttribute('aria-pressed',String(m===key));
  // Dos pestanas, no tres. «Grabacion» era un modo aparte y no lo es: el
  // servicio navega y graba a la vez desde siempre, y desde que la guia
  // funciona tambien grabando lo unico que separaba a «Navegar» de
@@ -884,27 +905,70 @@ for(const id of ['elevationPanel','createActions']){
  const el=$(id);el.addEventListener('click',e=>e.stopPropagation());el.addEventListener('dblclick',e=>e.stopPropagation());
 }
 document.querySelector('.modes').addEventListener('click',e=>e.stopPropagation());
-let profileCollapsed=false;
+let profileCollapsed=false,navProfileCollapsed=true;
+let profileHeights=null,profileHeightsRequest=null,profileHeightsError=false;
+// Las alturas de Trabakutik corresponden punto por punto al mapa general.
+// Se usan solo para el perfil: nunca sustituyen la geometría de navegación.
+function navigationProfilePoints(){
+ if(chosen<0||!tracks[chosen])return routePoints;
+ const track=tracks[chosen],slug=track.href?.replace(/\.html$/,'');
+ const heights=profileHeights?.[slug];
+ return track.points.map((p,i)=>[p[0],p[1],Array.isArray(heights)&&heights.length===track.points.length&&Number.isFinite(heights[i])?heights[i]:null]);
+}
+function profileDistanceText(total,creating){
+ if(!creating&&chosen>=0&&tracks[chosen]){
+  const published=(datosDeRuta[tracks[chosen].href]||'').match(/^[\d.,]+\s*km/);
+  if(published)return published[0];
+ }
+ return (total/1000).toFixed(2).replace('.',',')+' km';
+}
+function loadProfileHeights(){
+ if(profileHeights||profileHeightsRequest||profileHeightsError||chosen<0)return;
+ profileHeightsRequest=fetch('data/alturas.json',{cache:'no-cache'})
+  .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .then(data=>{if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Alturas no válidas');profileHeights=data})
+  .catch(()=>{profileHeightsError=true})
+  .finally(()=>{profileHeightsRequest=null;updateElevation()});
+}
 $('toggleProfile').onclick=()=>{
- profileCollapsed=!profileCollapsed;
- $('elevationPanel').classList.toggle('collapsed',profileCollapsed);
- $('toggleProfile').setAttribute('aria-expanded',String(!profileCollapsed));
- $('toggleProfile').textContent=profileCollapsed?'⌃':'⌄';
+ if(mode==='create')profileCollapsed=!profileCollapsed;
+ else{navProfileCollapsed=!navProfileCollapsed;if(!navProfileCollapsed)profileHeightsError=false}
+ updateElevation();
 };
+// La cabecera también se puede tocar; el botón mantiene el acceso por teclado.
+$('elevationPanel').querySelector('.elevation-head').addEventListener('click',e=>{
+ if(!e.target.closest('button'))$('toggleProfile').click();
+});
 function updateElevation(){
  const panel=$('elevationPanel');
  if(!panel)return;
- panel.classList.toggle('hidden',mode!=='create');
- if(mode!=='create')return;
- const pts=drawPoints,available=pts.filter(p=>Number.isFinite(p[2]));
+ const creating=mode==='create',visible=creating||routePoints.length>1;
+ panel.classList.toggle('hidden',!visible);
+ panel.classList.toggle('navigation-profile',!creating);
+ const collapsed=creating?profileCollapsed:navProfileCollapsed;
+ panel.classList.toggle('collapsed',collapsed);
+ const toggle=$('toggleProfile');
+ toggle.setAttribute('aria-expanded',String(!collapsed));
+ toggle.setAttribute('aria-label',collapsed?'Desplegar perfil':'Plegar perfil');
+ toggle.textContent=collapsed?'⌃':'⌄';
+ if(!visible)return;
+ if(!creating&&!collapsed)loadProfileHeights();
+ const pts=creating?drawPoints:navigationProfilePoints(),available=pts.filter(p=>Number.isFinite(p[2]));
  panel.classList.toggle('profile-empty',pts.length<2||available.length<2);
  if(pts.length<2||available.length<2){
   $('elevationPath').setAttribute('d','');$('elevationFill').setAttribute('d','');
   $('elevationEnd').style.display='none';
-  $('profileDistance').textContent='0,00 km';$('profileGain').textContent='↑ 0 m';$('profileLoss').textContent='↓ 0 m';
+  const total=pts.reduce((sum,p,i)=>sum+(i?dist(pts[i-1],p):0),0);
+  $('profileDistance').textContent=profileDistanceText(total,creating);$('profileGain').textContent=creating?'↑ 0 m':'↑ —';$('profileLoss').textContent=creating?'↓ 0 m':'↓ —';
   $('elevationSlope').textContent=pts.length?'Marca el siguiente punto':'Marca el inicio';
   $('profileLow').textContent=available.length?'Altura inicial '+Math.round(available[0][2])+' m':'Sin alturas todavía';
   $('profileHigh').textContent=available.length?'':'Perfil disponible cuando haya desnivel';
+  if(!creating){
+   $('elevationSlope').textContent=$('profileDistance').textContent;
+   $('elevationSlope').className='';
+   $('profileLow').textContent=profileHeightsRequest?'Cargando alturas…':'Sin alturas suficientes';
+   $('profileHigh').textContent=profileHeightsRequest?'':'No se puede dibujar el perfil';
+  }
   return;
  }
  const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
@@ -915,10 +979,10 @@ function updateElevation(){
    if(lastElev!==null){
     const delta=elevation-lastElev;
     // Evitar sumar ruido centimétrico entre puntos interpolados.
-    if(delta>0)up+=delta;else down-=delta;
-   }
-   lastElev=elevation;lastKnown=elevation;
-  }
+    if(creating||Math.abs(delta)>=5){if(delta>0)up+=delta;else down-=delta;lastElev=elevation}
+   }else lastElev=elevation;
+   lastKnown=elevation;
+  }else if(!creating)lastElev=null;
   samples.push({d:travelled,h:elevation});
  }
  const known=samples.filter(p=>p.h!==null);
@@ -926,21 +990,35 @@ function updateElevation(){
  const total=Math.max(1,travelled), width=800,top=8,bottom=108,drawH=bottom-top;
  // 8% del recorrido total como escala vertical mínima: no amplificar
  // una cuesta suave para que parezca una pared.
- const verticalSpan=Math.max(35,total*.08,(hMax-hMin)*1.18);
+ const verticalSpan=Math.max(35,creating?total*.08:0,(hMax-hMin)*1.18);
  const center=(hMax+hMin)/2,base=center-verticalSpan/2;
  const x=d=>d/total*width;
  const y=h=>Math.max(top,Math.min(bottom,bottom-(h-base)/verticalSpan*drawH));
  const coords=known.map(p=>[x(p.d),y(p.h)]);
- const line=coords.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' ');
- $('elevationPath').setAttribute('d',line);
- $('elevationFill').setAttribute('d',line+' L'+coords[coords.length-1][0].toFixed(2)+' '+bottom+' L'+coords[0][0].toFixed(2)+' '+bottom+' Z');
+ const groups=[];let group=[];
+ if(creating)groups.push(coords);
+ else{
+  // Un hueco de alturas no es una cuesta conocida: dejarlo sin trazo.
+  for(const sample of samples){
+   if(sample.h===null){if(group.length)groups.push(group);group=[]}
+   else group.push([x(sample.d),y(sample.h)]);
+  }
+  if(group.length)groups.push(group);
+ }
+ const paths=groups.map(g=>g.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' '));
+ $('elevationPath').setAttribute('d',paths.join(' '));
+ $('elevationFill').setAttribute('d',groups.map((g,i)=>paths[i]+' L'+g[g.length-1][0].toFixed(2)+' '+bottom+' L'+g[0][0].toFixed(2)+' '+bottom+' Z').join(' '));
  $('elevationEnd').style.display='';
  $('elevationEnd').setAttribute('cx',coords[coords.length-1][0]);$('elevationEnd').setAttribute('cy',coords[coords.length-1][1]);
- $('profileDistance').textContent=(travelled/1000).toFixed(2).replace('.',',')+' km';
- $('profileGain').textContent='↑ '+Math.round(up)+' m';
- $('profileLoss').textContent='↓ '+Math.round(down)+' m';
+ $('profileDistance').textContent=profileDistanceText(travelled,creating);
+ $('profileGain').textContent='↑ '+Math.round(up)+' m'+(creating?'':' aprox.');
+ $('profileLoss').textContent='↓ '+Math.round(down)+' m'+(creating?'':' aprox.');
  $('profileLow').textContent='Mín. '+Math.round(hMin)+' m';
  $('profileHigh').textContent='Máx. '+Math.round(hMax)+' m';
+ if(!creating){
+  const info=$('elevationSlope');info.textContent=$('profileDistance').textContent;info.className='';
+  return;
+ }
  // Pendiente media del último tramo marcado, con su distancia real.
  const part=tramosGps[tramosGps.length-1]||[];
  let partDist=0,partFirst=null,partLast=null;
@@ -1301,7 +1379,7 @@ function clearActiveRoute(){
  // El dibujo provisional del creador es otra capa distinta de la ruta activa.
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
- routePoints=[];chosen=-1;activeSavedId=null;updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
+ routePoints=[];chosen=-1;activeSavedId=null;updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
  junctions=[];junctionWarned.clear();routeCumulative=[];crucesOsm=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
@@ -2457,6 +2535,7 @@ fetch('data/rutas.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
  for(const k in es) if(es[k]&&es[k].h){ if(es[k].n)nombresDeRuta[es[k].h]=es[k].n; if(es[k].s)datosDeRuta[es[k].h]=es[k].s; }
  // Puede llegar despues de que se haya pintado algo: se repinta.
  if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href)}
+ updateElevation();
  if(!$('routeDialog').classList.contains('hidden'))showRoutes();
 }).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
 fetch('data/trailhead.json',{cache:'no-cache'}).then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} rutasListas=true; }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
