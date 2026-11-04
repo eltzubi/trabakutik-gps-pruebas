@@ -468,3 +468,14 @@ test('el GPX manual no inventa alturas y el resumen no une huecos',()=>{
   const e=run(section('function elevationText(', 'function loadSaved('),{R:Math.PI/180});
   assert.match(e.elevationText(points),/\+0 \/ -0.*alturas incompletas/);
 });
+
+test('Manual permite mover un punto de la red fuera de los trazados',()=>{
+  const c=creatorContext();
+  c.draft([0,3],[[0],c.tramoGps(0,3,false)]);
+  c.$('drawMethod').value='manual';c.$('drawMethod').onchange();
+  c.mueveAnclaGps(0,43.03,-2.03);
+  const s=c.state();
+  assert.equal(s.red.nodos[s.anchors[0]][0],43.03);
+  assert.equal(s.red.nodos[s.anchors[0]][1],-2.03);
+  assert.equal(s.segments[1].manual,true);
+});

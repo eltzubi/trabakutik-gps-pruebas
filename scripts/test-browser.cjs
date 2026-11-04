@@ -245,6 +245,7 @@ async function setup(context) {
     await creator.waitForTimeout(300);
     assert.equal(await creator.evaluate(()=>window.__creator.drawPoints.length),3);
     assert.notEqual(await creator.locator('#profileDistance').textContent(),'0,00 km');
+    assert(await creator.locator('#profileDistance').isVisible(),'distancia visible sin alturas');
     assert.equal(await creator.locator('#profileGain').textContent(),'↑ —');
     for(const width of [320,390,768,1280]){
       await creator.setViewportSize({width,height:844});
@@ -281,6 +282,11 @@ async function setup(context) {
     assert.equal(await creator.evaluate(()=>window.__creator.drawPoints[0][0]),43.02);
     assert.equal(await creator.evaluate(()=>!!window.__creator.tramosGps[1].manual),true);
     assert.equal(await creator.evaluate(()=>!!window.__creator.tramosGps[2].manual),false);
+    await creator.selectOption('#drawMethod','manual');
+    await creator.evaluate(()=>window.__creator.mueveAnclaGps(1,43.03,-2.03));
+    assert.deepEqual(await creator.evaluate(()=>{
+      const c=window.__creator;return c.redGps.nodos[c.anclasGps[1]].slice(0,2);
+    }),[43.03,-2.03]);
     await creator.click('#clearCreated');
     assert.equal(await creator.evaluate(()=>window.__creator.nodosManualesGps.size),0);
     assert.deepEqual(creatorErrors,[],'errores del creador');

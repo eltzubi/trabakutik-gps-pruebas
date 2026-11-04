@@ -221,6 +221,11 @@ body.creating-route #elevationPanel.profile-empty:not(.collapsed){height:34px}
 body.creating-route #elevationPanel.profile-empty .elevation-head{min-height:22px}
 body.creating-route:has(#elevationPanel.profile-empty:not(.collapsed)) .modes{bottom:55px}
 body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
+/* Sin alturas seguimos mostrando la distancia medida del borrador. */
+body.creating-route #elevationPanel.profile-empty.profile-distance-only:not(.collapsed){height:58px}
+body.creating-route #elevationPanel.profile-empty.profile-distance-only:not(.collapsed) .elevation-stats{display:flex}
+body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .modes{bottom:79px}
+
 @media(max-width:365px){body.creating-route .modes button{min-width:63px;padding:4px 6px}}
 
 
@@ -926,6 +931,7 @@ function updateElevation(){
  if(mode!=='create')return;
  const pts=drawPoints,available=pts.filter(p=>Number.isFinite(p[2]));
  panel.classList.toggle('profile-empty',pts.length<2||available.length<2);
+ panel.classList.toggle('profile-distance-only',pts.length>=2&&available.length<2);
  if(pts.length<2||available.length<2){
   $('elevationPath').setAttribute('d','');$('elevationFill').setAttribute('d','');
   $('elevationEnd').style.display='none';
@@ -1062,7 +1068,7 @@ function idaYVueltaGps(){
 // habia que deshacer los seis de despues. Solo se recalculan los dos tramos
 // que tocan al punto movido, y si alguno no sale no se toca nada.
 function mueveAnclaGps(i,lat,lon){
- const n=nodosManualesGps.has(anclasGps[i])?nodoManualGps(lat,lon):nodoCerca(redGps,lat,lon);
+ const n=(trazadoManual||nodosManualesGps.has(anclasGps[i]))?nodoManualGps(lat,lon):nodoCerca(redGps,lat,lon);
  if(n<0){notice('Ahí no pasa ningún camino. Suéltalo más cerca de uno.');updateDraw();return}
  const ult=anclasGps.length-1;
  const cerrado=ult>1&&anclasGps[0]===anclasGps[ult];
