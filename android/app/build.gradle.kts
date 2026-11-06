@@ -29,6 +29,13 @@ android {
     }
 
     buildTypes {
+        create("qa") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".qa"
+            versionNameSuffix = "-pruebas"
+            isDebuggable = true
+            matchingFallbacks += listOf("debug")
+        }
         getByName("release") {
             // La reduccion se activara tras verificar el puente JavaScript.
             isMinifyEnabled = false
