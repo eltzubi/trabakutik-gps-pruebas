@@ -271,12 +271,31 @@ public class TrackingService extends Service implements LocationListener {
   route.clear();routeReached=false;offRoute=false;farSince=0;ultimoProgresoGiro=Double.NaN;ultimoProgresoGiroMs=0;
   File f=new File(getFilesDir(),"ruta-activa.json");
   if(!f.exists()){loadTurns();return;}
+  if(f.length()>2000000){
+   android.util.Log.e("TrabakutikGPS","Archivo de ruta excede el límite de 2 MB");
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+     .putString("routeError","GPX demasiado grande para la navegación nativa").apply();
+   loadTurns();return;
+  }
   try {
-   byte[] raw=new byte[(int)Math.min(f.length(),2000000)];
+   byte[] raw=new byte[(int)f.length()];
    try(FileInputStream in=new FileInputStream(f)){int n=0,k;while(n<raw.length&&(k=in.read(raw,n,raw.length-n))>0)n+=k;}
    JSONArray pts=new JSONArray(new String(raw,java.nio.charset.StandardCharsets.UTF_8));
-   for(int i=0;i<pts.length()&&i<15000;i++){JSONArray p=pts.optJSONArray(i);if(p!=null&&p.length()>=2){double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);if(Double.isFinite(lat)&&Double.isFinite(lon))route.add(new double[]{lat,lon});}}
-  }catch(Exception ignored){}
+   if(pts.length()>15000)throw new IllegalArgumentException("Ruta con más de 15000 puntos");
+   for(int i=0;i<pts.length();i++){
+    JSONArray p=pts.optJSONArray(i);
+    if(p==null||p.length()<2)continue;
+    double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);
+    if(Double.isFinite(lat)&&Double.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180)
+     route.add(new double[]{lat,lon});
+   }
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("routeError").apply();
+  }catch(Exception ex){
+   route.clear();
+   android.util.Log.e("TrabakutikGPS","Archivo de ruta inválido o incompleto",ex);
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+     .putString("routeError","No se pudo leer el GPX para navegación nativa").apply();
+  }
   loadTurns();
  }
  void loadTurns(){
