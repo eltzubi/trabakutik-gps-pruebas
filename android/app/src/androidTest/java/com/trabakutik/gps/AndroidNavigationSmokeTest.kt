@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import java.io.File
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -61,4 +62,24 @@ class AndroidNavigationSmokeTest {
             )
         assertFalse(info.exported)
     }
+    @Test
+    fun damagedGpxIsClosedWithoutKeepingPartialPoint() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "gpx-recovery-smoke.gpx")
+        try {
+            val xml = "<?xml version=\"1.0\"?><gpx><trk><trkseg>\\n" +
+                "<trkpt lat=\"43.0\" lon=\"-2.0\"/>\\n" +
+                "<trkpt lat=\"43.00"
+            file.writeText(xml)
+            assertTrue(TrackingService.cierraGpxSiQuedoAbierto(file))
+            val repaired = file.readText()
+            assertTrue(repaired.contains("<trkpt lat=\"43.0\" lon=\"-2.0\"/>"))
+            assertFalse(repaired.contains("<trkpt lat=\"43.00"))
+            assertTrue(repaired.endsWith("</trkseg></trk></gpx>\\n"))
+            assertFalse(TrackingService.cierraGpxSiQuedoAbierto(file))
+        } finally {
+            file.delete()
+        }
+    }
+
 }
