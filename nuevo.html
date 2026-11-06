@@ -2066,7 +2066,12 @@ function computeJunctions(){
   return false;
  };
  for(let i=1;i<pts.length-1;i++){
-  const giro=geometriaEn(i,VENTANA);
+  // En una salida o llegada puede haber menos de 12 m de trazado a un lado.
+  // Reducir la ventana solo cerca de los extremos; ignorar menos de 6 m
+  // para no convertir la oscilacion del GPS en un giro falso.
+  const margen=Math.min(routeCumulative[i],routeCumulative[pts.length-1]-routeCumulative[i]);
+  if(margen<6)continue;
+  const giro=geometriaEn(i,Math.min(VENTANA,margen));
   if(!giro)continue;
   const {angle,cross}=giro,b=pts[i];
   if(angle<40)continue; // por debajo de CRUCE_GIRO no hay nada que mirar
