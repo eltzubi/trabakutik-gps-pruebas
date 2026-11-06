@@ -97,7 +97,7 @@ class RouteProgressMatcherTest {
             (0..2502).map { index ->
                 doubleArrayOf(40.0, -3.0 + index * 0.001)
             }
-        val position = longRoute[2100]
+        val position = longRoute[2400]
         val result = locate(longRoute, position[0], position[1], speed = 4.0)
         assertNotNull(result)
         assertTrue(result!!.progressMeters > 200_000)
