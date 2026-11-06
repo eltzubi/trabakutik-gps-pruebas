@@ -12,7 +12,7 @@ import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -175,7 +175,7 @@ public class TrackingService extends Service implements LocationListener {
   if("SENTIDO".equals(action)){
    int s=i.getIntExtra("sentido",1);
    int antes=sentido;
-   sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";
+   sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";ultimoProgresoGiro=Double.NaN;ultimoProgresoGiroMs=0;
    if(sentido!=antes)habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
      :"Vuelves al sentido de la ruta");
    if(active)updateNotice();
@@ -254,7 +254,7 @@ public class TrackingService extends Service implements LocationListener {
   recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;
+  route.clear();routeReached=false;offRoute=false;farSince=0;ultimoProgresoGiro=Double.NaN;ultimoProgresoGiroMs=0;
   File f=new File(getFilesDir(),"ruta-activa.json");
   if(!f.exists()){loadTurns();return;}
   try {
@@ -312,6 +312,14 @@ public class TrackingService extends Service implements LocationListener {
   double lat=l.getLatitude(),lon=l.getLongitude();
   double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat));
   double closest=Double.POSITIVE_INFINITY,along=0,cumulative=0;
+  double continuidadError=Double.POSITIVE_INFINITY,continuidadAlong=Double.NaN;
+  long ahora=SystemClock.elapsedRealtime();
+  // En cruces y bucles varios tramos pueden pasar por el mismo punto.
+  // Se favorece el avance cercano al ultimo progreso, sin impedir recuperar
+  // la ruta tras una perdida de señal prolongada.
+  boolean continuidad=Double.isFinite(ultimoProgresoGiro)
+    && ahora-ultimoProgresoGiroMs<15000;
+  double margenAvance=Math.max(35,Math.max(0,velocidadSuave)*((ahora-ultimoProgresoGiroMs)/1000.0)+20);
   for(int i=1;i<route.size();i++){
    double[] a=route.get(i-1),b=route.get(i);
    double dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*scale;
@@ -319,10 +327,20 @@ public class TrackingService extends Service implements LocationListener {
    double length=Math.hypot(dx,dy);
    double t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
    double error=Math.hypot(ax+t*dx,ay+t*dy);
-   if(error<closest){closest=error;along=cumulative+t*length;}
+   double avance=cumulative+t*length;
+   if(error<closest){closest=error;along=avance;}
+   if(continuidad&&Math.abs(avance-ultimoProgresoGiro)<=margenAvance&&error<continuidadError){
+    continuidadError=error;continuidadAlong=avance;
+   }
    cumulative+=length;
   }
+  // No se fuerza la continuidad si el tramo anterior queda claramente
+  // mas lejos que el mas proximo: asi se puede corregir un desvio real.
+  if(Double.isFinite(continuidadAlong)&&continuidadError<=closest+8){
+   along=continuidadAlong;closest=continuidadError;
+  }
   if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
+  ultimoProgresoGiro=along;ultimoProgresoGiroMs=ahora;
   double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
