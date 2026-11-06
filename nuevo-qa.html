@@ -1,0 +1,2758 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#07131d"><title>Pruebas QA · Trabakutik · Navegador nuevo</title><link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#e6f4ff;background:#07131d}*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.4;cursor:default}#app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(7px + env(safe-area-inset-top)) 12px 8px;background:#0a1b27;border-bottom:1px solid #284456;min-height:62px}.top strong{font-size:13px;font-weight:760;letter-spacing:.05em}.top small{font-size:10px;color:#91b4c4;display:block}.top .sub{font-size:11px;color:#a6eefe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}.top a{color:#9ed9e7;font-size:11px;text-decoration:none}#map{position:relative;flex:1;min-height:0;background:#172d33}#map{overflow:hidden}#mapRot{position:absolute;left:50%;top:50%;width:var(--lado,780px);height:var(--lado,780px);margin-left:calc(var(--lado,780px)/-2);margin-top:calc(var(--lado,780px)/-2);transform-origin:50% 50%;transition:transform .4s linear;will-change:transform}#mapRot.sin-giro{transition:none}#mapCredit{position:absolute;z-index:620;right:0;bottom:var(--turn-alto,0px);font-size:9px;line-height:1.6;color:#9fb8c6;background:#07131db8;padding:0 5px;border-radius:5px 0 0 0;pointer-events:none}.solo-app{display:block;background:#15313fdb;border:1px solid #3b6579;border-radius:12px;padding:9px 11px;margin-bottom:8px}.solo-app b{display:block;font-size:12px;color:#bfefff;margin-bottom:3px}.solo-app span{display:block;font-size:10px;line-height:1.45;color:#9fc0d0}.solo-app-baja{display:block;text-align:center;margin-top:8px;background:#92fca8;color:#06271b;font-weight:800;font-size:12px;text-decoration:none;border-radius:10px;padding:9px}#orient[aria-pressed=true]{background:#66e5ff!important;color:#051824!important;border-color:#66e5ff!important}#audioMode[data-modo="voz"]{border-color:#66e5ff!important;color:#66e5ff!important}#audioMode[data-modo="pitidos"]{border-color:#ffa94d!important;color:#ffa94d!important}#audioMode[data-modo="silencio"]{color:#819ba8!important}.routeitem .btn-sub{padding:6px 7px;font-size:11px;border-radius:8px;background:#173747;border:1px solid #4a7186;color:#d4f7ff;white-space:nowrap}#eye[aria-pressed=true]{background:#ffa94d!important;color:#2b1603!important;border-color:#ffa94d!important}#locate.siguiendo{background:#187cff!important;color:#fff!important;border-color:#187cff!important}.leaflet-container{background:#172d33}.leaflet-control-attribution{font-size:9px!important}.tools{position:absolute;z-index:700;right:10px;top:12px;display:grid;gap:7px}.tools button{width:42px;height:42px;border:1px solid #5a889b7a;border-radius:13px;background:#0d2339ed;color:#d4f7ff;font-size:21px;box-shadow:0 2px 14px #0006}.info{position:absolute;z-index:700;left:10px;top:12px;max-width:calc(100% - 80px);background:#0a1f2edb;border:1px solid #31576a;border-radius:13px;padding:9px 12px;backdrop-filter:blur(12px);pointer-events:none}.info b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info span{display:block;font-size:10px;color:#a5bece;margin-top:4px}.bottom{background:#091925;border-top:1px solid #315265;padding:8px 9px calc(9px + env(safe-area-inset-bottom));flex:none}.modes{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:8px}.modes button{background:#122e3d;border:1px solid #2d5261;color:#acccd9;border-radius:12px;padding:9px 4px;font-size:12px;font-weight:650}.modes button[aria-pressed=true]{color:#051824;background:#66e5ff;border-color:#66e5ff}.actions{display:flex;gap:6px;align-items:center;justify-content:center;min-height:44px}.actions button{min-height:43px;flex:1;padding:9px 8px;background:#173346;color:#f3fcff;border:1px solid #3f6375;border-radius:12px;font-size:12px;font-weight:700}.actions .go{background:#92fca8;color:#06271b;border-color:#92fca8}.actions .red{background:#e95164;color:#fff;border-color:#e95164}.actions .blue{background:#338be9;color:#fff;border-color:#338be9}.actions .amber{background:#ffbd69;color:#2d1804;border-color:#ffbd69}.actions .light{background:#123046}.hidden{display:none!important}.status{font-size:10px;color:#a7bfcb;margin-top:6px;text-align:center;min-height:13px}.legend{font-size:10px;color:#9cb8c7;display:flex;justify-content:center;gap:12px;margin-top:6px}.dot{width:15px;height:3px;display:inline-block;vertical-align:middle;margin-right:3px}.popup{position:absolute;z-index:900;inset:0;background:#07131dba;display:grid;place-items:end center}.sheet{width:100%;max-height:77%;overflow:auto;background:#102938;border:1px solid #365467;border-radius:19px 19px 0 0;padding:16px 14px 24px}.sheet h2{font-size:16px;margin:0 0 9px}.sheet input{width:100%;border-radius:10px;background:#173747;border:1px solid #638092;color:white;padding:12px;margin-bottom:9px}.sheet button{background:#163a4c;color:white;border:1px solid #4d7385;border-radius:10px;padding:10px}.routeitem{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;text-align:left;margin:5px 0;font-size:12px}.routeitem span{font-size:10px;color:#a4c3d2}
+.routeitem .ri-txt{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12px;color:inherit}
+.routeitem .ri-name{font-size:12px;color:inherit}
+.routeitem .ri-km{font-size:10px;color:#8fb3c4;font-variant-numeric:tabular-nums}.sheet .close{float:right}.on-map{position:absolute;bottom:10px;left:10px;z-index:700;border-radius:99px;padding:7px 11px;font-size:11px;background:#0b293bdd;color:#a5e3f3;border:1px solid #3d7485;pointer-events:none}@media(min-width:800px){#app{max-width:900px;margin:auto;border-left:1px solid #1e4453;border-right:1px solid #1e4453}.top{padding-top:12px}}
+
+.android-app .top{display:none}
+.android-app #app{height:100vh;height:100dvh}
+.android-app .bottom{padding-bottom:max(9px,env(safe-area-inset-bottom))}
+.is-recording .info{border-color:#fc4e64}
+.is-recording .info b::before{content:'● ';color:#ff405c}
+/* Vista Android compacta: el mapa conserva prioridad sobre el panel. */
+html{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#app{height:100vh;height:100vh;height:100dvh}
+button{min-width:0}
+.top{gap:8px}
+.top>div{min-width:0;flex:1}
+.top a{flex:none;white-space:nowrap}
+.bottom{box-shadow:0 -4px 18px #04101990}
+.legend{flex-wrap:wrap}
+.is-recording #recordStop{background:#c52640;border-color:#ff5a6e;color:#fff}
+.is-recording .status{color:#ffb2bd;font-weight:700}
+.recorded-red{filter:drop-shadow(0 0 2px #500e20)}
+.sheet{max-height:78vh;max-height:min(78dvh,640px);overscroll-behavior:contain}
+.sheet button{min-height:42px}
+@media(max-width:390px){
+ .top{padding-inline:9px}
+ .top a{font-size:10px}
+ .modes button{font-size:11px;padding:10px 2px}
+ .actions button{font-size:11px;padding:8px 4px}
+ .bottom{padding-inline:7px}
+ .legend{gap:8px}
+ .info{padding:7px 9px;max-width:calc(100% - 66px)}
+ .tools{right:7px}
+ .tools button{width:39px;height:39px}
+}
+@media(max-height:650px){
+ .top{min-height:47px;padding-block:6px}
+ .modes{margin-bottom:4px}
+ .bottom{padding-top:5px}
+ .status{margin-top:4px}
+ .legend{margin-top:4px}
+}
+
+.elevation-panel{background:#0b202e;border-top:1px solid #376077;padding:7px 11px 6px;flex:none;min-height:141px}
+.elevation-head,.elevation-stats,.elevation-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.elevation-head strong{font-size:10px;letter-spacing:.1em;color:#a9cfdf}
+.elevation-head span{font-size:11px;font-weight:750;color:#a2f6b0;text-align:right}
+.elevation-head .up{color:#ffbe74}.elevation-head .down{color:#81e4ff}
+.elevation-stats{justify-content:flex-start;gap:17px;font-size:12px;font-weight:750;margin-top:3px}
+.elevation-stats span:nth-child(2){color:#ffbd75}.elevation-stats span:nth-child(3){color:#85dffd}
+#elevationSvg{display:block;width:100%;height:86px;margin-top:1px;overflow:visible}
+.elevation-foot{font-size:10px;color:#95b5c5;margin-top:-2px}
+@media(max-height:650px){.elevation-panel{min-height:113px;padding-top:4px}#elevationSvg{height:62px}}
+
+.clear-active{border:1px solid #506b79;background:#173544;color:#e5f4fa;border-radius:8px;width:25px;height:26px;display:grid;place-items:center;font-size:20px;line-height:1;flex:none;padding:0}
+.clear-active.hidden{display:none}
+.info-top .basemap-control{flex-shrink:0}
+.info:has(.clear-active:not(.hidden)) .basemap-control{max-width:92px}
+#createActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#createActions button{min-width:0}
+@media(max-height:650px){#createActions button{min-height:36px;padding:6px 5px}}
+/* Selector cartográfico compacto; mantiene el trazado sobre las teselas. */
+.info{max-width:calc(100% - 79px);width:min(315px,calc(100% - 79px));pointer-events:auto}
+.info-top{display:flex;align-items:center;justify-content:space-between;gap:5px}
+.info-top b{min-width:0;flex:1}
+.basemap-control{display:flex;align-items:center;gap:4px;padding:2px 5px;border:1px solid #446679;border-radius:9px;background:#102b3be8;flex:none}
+.basemap-control span{color:#a2b9c9;font-size:9px}
+.basemap-control select{width:64px;font-size:11px;color:#d9faff;background:transparent;border:0;outline:none;padding:3px 0}
+.basemap-control option{color:#0b2130;background:#e3f1f6}
+#navActions{grid-template-columns:1fr 1fr;display:grid}
+#navActions.hidden{display:none}
+#navActions button{width:100%}
+@media(max-width:390px){.info{max-width:calc(100% - 65px);width:min(315px,calc(100% - 65px))}.basemap-control span{display:none}.basemap-control select{width:58px}}
+
+.map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
+.turn-hint{position:absolute;z-index:1100;left:10px;right:10px;bottom:12px;padding:13px 15px;border-radius:20px;background:linear-gradient(160deg,#0b2b3bf2,#071d29f7);border:1px solid #3d8ea4;box-shadow:0 0 0 1px #4de1ff22,0 10px 34px #000b,inset 0 1px 0 #ffffff14;color:#f0fcff;pointer-events:none}
+#map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
+/* Por id y no por clase: «.info span» y «.info b» ponen display:block y
+   ganan por especificidad a una clase, asi que la brujula y los kilometros
+   se apilaban en cuatro lineas en vez de ir en fila. */
+#compass{display:flex;align-items:center;gap:8px;margin-top:5px}
+#compass b{display:inline;font-size:14px;font-weight:800;color:#a6f3ff;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;margin:0}
+#compass svg{flex:0 0 auto}
+#routeProgress{display:block;font-size:11px;color:#cdeefb;margin-top:4px;font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+#routeProgress b{display:inline;font-size:11px;color:#8ef0ff;font-weight:800;white-space:nowrap;overflow:visible;margin:0}
+.reverse-warn{display:block;margin-top:5px;padding:3px 7px;border-radius:7px;background:#4a2f07e6;border:1px solid #c98a2b;color:#ffd99a;font-size:10px;font-weight:700;letter-spacing:.03em;line-height:1.25}
+.turn-fila{display:flex;align-items:center;gap:13px}
+.turn-arrow{flex:0 0 auto;width:78px;height:78px;border-radius:18px;background:radial-gradient(70% 70% at 50% 35%,#10536399,#07222ecc);border:1px solid #4ba7bc;display:grid;place-items:center;box-shadow:inset 0 0 22px #4de1ff26,0 0 18px #4de1ff1f}
+.turn-copy{display:flex;flex-direction:column;min-width:0;flex:1}
+.turn-copy b{font-size:18px;font-weight:700;line-height:1.15}
+.turn-copy small{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#79c6da;margin-top:3px}
+.turn-dist{display:flex;align-items:baseline;gap:5px;margin-top:5px}
+.turn-dist em{font-style:normal;font-size:42px;font-weight:800;line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#a6f3ff;text-shadow:0 0 20px #4de1ff5c}
+.turn-dist i{font-style:normal;font-size:15px;font-weight:600;color:#8fd3e4}
+.turn-fases{display:flex;gap:6px;margin-top:12px}
+.turn-fases i{flex:1;height:5px;border-radius:3px;background:#17404f}
+.turn-fases i.on{background:linear-gradient(90deg,#4de1ff,#a6f3ff);box-shadow:0 0 10px #4de1ff80}
+.turn-rot{display:flex;gap:6px;margin-top:5px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#5d8fa2;font-variant-numeric:tabular-nums}
+.turn-rot span{flex:1}
+.turn-rot span.on{color:#4de1ff}
+@media(max-width:390px){.turn-hint{left:7px;right:7px;bottom:8px;padding:11px 12px;border-radius:17px}.turn-arrow{width:66px;height:66px;border-radius:15px}.turn-copy b{font-size:16px}.turn-dist em{font-size:36px}}
+
+/* Creador compacto: el mapa tiene prioridad. */
+.elevation-panel{padding:5px 10px 4px;min-height:0;height:102px;overflow:hidden}
+#elevationSvg{height:53px;margin-top:0}
+.elevation-head strong{font-size:10px}
+.elevation-head span{font-size:10px}
+.elevation-stats{font-size:11px;margin-top:1px;gap:12px}
+.elevation-foot{font-size:9px;line-height:12px;margin-top:0}
+.elevation-panel.profile-empty{height:48px}
+.elevation-panel.profile-empty #elevationSvg,.elevation-panel.profile-empty .elevation-foot{display:none}
+#createActions{display:flex;flex-wrap:nowrap;gap:5px;min-height:36px}
+#createActions button{min-height:36px;padding:6px 3px;font-size:11px;flex:1;white-space:nowrap}
+#createActions #clearCreated{background:#552937;border-color:#8a4653}
+#createActions #saveCreated{flex:1.25}
+#createActions #navCreated:not(.hidden){flex:0.8}
+body:has(#modeCreate[aria-pressed="true"]) .bottom{padding:6px 7px 5px}
+body:has(#modeCreate[aria-pressed="true"]) .modes{margin-bottom:5px}
+body:has(#modeCreate[aria-pressed="true"]) .modes button{padding:6px 2px;font-size:11px}
+body:has(#modeCreate[aria-pressed="true"]) .legend{display:none}
+body:has(#modeCreate[aria-pressed="true"]) .status{margin-top:3px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+@media(max-height:650px){.elevation-panel{height:86px}#elevationSvg{height:39px}.elevation-panel.profile-empty{height:45px}}
+
+/* Creador cartográfico: herramientas en el borde y mapa casi completo. */
+#app{position:relative}
+body.creating-route #createActions{
+ position:absolute;z-index:735;left:8px;top:118px;
+ display:flex;flex-direction:column;gap:6px;
+ background:transparent;min-height:0;width:42px;max-width:42px;
+}
+body.creating-route #createActions button{
+ min-width:42px;width:42px;height:42px;min-height:42px;max-height:42px;
+ padding:0;border-radius:11px;font-size:0;flex:none;box-shadow:0 2px 10px #03172380;
+}
+body.creating-route #createActions #undo::before{content:'↶';font-size:23px}
+body.creating-route #createActions #clearCreated::before{content:'×';font-size:25px}
+body.creating-route #createActions #saveCreated::before{content:'✓';font-size:22px}
+body.creating-route #createActions #navCreated::before{content:'➤';font-size:20px}
+/* En el creador la botonera es una columna de iconos de 42 px con font-size:0,
+   asi que cada boton necesita su glifo aqui o sale un cuadrado vacio. */
+body.creating-route #createActions #cerrarCirculo::before{content:'⟳';font-size:23px}
+body.creating-route #createActions #idaVuelta::before{content:'↔';font-size:23px}
+body.creating-route #createActions button:disabled{opacity:.48}
+body.creating-route #elevationPanel{
+ position:absolute;z-index:730;bottom:8px;left:8px;right:8px;
+ height:89px;min-height:0;padding:5px 9px 4px;border:1px solid #38677d;
+ border-radius:12px;background:#081e2bec;box-shadow:0 3px 16px #00152188;pointer-events:auto;
+}
+body.creating-route #elevationPanel.profile-empty{
+ height:30px;padding:6px 10px;
+}
+body.creating-route #elevationPanel.profile-empty .elevation-stats,
+body.creating-route #elevationPanel.profile-empty .elevation-foot,
+body.creating-route #elevationPanel.profile-empty #elevationSvg{display:none}
+body.creating-route #elevationSvg{height:46px}
+body.creating-route .bottom{padding:4px 7px 5px}
+body.creating-route .modes{margin:0;gap:5px}
+body.creating-route .modes button{min-height:35px;padding:6px 3px;border-radius:10px;font-size:11px}
+body.creating-route .bottom .status,body.creating-route .bottom .legend{display:none}
+body.creating-route .info{padding:5px 9px}
+body.creating-route .info #distance{display:none}
+body.creating-route .info .info-top b{font-size:11px}
+body.creating-route #drawTip{display:none}
+body.creating-route .tools{top:8px;gap:6px}
+body.creating-route .tools button{width:38px;height:38px;font-size:19px;border-radius:11px}
+body.creating-route #createActions button:focus-visible{outline:2px solid #a4ecff;outline-offset:2px}
+/* La senal sobre el mapa: cuadradito pequeno con la flecha dibujada. */
+.map-turn-sign{
+ width:34px;height:34px;border-radius:10px;border:1px solid #85d5e5;
+ background:#10394bdf;display:grid;place-items:center;box-shadow:0 2px 9px #00151e80
+}
+@media(max-height:670px){
+ body.creating-route #createActions{top:86px}
+ body.creating-route #elevationPanel{height:77px}
+ body.creating-route #elevationSvg{height:36px}
+}
+
+/* Sistema cartográfico: mapa como lienzo y mandos flotantes ultracompactos. */
+body.creating-route footer.bottom{display:none}
+body.creating-route #map{flex:1;min-height:0}
+body.creating-route .modes{
+ position:absolute;z-index:740;left:50%;bottom:110px;transform:translateX(-50%);
+ display:flex;align-items:center;justify-content:center;gap:3px;
+ width:max-content;max-width:calc(100% - 22px);margin:0;padding:4px;
+ border:1px solid #5c8a9b88;border-radius:14px;
+ background:#0a1e2dee;box-shadow:0 4px 20px #00131e99;
+ backdrop-filter:blur(13px);
+}
+body.creating-route .modes button{
+ flex:none;min-width:70px;min-height:36px;height:36px;
+ padding:5px 9px;border-radius:10px;border:0;
+ background:transparent;color:#a8c4d2;font-size:11px;font-weight:650;
+}
+body.creating-route .modes button[aria-pressed=true]{
+ color:#041e2a;background:#69e0f2;border-radius:9px;
+}
+body.creating-route #elevationPanel{bottom:9px}
+.elevation-head{gap:7px}
+.elevation-head span{flex:1;min-width:0;text-align:right}
+#toggleProfile{
+ display:grid;place-items:center;width:25px;height:22px;min-height:22px;
+ padding:0;border:1px solid #4d7586;border-radius:8px;
+ background:#123849;color:#c9ecf5;font-size:18px;line-height:1;flex:none;
+}
+body.creating-route #elevationPanel.collapsed{
+ height:36px;min-height:36px;padding:5px 10px;overflow:hidden
+}
+body.creating-route #elevationPanel.collapsed .elevation-stats,
+body.creating-route #elevationPanel.collapsed #elevationSvg,
+body.creating-route #elevationPanel.collapsed .elevation-foot{display:none}
+body.creating-route:has(#elevationPanel.collapsed) .modes{bottom:55px}
+body.creating-route #elevationPanel.profile-empty:not(.collapsed){height:34px}
+body.creating-route #elevationPanel.profile-empty .elevation-head{min-height:22px}
+body.creating-route:has(#elevationPanel.profile-empty:not(.collapsed)) .modes{bottom:55px}
+body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
+#plannerCredit{display:none}
+body.creating-route #plannerCredit{display:block;position:absolute;bottom:0;right:0;z-index:745;font-size:8px;background:#07131dcc;color:#9fb8c6;padding:0 4px}
+#plannerCredit a{color:inherit}
+#plannerStatus{display:none}
+body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;z-index:725;top:55px;left:57px;right:55px;padding:5px 8px;border-radius:8px;background:#0a1e2dee;color:#c9eaf5;font-size:11px;line-height:1.35;pointer-events:none}
+/* Sin alturas seguimos mostrando la distancia medida del borrador. */
+body.creating-route #elevationPanel.profile-empty.profile-distance-only:not(.collapsed){height:58px}
+body.creating-route #elevationPanel.profile-empty.profile-distance-only:not(.collapsed) .elevation-stats{display:flex}
+body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .modes{bottom:79px}
+
+@media(max-width:365px){body.creating-route .modes button{min-width:63px;padding:4px 6px}}
+
+
+
+
+#navActions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+#navActions.hidden{display:none!important}
+#navActions button{min-width:0;font-size:11px;padding:8px 3px;white-space:nowrap}
+#nearbyAction[aria-pressed="true"]{background:#146275;border-color:#75d3e9;color:#eaffff}
+#nearbyAction[aria-pressed="true"]{background:#146275;border-color:#75d3e9;color:#eaffff}
+#nearbyAction{font-size:10px!important}
+ .route-list-scope{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0 12px}.route-list-scope button{font-size:11px;min-height:38px;padding:7px 2px;border:1px solid #47677a;border-radius:10px;color:#c1dbe6;background:#193646}.route-list-scope button[aria-pressed='true']{background:#48cce7;color:#092331;font-weight:750;border-color:#48cce7}
+
+.info-top .route-title-link{
+ display:block;min-width:0;flex:1;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+ background:transparent;border:0;padding:2px 1px;color:#e6f4ff;
+ text-align:left;font:inherit;font-size:12px;font-weight:750;
+ white-space:nowrap;cursor:pointer;
+}
+.info-top .route-title-link:not(:disabled){color:#c9f5ff;text-decoration:underline;text-decoration-color:#58b7cc70;text-underline-offset:3px}
+.info-top .route-title-link:not(:disabled)::after{content:' ↗';font-size:12px;color:#89dfe9}
+.info-top .route-title-link:disabled{opacity:1;cursor:default}
+.info-top .route-title-link:focus-visible{outline:2px solid #69e2f3;border-radius:3px}
+.tools button{background:#0d2339ed!important;color:#d4f7ff!important;border:1px solid #5a889b7a!important}
+.tools button svg{display:block;margin:auto}
+.tools #eye[aria-pressed="true"]{border-color:#8bcbd9!important}
+.import-gpx{display:flex;margin:8px 0 14px}.import-gpx button{background:#12374b;color:#d4f7ff;border:1px solid #5689a0;border-radius:11px;padding:11px 14px;font-size:13px;font-weight:650;width:100%;text-align:center}/* Paneles por encima de controles y atribución de Leaflet, con cierre fijo visible. */
+.popup{z-index:2000}
+.sheet{position:relative;isolation:isolate}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-16px;margin:-16px -14px 10px;padding:14px 14px 10px;background:#102938;z-index:2;border-radius:19px 19px 0 0}
+.sheet-header h2{margin:0;min-width:0;flex:1}
+.sheet .sheet-header .close{float:none;position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;min-height:44px;padding:0;font-size:22px;line-height:1;z-index:3}
+#navActions:has(.open-native:not(.hidden)){flex-wrap:wrap}
+#navActions .open-native{flex:1 0 100%;display:block;text-align:center;text-decoration:none;padding:11px 8px;min-height:42px;border-radius:12px;background:#124a4a;color:#d9fff6;border:1px solid #3e9291;font-size:12px;font-weight:700}
+/* La bola de un punto del trazado. Era un circleMarker, que en Leaflet no se
+   puede arrastrar; ahora es un marcador con icono propio. Mide 16 px y con el
+   dedo eso no se agarra, asi que el area sensible se estira a 32 con un
+   pseudoelemento transparente, sin tocar como se ve. */
+.gps-dot{width:16px;height:16px;border-radius:50%;background:#38bdf8;
+ border:2px solid #fff;box-sizing:border-box;cursor:grab}
+.gps-dot.es-primera{background:#0b1e28;border-color:#38bdf8;border-width:3px}
+.gps-dot::after{content:'';position:absolute;inset:-8px;border-radius:50%}
+.leaflet-dragging .gps-dot{cursor:grabbing}
+/* Con «Cerrar círculo» e «Ida y vuelta» la fila de crear pasa de tres botones
+   a cinco y a 390 px no caben: se deja partir y los dos nuevos ocupan media
+   fila cada uno, o sea que caen juntos en su propio renglón. */
+#createActions{flex-wrap:wrap}
+#createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
+.save-choices{display:grid;gap:7px;margin-top:12px}.save-choices button{width:100%;text-align:left}.save-summary{font-size:12px;line-height:1.45;color:#b6d0dc;margin:8px 0}.save-status{font-size:11px;line-height:1.4;color:#a5c5d3;margin:10px 0 0}
+/* Perfil de la ruta elegida: barra plegable, sin cubrir los mandos del mapa. */
+#elevationPanel.navigation-profile{height:132px;min-height:0;padding:4px 10px 6px}
+#elevationPanel.navigation-profile .elevation-head{min-height:36px;cursor:pointer}
+#elevationPanel.navigation-profile .elevation-head strong{font-size:10px;letter-spacing:.06em}
+#elevationPanel.navigation-profile #toggleProfile{width:44px;height:36px;min-height:36px;font-size:20px}
+#toggleProfile:focus-visible{outline:2px solid #a4ecff;outline-offset:2px}
+#elevationPanel.navigation-profile #elevationSvg{height:57px}
+#elevationPanel.navigation-profile .elevation-stats{font-size:11px;margin-top:0}
+#elevationPanel.navigation-profile .elevation-foot{font-size:10px;margin-top:1px}
+#elevationPanel.navigation-profile.collapsed{height:44px;padding:3px 10px}
+#elevationPanel.navigation-profile.collapsed .elevation-stats,
+#elevationPanel.navigation-profile.collapsed #elevationSvg,
+#elevationPanel.navigation-profile.collapsed .elevation-foot{display:none}
+#elevationPanel.navigation-profile.profile-empty:not(.collapsed){height:92px}
+#elevationPanel.navigation-profile.profile-empty .elevation-stats{display:none}
+#elevationPanel.navigation-profile.profile-empty:not(.collapsed) .elevation-foot{display:flex;line-height:1.4}
+@media(max-height:650px){
+ #elevationPanel.navigation-profile:not(.collapsed):not(.profile-empty){height:112px}
+ #elevationPanel.navigation-profile #elevationSvg{height:37px}
+}
+</style></head><body><div id="app">
+<header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
+ <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
+ <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
+ <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
+ <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
+</section>
+<footer class="bottom"><div id="soloApp" class="solo-app hidden"><b>La navegación va solo en la aplicación</b><span>En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Cerca de mí</button><button id="savedRoutes">Mis rutas</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Navegar</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
+<div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
+</div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Abrir ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
+(()=>{'use strict';
+// Los titulos de verdad de cada ruta. Sin esto la lista enseñaba el nombre
+// del archivo —«zengotitagarai», «askakosantakataline»— y no se sabia de que
+// ruta se trataba. Salen de data/rutas.json, que escribe el build de la web
+// y pesa 15 kB. Va aparte de trailhead.json a proposito: ese ya son 500 kB y
+// lo baja todo el que abre el mapa.
+// toName es el unico sitio que hay que tocar: de el beben la lista, el
+// titulo de arriba y el buscador, que asi busca por palabras de verdad
+// («Garai», «dolmenes») y no por trozos del nombre del archivo.
+let nombresDeRuta={},datosDeRuta={};
+// Buscar sin tildes, como el buscador de la web (src/js/filters.js). Hasta
+// ahora daba igual porque se buscaba sobre el nombre del archivo, que no
+// lleva ninguna; con los titulos de verdad «dolmen» no encontraba
+// «los dolmenes» y «Arandono» no encontraba «Arandono».
+const sinTildes=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+if(window.TrabakutikAndroid)document.documentElement.classList.add('android-app');
+const enLaApp=!!window.TrabakutikAndroid;
+const BASE_GPS='https://eltzubi.github.io/trabakutik-gps-pruebas/';
+// Un «intent://» de Android: si la app esta instalada, la abre con la ruta
+// puesta; si no, Chrome se va solo al S.browser_fallback_url, que es la
+// pagina de descarga. Un toque y, o navegas, o te la bajas.
+function enlaceApp(slug){
+ return 'intent://navegar?ruta='+encodeURIComponent(slug)
+  +'#Intent;scheme=trabakutikgps;package=com.trabakutik.gps;S.browser_fallback_url='
+  +encodeURIComponent(BASE_GPS+'instalar.html')+';end';
+}
+// Si llegas desde «Navegar esta ruta» de la web -o sea, con ?ruta= y fuera
+// de la app- en un Android, no tiene sentido ensenar un mapa que no puede
+// navegar: salta la aplicacion, o la descarga. Lo pidio el autor. Solo una
+// vez por pestaña, para no atrapar a quien vuelva aposta al navegador, y
+// solo en Android: en un ordenador el intent:// no existe.
+(function(){
+ if(enLaApp||!/Android/i.test(navigator.userAgent))return;
+ const slug=new URLSearchParams(location.search).get('ruta');
+ if(!slug||!/^[a-z0-9_-]+$/i.test(slug))return;
+ try{if(sessionStorage.getItem('trabakutik-salto'))return;
+     sessionStorage.setItem('trabakutik-salto','1');}catch(e){}
+ location.replace(enlaceApp(slug));
+})();
+const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.href]||t.href.replace(/\.html$/,'').replace(/[-_]/g,' '),fmt=m=>m>=1000?(m/1000).toFixed(2).replace('.',',')+' km':Math.round(m)+' m';
+// ---------------------------------------------------------------------
+// MAPA ORIENTADO AL RUMBO (rumbo arriba / course-up)
+// ---------------------------------------------------------------------
+// Lo pidio el autor: «quiero que el mapa siga el rumbo del gps siempre.
+// Que no navege con mapa al reves», «que los caminos, carreteras y track
+// vayan en la direccion que voy, porque si no no hay quien entienda el
+// mapa». Komoot y Wikiloc hacen esto mismo y las dos dejan un boton de
+// brujula para volver al norte fijo, asi que aqui tambien (boton de la
+// flecha, arriba a la derecha).
+//
+// «Creo que el mapa no se vuelva loco»: ese es el peligro de verdad. El
+// rumbo del GPS parado es ruido y giraria como una peonza. Dos defensas:
+//   1. Sobre la ruta el rumbo NO sale del GPS, sale de la geometria del
+//      camino corregida por el sentido en que lo haces (la misma h que
+//      mueve la flecha azul). Eso no puede dar vueltas.
+//   2. Fuera de la ruta solo se hace caso al rumbo del GPS por encima de
+//      7 km/h, el mismo umbral que usa Komoot. Por debajo se MANTIENE el
+//      ultimo rumbo bueno, asi que parado el mapa se queda quieto.
+// Komoot por debajo de 7 km/h gira con el magnetometro; desde la pagina
+// eso no es fiable, asi que ahi se mantiene el rumbo en vez de girar.
+//
+// Leaflet 1.9 no sabe girar el mapa, asi que gira el contenedor por CSS.
+// Dos consecuencias que hay que atender a mano:
+//   - El contenedor se hace un 42% mas grande que lo que se ve (el
+//     cuadrado circunscrito) para que al girar no salgan esquinas vacias.
+//     getSize() mira offsetWidth, que el transform no cambia, asi que
+//     Leaflet pide las teselas del area grande y todo cuadra.
+//   - Los toques llegan en coordenadas de pantalla y Leaflet las cree
+//     coordenadas del contenedor. Con el mapa girado eso significa tocar
+//     una linea y marcar otra, asi que se deshace el giro en
+//     getMousePosition (lo usan los toques, el zoom y el pellizco).
+// Arrastrar es lo unico que Leaflet calcula con restas de pantalla
+// directas, sin pasar por ahi: por eso al empezar a arrastrar el mapa
+// vuelve de golpe al norte y se comporta como siempre.
+const GIRO_MINIMO=4,GIRO_VELOCIDAD=1.0;
+let cursoArriba=true,rumboMapa=null,anguloMapa=0,ladoMapa=0;
+try{cursoArriba=localStorage.getItem('trabakutik-curso-arriba')!=='no'}catch(e){}
+const rotEl=document.getElementById('mapRot');
+// OJO: NO vale parchear L.DomEvent.getMousePosition. Leaflet viene empaquetado
+// de modulos ES y por dentro llama a la funcion local, no a la del objeto que
+// exporta, asi que el parche ahi no lo ve nadie. Se comprobo midiendolo: 465 m
+// de error al tocar con el mapa girado. El metodo del mapa SI se llama como
+// metodo (this.mouseEventToContainerPoint) y por el pasan el clic, el toque,
+// el pellizco y la deteccion de lineas sobre el canvas.
+const puntoOriginal=L.Map.prototype.mouseEventToContainerPoint;
+L.Map.prototype.mouseEventToContainerPoint=function(e){
+ if(this._container!==rotEl||!anguloMapa||!Number.isFinite(e.clientX))
+  return puntoOriginal.call(this,e);
+ // El centro no se mueve al girar sobre el centro, asi que sirve de ancla.
+ const r=rotEl.getBoundingClientRect(),a=-anguloMapa*R;
+ const dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+ return new L.Point(dx*Math.cos(a)-dy*Math.sin(a)+rotEl.offsetWidth/2,
+                    dx*Math.sin(a)+dy*Math.cos(a)+rotEl.offsetHeight/2);
+};
+function aplicaGiroMapa(deGolpe){
+ const manual=Date.now()<manualMapUntil;
+ const objetivo=(cursoArriba&&!manual&&mode!=='create'&&rumboMapa!==null)?-rumboMapa:0;
+ let d=(objetivo-anguloMapa)%360;if(d>180)d-=360;if(d<-180)d+=360;
+ // Zona muerta: sin esto el mapa tiembla con cada correccion de un grado.
+ if(Math.abs(d)<GIRO_MINIMO&&!deGolpe)return;
+ anguloMapa+=d;
+ if(deGolpe)rotEl.classList.add('sin-giro');
+ rotEl.style.transform='rotate('+anguloMapa.toFixed(1)+'deg)';
+ if(deGolpe){void rotEl.offsetWidth;rotEl.classList.remove('sin-giro')}
+}
+const map=L.map('mapRot',{zoomControl:false,preferCanvas:true,attributionControl:false}).setView([43.19,-2.55],12);
+function dimensionaMapa(){
+ const m=document.getElementById('map'),w=m.clientWidth,h=m.clientHeight;
+ if(!w||!h)return;
+ // Girado cualquier angulo, lo que se ve ocupa W|cos|+H|sin| de ancho, y en
+ // el peor angulo eso es la DIAGONAL. Asi que el contenedor tiene que ser un
+ // cuadrado de lado la diagonal o asoman esquinas vacias. Con 142% del ancho
+ // no llegaba: 554 px para una diagonal de 711, y el autor vio los triangulos
+ // negros en el movil yendo al noreste.
+ const lado=Math.ceil(Math.hypot(w,h))+4;
+ if(lado===ladoMapa)return;
+ ladoMapa=lado;m.style.setProperty('--lado',lado+'px');
+ try{map.invalidateSize({animate:false})}catch(e){}
+}
+function pintaMandos(){
+ // Azul mientras el mapa te sigue de verdad; apagado si lo has arrastrado y
+ // se ha quedado donde tu lo dejaste.
+ // Dentro de la app NO hay watch: cuando el servicio toma el mando, la
+ // pagina lo borra a proposito (fuenteNativa) para no pedir la posicion
+ // dos veces. Mirar solo watch dejaba este boton apagado para siempre en
+ // la app, con el mapa siguiendote delante. Lo vio el autor en su captura.
+ // Lo que cuenta es que llegue posicion, venga de donde venga.
+ $('locate').classList.toggle('siguiendo',(watch!==null||fuenteNativa)&&followGps&&Date.now()>=manualMapUntil);
+}
+function pintaOrient(){
+ const on=cursoArriba;
+ $('orient').setAttribute('aria-pressed',on?'true':'false');
+ $('orient').setAttribute('aria-label',on?'Mapa orientado al rumbo: pasar a norte arriba':'Norte arriba: pasar a mapa orientado al rumbo');
+ $('orient').title=on?'Orientado al rumbo':'Norte arriba';
+ // El dibujo cambia tambien, no solo el color: flecha = rumbo, N = norte.
+ $('orient').innerHTML=on
+  ?'<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg>'
+  :'<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18V6l8 12V6"/></svg>';
+}
+map.on('dragstart',()=>{manualMapUntil=Date.now()+8000;aplicaGiroMapa(true);pintaMandos()});
+dimensionaMapa();
+if(window.ResizeObserver)new ResizeObserver(dimensionaMapa).observe(document.getElementById('map'));
+else window.addEventListener('resize',dimensionaMapa);
+const baseMaps={
+ osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
+ ign:L.tileLayer('https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=MTN&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxZoom:19,maxNativeZoom:17,attribution:'© Instituto Geográfico Nacional'}),
+ pnoa:L.tileLayer('https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=OI.OrthoimageCoverage&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxZoom:19,attribution:'© IGN · PNOA'})
+};
+let currentBase=null;
+function changeBase(key){if(!baseMaps[key])key='osm';if(currentBase)map.removeLayer(currentBase);currentBase=baseMaps[key];currentBase.addTo(map);currentBase.bringToBack();$('mapCredit').textContent=(currentBase.options.attribution||'')+(key==='ign'||key==='pnoa'?' · necesita conexión':'');try{localStorage.setItem('trabakutik-mapa-fondo',key)}catch(e){}}
+let initialBase='osm';try{initialBase=localStorage.getItem('trabakutik-mapa-fondo')||'osm'}catch(e){}
+changeBase(initialBase);
+pintaOrient();
+$('orient').onclick=()=>{cursoArriba=!cursoArriba;pintaOrient();notice(!cursoArriba?'Mapa con el norte arriba':rumboMapa===null?'Mapa orientado al rumbo · girará en cuanto sepa hacia dónde vas':'Mapa orientado al rumbo');try{localStorage.setItem('trabakutik-curso-arriba',cursoArriba?'si':'no')}catch(e){}manualMapUntil=0;aplicaGiroMapa(true);pintaMandos()};
+$('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null,crucesOsm=[];
+const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
+const notice=t=>{$('status').textContent=t};
+
+let avisadoPermiso=false,ultimoErrorGps=null,ultimoErrorGpsText='';
+function warnGps(err){
+ const denegado=err&&err.code===1;
+ const ubicacionNoDisponible=err&&err.code===2;
+ const text=denegado
+  ?'Permiso de ubicación denegado. Activa la ubicación y concede permiso a Trabakutik GPS.'
+  :ubicacionNoDisponible
+   ?'No se recibe la ubicación. Comprueba que la ubicación del teléfono esté activada.'
+   :'Sin señal GPS ahora mismo · seguimos intentándolo';
+ ultimoErrorGps=err&&Number.isFinite(err.code)?err.code:null;
+ ultimoErrorGpsText=err?text:'';
+ notice(text);
+ // Un alert() bloquea la pantalla y hay que tocarla para seguir. Saltaba
+ // cada seis segundos, y bajo arbolado el GPS falla a ratos: ibas pedaleando
+ // y el movil te pedia un toque cada seis segundos. Ahora solo si el permiso
+ // esta denegado, que eso si hay que arreglarlo a mano, y una sola vez.
+ if(denegado&&!avisadoPermiso){avisadoPermiso=true;alert(text)}
+}
+
+// Flecha de avance: usar rumbo GPS o calcularlo con dos posiciones fiables.
+let navegaNativo=false;
+let gpsApagadoPorTi=false;
+let gpsSolicitado=false;
+let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
+function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
+// Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
+const nearbyMaxLength=15000;
+function routeLength(i){
+ const t=tracks[i];if(!t?.points?.length)return Infinity;
+ if(t._nearLength===undefined){let sum=0;for(let j=1;j<t.points.length;j++)sum+=dist(t.points[j-1],t.points[j]);t._nearLength=sum}
+ return t._nearLength;
+}
+function nearTrack(i){
+ return !nearbyOnly||(!!nearbyOrigin&&tracks[i]?.points?.length>1&&routeLength(i)<=nearbyMaxLength&&(dist(nearbyOrigin,tracks[i].points[0])<=nearbyRadius||closestMeters(nearbyOrigin,tracks[i].points)<=1500));
+}
+function updateNearbyLayers(){
+ if(!nearbyOnly||!tracks.length)return;
+ nearbyCount=tracks.reduce((n,t,i)=>n+(nearTrack(i)?1:0),0);
+ refreshRouteLayers();
+ $('nearbyAction').textContent='Todas';
+ $('nearbyAction').title=nearbyCount+' rutas de menos de 15 km con salida a 4 km o trazado a 1,5 km';
+}
+function applyNearbyPosition(p){
+ if(!nearbyOnly)return;
+ nearbyOrigin=p.slice();nearbyLast=p.slice();
+ updateNearbyLayers();
+ showRoutesIfOpen();
+ notice(nearbyCount?nearbyCount+' rutas cortas con salida a 4 km o trazado a 1,5 km':'No hay rutas de menos de 15 km con salida cercana o trazado a 1,5 km');
+}
+function showRoutesIfOpen(){if(!$('routeDialog').classList.contains('hidden'))showRoutes()}
+function nearbyButtonState(){
+ $('nearbyAction').setAttribute('aria-pressed',String(nearbyOnly));
+ $('nearbyAction').textContent=nearbyOnly?'Todas':'⌖ Cerca de mí';
+}
+function nearbyError(err){
+ if(!nearbyOnly)return;
+ nearbyOrigin=null;nearbyLast=null;
+ updateNearbyLayers();nearbyButtonState();
+ warnGps(err);
+}
+function quickNativePosition(){
+ try{
+  if(!window.TrabakutikAndroid?.getLastLocation)return null;
+  const raw=window.TrabakutikAndroid.getLastLocation();
+  if(!raw)return null;
+  const info=JSON.parse(raw);
+  if(!Number.isFinite(info.lat)||!Number.isFinite(info.lon)||info.age>120000||info.accuracy>150)return null;
+  return [info.lat,info.lon];
+ }catch(e){return null}
+}
+function locateNearby(){
+ const cached=position||quickNativePosition();
+ if(cached){applyNearbyPosition(cached);map.panTo(cached,{animate:false})}
+ // Empezar a buscar ubicación inmediatamente, sin iniciar una grabación.
+ if(!navigator.geolocation){if(!cached)nearbyError();return}
+ navigator.geolocation.getCurrentPosition(pos=>{
+  if(!nearbyOnly||pos.coords.accuracy>150)return;
+  const p=[pos.coords.latitude,pos.coords.longitude];
+  position=p;applyNearbyPosition(p);map.panTo(p,{animate:false});
+ },err=>{if(!cached)nearbyError(err)},{
+  enableHighAccuracy:false,maximumAge:15000,timeout:4500
+ });
+ // Afinar en segundo plano; no bloquear la pantalla esperando satélites.
+ navigator.geolocation.getCurrentPosition(pos=>{
+  if(!nearbyOnly||pos.coords.accuracy>150)return;
+  const p=[pos.coords.latitude,pos.coords.longitude];
+  position=p;applyNearbyPosition(p);map.panTo(p,{animate:false});
+ },err=>{if(!nearbyOrigin)nearbyError(err)},{
+  enableHighAccuracy:true,maximumAge:10000,timeout:12000
+ });
+}
+$('nearbyAction').onclick=()=>{
+ nearbyOnly=!nearbyOnly;routeListScope=nearbyOnly?'near':'all';nearbyOrigin=null;nearbyLast=null;
+ nearbyButtonState();
+ if(!nearbyOnly){
+  refreshRouteLayers();showRoutesIfOpen();
+  notice(otherTracksVisible?'Mostrando todas las rutas':'Mapa limpio · rutas disponibles en el listado');
+  return;
+ }
+ updateNearbyLayers();showRoutesIfOpen();locateNearby();
+};
+// Flechas pequeñas sobre el recorrido azul, siguiendo el orden real del GPX.
+let directionArrows=L.layerGroup().addTo(map);
+function updateDirectionArrows(){
+ directionArrows.clearLayers();
+ if(routePoints.length<2||map.getZoom()<13)return;
+ let totalMeters=0;
+ for(let i=1;i<routePoints.length;i++)totalMeters+=dist(routePoints[i-1],routePoints[i]);
+ const spacing=Math.max(220,totalMeters/40);
+ let next=spacing/2,covered=0;
+ for(let i=1;i<routePoints.length;i++){
+  const a=routePoints[i-1],b=routePoints[i],len=dist(a,b);
+  if(len<1)continue;
+  while(covered+len>=next){
+   const t=(next-covered)/len,point=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+   const angle=bearingBetween(a,b);
+   const icon=L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:'<div style="width:20px;height:20px;display:grid;place-items:center;transform:rotate('+angle+'deg);pointer-events:none"><svg width="15" height="17" viewBox="0 0 15 17" aria-hidden="true"><path d="M7.5 1L14 15L7.5 11.5L1 15Z" fill="#07314b" stroke="#f0ffff" stroke-width="1.8" stroke-linejoin="round"/></svg></div>'});
+   L.marker(point,{icon,interactive:false,keyboard:false,zIndexOffset:450}).addTo(directionArrows);
+   next+=spacing;
+  }
+  covered+=len;
+ }
+}
+map.on('zoomend',updateDirectionArrows);
+function setRouteTitle(name,href){
+ const title=$('mapTitle');
+ title.textContent=name;
+ const valid=typeof href==='string'&&/^[a-z0-9_-]+\.html$/i.test(href);
+ title.disabled=!valid;
+ title.dataset.href=valid?href:'';
+ title.title=valid?'Abrir ficha de '+name:'Esta ruta no tiene ficha publicada';
+ title.setAttribute('aria-label',valid?'Ver ficha de '+name:name);
+}
+$('mapTitle').onclick=()=>{
+ const href=$('mapTitle').dataset.href;
+ if(!href||!/^[a-z0-9_-]+\.html$/i.test(href))return;
+ // La app Android intercepta el enlace y conserva el navegador GPS abierto.
+ window.location.href='https://trabakutik.com/'+href;
+};
+function getTrackLayer(i){
+ if(!layers[i]&&tracks[i])layers[i]=L.polyline(tracks[i].points.map(p=>[p[0],p[1]]),{
+  color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?7:4.5,
+  opacity:i===chosen?1:.97,interactive:false
+ });
+ return layers[i];
+}
+function refreshRouteLayers(){
+ tracks.forEach((t,i)=>{
+  const show=i===chosen||(otherTracksVisible&&routeListScope!=='current'&&(!nearbyOnly||nearTrack(i)));
+  if(show){const layer=getTrackLayer(i);if(layer&&!map.hasLayer(layer))layer.addTo(map);}
+  else if(layers[i]){map.removeLayer(layers[i]);layers[i]=null;}
+ });
+ if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
+ if(savedLine)savedLine.bringToFront();
+}
+function drawAll(){
+ layers.forEach(l=>{if(l)map.removeLayer(l)});layers=[];
+ refreshRouteLayers();
+ if(chosen>=0){
+  map.fitBounds(layers[chosen].getBounds(),{padding:[35,35]});
+  $('title').textContent=toName(tracks[chosen]);
+  setRouteTitle(toName(tracks[chosen]),tracks[chosen].href);
+  $('distance').textContent='Azul: tu ruta · Naranja: demás rutas';
+ }
+ if(savedLine) savedLine.bringToFront();
+ syncScopeMap();
+ updateDirectionArrows();
+}
+$('eye').onclick=()=>{
+ otherTracksVisible=!otherTracksVisible;
+ refreshRouteLayers();
+ $('eye').setAttribute('aria-pressed',String(otherTracksVisible));
+ $('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar rutas de Trabakutik':'Mostrar rutas de Trabakutik');
+ $('eye').title=otherTracksVisible?'Ocultar rutas de Trabakutik':'Mostrar rutas de Trabakutik';
+ notice(otherTracksVisible?'Rutas de Trabakutik visibles':'Mapa limpio · rutas de Trabakutik ocultas');
+};
+function updateNativeLaunchLink(){
+ const link=$('openNativeGps');
+ if(window.TrabakutikAndroid||!/Android/i.test(navigator.userAgent)||chosen<0||!tracks[chosen]?.href){
+  link.classList.add('hidden');link.removeAttribute('href');return;
+ }
+ const slug=tracks[chosen].href.replace(/\.html$/,'');
+ if(!/^[a-z0-9_-]+$/i.test(slug)){link.classList.add('hidden');return;}
+ link.href=enlaceApp(slug);
+ link.classList.remove('hidden');
+}
+let selectedRouteRequest=0;
+async function loadDetailedSelected(i,request){
+ const slug=tracks[i]?.href?.replace(/\.html$/,'');
+ if(!slug||!/^[a-z0-9_-]+$/i.test(slug))return;
+ try{
+  // El mapa general tiene una simplificación de 10 m; cada ficha conserva 1 m.
+  const url='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/'+slug+'.json';
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const payload=await response.json();
+  const pts=payload.tracks?.[0]?.points;
+  if(!Array.isArray(pts)||pts.length<2||pts.length>15000||!pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])))throw new Error('Trazado detallado no válido');
+  if(chosen!==i||selectedRouteRequest!==request)return;
+  // Antes esto era SOLO para dibujar, por miedo a «mandar 10.000 puntos al
+  // servicio». Ese miedo era a un fantasma: medidos los 70 tracks, el mayor
+  // tiene 2.302 puntos y la mediana 1.058, y setRoute admite 15.000.
+  // Mientras tanto la línea que se VEÍA era la fina y la que se MEDÍA era la
+  // gorda -37 m entre puntos, hasta 7,5 m de separación entre una y otra-.
+  // Dos líneas distintas: de ahí que el punto pareciera pegado al track y el
+  // aviso dijera «a 15 m», y de ahí que la flecha fuera a saltos.
+  const detailedLine=pts.map(p=>[p[0],p[1]]);
+  if(layers[i])map.removeLayer(layers[i]);
+  layers[i]=L.polyline(detailedLine,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
+  // Y ahora sí: la fina manda también para medir. Se rehacen los cruces -que
+  // recalculan routeCumulative- y se le manda al servicio.
+  if(detailedLine.length<=12000){
+   routePoints=detailedLine;
+   try{syncNativeRoute()}catch(e){console.warn('Ruta fina no enviada',e)}
+   computeJunctions();
+   aplicaCruces();   // y los cruces de OSM sobre la linea fina, que es la buena
+  }
+  notice(guiaIniciada()?'Ruta Garmin mostrada con detalle · navegación activa':'Ruta Garmin cargada · pulsa Iniciar grabación para comenzar');
+ }catch(e){
+  if(chosen===i&&selectedRouteRequest===request)notice('Ruta cargada · detalle original no disponible, usando trazado general');
+  console.warn('No se pudo cargar el trazado detallado',e);
+ }
+}
+function selectRoute(i){
+ const request=++selectedRouteRequest;
+ activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
+ resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;
+ if(savedLine){map.removeLayer(savedLine);savedLine=null}
+ chosen=i;
+ updateNativeLaunchLink();
+
+ // Los cruces llegan con la ruta fina, no con la gorda: hasta que llegue, sin
+ // cruces, y computeJunctions solo avisa de curvas de herradura.
+ crucesOsm=[];
+ routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
+ updateElevation();
+ drawAll();
+ $('routeDialog').classList.add('hidden');
+ notice('Ruta seleccionada · preparando recorrido');
+ // Primero devolver control al navegador y pintar; calcular los giros
+ // en el siguiente ciclo, sin bloquear la apertura desde la ficha.
+ setTimeout(()=>{
+  if(chosen!==i||selectedRouteRequest!==request)return;
+  // Los puntos primero, siempre. syncNativeRoute manda tambien los giros que
+  // haya, y computeJunctions los recalcula y los vuelve a mandar detras.
+  try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
+  computeJunctions();
+  aplicaCruces();
+  notice('Ruta seleccionada · cargando detalle del Garmin');
+  loadDetailedSelected(i,request);
+ },60);
+}
+let routeListScope='all';
+function syncScopeMap(){
+ nearbyOnly=routeListScope==='near';nearbyButtonState();
+ nearbyCount=nearbyOnly?tracks.reduce((n,t,i)=>n+(nearTrack(i)?1:0),0):0;
+ refreshRouteLayers();
+ if(routeListScope==='current')notice('Mostrando solo la ruta actual');
+ else if(routeListScope==='near')notice(nearbyOrigin?nearbyCount+' rutas cercanas disponibles':'Buscando ubicación GPS…');
+ else notice(otherTracksVisible?'Mostrando rutas de Trabakutik':'Mapa limpio · pulsa el icono de capas para ver todas las rutas');
+}
+function showRoutes(){
+ const q=$('search').value.toLowerCase().trim(),list=$('items');list.replaceChildren();
+ document.querySelectorAll('#routeListScope button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scope===routeListScope)));
+ if(routeListScope==='near'&&!nearbyOrigin){list.textContent='Buscando tu posición GPS…';return}
+ if(routeListScope==='current'&&chosen<0){list.textContent=routePoints.length>1?'Ruta propia activa: '+$('mapTitle').textContent:'No hay una ruta activa';return}
+ let n=0;
+ tracks.map((t,i)=>({t,i})).sort((a,b)=>routeListScope==='near'&&nearbyOrigin?dist(nearbyOrigin,a.t.points[0])-dist(nearbyOrigin,b.t.points[0]):a.i-b.i).forEach(({t,i})=>{
+  if(routeListScope==='near'&&!(routeLength(i)<=nearbyMaxLength&&(dist(nearbyOrigin,t.points[0])<=nearbyRadius||closestMeters(nearbyOrigin,t.points)<=1500)))return;
+  if(routeListScope==='current'&&i!==chosen)return;
+  if(!sinTildes(toName(t)).includes(sinTildes(q)))return;
+  n++;const b=document.createElement('button');b.className='routeitem';
+  // Titulo arriba y, debajo, los kilometros y el desnivel: eligiendo ruta en
+  // el monte es lo primero que uno mira. Salen de rutas.json, el mismo sitio
+  // que los titulos; si no estan, la fila se queda solo con el nombre.
+  const txt=document.createElement('span');txt.className='ri-txt';
+  const nom=document.createElement('span');nom.className='ri-name';nom.textContent=toName(t);txt.append(nom);
+  if(datosDeRuta[t.href]){const km=document.createElement('span');km.className='ri-km';km.textContent=datosDeRuta[t.href];txt.append(km)}
+  b.append(txt);
+  const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b);
+ });
+ if(!n)list.textContent=routeListScope==='near'?'No hay rutas próximas de hasta 15 km':'Sin coincidencias';
+}
+document.querySelectorAll('#routeListScope button').forEach(b=>b.onclick=()=>{
+ routeListScope=b.dataset.scope;
+ syncScopeMap();
+ if(routeListScope==='near'){
+  const cached=position||quickNativePosition();
+  if(cached){applyNearbyPosition(cached)}else if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{if(routeListScope!=='near')return;position=[p.coords.latitude,p.coords.longitude];applyNearbyPosition(position);syncScopeMap();showRoutes()},warnGps,{enableHighAccuracy:true,timeout:12000,maximumAge:5000});else warnGps();
+ }
+ showRoutes();
+});
+$('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
+function changeMode(m){
+ if(m!=='create'){cancelaMapaGps();$('saveCreated').disabled=drawPoints.length<2}
+
+ const creating=m==='create';
+ const actions=$('createActions'),profile=$('elevationPanel'),modes=document.querySelector('.modes');
+ if(creating){$('map').appendChild(actions);$('map').appendChild(modes)}else{document.querySelector('footer.bottom').prepend(modes);modes.after(actions)}
+ if(creating)$('map').appendChild(profile);else document.querySelector('footer.bottom').before(profile);
+ document.body.classList.toggle('creating-route',creating);
+ if(m==='create'&&junctionActive>=0)resetJunctionView();mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate']])$(b).setAttribute('aria-pressed',String(m===key));
+ // Dos pestanas, no tres. «Grabacion» era un modo aparte y no lo es: el
+ // servicio navega y graba a la vez desde siempre, y desde que la guia
+ // funciona tambien grabando lo unico que separaba a «Navegar» de
+ // «Grabacion» era que fila de botones se veia. Lo dijo el autor: «si abro
+ // ruta o cargo ruta, con dar grabacion y yo me mueva ya estaria
+ // navegando». Asi que en «Ruta» se ven las dos filas y el unico modo de
+ // verdad que queda es «Crear», que cambia la pantalla entera.
+ $('navActions').classList.toggle('hidden',m!=='nav'||!enLaApp);
+
+ $('recordActions').classList.toggle('hidden',m!=='nav'||!enLaApp);
+ $('soloApp').classList.toggle('hidden',enLaApp||m!=='nav');
+ if(m==='create'&&!calculandoMapaGps)estadoMapaGps('');$('createActions').classList.toggle('hidden',m!=='create');$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps){notice('Preparando caminos y alturas…');fetch('data/alturas.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;if(!anclasGps.length&&!calculandoMapaGps)redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':routePoints.length>1?(guiaIniciada()?'Siguiendo la ruta seleccionada':'Ruta cargada · pulsa Iniciar grabación para comenzar'):'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
+$('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');
+const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
+let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null,createdSavedItem=null;
+// Los puntos manuales solo pertenecen al borrador: nunca se añaden a las
+// conexiones ni a las cestas de la red pública de caminos.
+let trazadoManual=false;
+const nodosManualesGps=new Set();
+
+function nodoManualGps(lat,lon,elevation=null){
+ const n=redGps.nodos.length;
+ redGps.nodos.push([lat,lon,Number.isFinite(elevation)?elevation:null]);redGps.ady.push([]);nodosManualesGps.add(n);
+ return n;
+}
+function tramoGps(a,b,manual=trazadoManual){
+ if(manual||nodosManualesGps.has(a)||nodosManualesGps.has(b)){
+  const tr=a===b?[a]:[a,b];tr.manual=true;return tr;
+ }
+ return camino(redGps,a,b);
+}
+function invierteTramoGps(tr){
+ const vuelta=tr.slice().reverse();if(tr.manual)vuelta.manual=true;return vuelta;
+}
+// Cálculo por la red peatonal de OpenStreetMap. Un error nunca se convierte
+// en una recta ni en una ruta por el grafo de tracks de Trabakutik.
+let seguirMapaGps=true,calculoMapaGps=0,peticionMapaGps=null,calculandoMapaGps=false;
+let permisoMapaGps=false,ultimaPeticionMapaGps=0;
+function estadoMapaGps(texto){
+ const el=$('plannerStatus');el.textContent=texto;el.classList.toggle('hidden',!texto);
+}
+function cancelaMapaGps(){
+ calculoMapaGps++;if(peticionMapaGps)peticionMapaGps.abort();
+ peticionMapaGps=null;calculandoMapaGps=false;
+}
+function coordenadaMapaGps(p){
+ return Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180;
+}
+function respuestaMapaGps(data,solicitados){
+ if(!data||typeof data!=='object')throw Error('La respuesta del planificador no es válida.');
+ if(data.code==='NoRoute'||data.code==='NoSegment')throw Error('No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.');
+ if(data.code!=='Ok'||!Array.isArray(data.routes)||!data.routes[0])throw Error('El servicio no ha podido calcular el recorrido.');
+ const wp=data.waypoints,legs=data.routes[0].legs;
+ if(!Array.isArray(wp)||wp.length!==solicitados.length||!Array.isArray(legs)||legs.length!==solicitados.length-1)throw Error('La respuesta del planificador está incompleta.');
+ const anchors=wp.map((w,i)=>{
+  const p=Array.isArray(w.location)?[w.location[1],w.location[0]]:null;
+  if(!coordenadaMapaGps(p)||dist(p,solicitados[i])>40)throw Error('No hay un camino suficientemente cerca del punto marcado.');
+  return p;
+ });
+ const parts=legs.map((leg,i)=>{
+  if(!Array.isArray(leg.steps))throw Error('Falta el trazado del camino.');
+  const pts=[];
+  for(const step of leg.steps){
+   if(step.geometry?.type!=='LineString'||!Array.isArray(step.geometry.coordinates))throw Error('Falta el trazado del camino.');
+   const inicio=step.geometry.coordinates[0];
+   if(pts.length&&(!Array.isArray(inicio)||dist(pts[pts.length-1],[inicio[1],inicio[0]])>1))throw Error('El recorrido contiene un corte.');
+   for(const raw of step.geometry.coordinates){
+    const p=Array.isArray(raw)?[raw[1],raw[0]]:null;
+    if(!coordenadaMapaGps(p))throw Error('El recorrido contiene coordenadas inválidas.');
+    if(!pts.length||dist(pts[pts.length-1],p)>.01)pts.push(p);
+   }
+  }
+  if(pts.length<2||dist(pts[0],anchors[i])>1||dist(pts[pts.length-1],anchors[i+1])>1)throw Error('El recorrido no conecta los puntos marcados.');
+  return pts;
+ });
+ return {anchors,parts};
+}
+async function solicitaMapaGps(coords,signal){
+ const espera=Math.max(0,1100-(Date.now()-ultimaPeticionMapaGps));
+ if(espera)await new Promise((resolve,reject)=>{
+  const cancel=()=>{clearTimeout(timer);reject(Error('Cálculo cancelado.'))};
+  const timer=setTimeout(()=>{signal.removeEventListener('abort',cancel);resolve()},espera);
+  if(signal.aborted)cancel();else signal.addEventListener('abort',cancel,{once:true});
+ });
+ if(signal.aborted)throw Error('Cálculo cancelado.');
+ ultimaPeticionMapaGps=Date.now();
+ const locations=coords.map(p=>p[1].toFixed(6)+','+p[0].toFixed(6)).join(';');
+ const url='https://routing.openstreetmap.de/routed-foot/route/v1/foot/'+locations+'?overview=full&geometries=geojson&steps=true&continue_straight=false&radiuses='+coords.map(()=>'35').join(';');
+ const r=await fetch(url,{signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json'}});
+ if(r.status===429)throw Error('El planificador está ocupado. Espera unos segundos y vuelve a intentarlo.');
+ if(!r.ok&&r.status!==400)throw Error('No se pudo conectar con el planificador. Conservamos el trazado anterior.');
+ return respuestaMapaGps(await r.json(),coords);
+}
+// Muestrear el terreno cada 30 m, con un límite por recorrido. Se conservan
+// todas las esquinas de la geometría y los puntos de paso del usuario.
+const cacheAlturasMapaGps=new Map();
+let ultimaAlturaMapaGps=0;
+function interpolaMapaGps(a,b,f){
+ let dl=b[1]-a[1];if(dl>180)dl-=360;if(dl< -180)dl+=360;
+ const lon=((a[1]+dl*f+540)%360)-180;
+ return [a[0]+(b[0]-a[0])*f,lon];
+}
+function muestrasAlturaGps(result){
+ let total=0,prev=null;const rows=[],limits=[0];
+ result.parts.forEach((part,leg)=>{
+  for(const p of part){if(prev)total+=dist(prev,p);rows.push({p,d:total,leg});prev=p}
+  limits.push(total);
+ });
+ const targets=new Set(limits.map(d=>d.toFixed(4))),paso=Math.max(30,total/500);
+ for(let d=paso;d<total;d+=paso)targets.add(d.toFixed(4));
+ let i=0;
+ const samples=[...targets].map(Number).sort((a,b)=>a-b).map(d=>{
+  while(i+1<rows.length&&rows[i+1].d<d)i++;
+  const a=rows[i],b=rows[Math.min(i+1,rows.length-1)];
+  const f=b.d>a.d?Math.max(0,Math.min(1,(d-a.d)/(b.d-a.d))):0;
+  return {d,p:interpolaMapaGps(a.p,b.p,f),h:null};
+ });
+ return {rows,samples};
+}
+async function alturasTerrenoGps(result,signal){
+ const {rows,samples}=muestrasAlturaGps(result);
+ const key=p=>p[0].toFixed(6)+','+p[1].toFixed(6);
+ const missing=samples.filter(s=>!cacheAlturasMapaGps.has(key(s.p)));
+ for(let off=0;off<missing.length;off+=80){
+  const batch=missing.slice(off,off+80),wait=Math.max(0,1100-(Date.now()-ultimaAlturaMapaGps));
+  if(wait)await new Promise((resolve,reject)=>{
+   const cancel=()=>{clearTimeout(timer);reject(Error('Alturas canceladas.'))};
+   const timer=setTimeout(()=>{signal.removeEventListener('abort',cancel);resolve()},wait);
+   if(signal.aborted)cancel();else signal.addEventListener('abort',cancel,{once:true});
+  });
+  if(signal.aborted)throw Error('Alturas canceladas.');
+  ultimaAlturaMapaGps=Date.now();
+  const shape=batch.map(s=>({lat:Number(s.p[0].toFixed(6)),lon:Number(s.p[1].toFixed(6))}));
+  const url='https://valhalla1.openstreetmap.de/height?json='+encodeURIComponent(JSON.stringify({shape,height_precision:1}));
+  const response=await fetch(url,{signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json','X-Client-Id':'trabakutik.com'}});
+  if(!response.ok)throw Error('No se han podido obtener las alturas del terreno.');
+  const data=await response.json();
+  if(!Array.isArray(data.height)||data.height.length!==batch.length||data.height.some(h=>h!==null&&(!Number.isFinite(h)||h< -12000||h>10000)))throw Error('El servicio de alturas devolvió datos incompletos.');
+  if(signal.aborted)throw Error('Alturas canceladas.');
+  batch.forEach((s,i)=>cacheAlturasMapaGps.set(key(s.p),data.height[i]));
+ }
+ samples.forEach(s=>s.h=cacheAlturasMapaGps.get(key(s.p))??null);
+ let i=0;
+ function elevation(d){
+  while(i+1<samples.length&&samples[i+1].d<d-.001)i++;
+  const a=samples[i],b=samples[Math.min(i+1,samples.length-1)];
+  if(Math.abs(d-a.d)<.01)return a.h;
+  if(Math.abs(d-b.d)<.01)return b.h;
+  if(!Number.isFinite(a.h)||!Number.isFinite(b.h))return null;
+  return a.h+(b.h-a.h)*(d-a.d)/(b.d-a.d);
+ }
+ // Añadir también las muestras intermedias permite ver una cima situada
+ // en mitad de una recta larga, sin cambiar el camino calculado.
+ const parts=result.parts.map(()=>[]);
+ for(let r=0;r<rows.length;r++){
+  const row=rows[r];parts[row.leg].push({d:row.d,p:row.p});
+  const next=rows[r+1];
+  if(next&&next.leg===row.leg)for(const s of samples)if(s.d>row.d+.01&&s.d<next.d-.01)parts[row.leg].push({d:s.d,p:s.p});
+ }
+ result.parts=parts.map(part=>part.map(row=>[row.p[0],row.p[1],elevation(row.d)]));
+ result.anchors=result.parts.length?[result.parts[0][0],...result.parts.map(part=>part[part.length-1])]:result.anchors;
+ while(cacheAlturasMapaGps.size>4000)cacheAlturasMapaGps.delete(cacheAlturasMapaGps.keys().next().value);
+ return result;
+}
+
+function aplicaMapaGps(result){
+ // Solo después de validar la respuesta se sustituye el borrador.
+ if(nodosManualesGps.size){const base=nodosManualesGps.values().next().value;redGps.nodos.length=base;redGps.ady.length=base;nodosManualesGps.clear()}
+ const ids=result.anchors.map(p=>nodoManualGps(p[0],p[1],p[2]));
+ if(ids.length>2&&dist(result.anchors[0],result.anchors[ids.length-1])<.01)ids[ids.length-1]=ids[0];
+ anclasGps=ids;tramosGps=ids.length?[[ids[0]]]:[];
+ result.parts.forEach((pts,i)=>{
+  const tr=[ids[i],...pts.slice(1,-1).map(p=>nodoManualGps(p[0],p[1],p[2])),ids[i+1]];
+  tr.mapa=true;tramosGps.push(tr);
+ });
+ updateDraw();
+}
+async function planificaMapaGps(coords){
+ if(coords.some(p=>!coordenadaMapaGps(p))||coords.length>80){estadoMapaGps('Marca hasta 80 puntos de paso por recorrido.');return}
+ cancelaMapaGps();const version=calculoMapaGps;
+ if(coords.length<2){aplicaMapaGps({anchors:coords,parts:[]});estadoMapaGps('');return}
+ if(!permisoMapaGps){
+  permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap y Valhalla). Guardar en Mis rutas no publica el recorrido en Trabakutik. ¿Continuar?');
+  if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
+ }
+ const controller=new AbortController();peticionMapaGps=controller;calculandoMapaGps=true;
+ $('saveCreated').disabled=true;estadoMapaGps('Calculando recorrido…');
+ const timer=setTimeout(()=>controller.abort(),30000);
+ try{
+  const result=await solicitaMapaGps(coords,controller.signal);
+  if(version!==calculoMapaGps)return;
+  aplicaMapaGps(result);$('saveCreated').disabled=true;estadoMapaGps('Calculando desnivel…');
+  try{
+   await alturasTerrenoGps(result,controller.signal);
+   if(version!==calculoMapaGps)return;
+   aplicaMapaGps(result);
+   const complete=result.parts.every(part=>part.every(p=>Number.isFinite(p[2])));
+   estadoMapaGps(complete?'':'Faltan alturas en algunos tramos.');
+  }catch(e){
+   if(version===calculoMapaGps)estadoMapaGps('Recorrido conservado · no se pudieron cargar las alturas. Vuelve a calcular con conexión.');
+  }
+ }catch(e){
+  if(version===calculoMapaGps)estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':e.message||'No se pudo calcular.');
+ }finally{
+  clearTimeout(timer);
+  if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}
+ }
+}
+
+function metros(a, b){
+    var dy = (a[0] - b[0]) * 111320, dx = (a[1] - b[1]) * KX;
+    return Math.sqrt(dy * dy + dx * dx);
+  }
+
+  // ---- la red ------------------------------------------------------------
+
+  function construyeRed(tracks, alturas){
+    var nodos = [], clave = Object.create(null), ady = [];
+    function id(p){
+      var k = Math.round(p[0] * 111320 / CELDA_M) + ':' +
+              Math.round(p[1] * KX / CELDA_M);
+      var i = clave[k];
+      if (i === undefined) { i = nodos.length; clave[k] = i; nodos.push([p[0], p[1], null]); ady.push([]); }
+      return i;
+    }
+    function une(a, b){
+      if (a === b) return;
+      var d = metros(nodos[a], nodos[b]);
+      var i, vs = ady[a];
+      for (i = 0; i < vs.length; i++) if (vs[i][0] === b) return;
+      ady[a].push([b, d]); ady[b].push([a, d]);
+    }
+    // Los puntos vienen simplificados a 10 m y dos caminos que se CRUZAN
+    // pueden caer en celdas distintas: el cruce no existe para la red y el
+    // calculo tiene que irse a buscar la vuelta larga. Rellenando cada tramo
+    // cada 5 m antes de pegar a la rejilla, el cruce cae en la misma celda.
+    // Medido sobre 120 pares de puntos a 100-600 m: el rodeo mediano baja de
+    // 1,94 a 1,58 veces la linea recta y los rodeos de mas de 3x pasan de 31
+    // a 22. Los que quedan son de verdad: solo hay caminos grabados.
+    tracks.forEach(function(t){
+      var pts = t.points || [];
+      var alt = (alturas && t.href) ? alturas[String(t.href).split('/').pop().replace('.html', '')] : null;
+      var prev = -1;
+      for (var i = 0; i < pts.length; i++) {
+        if (i > 0) {
+          var a = pts[i - 1], b = pts[i], largo = metros(a, b);
+          // La altura del punto de relleno se interpola entre los dos puntos
+          // grabados que tiene a los lados. Sin esto, el GPX que se baja
+          // salia con altura solo en uno de cada cinco puntos.
+          var ea = alt ? alt[i - 1] : null, eb = alt ? alt[i] : null;
+          var hayE = typeof ea === 'number' && typeof eb === 'number';
+          for (var k = 1; k * PASO_M < largo; k++) {
+            var f = k * PASO_M / largo;
+            var m = id([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+            if (hayE && nodos[m][2] === null) nodos[m][2] = Math.round(ea + (eb - ea) * f);
+            if (prev >= 0) une(prev, m);
+            prev = m;
+          }
+        }
+        var n = id(pts[i]);
+        if (alt && nodos[n][2] === null && typeof alt[i] === 'number') nodos[n][2] = alt[i];
+        if (prev >= 0) une(prev, n);
+        prev = n;
+      }
+    });
+    // rejilla de 100 m para buscar el nodo mas cercano a un toque
+    var cestas = Object.create(null);
+    nodos.forEach(function(n, i){
+      var k = Math.round(n[0] * 111320 / 100) + ':' + Math.round(n[1] * KX / 100);
+      (cestas[k] || (cestas[k] = [])).push(i);
+    });
+    return { nodos: nodos, ady: ady, cestas: cestas };
+  }
+
+  function nodoCerca(red, lat, lon){
+    var cx = Math.round(lat * 111320 / 100), cy = Math.round(lon * KX / 100);
+    var mejor = -1, mejorD = Infinity;
+    for (var dx = -2; dx <= 2; dx++) for (var dy = -2; dy <= 2; dy++) {
+      var lista = red.cestas[(cx + dx) + ':' + (cy + dy)];
+      if (!lista) continue;
+      for (var i = 0; i < lista.length; i++) {
+        var d = metros(red.nodos[lista[i]], [lat, lon]);
+        if (d < mejorD) { mejorD = d; mejor = lista[i]; }
+      }
+    }
+    return mejorD <= MAX_ENGANCHE_M ? mejor : -1;
+  }
+
+  // Dijkstra con monticulo binario. 8.418 nodos: sobra de rapido.
+  function camino(red, desde, hasta){
+    if (desde === hasta) return [desde];
+    var n = red.nodos.length;
+    var dist = new Float64Array(n); dist.fill(Infinity);
+    var antes = new Int32Array(n); antes.fill(-1);
+    var visto = new Uint8Array(n);
+    var heap = [[0, desde]];
+    dist[desde] = 0;
+    function sube(i){
+      while (i > 0) {
+        var p = (i - 1) >> 1;
+        if (heap[p][0] <= heap[i][0]) break;
+        var t = heap[p]; heap[p] = heap[i]; heap[i] = t; i = p;
+      }
+    }
+    function baja(i){
+      for (;;) {
+        var l = 2 * i + 1, r = l + 1, m = i;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === i) break;
+        var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
+      }
+    }
+    while (heap.length) {
+      var top = heap[0];
+      heap[0] = heap[heap.length - 1]; heap.pop(); if (heap.length) baja(0);
+      var u = top[1];
+      if (visto[u]) continue;
+      visto[u] = 1;
+      if (u === hasta) break;
+      var vs = red.ady[u];
+      for (var i = 0; i < vs.length; i++) {
+        var v = vs[i][0], nd = top[0] + vs[i][1];
+        if (nd < dist[v]) { dist[v] = nd; antes[v] = u; heap.push([nd, v]); sube(heap.length - 1); }
+      }
+    }
+    if (!visto[hasta]) return null;
+    var ruta = [], x = hasta;
+    while (x !== -1) { ruta.push(x); x = antes[x]; }
+    return ruta.reverse();
+  }
+
+
+
+// Perfil de altura del creador: relación entre pendiente real y ángulo visible.
+// Con una ventana vertical proporcional a la distancia, las pendientes suaves
+// se ven suaves y las pronunciadas mantienen un ángulo mayor.
+// Los paneles flotantes no deben marcar puntos al pulsarlos.
+for(const id of ['elevationPanel','createActions','plannerCredit']){
+ const el=$(id);el.addEventListener('click',e=>e.stopPropagation());el.addEventListener('dblclick',e=>e.stopPropagation());
+}
+document.querySelector('.modes').addEventListener('click',e=>e.stopPropagation());
+let profileCollapsed=false,navProfileCollapsed=true;
+let profileHeights=null,profileHeightsRequest=null,profileHeightsError=false;
+// Las alturas de Trabakutik corresponden punto por punto al mapa general.
+// Se usan solo para el perfil: nunca sustituyen la geometría de navegación.
+function navigationProfilePoints(){
+ if(chosen<0||!tracks[chosen])return routePoints;
+ const track=tracks[chosen],slug=track.href?.replace(/\.html$/,'');
+ const heights=profileHeights?.[slug];
+ return track.points.map((p,i)=>[p[0],p[1],Array.isArray(heights)&&heights.length===track.points.length&&Number.isFinite(heights[i])?heights[i]:null]);
+}
+function profileDistanceText(total,creating){
+ if(!creating&&chosen>=0&&tracks[chosen]){
+  const published=(datosDeRuta[tracks[chosen].href]||'').match(/^[\d.,]+\s*km/);
+  if(published)return published[0];
+ }
+ return (total/1000).toFixed(2).replace('.',',')+' km';
+}
+function loadProfileHeights(){
+ if(profileHeights||profileHeightsRequest||profileHeightsError||chosen<0)return;
+ profileHeightsRequest=fetch('data/alturas.json',{cache:'no-cache'})
+  .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .then(data=>{if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Alturas no válidas');profileHeights=data})
+  .catch(()=>{profileHeightsError=true})
+  .finally(()=>{profileHeightsRequest=null;updateElevation()});
+}
+$('toggleProfile').onclick=()=>{
+ if(mode==='create')profileCollapsed=!profileCollapsed;
+ else{navProfileCollapsed=!navProfileCollapsed;if(!navProfileCollapsed)profileHeightsError=false}
+ updateElevation();
+};
+// La cabecera también se puede tocar; el botón mantiene el acceso por teclado.
+$('elevationPanel').querySelector('.elevation-head').addEventListener('click',e=>{
+ if(!e.target.closest('button'))$('toggleProfile').click();
+});
+function updateElevation(){
+ const panel=$('elevationPanel');
+ if(!panel)return;
+ const creating=mode==='create',visible=creating||routePoints.length>1;
+ panel.classList.toggle('hidden',!visible);
+ panel.classList.toggle('navigation-profile',!creating);
+ const collapsed=creating?profileCollapsed:navProfileCollapsed;
+ panel.classList.toggle('collapsed',collapsed);
+ const toggle=$('toggleProfile');
+ toggle.setAttribute('aria-expanded',String(!collapsed));
+ toggle.setAttribute('aria-label',collapsed?'Desplegar perfil':'Plegar perfil');
+ toggle.textContent=collapsed?'⌃':'⌄';
+ if(!visible)return;
+ if(!creating&&!collapsed)loadProfileHeights();
+ const pts=creating?drawPoints:navigationProfilePoints(),available=pts.filter(p=>Number.isFinite(p[2]));
+ panel.classList.toggle('profile-empty',pts.length<2||available.length<2);
+ panel.classList.toggle('profile-distance-only',pts.length>=2&&available.length<2);
+ if(pts.length<2||available.length<2){
+  $('elevationPath').setAttribute('d','');$('elevationFill').setAttribute('d','');
+  $('elevationEnd').style.display='none';
+  const total=pts.reduce((sum,p,i)=>sum+(i?dist(pts[i-1],p):0),0);
+  $('profileDistance').textContent=profileDistanceText(total,creating);$('profileGain').textContent=creating?'↑ 0 m':'↑ —';$('profileLoss').textContent=creating?'↓ 0 m':'↓ —';
+  $('elevationSlope').textContent=pts.length?'Marca el siguiente punto':'Marca el inicio';
+  $('profileLow').textContent=available.length?'Altura inicial '+Math.round(available[0][2])+' m':'Sin alturas todavía';
+  $('profileHigh').textContent=available.length?'':'Perfil disponible cuando haya desnivel';
+  if(!creating){
+   $('elevationSlope').textContent=$('profileDistance').textContent;
+   $('elevationSlope').className='';
+   $('profileLow').textContent=profileHeightsRequest?'Cargando alturas…':'Sin alturas suficientes';
+   $('profileHigh').textContent=profileHeightsRequest?'':'No se puede dibujar el perfil';
+  }
+  return;
+ }
+ const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
+ for(let i=0;i<pts.length;i++){
+  if(i)travelled+=dist(pts[i-1],pts[i]);
+  const elevation=Number.isFinite(pts[i][2])?pts[i][2]:null;
+  if(elevation!==null){
+   if(lastElev!==null){
+    const delta=elevation-lastElev;
+    // Evitar sumar ruido centimétrico entre puntos interpolados.
+    if(delta>0)up+=delta;else down-=delta;
+   }
+   lastElev=elevation;lastKnown=elevation;
+  }else{lastElev=null}
+  samples.push({d:travelled,h:elevation});
+ }
+ const known=samples.filter(p=>p.h!==null);
+ const hMin=Math.min(...known.map(p=>p.h)),hMax=Math.max(...known.map(p=>p.h));
+ const total=Math.max(1,travelled), width=800,top=8,bottom=108,drawH=bottom-top;
+ // 8% del recorrido total como escala vertical mínima: no amplificar
+ // una cuesta suave para que parezca una pared.
+ const verticalSpan=Math.max(35,creating?total*.08:0,(hMax-hMin)*1.18);
+ const center=(hMax+hMin)/2,base=center-verticalSpan/2;
+ const x=d=>d/total*width;
+ const y=h=>Math.max(top,Math.min(bottom,bottom-(h-base)/verticalSpan*drawH));
+ const coords=known.map(p=>[x(p.d),y(p.h)]);
+ let continuar=false;
+ const line=samples.map(p=>{if(p.h===null){continuar=false;return ''}const cmd=continuar?'L':'M';continuar=true;return cmd+x(p.d).toFixed(2)+' '+y(p.h).toFixed(2)}).join(' ');
+ $('elevationPath').setAttribute('d',line);
+ $('elevationFill').setAttribute('d',available.length<pts.length?'':line+' L'+coords[coords.length-1][0].toFixed(2)+' '+bottom+' L'+coords[0][0].toFixed(2)+' '+bottom+' Z');
+ $('elevationEnd').style.display='';
+ $('elevationEnd').setAttribute('cx',coords[coords.length-1][0]);$('elevationEnd').setAttribute('cy',coords[coords.length-1][1]);
+ $('profileDistance').textContent=profileDistanceText(travelled,creating);
+ $('profileGain').textContent='↑ '+Math.round(up)+' m'+(creating?'':' aprox.');
+ $('profileLoss').textContent='↓ '+Math.round(down)+' m'+(creating?'':' aprox.');
+ $('profileLow').textContent=(available.length<pts.length?'Alturas incompletas · ':'Mín. ')+Math.round(hMin)+' m';
+ $('profileHigh').textContent='Máx. '+Math.round(hMax)+' m';
+ if(!creating){
+  const info=$('elevationSlope');info.textContent=$('profileDistance').textContent;info.className='';
+  return;
+ }
+ // Pendiente media del último tramo marcado, con su distancia real.
+ const part=tramosGps[tramosGps.length-1]||[];
+ let partDist=0,partFirst=null,partLast=null;
+ for(let i=0;i<part.length;i++){
+  const p=redGps.nodos[part[i]];
+  if(i)partDist+=dist(redGps.nodos[part[i-1]],p);
+  if(Number.isFinite(p[2])){if(partFirst===null)partFirst=p[2];partLast=p[2]}
+ }
+ const info=$('elevationSlope');
+ if(partDist>=3&&partFirst!==null&&partLast!==null){
+  const grade=(partLast-partFirst)/partDist*100;
+  const gradeText=Math.abs(grade).toFixed(1).replace('.',',')+'%';
+  info.textContent=(grade>0.5?'↗ Subida ':grade<-.5?'↘ Bajada ':'→ Casi llano ')+gradeText;
+  info.className=grade>0.5?'up':grade<-.5?'down':'';
+ }else{info.textContent='Pendiente sin datos';info.className=''}
+}
+
+function updateDraw(){
+ drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
+ junctionMarks.forEach(m=>map.removeLayer(m));junctionMarks=[];
+ if(drawLayer)map.removeLayer(drawLayer);drawLayer=null;
+ drawPoints=[];
+ for(let k=0;k<tramosGps.length;k++)for(let j=0;j<tramosGps[k].length;j++){
+  if(k>0&&j===0)continue;
+  const p=redGps.nodos[tramosGps[k][j]];drawPoints.push(p.slice(0,3));
+ }
+ if(drawPoints.length)drawLayer=L.polyline(drawPoints.map(p=>p.slice(0,2)),{color:'#38bdf8',weight:6,opacity:1,interactive:false}).addTo(map);
+ // Con el trazado cerrado el ultimo punto es el mismo nodo que el primero:
+ // se dibuja una sola bola, o quedarian dos superpuestas y no se sabria cual
+ // estas arrastrando.
+ const cerradoGps=anclasGps.length>2&&anclasGps[0]===anclasGps[anclasGps.length-1];
+ anclasGps.forEach((id,i)=>{
+  if(cerradoGps&&i===anclasGps.length-1)return;
+  const p=redGps.nodos[id];
+  const mk=L.marker([p[0],p[1]],{draggable:true,autoPan:true,keyboard:false,
+    icon:L.divIcon({className:'gps-dot'+(i===0?' es-primera':''),iconSize:[16,16],iconAnchor:[8,8]})}).addTo(map);
+  mk.on('dragend',ev=>{const ll=ev.target.getLatLng();mueveAnclaGps(i,ll.lat,ll.lng)});
+  drawMarks.push(mk);
+ });
+ $('cerrarCirculo').classList.toggle('hidden',anclasGps.length<2);
+ $('idaVuelta').classList.toggle('hidden',anclasGps.length<2);
+ $('undo').disabled=anclasGps.length===0;
+ $('clearCreated').disabled=anclasGps.length===0;
+ $('saveCreated').disabled=drawPoints.length<2;
+ createdSavedItem=null;
+ $('navCreated').disabled=true;
+ $('navCreated').classList.add('hidden');
+ $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2&&drawPoints.length<2);
+ updateElevation();
+}
+map.on('click',e=>{
+ if(mode!=='create')return;
+ if(!redGps){notice('Preparando red de caminos…');return}
+ if(seguirMapaGps){if(calculandoMapaGps)return;const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));const p=[e.latlng.lat,e.latlng.lng];if(pts.length&&dist(pts[pts.length-1],p)<1)return;planificaMapaGps([...pts,p]);return}
+ const node=trazadoManual?nodoManualGps(e.latlng.lat,e.latlng.lng):nodoCerca(redGps,e.latlng.lat,e.latlng.lng);
+ if(node<0){notice('Ese punto no está en los trazados de Trabakutik. Elige Manual para marcarlo.');return}
+ if(!anclasGps.length){anclasGps.push(node);tramosGps.push([node]);updateDraw();notice('Punto inicial marcado. Toca otro punto del camino.');return}
+ const prev=anclasGps[anclasGps.length-1],segment=tramoGps(prev,node);
+ if(!segment){notice('No hay conexión por los trazados de Trabakutik. Puedes añadir el enlace en Manual.');return}
+ if(segment.length===1)return;
+ anclasGps.push(node);tramosGps.push(segment);updateDraw();
+ const routeLength=segment.slice(1).reduce((v,id,i)=>v+metros(redGps.nodos[segment[i]],redGps.nodos[id]),0);
+ const direct=metros(redGps.nodos[prev],redGps.nodos[node]);
+ if(direct>30&&routeLength>direct*2.5&&routeLength-direct>300)
+  notice('Este tramo da un rodeo de '+(routeLength/1000).toFixed(2)+' km. Deshacer permite cambiarlo.');
+ else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
+});
+// CERRAR EL CIRCULO. 52 de las 68 rutas de Trabakutik empiezan y acaban a
+// menos de 100 m: el circuito es lo normal, y hasta ahora habia que volver al
+// punto de partida a toques. El nodo repetido al final es a proposito: asi se
+// sigue cumpliendo que tramosGps[k] va de anclasGps[k-1] a anclasGps[k].
+function cierraCirculoGps(){
+ if(anclasGps.length<2){notice('Marca al menos dos puntos antes.');return}
+ if(seguirMapaGps){const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));if(dist(pts[0],pts[pts.length-1])<1){estadoMapaGps('El recorrido ya está cerrado.');return}planificaMapaGps([...pts,pts[0]]);return}
+ const ini=anclasGps[0],fin=anclasGps[anclasGps.length-1];
+ if(ini===fin){notice('El trazado ya vuelve al punto de partida.');return}
+ const tr=tramoGps(fin,ini);
+ if(!tr){notice('No hay camino de vuelta al principio por los caminos de Trabakutik.');return}
+ anclasGps.push(ini);tramosGps.push(tr);updateDraw();
+ notice('Círculo cerrado · '+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km');
+}
+// IDA Y VUELTA. No calcula nada: copia los tramos en orden inverso y cada uno
+// del reves, que es exactamente el camino de vuelta.
+function idaYVueltaGps(){
+ if(calculandoMapaGps){cancelaMapaGps();updateDraw();estadoMapaGps('Cálculo cancelado.');return}
+ if(anclasGps.length<2){notice('Marca al menos dos puntos antes.');return}
+ const ma=[],mt=[];
+ for(let i=tramosGps.length-1;i>=1;i--){mt.push(invierteTramoGps(tramosGps[i]));ma.push(anclasGps[i-1])}
+ anclasGps=anclasGps.concat(ma);tramosGps=tramosGps.concat(mt);updateDraw();
+ notice('Ida y vuelta · '+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km');
+}
+// ARRASTRAR UN PUNTO YA PUESTO. Antes, para corregir el segundo toque de ocho
+// habia que deshacer los seis de despues. Solo se recalculan los dos tramos
+// que tocan al punto movido, y si alguno no sale no se toca nada.
+function mueveAnclaGps(i,lat,lon){
+ if(seguirMapaGps){const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));const last=pts.length-1,closed=last>1&&anclasGps[0]===anclasGps[last];pts[i]=[lat,lon];if(closed&&(i===0||i===last)){pts[0]=[lat,lon];pts[last]=[lat,lon]}updateDraw();planificaMapaGps(pts);return}
+ const n=(trazadoManual||nodosManualesGps.has(anclasGps[i]))?nodoManualGps(lat,lon):nodoCerca(redGps,lat,lon);
+ if(n<0){notice('Ahí no pasa ningún camino. Suéltalo más cerca de uno.');updateDraw();return}
+ const ult=anclasGps.length-1;
+ const cerrado=ult>1&&anclasGps[0]===anclasGps[ult];
+ const idx=(cerrado&&i===ult)?0:i;
+ const na=anclasGps.slice(),nt=tramosGps.slice(),tocar=[];
+ na[idx]=n;
+ if(cerrado&&idx===0)na[ult]=n;
+ if(idx>0)tocar.push(idx);
+ if(idx+1<=ult)tocar.push(idx+1);
+ if(cerrado&&idx===0&&tocar.indexOf(ult)<0)tocar.push(ult);
+ for(const j of tocar){
+  const tr=tramoGps(na[j-1],na[j],!!nt[j].manual);
+  if(!tr){notice('No hay camino hasta ahí. El punto se queda donde estaba.');updateDraw();return}
+  nt[j]=tr;
+ }
+ if(idx===0)nt[0]=[n];
+ anclasGps=na;tramosGps=nt;updateDraw();
+ notice('Punto movido · '+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km');
+}
+$('cerrarCirculo').onclick=cierraCirculoGps;
+$('idaVuelta').onclick=idaYVueltaGps;
+$('undo').onclick=()=>{if(calculandoMapaGps){cancelaMapaGps();updateDraw();estadoMapaGps('Cálculo cancelado.');return}cancelaMapaGps();if(!anclasGps.length)return;anclasGps.pop();tramosGps.pop();updateDraw();notice('Último tramo deshecho')};
+function xmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function gpx(points,name){return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Trabakutik"><metadata><name>'+xmlEscape(name)+'</name><time>'+new Date().toISOString().replace(/\.\d+Z$/,'Z')+'</time></metadata><trk><name>'+xmlEscape(name)+'</name><trkseg>'+points.map(p=>p===null?'</trkseg><trkseg>':'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>'}
+function download(points,name){if(points.length<2)return;if(window.TrabakutikAndroid&&window.TrabakutikAndroid.saveGpx){window.TrabakutikAndroid.saveGpx(gpxFilename(name)+'.gpx',gpx(points,name));return;}const url=URL.createObjectURL(new Blob([gpx(points,name)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=gpxFilename(name)+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+const STORAGE_KEY='trabakutik-gps-creadas-v1';
+function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
+function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
+let savedFromDialog=null;
+let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='',rutasListas=false,ultimoParoNativo=0,giraNativo=false;
+function gpxFilename(name){return (name||'ruta').toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-').replace(/^-+|-+$/g,'')||'ruta'}
+function canShareGpx(points,name){
+ // Dentro de la app NO existe navigator.share -el WebView no lo implementa-,
+ // asi que esto daba false y el boton se quedaba en «este navegador no
+ // permite compartir». El puente nativo si puede, y es el camino que lleva
+ // la ruta a Wikiloc o a OsmAnd.
+ if(window.TrabakutikAndroid&&window.TrabakutikAndroid.shareGpx)return true;
+ if(typeof navigator.share!=='function'||typeof navigator.canShare!=='function'||typeof File==='undefined')return false;
+ try{const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});return navigator.canShare({files:[file]})}catch(e){return false}
+}
+async function shareGpx(points,name){
+ if(window.TrabakutikAndroid&&window.TrabakutikAndroid.shareGpx){
+  try{window.TrabakutikAndroid.shareGpx(gpxFilename(name)+'.gpx',gpx(points,name));return true}
+  catch(e){notice('No se pudo compartir el GPX.');return false}
+ }
+ if(!canShareGpx(points,name)){notice('Este navegador no permite compartir archivos GPX. Puedes descargarlo.');return false}
+ const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});
+ try{await navigator.share({files:[file],title:name,text:'Ruta GPX'});return true}
+ catch(e){if(e.name!=='AbortError')notice('No se pudo compartir el GPX.');return false}
+}
+function closeSaveDialog(){
+ $('saveDialog').classList.add('hidden');
+ pendingSave=null;savedFromDialog=null;
+}
+function openSaveDialog(points,name,kind){
+ if(!Array.isArray(points)||points.filter(Boolean).length<2){notice('No hay suficientes puntos para generar un GPX.');return}
+ savedFromDialog=null;$('navigateSavedFromDialog').classList.add('hidden');
+ const complete=kind!=='recording'||nativeTrackComplete;
+ pendingSave={points:points.map(p=>p===null?null:p.slice()),name,kind,complete};
+ $('saveTitle').textContent=kind==='recording'?'Guardar grabación':'Guardar ruta creada';
+ $('saveSummary').textContent=name+' · '+points.filter(Boolean).length+' puntos'+elevationText(points.filter(Boolean));
+ $('saveStatus').textContent=kind==='created'?'Mis rutas se guarda en este dispositivo; no se publica en la web.'+(points.some(p=>p&&!Number.isFinite(p[2]))?' Hay tramos sin alturas.':''):'';
+ const hasCuts=kind==='recording'&&(points.includes(null)||cortesGrabacion>0);
+ $('saveToMine').disabled=hasCuts||!complete;
+ if(hasCuts)$('saveStatus').textContent='La grabación tiene cortes. Descarga el GPX para conservar los tramos separados.';
+ if(!complete)$('saveStatus').textContent='La vista previa contiene solo el tramo final. Guarda el archivo GPX para conservar la grabación completa.';
+ $('downloadFromDialog').textContent=kind==='recording'&&window.TrabakutikAndroid?'Guardar archivo GPX…':'Descargar GPX';
+ $('shareFromDialog').classList.toggle('hidden',!complete||!canShareGpx(points,name)||(hasCuts&&window.TrabakutikAndroid));
+ $('saveDialog').classList.remove('hidden');
+}
+function finishRecording(){
+ apagaGps();
+ if(window.TrabakutikAndroid?.clearLiveTrack)window.TrabakutikAndroid.clearLiveTrack();
+ recording=false;recordingPendingSave=false;recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;
+ nativeTrackComplete=true;
+ if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
+ recordingControls('ready');
+}
+function savePendingToMine(){
+ if(!pendingSave)return;
+ if(pendingSave.complete===false){notice('Guarda el GPX completo: la vista previa no contiene toda la grabación.');return}
+ const pending=pendingSave,points=pending.points.filter(Boolean),list=savedList();
+ const match=list.findIndex(item=>String(item.name||'').trim().toLocaleLowerCase()===pending.name.trim().toLocaleLowerCase());
+ if(match>=0&&!confirm('Ya existe una ruta guardada con ese nombre. ¿Quieres reemplazarla?'))return;
+ if(match<0&&list.length>=30){notice('Mis rutas está lleno (30). Elimina o exporta una ruta antes de guardar otra.');return}
+ const item={name:pending.name,points,created:Date.now()};
+ if(match>=0)list.splice(match,1);
+ list.unshift(item);
+ if(!putSaved(list))return;
+ if(pending.kind==='created'){
+  createdSavedItem=item;$('navCreated').classList.remove('hidden');$('navCreated').disabled=false;
+ }else if(pending.kind==='recording'){
+  finishRecording();
+ }
+ if(pending.kind==='created'){
+  savedFromDialog=item;
+  $('saveToMine').disabled=true;
+  $('navigateSavedFromDialog').classList.remove('hidden');
+  $('saveStatus').textContent='Guardada en Mis rutas. Pulsa Abrir ruta y después Iniciar grabación para comenzar.';
+ }else closeSaveDialog();
+ showSaved();
+ notice('Guardada en Mis rutas · '+item.name);
+}
+$('navigateSavedFromDialog').onclick=()=>{
+ if(!savedFromDialog)return;
+ const item=savedFromDialog;closeSaveDialog();loadSaved(item);
+};
+$('closeSave').onclick=closeSaveDialog;
+$('saveToMine').onclick=savePendingToMine;
+$('downloadFromDialog').onclick=()=>{
+ if(!pendingSave)return;
+ const pending=pendingSave;
+ if(pending.kind==='recording'&&window.TrabakutikAndroid?.saveRecording){
+  closeSaveDialog();
+  window.TrabakutikAndroid.saveRecording();
+  notice('Elige dónde guardar el archivo GPX');
+  return;
+ }
+ download(pending.points,pending.name);
+ if(pending.kind==='recording')finishRecording();
+ closeSaveDialog();
+ notice('GPX descargado · comprueba Descargas');
+};
+$('shareFromDialog').onclick=async()=>{
+ if(!pendingSave)return;
+ if(pendingSave.complete===false){notice('Guarda el GPX completo para conservar el inicio de la grabación.');return}
+ const pending=pendingSave;
+ const shared=await shareGpx(pending.points,pending.name);
+ if(!shared)return;
+ if(pending.kind==='recording')finishRecording();
+ closeSaveDialog();
+};
+// El desnivel se cuenta contra una REFERENCIA que va subiendo contigo, no
+// mirando solo de un punto al siguiente. Antes era lo segundo y se comia las
+// subidas suaves enteras: una rampa de 100 m ganados de metro en metro daba
+// +0, porque ningun par de puntos seguidos llegaba a los 5 m. Medido contra
+// las cifras publicadas de ocho rutas, el error medio era del 75%:
+// zengotitagarai salia +545 cuando la ficha dice +1.077, y trabakua +146
+// contra +712. Con la referencia movil y el mismo umbral de 5 m el error
+// medio baja al 9% (zengotitagarai +1.173, trabakua +660). El umbral sigue
+// haciendo falta: sin el se suma el temblor del GPS en altura.
+// Esto NO toca las cifras de las fichas de la web, que tienen otra fuente.
+function elevationText(points){
+ let up=0,down=0,ref=null;
+ const UMBRAL=5;
+ for(const p of points){
+  const h=p&&p[2];
+  if(!Number.isFinite(h)){ref=null;continue;}
+  if(ref===null){ref=h;continue}
+  if(h>=ref+UMBRAL){up+=h-ref;ref=h}
+  else if(h<=ref-UMBRAL){down+=ref-h;ref=h}
+ }
+ return points.some(p=>p&&Number.isFinite(p[2]))?' · +'+Math.round(up)+' / -'+Math.round(down)+' m aprox.'+(points.some(p=>!p||!Number.isFinite(p[2]))?' · alturas incompletas':''):' · sin alturas disponibles';
+}
+// Mantener los puntos GPX originales en Mis rutas. Para dibujar y navegar,
+// usar una copia simplificada por desviación (no escoger 1 de cada N).
+function compactRoutePoints(points,maxPoints=2200){
+ // Se conserva la ALTURA de los puntos que sobreviven. Antes se tiraba, y
+ // reabrir una ruta de «Mis rutas» -que usa esta copia- hacia que el resumen
+ // dijera «sin alturas disponibles» aunque la ruta las tuviera todas. El GPX
+ // guardado nunca se tocaba, era solo la copia para dibujar y navegar.
+ if(!Array.isArray(points)||points.length<=2)return points.map(p=>p.slice(0,3));
+ const source=points.map(p=>Number.isFinite(p[2])?[p[0],p[1],p[2]]:[p[0],p[1]]);
+ const lat0=source[Math.floor(source.length/2)][0]*R;
+ const scaleX=111195*Math.cos(lat0),scaleY=111195;
+ function simplify(tolerance){
+  const keep=new Uint8Array(source.length);
+  keep[0]=1;keep[source.length-1]=1;
+  const stack=[[0,source.length-1]];
+  while(stack.length){
+   const [start,end]=stack.pop();
+   if(end-start<2)continue;
+   const a=source[start],b=source[end];
+   const dx=(b[1]-a[1])*scaleX,dy=(b[0]-a[0])*scaleY;
+   const lenSq=dx*dx+dy*dy;
+   let worst=-1,index=-1;
+   for(let i=start+1;i<end;i++){
+    const px=(source[i][1]-a[1])*scaleX,py=(source[i][0]-a[0])*scaleY;
+    const t=lenSq?Math.max(0,Math.min(1,(px*dx+py*dy)/lenSq)):0;
+    const error=Math.hypot(px-t*dx,py-t*dy);
+    if(error>worst){worst=error;index=i;}
+   }
+   if(worst>tolerance){keep[index]=1;stack.push([start,index],[index,end]);}
+  }
+  return source.filter((_,i)=>keep[i]);
+ }
+ let compact=source;
+ for(const tolerance of [1,2,3,5,8,12,20,30]){
+  compact=simplify(tolerance);
+  if(compact.length<=maxPoints)break;
+ }
+ if(compact.length>maxPoints){
+  // Si es extremadamente sinuoso, limitar también el número de vértices
+  // sin modificar el GPX guardado; mantener siempre inicio y final.
+  const reduced=[];
+  for(let i=0;i<maxPoints;i++)reduced.push(compact[Math.round(i*(compact.length-1)/(maxPoints-1))]);
+  compact=reduced;
+ }
+ return compact;
+}
+function loadSaved(item){
+ if(drawPoints.length>1&&!createdSavedItem&&!confirm('El trazado que estás creando aún no está guardado. ¿Quieres descartarlo y abrir esta ruta?'))return;
+ selectedRouteRequest++;
+ activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
+ resetOffRoute();resetJunctionView();
+ junctions=[];
+ crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
+ routePoints=compactRoutePoints(item.points);
+ chosen=-1;updateNativeLaunchLink();
+ if(item.imported){
+  otherTracksVisible=false; // cada GPX externo abre el mapa limpio
+  refreshRouteLayers();
+  $('eye').setAttribute('aria-pressed','false');
+  $('eye').setAttribute('aria-label','Mostrar rutas de Trabakutik');
+  $('eye').title='Mostrar rutas de Trabakutik';
+ }
+ $('savedDialog').classList.add('hidden');changeMode('nav');
+
+ if(drawPoints.length||drawLayer)clearDraft();
+ if(savedLine)map.removeLayer(savedLine);
+ savedLine=L.polyline(routePoints,{color:'#5bebff',weight:8,opacity:1,interactive:false}).addTo(map).bringToFront();
+ updateDirectionArrows();
+ map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
+ $('title').textContent=item.name;setRouteTitle(item.name,null);
+ $('distance').textContent='Ruta propia'+elevationText(item.points);
+ // Preparar ruta y giros antes de permitir que arranque la grabación.
+ // Primero se envían los puntos; los índices de giro pertenecen a esa copia.
+ syncNativeRoute();
+ computeJunctions();
+ aplicaCruces();
+ notice(guiaIniciada()?'Siguiendo · '+item.name:'Ruta cargada · '+item.name+' · pulsa Iniciar grabación para comenzar');
+}
+let savedLine=null;
+function sameTrack(a,b){
+ return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.length>1&&a.every((p,i)=>Math.abs(p[0]-b[i][0])<0.0000001&&Math.abs(p[1]-b[i][1])<0.0000001);
+}
+function clearDraft(){
+ cancelaMapaGps();estadoMapaGps('');
+ createdSavedItem=null;
+ $('navCreated').classList.add('hidden');$('navCreated').disabled=true;
+ if(redGps&&nodosManualesGps.size){const base=nodosManualesGps.values().next().value;redGps.nodos.length=base;redGps.ady.length=base;nodosManualesGps.clear();}
+ anclasGps=[];tramosGps=[];drawPoints=[];drawSteps=[];
+ drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
+ junctionMarks.forEach(m=>map.removeLayer(m));junctionMarks=[];
+ if(drawLayer){map.removeLayer(drawLayer);drawLayer=null}
+ $('undo').disabled=true;$('clearCreated').disabled=true;
+ $('saveCreated').disabled=true;$('navCreated').disabled=true;
+ $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2);
+ updateElevation();
+}
+$('clearCreated').onclick=()=>{
+ if(!anclasGps.length)return;
+ if(!confirm('¿Borrar el trazado que estás creando?'))return;
+ // «Estoy navegando este borrador» se miraba solo comparando geometrias, y
+ // eso se rompe en cuanto tocas un punto despues de darle a Navegar: el
+ // borrador se borraba y la navegacion seguia viva, pitando giros de una
+ // ruta que ya no esta en pantalla. Vale tambien si la ruta activa es la
+ // copia guardada que salio de este mismo borrador.
+ const wasActive=chosen<0&&routePoints.length>1&&(sameTrack(drawPoints,routePoints)
+   ||(createdSavedItem&&activeSavedId&&activeSavedId===createdSavedItem.created));
+ clearDraft();
+ if(wasActive)clearActiveRoute();
+ notice('Trazado creado borrado del mapa');
+};
+function clearActiveRoute(){
+ selectedRouteRequest++;
+ resetOffRoute();
+ resetJunctionView();
+ if(savedLine){map.removeLayer(savedLine);savedLine=null}
+ // El dibujo provisional del creador es otra capa distinta de la ruta activa.
+ // Al quitar la ruta creada hay que eliminar ambas capas.
+ if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
+ routePoints=[];chosen=-1;activeSavedId=null;updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
+ junctions=[];junctionWarned.clear();routeCumulative=[];crucesOsm=[];
+ $('clearActiveRoute').classList.add('hidden');
+ $('title').textContent='Trabakutik GPS';
+ setRouteTitle('Mapa de rutas',null);
+ $('distance').textContent='Elige una ruta para navegar';
+ if(window.TrabakutikAndroid?.stopNavigation){
+  try{window.TrabakutikAndroid.stopNavigation()}catch(e){console.warn('No se pudo parar navegación',e)}
+ }
+ if(window.TrabakutikAndroid&&window.TrabakutikAndroid.clearRoute){
+  try{window.TrabakutikAndroid.clearRoute()}catch(e){console.warn('No se pudo desactivar la ruta GPS',e)}
+ }
+ drawAll();
+ notice('Ruta quitada del mapa y de la navegación');
+}
+$('clearActiveRoute').onclick=clearActiveRoute;
+function parseImportedGpx(text,filename){
+ const xml=new DOMParser().parseFromString(text,'application/xml');
+ if(xml.getElementsByTagName('parsererror').length)throw new Error('El archivo GPX no tiene un XML válido');
+ if(xml.documentElement?.localName?.toLowerCase()!=='gpx')throw new Error('El archivo no es un GPX');
+ const els=(node,tag)=>Array.from(node.getElementsByTagNameNS('*',tag));
+ const segments=els(xml,'trkseg').map(seg=>els(seg,'trkpt')).filter(x=>x.length>1);
+ // Los GPX pueden contener varios tramos separados. No enlazar dos tramos
+ // distintos con una línea recta: importar el tramo continuo más largo.
+ let chosen=segments.sort((a,b)=>b.length-a.length)[0],excluded=Math.max(0,segments.length-1);
+ if(!chosen){
+  const trk=els(xml,'trkpt'),rte=els(xml,'rtept');
+  chosen=trk.length>1?trk:rte;
+  excluded=0;
+ }
+ if(!chosen||chosen.length<2)throw new Error('No hay suficientes puntos de track o ruta');
+ if(chosen.length>15000)throw new Error('El GPX supera los 15.000 puntos admitidos; necesita una versión reducida');
+ const points=chosen.map(el=>{
+  const latText=el.getAttribute('lat')?.trim(),lonText=el.getAttribute('lon')?.trim();
+  if(!latText||!lonText)throw new Error('Faltan coordenadas en un punto del GPX');
+  const lat=Number(latText),lon=Number(lonText);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)throw new Error('Hay coordenadas inválidas en el GPX');
+  const ele=els(el,'ele')[0],value=ele&&ele.textContent?.trim()?Number(ele.textContent):null;
+  return Number.isFinite(value)?[lat,lon,value]:[lat,lon];
+ });
+ const named=els(xml,'trk')[0]||els(xml,'rte')[0];
+ const nameEl=named?Array.from(named.children).find(x=>x.localName==='name'):null;
+ const name=(nameEl?.textContent||filename.replace(/\.gpx$/i,'')).trim().slice(0,110)||'Ruta importada';
+ return {name,points,excluded};
+}
+$('importGpxBtn').onclick=()=>$('importGpxFile').click();
+$('importGpxFile').onchange=async e=>{
+ const file=e.target.files?.[0];
+ if(!file)return;
+ try{
+  if(!/\.gpx$/i.test(file.name))throw new Error('Elige un archivo con extensión .gpx');
+  if(file.size>4*1024*1024)throw new Error('El GPX ocupa más de 4 MB');
+  const list=savedList();
+  if(list.length>=30)throw new Error('Mis rutas está lleno (30). Exporta o elimina una ruta antes de importar');
+  const result=parseImportedGpx(await file.text(),file.name);
+  if(result.excluded){
+   if(!confirm('El GPX contiene '+(result.excluded+1)+' tramos separados. Para no unirlos con líneas rectas se importará únicamente el tramo más largo. ¿Continuar?'))return;
+  }
+  const item={name:result.name,points:result.points,created:Date.now(),imported:true};
+  if(!putSaved([item,...list]))throw new Error('No hay espacio para guardar la ruta. No se ha importado.');
+  showSaved();
+  notice('GPX importado: '+item.name+' · '+item.points.length+' puntos');
+ }catch(err){alert('No se pudo importar: '+err.message);notice('Error al importar GPX')}
+ finally{e.target.value=''}
+};
+function showSaved(){
+ const target=$('savedItems');target.replaceChildren();
+ const list=savedList();
+ if(!list.length){target.textContent='Aún no hay rutas guardadas. Puedes importar un GPX desde tu móvil o crear una ruta en el mapa.';return}
+ list.forEach((item,i)=>{
+  const row=document.createElement('div');row.className='routeitem';
+  const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
+  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name.toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-')||'ruta');
+  const share=document.createElement('button');share.className='btn-sub';share.textContent='Compartir';share.title='Compartir archivo GPX';share.hidden=!canShareGpx(item.points,item.name);share.onclick=()=>{void shareGpx(item.points,item.name)};
+  const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
+  row.append(open,dl,share,del);target.append(row);
+ });
+}
+$('savedRoutes').onclick=()=>{$('savedDialog').classList.remove('hidden');showSaved()};
+$('closeSaved').onclick=()=>$('savedDialog').classList.add('hidden');
+$('saveCreated').onclick=()=>{
+ if(calculandoMapaGps){estadoMapaGps('Espera a que termine el cálculo antes de guardar.');return}
+ if(drawPoints.length<2)return;
+ const name=prompt('Nombre para la ruta','Mi ruta '+new Date().toLocaleDateString('es-ES'));
+ if(name===null)return;
+ openSaveDialog(drawPoints,name.trim()||'Mi ruta','created');
+};
+$('navCreated').onclick=()=>{
+ if(!createdSavedItem)return;
+ loadSaved(createdSavedItem);
+};
+// El aviso se arma cuando el usuario ya ha llegado al recorrido.
+// Se basa en tiempo y precisión, no en un número de lecturas consecutivas.
+// sentidoRuta: +1 si vas como la ruta esta grabada, -1 si la haces al reves.
+// Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
+// selectRoute, loadSaved y clearActiveRoute.
+let rumboSuave=null,sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,alongAcum=0,ultimoAlong=null;
+// Cuantas veces se partio el track por quedarse sin senal. Un GPX con
+// huecos no es el recorrido completo y hay que decirlo al terminar, no
+// dejar que parezca entero.
+let cortesGrabacion=0,nativeTrackComplete=true;
+// El sentido se decide por el AVANCE SOBRE LA RUTA, no comparando rumbos.
+// Comparar el rumbo del GPS con el del tramo mas cercano se equivoca en las
+// curvas cerradas —en una lazada, el tramo mas cercano puede ser el de vuelta,
+// que apunta justo al reves— y al arrancar, cuando el rumbo todavia no es
+// fiable. Medido sobre 3 km siguiendo la ruta bien: ocho cambios falsos.
+// Avanzar o retroceder sobre la ruta no tiene esa ambiguedad. Hacen falta
+// 30 m netos para cambiar de opinion, asi que el baile del GPS no decide.
+const AVANCE_DECIDE_M=30;
+function decideSentido(along){
+ if(!Number.isFinite(along))return;
+ if(alongPrevio===null){alongPrevio=along;return}
+ const paso=along-alongPrevio;alongPrevio=along;
+ if(Math.abs(paso)>200)return;             // salto raro: no cuenta
+ alongAcum+=paso;
+ if(Math.abs(alongAcum)<AVANCE_DECIDE_M)return;
+ const nuevo=alongAcum>0?1:-1;alongAcum=0;
+ if(nuevo===sentidoRuta)return;
+ sentidoRuta=nuevo;
+ junctionWarned.clear();
+ // El servicio hace su propia cuenta con la pantalla apagada y tambien lo
+ // necesita. Un APK viejo no tiene setSentido: se queda como estaba.
+ try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(sentidoRuta)}catch(e){}
+ marcaAlReves(sentidoRuta<0);
+ if(sentidoRuta<0){hablar('Recorrido en sentido inverso, giros corregidos');notice('La est\u00e1s haciendo al rev\u00e9s \u00b7 los giros van corregidos');}
+}
+// Lo que llevas y lo que te queda DE LA RUTA, no en linea recta. Sale del
+// avance sobre el trazado, que es el mismo numero con el que se calculan los
+// avisos de giro. Al reves se empieza por el final, asi que lo recorrido es
+// lo que queda por detras.
+// La direccion en la que vamos, en grados y en rumbo. El mapa va siempre al
+// norte —Leaflet 1.9.4 no gira y rotarlo dejaria todos los toponimos de lado,
+// que es justo lo que mas valor tiene de esta capa—, asi que la N de la rosa
+// se queda arriba y lo que se mueve es la aguja. El rumbo no sale del
+// magnetometro sino del que ya se calcula para la flecha: sobre la ruta es el
+// del tramo que pisas, corregido por el sentido, y fuera de ella el del GPS.
+const RUMBOS=['N','NE','E','SE','S','SO','O','NO'];
+function pintaBrujula(h){
+ const caja=$('compass');
+ if(!caja)return;
+ if(!Number.isFinite(h)){caja.classList.add('hidden');return}
+ const g=((h%360)+360)%360;
+ $('compassNeedle').setAttribute('transform','rotate('+g.toFixed(0)+' 20 20)');
+ $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' \u00b7 '+Math.round(g)+'\u00b0';
+ caja.classList.remove('hidden');
+}
+// Cargar una ruta o consultar la ubicación no inicia la guía.
+function guiaIniciada(){
+ return !gpsApagadoPorTi&&mode==='nav'&&routePoints.length>1&&(recording||navegaNativo);
+}
+function pintaAvance(along){
+ const caja=$('routeProgress');
+ if(!caja)return;
+ if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){caja.classList.add('hidden');return}
+ const total=routeCumulative[routeCumulative.length-1];
+ ultimoAlong=along;
+ const hecho=Math.max(0,Math.min(total,sentidoRuta>0?along:total-along));
+ const queda=Math.max(0,total-hecho);
+ caja.innerHTML='Llevas <b>'+fmt(hecho)+'</b> \u00b7 faltan <b>'+fmt(queda)+'</b>';
+ caja.classList.remove('hidden');
+}
+function marcaAlReves(si){
+ const c=$('reverseWarn');
+ if(c)c.classList.toggle('hidden',!si);
+}
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
+function updateOffRoute(d,accuracy){
+ if(!guiaIniciada())return;
+ if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;
+ // Evitar falsos positivos debidos a posiciones GPS imprecisas.
+ // Mismo fallo que en el servicio: cortaba en 22 m y ademas borraba el
+ // cronometro, asi que bajo arbolado el aviso no llegaba nunca. Los
+ // umbrales de abajo ya crecen con la precision; aqui solo queda el corte
+ // de cordura, y salta la lectura sin tocar la cuenta.
+ if(accuracy>60)return;
+ const near=d<=Math.max(11,accuracy+4);
+ if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}return}
+ if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
+ const far=d>Math.max(15,accuracy+7);
+ if(!far){farSince=0;return}
+ if(!farSince)farSince=Date.now();
+ // 800 ms a 1,5 s por lectura significa DOS lecturas: basta un par de
+ // saltos del GPS para dar la alarma. En el bolsillo, con el cuerpo
+ // tapando el cielo y 20-45 m de precision, eso son 2,2 falsos avisos
+ // por hora -el autor lo sufrio-. Con 4 s hacen falta cuatro lecturas
+ // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
+ // verdad se detecta a 104 m en vez de a 86. Barato.
+ if(!alerted&&Date.now()-farSince>=4000){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
+}
+try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
+try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}
+function avisaModoAudioNativo(){
+ try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}
+}
+function pintaModoAudio(){
+ const b=$('audioMode');if(!b)return;
+ b.dataset.modo=audioModo;
+ const nombres={voz:'Voz y pitidos',pitidos:'Solo pitidos',silencio:'Silencio'};
+ b.title='Avisos sonoros: '+nombres[audioModo];b.setAttribute('aria-label','Avisos sonoros: '+nombres[audioModo]);
+}
+function hablarGiro(texto){if(!giraNativo)hablaPagina(texto)}
+function hablar(texto){
+ // Si navega el servicio, habla el: tiene TextToSpeech y sigue sonando con la
+ // pantalla apagada, que es cuando hace falta. La pagina se duerme ahi, asi
+ // que su voz solo valia mirando el movil. Es la misma regla que los pitidos.
+ if(navegaNativo)return;
+ hablaPagina(texto);
+}
+function hablaPagina(texto){
+ if(gpsApagadoPorTi)return;
+ if(audioModo!=='voz'||!('speechSynthesis' in window))return;
+ try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
+}
+function conmutaModoAudio(){
+ audioModo=audioModo==='voz'?'pitidos':audioModo==='pitidos'?'silencio':'voz';
+ try{localStorage.setItem('trabakutik-audio-modo',audioModo)}catch(e){}
+ pintaModoAudio();avisaModoAudioNativo();notice('Avisos sonoros: '+(audioModo==='voz'?'voz y pitidos':audioModo==='pitidos'?'solo pitidos':'silencio'));
+ if(audioModo==='voz')hablar('Voz activada');
+}
+function compartirGpx(points,name){void shareGpx(points,name)}
+function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
+// Un grupo de n pitidos agudos, y el numero es el dato: 1 pitido = cruce a
+// 50 m, 2 = a 10 m, 3 = lo tienes encima, 4 = fuera de ruta. Los cuatro de
+// fuera de ruta van mas seguidos (.18 s) que los de giro (.30 s), porque
+// tres y cuatro pitidos al mismo ritmo no se distinguen de oido.
+// La flecha del giro, dibujada con los grados de verdad: un arco tangente a
+// las dos rectas, no un glifo fijo. Las dos ramas se separan solas 2R, asi
+// que una vuelta de 160 grados sale legible y no doblada sobre si misma.
+// deg = cuanto se desvia de seguir recto; dir: -1 izquierda, +1 derecha.
+// El sentido va DENTRO de «a»: multiplicar otra vez por dir dibujaba los
+// giros a la izquierda hacia la derecha.
+function flechaGiro(deg,dir,tam,grosor){
+ const R=17,entra=30,sale=26,cabeza=14,a=deg*Math.PI/180*dir;
+ const bx=0,by=0,ox=bx+R*dir,oy=by;
+ const gira=(x,y,t)=>[ox+(x-ox)*Math.cos(t)-(y-oy)*Math.sin(t),
+                      oy+(x-ox)*Math.sin(t)+(y-oy)*Math.cos(t)];
+ const [cx,cy]=gira(bx,by,a);
+ const dx=Math.sin(a),dy=-Math.cos(a);
+ const px=cx+dx*sale,py=cy+dy*sale,sx=bx,sy=by+entra,nx=-dy,ny=dx;
+ const b1x=px-dx*cabeza+nx*cabeza*.55,b1y=py-dy*cabeza+ny*cabeza*.55;
+ const b2x=px-dx*cabeza-nx*cabeza*.55,b2y=py-dy*cabeza-ny*cabeza*.55;
+ const qx=px-dx*cabeza*.8,qy=py-dy*cabeza*.8,sentido=dir>0?1:0;
+ const d='M'+sx.toFixed(1)+' '+sy.toFixed(1)+' L'+bx.toFixed(1)+' '+by.toFixed(1)+
+         ' A'+R+' '+R+' 0 0 '+sentido+' '+cx.toFixed(1)+' '+cy.toFixed(1)+
+         ' L'+qx.toFixed(1)+' '+qy.toFixed(1);
+ const pts=[[sx,sy],[px,py],[b1x,b1y],[b2x,b2y]];
+ for(let t=0;t<=1.0001;t+=.05)pts.push(gira(bx,by,a*t));
+ const xs=pts.map(q=>q[0]),ys=pts.map(q=>q[1]),m=grosor*.6+2;
+ const x0=Math.min(...xs)-m,y0=Math.min(...ys)-m;
+ const w=Math.max(...xs)-Math.min(...xs)+m*2,h=Math.max(...ys)-Math.min(...ys)+m*2;
+ const lado=Math.max(w,h),vx=x0-(lado-w)/2,vy=y0-(lado-h)/2;
+ const id='fg'+Math.round(deg)+(dir>0?'d':'i');
+ return '<svg viewBox="'+vx.toFixed(1)+' '+vy.toFixed(1)+' '+lado.toFixed(1)+' '+lado.toFixed(1)+
+  '" width="'+tam+'" height="'+tam+'" aria-hidden="true">'+
+  '<defs><linearGradient id="'+id+'" x1="0" y1="1" x2="0" y2="0">'+
+  '<stop offset="0" stop-color="#2aa6c4"/><stop offset="1" stop-color="#c8fbff"/></linearGradient></defs>'+
+  '<path d="'+d+'" fill="none" stroke="url(#'+id+')" stroke-width="'+grosor+'" stroke-linecap="round"/>'+
+  '<path d="M'+px.toFixed(1)+' '+py.toFixed(1)+' L'+b1x.toFixed(1)+' '+b1y.toFixed(1)+
+  ' L'+b2x.toFixed(1)+' '+b2y.toFixed(1)+' Z" fill="#c8fbff"/></svg>';
+}
+// Velocidad suavizada, en m/s. Las indicaciones de giro se calculan con ella
+// y la cruda del GPS pega saltos: un pico de 12 m/s estando parado
+// adelantaria el primer aviso 90 metros sin motivo. Si el aparato no da
+// velocidad se saca del avance entre dos lecturas.
+let velocidadSuave=0,ultimaPosT=0;
+function actualizaVelocidad(coords,prior,ahora){
+ let v=coords&&Number.isFinite(coords.speed)&&coords.speed>=0?coords.speed:null;
+ if(v===null&&prior&&ultimaPosT){
+  const dt=(ahora-ultimaPosT)/1000;
+  if(dt>.4&&dt<12)v=dist([coords.latitude,coords.longitude],prior)/dt;
+ }
+ ultimaPosT=ahora;
+ if(v===null||!Number.isFinite(v))return;
+ velocidadSuave=velocidadSuave?velocidadSuave*.7+Math.min(v,20)*.3:Math.min(v,20);
+}
+// Los avisos van por TIEMPO, no por metros: a 30 km/h cincuenta metros son
+// seis segundos y andando son cuarenta y cinco. 9 s para el primer aviso y
+// 3 s para el segundo, con suelo (25 y 8 m, para andar) y techo (90 y 30).
+function distanciasDeAviso(){
+ const v=velocidadSuave||1.2;
+ // El tercero es SOLO para la voz, y va mucho antes. Un pitido informa al
+ // instante; una frase tarda dos o tres segundos en decirse y para cuando
+ // acaba ya estas en el cruce. 25 m a 10 km/h son nueve segundos: no da.
+ // 18 segundos de margen, 35 m de suelo y 200 de techo. El suelo estaba en
+ // 60 y andando a 4 km/h daba 54 s de antelacion: demasiado. Con 35 son 32 s
+ // andando, y de 12 km/h para arriba no cambia nada.
+ return [Math.min(90,Math.max(25,v*9)),Math.min(30,Math.max(8,v*3)),
+         Math.min(200,Math.max(35,v*18))];
+}
+function pitidos(n,sep){
+ if(gpsApagadoPorTi||audioModo==='silencio'||!audio)return;
+ const t=audio.currentTime;
+ for(let i=0;i<n;i++){
+  const o=audio.createOscillator(),g=audio.createGain(),at=t+i*sep;
+  o.frequency.value=880;
+  g.gain.setValueAtTime(.0001,at);
+  g.gain.linearRampToValueAtTime(.13,at+.015);
+  g.gain.exponentialRampToValueAtTime(.0001,at+.19);
+  o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.2);
+ }
+}
+function closestMeters(p,path){let best=Infinity;for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i];const latScale=111195,lonScale=latScale*Math.cos(p[0]*R),ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale,bx=(b[1]-p[1])*lonScale,by=(b[0]-p[0])*latScale,dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));best=Math.min(best,Math.hypot(ax+t*dx,ay+t*dy))}return best}
+
+// Separar cruces identificados de giros cerrados calculados sobre el trazado.
+function resetJunctionView(){
+ if(turnMarker){map.removeLayer(turnMarker);turnMarker=null}
+ $('turnHint').classList.add('hidden');
+ $('map').classList.remove('con-giro');
+ $('map').style.removeProperty('--turn-alto');
+ junctionActive=-1;junctionBlocked=-1;
+ if(junctionZoom!==null){
+  const original=junctionZoom;junctionZoom=null;
+  autoZooming=true;map.setZoom(original,{animate:false});
+  setTimeout(()=>{autoZooming=false},300);
+ }
+}
+map.on('zoomstart',()=>{
+ if(!autoZooming&&junctionActive>=0){
+  junctionBlocked=junctionActive;
+  junctionZoom=null; // Respetar el zoom que el usuario acaba de elegir.
+ }
+});
+// LOS CRUCES DE LA ZONA, de OpenStreetMap. Un fichero para toda Mallabia y no
+// uno por ruta, a proposito: asi un GPX que te bajes de Wikiloc y abras en la
+// app tiene los mismos avisos de cruce que una ruta de la web. Son 17.515
+// cruces, 127 KB -49 KB por el cable-, y se guardan en el movil para cuando no
+// haya cobertura, que es cuando mas falta hacen. Lo genera
+// scripts/make_cruces.py del repo Rutas-Mallabia.
+const URL_CRUCES='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/cruces-zona.json';
+let zonaCruces=null,zonaPide=null,crucesPeticion=0,zonaRefrescada=false;
+// Se guarda TAL COMO VIENE -en diferencias-, no descifrado: en pares de
+// grados sueltos ocupa 338 KB del movil y asi 127, y ahi dentro estan tambien
+// tus rutas guardadas, que se quedan sin sitio («No hay espacio para guardar
+// la ruta»).
+function guardaZona(j){
+ try{localStorage.setItem('cruces-zona',JSON.stringify(j))}
+ catch(e){/* sin sitio: se vuelve a bajar la proxima vez */}
+}
+function zonaGuardada(){
+ try{
+  const t=localStorage.getItem('cruces-zona');if(!t)return null;
+  return descifraZona(JSON.parse(t));
+ }catch(e){return null}
+}
+function descifraZona(j){
+ const esc=j.escala||100000,d=j.dif;
+ if(!Array.isArray(d)||d.length<2||d.length%2)throw new Error('cruces-zona.json no valido');
+ // Van en DIFERENCIAS sobre el cruce anterior: en pares de grados sueltos el
+ // fichero pesa 338 KB, asi pesa 127 KB.
+ const puntos=[];let x=0,y=0;
+ for(let i=0;i<d.length;i+=2){
+  x+=d[i];y+=d[i+1];
+  const lat=x/esc,lon=y/esc;
+  if(Number.isFinite(lat)&&Number.isFinite(lon))puntos.push([lat,lon]);
+ }
+ if(puntos.length<2)throw new Error('cruces-zona.json vacio');
+ return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos};
+}
+function bajaZona(){
+ return fetch(URL_CRUCES,{cache:'default'})
+  .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .then(j=>{const z=descifraZona(j);guardaZona(j);return z});
+}
+function cargaZonaCruces(){
+ if(zonaCruces){
+  // Los guardados valen desde el primer segundo y sin cobertura. Se refrescan
+  // una vez por sesion, de fondo, por si se han vuelto a bajar de OSM.
+  if(!zonaRefrescada){
+   zonaRefrescada=true;
+   bajaZona().then(z=>{
+    if(zonaCruces&&z.puntos.length!==zonaCruces.puntos.length){zonaCruces=z;aplicaCruces()}
+   }).catch(()=>{});
+  }
+  return Promise.resolve(zonaCruces);
+ }
+ if(zonaPide)return zonaPide;
+ const g=zonaGuardada();
+ if(g){zonaCruces=g;return cargaZonaCruces()}
+ zonaPide=bajaZona().then(z=>{zonaCruces=z;zonaRefrescada=true;return z})
+  .catch(e=>{console.warn('Cruces de la zona no disponibles',e);zonaPide=null;return null});
+ return zonaPide;
+}
+// Se queda con los cruces pegados al track que lleves cargado y rehace los
+// avisos. Si el track esta fuera de Mallabia no hay cruces y se dice: mejor
+// eso que avisar de curvas haciendolas pasar por cruces.
+function aplicaCruces(){
+ const pet=++crucesPeticion;
+ if(routePoints.length<3){crucesOsm=[];return}
+ cargaZonaCruces().then(z=>{
+  if(!z||pet!==crucesPeticion||routePoints.length<3)return;
+  const CEL=0.0006,celdas=new Set();
+  for(const p of routePoints)celdas.add(Math.floor(p[0]/CEL)+'/'+Math.floor(p[1]/CEL));
+  // Filtro por celda -unos 50 m-, no por distancia: aqui solo hay que
+  // descartar los 17.000 que estan lejos. La distancia exacta la mira
+  // computeJunctions, que es quien decide.
+  const cerca=[];
+  for(const c of z.puntos){
+   const k0=Math.floor(c[0]/CEL),k1=Math.floor(c[1]/CEL);
+   let toca=false;
+   for(let a=-1;a<=1&&!toca;a++)for(let b=-1;b<=1;b++)
+    if(celdas.has((k0+a)+'/'+(k1+b))){toca=true;break}
+   if(toca)cerca.push(c);
+  }
+  crucesOsm=cerca;
+  try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
+  computeJunctions();
+  if(!cerca.length){
+   const p=routePoints[Math.floor(routePoints.length/2)],b=z.bbox;
+   if(b&&(p[0]<b[0]||p[0]>b[2]||p[1]<b[1]||p[1]>b[3]))
+    notice('Ruta fuera de la zona de Mallabia · solo avisos de giros cerrados del trazado');
+   return;
+  }
+ });
+}
+// Los giros van SIEMPRE detras de los puntos, nunca antes. Los indices de un
+// giro son posiciones dentro de la ruta que tenga el servicio: si se mandan
+// giros del trazado fino cuando el servicio aun tiene el general, apuntan a
+// otro sitio. Por eso esto esta aparte y lo llama tambien syncNativeRoute,
+// justo despues de escribir los puntos.
+function enviaGirosNativos(){
+ if(!window.TrabakutikAndroid?.setJunctions)return;
+ try{
+  window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>(
+   {i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0,t:j.cruce?1:0}))));
+ }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
+}
+function computeJunctions(){
+ resetJunctionView();
+ junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
+ routeCumulative=[0];
+ for(let k=1;k<routePoints.length;k++)routeCumulative[k]=routeCumulative[k-1]+dist(routePoints[k-1],routePoints[k]);
+ if(routePoints.length<3){if(window.TrabakutikAndroid?.setJunctions)window.TrabakutikAndroid.setJunctions('[]');return;}
+ const pts=routePoints;
+ // Los cruces identificados admiten cambios de camino desde 45°.
+ // Sin datos del cruce, solo se anuncian giros cerrados del trazado, desde
+ // 85° sobre 12 m: las curvas suaves no producen una indicación.
+ const VENTANA=12;
+ const CRUCE_GIRO=45;
+ const CURVA_SOLA=85;
+ const CERCA_CRUCE=25;
+ const CELDA=0.0006,rejCruces=new Map();
+ for(const c of crucesOsm){
+  const k=Math.floor(c[0]/CELDA)+'/'+Math.floor(c[1]/CELDA);
+  let l=rejCruces.get(k);if(!l)rejCruces.set(k,l=[]);l.push(c);
+ }
+ // Medir a distancias fijas evita que la densidad de puntos del GPX
+ // convierta una curva suave en un giro cerrado al simplificarla.
+ const geometriaEn=(i,V)=>{
+  const centro=pts[i];
+  const muestra=paso=>{
+   let j=i,recorrido=0;
+   while(j+paso>=0&&j+paso<pts.length){
+    const k=j+paso,d=dist(pts[j],pts[k]);
+    if(d>0&&recorrido+d>=V){
+     const t=(V-recorrido)/d;
+     return [pts[j][0]+t*(pts[k][0]-pts[j][0]),pts[j][1]+t*(pts[k][1]-pts[j][1])];
+    }
+    recorrido+=d;j=k;
+   }
+   return recorrido>=V*0.7?pts[j]:null;
+  };
+  const a=muestra(-1),c=muestra(1);
+  if(!a||!c)return null;
+  const kx=Math.cos(centro[0]*R);
+  const v1=[(centro[1]-a[1])*kx,centro[0]-a[0]],v2=[(c[1]-centro[1])*kx,c[0]-centro[0]];
+  const norma=Math.hypot(...v1)*Math.hypot(...v2);
+  if(!norma)return null;
+  return {angle:Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/norma)))*180/Math.PI,
+   cross:v1[0]*v2[1]-v1[1]*v2[0]};
+ };
+ const hayCruce=p=>{
+  if(!crucesOsm.length)return false;
+  const k0=Math.floor(p[0]/CELDA),k1=Math.floor(p[1]/CELDA);
+  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){
+   const l=rejCruces.get((k0+a)+'/'+(k1+b));if(!l)continue;
+   for(const c of l)if(dist(p,c)<=CERCA_CRUCE)return true;
+  }
+  return false;
+ };
+ for(let i=1;i<pts.length-1;i++){
+  // Cerca del inicio o final hay menos de 12 m a ambos lados.
+  // Ajustar solo esos giros; evitar quiebros inferiores a 6 m por ruido GPS.
+  const margen=Math.min(routeCumulative[i],routeCumulative[pts.length-1]-routeCumulative[i]);
+  if(margen<6)continue;
+  const giro=geometriaEn(i,Math.min(VENTANA,margen));
+  if(!giro)continue;
+
+  const {angle,cross}=giro,b=pts[i];
+  if(angle<40)continue; // por debajo de CRUCE_GIRO no hay nada que mirar
+  // NO INTENTAR DETECTAR CRUCES MIRANDO SI PASA OTRA RUTA CERCA. Esta medido
+  // y es PEOR: en Mallabia las 70 rutas comparten camino durante kilometros,
+  // asi que «otra ruta a menos de 28 m» es cierto casi todo el rato y no
+  // significa cruce, significa que van juntas. Por eso los cruces se traen de
+  // OSM y no de las propias rutas.
+  const cruce=hayCruce(b);
+  if(cruce){if(angle<CRUCE_GIRO)continue}
+  else{
+   if(angle<CURVA_SOLA)continue;
+   const confirma=geometriaEn(i,20);
+   if(confirma!==null&&confirma.angle<(angle>=130?100:85))continue; // descartar picos aislados
+  }
+  // Una distancia fija de 35 m eliminaba giros reales consecutivos,
+  // por ejemplo dos cambios de camino seguidos en una carretera.
+  // Agrupar solo candidatos que pertenecen al mismo giro (ventanas de 12 m).
+  // Los distintos se conservan, también si tienen la misma dirección.
+  const anterior=junctions[junctions.length-1];
+  if(anterior&&routeCumulative[i]-anterior.along<VENTANA)continue;
+  const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
+  junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle),cruce});
+ }
+ enviaGirosNativos();
+}
+// Punto de avance sobre la ruta, no solo distancia en línea recta.
+function progressOnRoute(p){
+ let best=Infinity,along=0;
+ const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
+ for(let i=1;i<routePoints.length;i++){
+  const a=routePoints[i-1],b=routePoints[i];
+  const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale;
+  const dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*latScale;
+  const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));
+  const meters=Math.hypot(ax+t*dx,ay+t*dy);
+  if(meters<best){best=meters;along=routeCumulative[i-1]+t*(routeCumulative[i]-routeCumulative[i-1])}
+ }
+ return {along,distance:best};
+}
+// Parado no hay giro que anunciar. «Gira a la derecha · En 50 m» solo
+// significa algo si uno avanza, y al autor se le quedo esa ficha en la
+// pantalla con la salida terminada: la ruta seguia abierta y el estaba a
+// 22 m del track —menos de los 25 que pide la guia—, asi que para la app
+// seguia navegando. Se guarda una referencia y solo cuenta como avanzar
+// salir de 15 m de ella, para que el baile del GPS quieto no cuele; 15 m
+// en un minuto son 0,9 km/h, por debajo de cualquiera que ande de verdad,
+// asi que esto no apaga la guia a medio camino.
+// Y avanzar es avanzar POR LA RUTA, no moverse a secas. Saliendote del camino
+// sigues moviendote, pero «along» se queda clavado: el autor se salio junto a
+// un cruce y la ficha se quedo en «En el cruce · 0 m» para siempre. Doce
+// metros en veinte segundos son 2,2 km/h, por debajo de andar.
+const AVANCE_MS=20000,AVANCE_M=12;
+function avanzaPorLaRuta(along,ahora){
+ if(refAvance===null||(along-refAvance)*sentidoRuta>AVANCE_M){refAvance=along;refAvanceT=ahora;return true}
+ return ahora-refAvanceT<AVANCE_MS;
+}
+const PARADO_MS=60000,PARADO_M=15;
+let refParado=null,refParadoT=0;
+function sigueMoviendose(p,ahora){
+ if(!refParado||dist(p,refParado)>PARADO_M){refParado=p;refParadoT=ahora;return true}
+ return ahora-refParadoT<PARADO_MS;
+}
+function junctionGuidance(p,accuracy){
+ const moviendose=sigueMoviendose(p,Date.now());
+ // Los giros y el zoom de cruces esperan al inicio de la salida.
+ if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!junctions.length||accuracy>60){
+  if(junctionActive>=0)resetJunctionView();return;
+ }
+ const progress=progressOnRoute(p);
+ const [d1,d2,dv]=distanciasDeAviso();
+ if(progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
+  if(junctionActive>=0)resetJunctionView();return;
+ }
+ let best=null;
+ for(let j=0;j<junctions.length;j++){
+  // Por el sentido en que VAS, no por el que se grabo. Yendo al reves
+  // «along» decrece, asi que sin esto «ahead» salia negativo para los cruces
+  // que tienes delante y positivo para los que ya pasaste: el navegador
+  // avisaba de giros a tu espalda, o de ninguno. Y en esta web hay rutas que
+  // el propio autor recomienda hacer al reves.
+  const turn=junctions[j],ahead=(turn.along-progress.along)*sentidoRuta;
+  // La ventana sigue al primer aviso: a 40 km/h se avisa a 90 m, asi que
+  // con los 58 de antes el cruce ni se miraba hasta estar encima.
+  // Y el suelo tambien va con la velocidad. El GPS del servicio da una
+  // posicion cada 1,5 s, o sea 17 m de salto a 40 km/h: con el suelo fijo de
+  // -12 m, el pitido del propio cruce se perdia 2 de cada 10 veces a 40 km/h
+  // y 5 de cada 10 a 50. Con -(d2+8) salen 10 de 10 de 4 a 50 km/h.
+  if(ahead< -(d2+8)||ahead>Math.max(d1,dv)+8||dist(p,turn.point)>Math.max(d1,dv)+25)continue;
+  if(!best||Math.abs(ahead-15)<Math.abs(best.ahead-15))best={j,ahead,turn};
+ }
+ if(!best){
+  if(junctionActive>=0)resetJunctionView();
+  return;
+ }
+ if(junctionActive!==best.j){
+  if(junctionActive>=0)resetJunctionView();
+  junctionActive=best.j;
+ }
+ const {j,ahead,turn}=best;
+ // Al reves, lo que se grabo como derecha es izquierda. La forma del giro
+ // (los grados) no cambia; el lado, si.
+ const alReves=sentidoRuta<0;
+ const lado=turn.direction==='vuelta'?'vuelta'
+   :alReves?(turn.direction==='izquierda'?'derecha':'izquierda')
+   :turn.direction;
+ const sentido=lado==='izquierda'?-1:1;
+ const grados=Number.isFinite(turn.angle)?turn.angle:(turn.direction==='vuelta'?160:85);
+ $('turnArrow').innerHTML=flechaGiro(grados,sentido,62,11);
+ if(!turnMarker||turnMarker.options.turnIndex!==j){
+  if(turnMarker)map.removeLayer(turnMarker);
+  const sign=L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],
+   html:'<div class="map-turn-sign">'+flechaGiro(grados,sentido,24,13)+'</div>'});
+  turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
+ }
+ // Un cruce y una curva de herradura no son lo mismo y no se dicen igual:
+ // «cambio de sentido» en un sendero suena a «date la vuelta», y lo que pidio
+ // el autor fue que le avisaran de los CRUCES.
+ const esCruce=turn.cruce!==false;
+ $('turnDirection').textContent=lado==='vuelta'
+   ?(esCruce?'Cruce · da la vuelta':'Curva de herradura')
+   :(esCruce?'Cruce a la '+lado:'Giro cerrado a la '+lado);
+ $('turnAngle').textContent='Giro de '+grados+'\u00b0';
+ $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
+ // Las tres luces se encienden segun te acercas, con los mismos cortes que
+ // los pitidos: son lo mismo dicho de otra manera, para cuando no se oiga.
+ const r1=Math.round(d1/5)*5,r2=Math.round(d2/5)*5;
+ $('turnRot1').textContent=r1+' m';
+ $('turnRot2').textContent=r2+' m';
+ for(const [id,enc] of [['1',ahead<=d1],['2',ahead<=d2],['3',ahead<=0]]){
+  $('turnFase'+id).classList.toggle('on',enc);
+  $('turnRot'+id).classList.toggle('on',enc);
+ }
+ $('turnHint').classList.remove('hidden');
+ // Se mide DESPUES de quitar «hidden», que escondido no mide nada, y con
+ // getBoundingClientRect, no con offsetHeight: el recuadro lleva relleno y
+ // el borde, y los creditos se quedarian unos pixeles bajos.
+ $('map').classList.add('con-giro');
+ $('map').style.setProperty('--turn-alto',Math.round($('turnHint').getBoundingClientRect().height+16)+'px');
+ // Solo se amplía UNA vez por cruce. Si se toca el zoom, se respeta.
+ if(ahead>=0&&ahead<=45&&junctionBlocked!==j&&!junctionZoomOnce.has(j)){
+  junctionZoomOnce.add(j);
+  if(map.getZoom()<17){
+   junctionZoom=map.getZoom();
+   autoZooming=true;map.setZoom(17,{animate:false});
+   setTimeout(()=>{autoZooming=false},300);
+  }
+ }
+ // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a 50 m,
+ // 2 a 10 m y 3 en el propio cruce. Los avisos siguen al cruce que esta
+ // mostrando la ficha, no a todos los que caen en rango: con 20 parejas de
+ // cruces a menos de 110 m, sonar por todos solaparia dos grupos de pitidos
+ // y no sabrias de cual te hablan.
+ // Los cortes salen de la velocidad (ver distanciasDeAviso). El tercero no
+ // lleva suelo por abajo a proposito: con «ahead>=-3» el pitido del propio
+ // cruce se perdia, porque el GPS da una lectura por segundo y a 20 km/h
+ // esos 3 m duran medio segundo. Simulado de 4 a 50 km/h, con suelo fallaba
+ // a 20, 25, 40, 45 y 50; sin el suena siempre. Queda acotado solo: arriba
+ // se descarta el cruce pasados -12 m y la ficha se cierra a -9.
+ let fase=null;
+ if(ahead<=d1&&ahead>d2)fase='1';
+ else if(ahead<=d2&&ahead>0)fase='2';
+ else if(ahead<=0)fase='3';
+ else if(ahead<=dv)fase='v';   // solo voz, y la primera de todas
+ if(fase&&!junctionWarned.has(j+':'+fase)){
+  junctionWarned.add(j+':'+fase);
+  // La página solo pita si Android no está dando los avisos nativos.
+   if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
+  const giroTxt=lado==='vuelta'
+    ?(esCruce?'cruce, da la vuelta':'curva de herradura')
+    :(esCruce?'cruce a la '+lado:'giro cerrado a la '+lado);
+  // Solo habla en la fase de voz -mucho antes- y en el propio cruce. En las
+  // de 25 y 10 m decir «en 25 metros» llega tarde y ademas pisa al aviso
+  // bueno, el de «ahora». Lo vio el autor: «estaba diciendo que girara
+  // dentro de 25 metros cuando ya estaba girando».
+  if(fase==='v'||fase==='3'){
+   hablarGiro(fase==='3'
+     ?(giroTxt.charAt(0).toUpperCase()+giroTxt.slice(1)+' ahora')
+     :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt);
+  }
+  if(fase!=='v')notice(fase==='3'
+        ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
+        :(esCruce?'Cruce':'Giro cerrado')+' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
+ }
+ if(ahead< -(d2+5))resetJunctionView();
+}
+// Rumbo del tramo de la ruta mas cercano, en el sentido en que esta grabada.
+// Devuelve null a mas de 30 m: ahi ya no la estas siguiendo y vale mas el
+// rumbo del GPS. Se salta los tramos de largo cero, que darian un rumbo sin
+// sentido.
+function rumboDeLaRuta(p){
+ if(!Array.isArray(routePoints)||routePoints.length<2)return null;
+ const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
+ let best=Infinity,bi=-1;
+ for(let i=1;i<routePoints.length;i++){
+  const a=routePoints[i-1],b=routePoints[i];
+  const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale;
+  const dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*latScale;
+  const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
+  const m=Math.hypot(ax+t*dx,ay+t*dy);
+  if(m<best){best=m;bi=i}
+ }
+ if(bi<0||best>30)return null;
+ const a=routePoints[bi-1];
+ for(let j=bi;j<routePoints.length;j++){
+  const b=routePoints[j];
+  if(Math.abs(b[0]-a[0])>1e-9||Math.abs(b[1]-a[1])>1e-9)return bearingBetween(a,b);
+ }
+ return null;
+}
+function onFix(pos){
+ if(gpsApagadoPorTi)return; // Ignorar una posición pendiente después de finalizar.
+ ultimoFix=Date.now();
+ const estadoGps=$('status').textContent;
+ if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
+  notice(guiaIniciada()?'Posición recibida · siguiendo ruta':'Posición recibida');
+ ultimoErrorGps=null;ultimoErrorGpsText='';
+ const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
+ actualizaVelocidad(pos.coords,prior,ultimoFix);
+ if(gpsHeading!==null)lastCourse=gpsHeading;
+ else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
+ if(!courseFix||dist(courseFix,p)>=8)courseFix=p.slice();
+ // La flecha apunta EN EL SENTIDO DE LA RUTA mientras la sigues, no al
+ // rumbo del GPS. Lo pidio el autor: «solo quiero, cuando este navegando,
+ // que la flecha que nos indica la direccion vaya en el sentido de la
+ // ruta». El rumbo del GPS solo es fiable andando y con buena senal:
+ // parado o despacio se queda viejo y la flecha puede apuntar incluso al
+ // reves de por donde va el camino. Si estas sobre la ruta, el camino si
+ // sabe hacia donde sigue. Lejos de ella o sin ruta, el rumbo de siempre.
+ let h=lastCourse,hDeRuta=false;
+ if(guiaIniciada()){
+  const r=rumboDeLaRuta(p);
+  if(r!==null){
+   // La forma del camino la da la ruta; EL SENTIDO lo das tu. Si vas al
+   // reves de como esta grabada —cosa normal: la misma ruta se anda en
+   // los dos sentidos— la flecha se da la vuelta. Lo vio el autor: «la
+   // flecha va al reves», con la grabacion roja saliendo justo por el
+   // lado contrario al que apuntaba.
+   // Solo se decide cuando hay rumbo de verdad (lastCourse se refresca
+   // andando 8 m), y entre medias se mantiene el ultimo decidido, para
+   // que parado no se ponga a dar vueltas.
+   decideSentido(progressOnRoute(p).along);
+   h=(r+(sentidoRuta<0?180:0))%360;hDeRuta=true;
+  }
+ }
+ // La flecha giraba de golpe porque el rumbo salta de un segmento a otro.
+ // Suavizado circular: cada lectura la acerca al rumbo nuevo, no la planta
+ // encima. Medido sobre la ruta de Berriz, el salto mayor baja de 179 a 80
+ // grados y los bruscos se reducen a menos de la mitad. Los que quedan son
+ // curvas de verdad del circuito.
+ if(h!==null){
+  if(rumboSuave===null)rumboSuave=h;
+  else{let dd=(h-rumboSuave)%360;if(dd>180)dd-=360;if(dd<-180)dd+=360;
+       rumboSuave=(rumboSuave+dd*0.45+360)%360;}
+  h=rumboSuave;
+ }
+ pintaBrujula(h);
+ // Sobre la ruta el rumbo es geometrico y vale siempre; fuera de ella
+ // viene del GPS y solo se hace caso por encima de 7 km/h. Si no, se
+ // mantiene el ultimo: parado el mapa no gira.
+ // El «rumboMapa===null» es el primer rumbo de todos y va aparte: sin el,
+ // recien cargada la pagina y parado fuera de ruta no habia NADA que
+ // girar, y el boton solo cambiaba de color. Lo dijo el autor: «N no hace
+ // nada, solo cambia color». lastCourse no es ruido: solo se refresca con
+ // rumbo bueno del GPS o tras andar 8 m con buena senal.
+ if(h!==null&&(hDeRuta||velocidadSuave>=GIRO_VELOCIDAD||rumboMapa===null))rumboMapa=h;
+ aplicaGiroMapa(false);
+ pintaMandos();
+ // La flecha de antes medía 36 px y el círculo se la comía: de reojo se veía
+ // un punto azul y la dirección había que buscarla. El autor eligió esta de
+ // cuatro propuestas: círculo con el punto blanco en el centro -andando hace
+ // falta saber EXACTAMENTE dónde estás, si te sales dos metros del sendero
+ // quieres verlo- y encima una flecha más del doble de grande. Se descartó
+ // la del cono de dirección porque tapa el camino de delante, que es justo
+ // lo que uno mira en un sendero.
+ // El ancla va en el centro del círculo, que es la posición de verdad, y el
+ // giro es sobre ese mismo punto.
+ const icon=L.divIcon({className:'',iconSize:[54,54],iconAnchor:[27,27],html:'<div style="width:54px;height:54px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="54" height="54" viewBox="0 0 54 54">'+(h!==null?'<path d="M27 2.5 L37.5 20 L27 15.5 L16.5 20 Z" fill="#187cff" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>':'')+'<circle cx="27" cy="27" r="13.5" fill="#187cff" stroke="#fff" stroke-width="3.2"/><circle cx="27" cy="27" r="4" fill="#fff"/></svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
+ if(recording&&!pausado&&!window.TrabakutikAndroid){
+  const ts=Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),acc=pos.coords.accuracy;
+  // El navegador puede suspender el GPS al bloquear la pantalla.
+  // Nunca unir extremos tras una pausa o un salto improbable.
+  if(Number.isFinite(acc)&&acc<=35){
+   const gap=lastBrowserRecordTime>0?ts-lastBrowserRecordTime:0;
+   const step=lastBrowserRecordPoint?dist(lastBrowserRecordPoint,p):0;
+   const cut=lastBrowserRecordPoint&&(gap>15000||gap<0||step>80||(gap>0&&step/(gap/1000)>12));
+   if(cut&&recorded.length&&recorded[recorded.length-1]!==null)recorded.push(null);
+   if(!lastBrowserRecordPoint||cut||step>2){
+    recorded.push(p);
+    const segments=[[]];
+    for(const q of recorded){if(q===null){if(segments[segments.length-1].length)segments.push([])}else segments[segments.length-1].push(q)}
+    const lines=segments.filter(seg=>seg.length>0);
+    cortesGrabacion=Math.max(0,lines.length-1);
+    if(recordLayer){recordLayer.setLatLngs(lines);recordLayer.bringToFront()}
+    else recordLayer=L.polyline(lines,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,lineCap:'round',lineJoin:'round',className:'recorded-red'}).addTo(map).bringToFront();
+    lastBrowserRecordPoint=p.slice();
+   }
+   lastBrowserRecordTime=ts;
+  }
+ }
+ if(mode!=='create'&&routePoints.length>1){
+  // El fuera de ruta se calcula SIEMPRE, tambien dentro de la app. Estaba
+  // gateado con «if(!window.TrabakutikAndroid)», dejandoselo al servicio, y el
+  // servicio solo lo escribe en la notificacion: en la pantalla no salia nada.
+  // El autor se salio de la ruta a proposito y no se lo marco. El pitido si
+  // sigue gateado, dentro de updateOffRoute, por navegaNativo.
+  // Y va ANTES de junctionGuidance, que esta mira «alerted» para cerrar la
+  // ficha del cruce: asi no va un fix por detras.
+  const d=closestMeters(p,routePoints);
+  $('distance').textContent='A '+fmt(d)+' del track';
+  pintaAvance(progressOnRoute(p).along);
+  if(guiaIniciada()){
+   updateOffRoute(d,pos.coords.accuracy);
+   junctionGuidance(p,pos.coords.accuracy);
+  }
+  if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')
+ }else if(mode==='nav')notice(recording?'Grabando · sin ruta activa para navegar':'Ubicación encontrada · selecciona una ruta')}
+// Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
+window.trabakutikSyncNative=()=>{
+ // Recuperar los últimos puntos para guardar, sin reactivar el GPS ni la guía.
+ if(gpsApagadoPorTi&&!recordingPendingSave)return;
+ if(!window.TrabakutikAndroid?.getTrackingSnapshot)return;
+ if(Date.now()-lastNativeSync<1200)return;
+ lastNativeSync=Date.now();
+ try{
+  const raw=window.TrabakutikAndroid.getTrackingSnapshotIfChanged?.(lastNativeTrackVersion)||window.TrabakutikAndroid.getTrackingSnapshot();
+  if(!raw)return;
+  const data=JSON.parse(raw);
+  if(typeof data.pointsComplete==='boolean')nativeTrackComplete=data.pointsComplete;
+  // Compatibilidad con APK anteriores: en el límite no sabemos si hay más.
+  else if(Array.isArray(data.points))nativeTrackComplete=data.points.length<25000;
+  if(typeof data.trackVersion==='string')lastNativeTrackVersion=data.trackVersion;
+  if(data.recording&&!recordingPendingSave){
+   recording=true;
+   // Sin esto, el sondeo del servicio pisaba la pausa un segundo despues de
+   // pulsarla: el servicio sigue marcando «recording» porque lo que se para
+   // es anotar puntos, no la grabacion entera.
+   recordingControls(pausado?'paused':'recording');
+  }else if(recording){
+   apagaGps(); // También cuando se termina desde la notificación de Android.
+   recording=false;
+   // OJO con «data.points»: getTrackingSnapshotIfChanged devuelve SOLO los
+   // metadatos cuando el fichero del trazado no ha cambiado, y al parar desde
+   // la notificacion no cambia -la version es fecha+tamaño-. Asi que aqui
+   // llegaba recording:false SIN puntos, y la botonera se iba a «ready»:
+   // desaparecia Guardar con el trazado entero todavia en memoria. Si no
+   // vienen puntos, valen los que ya tenemos.
+   const puntos=Array.isArray(data.points)?data.points.length:recorded.length;
+   recordingPendingSave=puntos>1;
+   recordingControls(puntos>1?'stopped':'ready');
+  }else reconciliaBotonera();
+  if(Array.isArray(data.points)){
+   const segments=[[]],valid=[];
+   for(const p of data.points){
+    if(Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1])){
+     segments[segments.length-1].push(p);valid.push(p);
+    }else if(segments[segments.length-1].length)segments.push([]);
+   }
+   const connected=segments.filter(segment=>segment.length);
+   cortesGrabacion=Math.max(0,connected.length-1);
+   if(valid.length>1){
+    recorded=valid;
+    if(!recordLayer)recordLayer=L.polyline(connected,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,className:'recorded-red'}).addTo(map);
+    else recordLayer.setLatLngs(connected);
+    recordLayer.bringToFront();
+   }
+  }
+  // La grabacion Android puede continuar aunque el servicio no marque
+  // navegacion activa. El mapa debe seguir el ultimo punto recibido.
+  // Con getPosition manda el sondeo de abajo; esto queda para un APK viejo.
+  const liveFix=!window.TrabakutikAndroid.getPosition&&(data.active||data.recording)&&Number.isFinite(data.lat)&&Number.isFinite(data.lon)&&Number.isFinite(data.accuracy)&&data.accuracy<=100&&Number.isFinite(data.time)&&Date.now()-data.time<30000;
+  if(liveFix){
+   onFix({coords:{latitude:data.lat,longitude:data.lon,accuracy:data.accuracy,heading:null,speed:0}});
+  }else if(!window.TrabakutikAndroid.getPosition&&data.recording&&Array.isArray(data.points)&&data.points.length){
+   // Si el servicio entrega el trazado antes que la posicion instantanea,
+   // usar el ultimo punto nuevo para no dejar que la linea salga de pantalla.
+   const last=[...data.points].reverse().find(p=>Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+   if(last&&(!position||dist(position,last)>3))onFix({coords:{latitude:last[0],longitude:last[1],accuracy:35,heading:null,speed:0}});
+  }
+ }catch(e){console.warn('Seguimiento Android no recuperado',e)}
+};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){followGps=true;manualMapUntil=0;setTimeout(()=>window.trabakutikSyncNative(),250)}});
+setInterval(()=>{if(!document.hidden&&window.TrabakutikAndroid)window.trabakutikSyncNative()},4500);
+// La guia caduca si deja de llegar posicion. Antes se quedaba clavada: la
+// ficha del giro y el «A X del track» solo se recalculan dentro de onFix,
+// asi que al pararse el GPS —pantalla apagada, app al fondo, bajo cubierta—
+// se quedaba lo ultimo que dijo. El autor se encontro «Gira a la derecha ·
+// En 50 m» con el movil parado y la salida terminada. Una indicacion vieja
+// es peor que ninguna.
+// Mientras el GPS esta activo llega una posicion cada uno o dos segundos,
+// asi que 25 s sin ninguna quiere decir que ha dejado de llegar; se mira
+// cada 5 para no apurar.
+// Una sola fuente de posicion. Dentro de la aplicacion habia dos GPS a la
+// vez: el watchPosition de la pagina y el servicio de Android, y los dos
+// metian posiciones en onFix. Aparte de gastar el doble, se pisaban: las del
+// servicio llegaban sin rumbo y con velocidad 0, asi que cada vez que colaba
+// una entre dos del navegador la flecha perdia el norte. De ahi venia buena
+// parte de los lios que hemos ido persiguiendo.
+// Ahora, en cuanto el servicio arranca, la pagina apaga su reloj y bebe solo
+// de el; cuando el servicio para, vuelve el del navegador. Nunca los dos.
+function miraPosicionNativa(){
+ if(!window.TrabakutikAndroid?.getPosition||document.hidden)return;
+ if(gpsApagadoPorTi||Date.now()<apagadoHasta)return;
+ let d;
+ try{d=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}')}catch(e){return}
+ if(!d.active){
+  navegaNativo=false;
+
+  if(fuenteNativa){fuenteNativa=false;ultimoTiempoNativo=0;if(mode!=='create')startGPS()}
+  reconciliaBotonera();
+  return;
+ }
+ // Si el servicio navega, pita el; la pagina se calla. Un APK viejo no manda
+ // este dato, asi que queda false y sigue pitando la pagina, como hasta ahora.
+ // La pagina solo debe callarse si el servicio PUEDE avisar, no solo si
+ // dice que navega: sin la ruta cargada no comprueba ni giros ni desvio,
+ // y callandose los dos no avisaba nadie. Un APK viejo no manda «guiando»,
+ // y entonces vale lo de antes.
+ navegaNativo=d.guiando===undefined?!!d.navigating:!!d.guiando;
+ // Callarse en los giros SOLO si el servicio tiene giros que avisar.
+ // «guiando» mira la ruta, no los giros, asi que el servicio podia estar
+ // guiando con cero giros cargados y la pagina callada: no avisaba nadie.
+ // Un APK viejo manda -1 y entonces vale lo de siempre.
+ giraNativo=navegaNativo&&(d.giros==null||d.giros<0||d.giros>0);
+
+ // El servicio se queda con SU copia de la ruta. Si la pagina se recarga
+ // -cambiar de pestaña la recarga- o se quita la ruta y algo falla al
+ // avisarle, el servicio sigue guiando una ruta que ya no esta en
+ // pantalla: pita en cruces que no ves. Lo dijo el autor: «me esta
+ // pitando... sin ruta cargada». Si aqui no hay ruta, ahi tampoco.
+ // La condicion NO puede ser el reloj. Lo era -12 s desde que abrio- y es
+ // una carrera perdida: la ruta se restaura cuando llega trailhead.json,
+ // que son 481 kB y se piden con revalidacion. Si tarda o no llega -en el
+ // monte, sin cobertura- a los 12 s esto paraba el servicio, y pararlo sin
+ // grabacion lo MATA entero: adios navegacion con la pantalla apagada, que
+ // no necesitaba red para nada. Ahora se espera a que las rutas esten de
+ // verdad, y si la carga falla no se arma nunca.
+ if(d.guiando&&chosen<0&&routePoints.length<2&&mode!=='create'
+    &&rutasListas&&Date.now()-ultimoParoNativo>15000){
+  ultimoParoNativo=Date.now();
+  try{window.TrabakutikAndroid.stopNavigation?.()}catch(e){}
+ }
+ // Si el motor de voz no esta listo, decirlo en vez de callar: el autor se
+ // encontro con que los pitidos sonaban y la voz no, sin ninguna pista de
+ // por que. El motivo lo manda el servicio.
+ if(audioModo==='voz'&&typeof d.vozEstado==='string'&&d.vozEstado!=='ok'
+    &&d.vozEstado!=='iniciando'&&d.vozEstado!==ultimoVozEstado){
+  ultimoVozEstado=d.vozEstado;notice('Voz: '+d.vozEstado);
+ }
+ if(!fuenteNativa){
+  fuenteNativa=true;
+  if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
+ }
+ if(!(d.time>ultimoTiempoNativo))return;
+ if(!Number.isFinite(d.lat)||!Number.isFinite(d.lon)||!Number.isFinite(d.accuracy))return;
+ if(d.accuracy>100||Date.now()-d.time>30000)return;
+ ultimoTiempoNativo=d.time;
+ onFix({timestamp:d.time,coords:{latitude:d.lat,longitude:d.lon,accuracy:d.accuracy,
+  heading:Number.isFinite(d.bearing)&&d.bearing>=0?d.bearing:null,
+  speed:Number.isFinite(d.speed)&&d.speed>=0?d.speed:null}});
+}
+setInterval(miraPosicionNativa,1000);
+const GUIA_CADUCA_MS=25000;
+setInterval(()=>{
+ if(gpsApagadoPorTi)return;   // lo has apagado tu: no hay nada que vigilar
+ if(watch===null&&!fuenteNativa&&!recording&&!navegaNativo)return; // Ruta cargada, GPS aún sin iniciar.
+ let ubicacionApagada=false;
+ if(window.TrabakutikAndroid?.getPosition){
+  try{ubicacionApagada=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}').locationEnabled===false}catch(e){}
+ }
+ if(ubicacionApagada){
+  if(junctionActive>=0)resetJunctionView();
+  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+  const mensaje='Ubicación del teléfono apagada · actívala para recibir posición GPS';
+  if($('status').textContent!==mensaje)notice(mensaje);
+  return;
+ }
+ if(ultimoErrorGps!==null){
+  if(junctionActive>=0)resetJunctionView();
+  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+  if($('status').textContent!==ultimoErrorGpsText)notice(ultimoErrorGpsText);
+  return;
+ }
+ if(ultimoFix){
+  const sinMs=Date.now()-ultimoFix;
+  if(sinMs>=12000&&sinMs<GUIA_CADUCA_MS){
+   const seg=Math.round(sinMs/1000),mensajeGps='Sin posición GPS reciente · '+seg+' s';
+   if(routePoints.length>1&&$('distance').textContent!=='GPS apagado')$('distance').textContent='Buscando señal GPS · '+seg+' s';
+   if($('status').textContent!==mensajeGps)notice(mensajeGps);
+   return;
+  }
+  if(sinMs<GUIA_CADUCA_MS)return;
+ }
+ if(junctionActive>=0)resetJunctionView();
+ if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+ const mensaje='Sin posición reciente del GPS · buscando señal';
+ if($('status').textContent!==mensaje)notice(mensaje);
+},5000);
+function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1){window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));enviaGirosNativos();}}catch(e){console.warn('Ruta nativa no enviada',e)}}
+// Elegir una ruta prepara puntos y giros sin arrancar el GPS ni la guía.
+// Iniciar grabación activa también el servicio que avisa con pantalla apagada.
+function enciendeNavegacionNativa(){
+ if(!window.TrabakutikAndroid||mode!=='nav'||routePoints.length<2)return;
+ try{
+  syncNativeRoute();
+  if(window.TrabakutikAndroid.startNavigationWithRoute)
+   window.TrabakutikAndroid.startNavigationWithRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));
+  else window.TrabakutikAndroid.startNavigation();
+ }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
+}
+function startGPS(forRecording=false){
+ gpsApagadoPorTi=false;apagadoHasta=0;gpsSolicitado=true;
+ if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
+  try{syncNativeRoute()}catch(e){console.warn(e)}
+ }
+ if(fuenteNativa)return;
+ if(watch!==null)return;if(!navigator.geolocation){warnGps();return}ultimoErrorGps=null;ultimoErrorGpsText='';getAudio();notice('Localizando…');watch=navigator.geolocation.watchPosition(onFix,e=>{
+ if(gpsApagadoPorTi)return;
+ warnGps(e);
+ // Solo se abandona con el permiso denegado: ahi no va a llegar nada nunca.
+ // Antes CUALQUIER error cerraba el watch, y con timeout de 20 s bastaba un
+ // tramo de bosque sin ver satelites para que el GPS se quedara muerto el
+ // resto de la salida, sin volver solo. Una espera agotada o una posicion no
+ // disponible son normales en el monte: el watch sigue y se recupera cuando
+ // entra el siguiente punto.
+ if(e&&e.code===1){if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null}
+},{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
+if(!enLaApp){$('navActions').classList.add('hidden');$('recordActions').classList.add('hidden');$('soloApp').classList.remove('hidden');}
+$('audioMode').onclick=conmutaModoAudio;pintaModoAudio();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+// Esto solo sabia manejar TRANSICIONES: si el servicio no grababa y la pagina
+// tampoco creia grabar, no entraba en ninguna rama y la botonera se quedaba
+// como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin
+// estar grabando y sin que apareciera «Iniciar»: sin salida. Esto reconcilia
+// con la verdad en vez de confiar en haber visto todos los pasos.
+// Un único inicio en la botonera: grabar activa también la navegación.
+// Mantener oculto el antiguo acceso para que los sondeos no lo hagan reaparecer.
+function pintaBotonNavegar(){
+ const b=$('navGo');if(b)b.classList.add('hidden');
+}
+function reconciliaBotonera(){
+ if(recording)return;
+ const debe=recordingPendingSave?'stopped':'ready';
+ if(estadoBotonera!==debe)recordingControls(debe);
+}
+function recordingControls(state){estadoBotonera=state;document.body.classList.toggle('is-recording',state==='recording'||state==='paused');
+ $('recordStart').classList.toggle('hidden',state!=='ready');
+ $('recordPause').classList.toggle('hidden',state!=='recording');
+ $('recordResume').classList.toggle('hidden',state!=='paused');
+ $('recordStop').classList.toggle('hidden',state!=='recording'&&state!=='paused');
+ $('saveRecording').classList.toggle('hidden',state!=='stopped');
+ $('discardRecording').classList.toggle('hidden',state!=='stopped');
+ $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
+}
+$('recordStart').onclick=()=>{
+ // Una ruta recién guardada sigue dibujada como borrador. Si se pulsa
+ // Grabar desde Ruta, activar esa copia guardada antes del servicio.
+ if(routePoints.length<2&&createdSavedItem&&sameTrack(drawPoints,createdSavedItem.points))loadSaved(createdSavedItem);
+ apagadoHasta=0;pausado=false;recordingPendingSave=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice(routePoints.length>1?'Grabando y siguiendo · '+$('mapTitle').textContent:'Grabando · sin ruta activa para navegar')};
+// En un circuito te cruzas con la salida varias veces, y parar por error
+// deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
+// La pausa detiene SOLO la grabacion. La ubicacion, los avisos de giro y el
+// de fuera de ruta siguen: lo que se para es anotar puntos, no orientarte.
+// Al reanudar se corta el trazo, para que el descanso no salga como una
+// linea recta de un sitio a otro.
+let pausado=false;
+function pausaGrabacion(si){
+ pausado=si;
+ recordingControls(si?'paused':'recording');
+ if(window.TrabakutikAndroid){
+  try{
+   if(si&&window.TrabakutikAndroid.pauseRecording)window.TrabakutikAndroid.pauseRecording();
+   if(!si&&window.TrabakutikAndroid.resumeRecording)window.TrabakutikAndroid.resumeRecording();
+  }catch(e){console.warn('Pausa nativa no disponible',e)}
+ }else if(!si&&recorded.length&&recorded[recorded.length-1]!==null){
+  recorded.push(null);lastBrowserRecordPoint=null;lastBrowserRecordTime=0;
+ }
+ notice(si?'Grabaci\u00f3n EN PAUSA \u00b7 la ubicaci\u00f3n y los avisos de giro siguen'
+          :'Grabaci\u00f3n reanudada');
+}
+function avisoDeCortes(){
+ if(cortesGrabacion<1)return '';
+ return ' \u00b7 ATENCI\u00d3N: el track tiene '+cortesGrabacion+
+  (cortesGrabacion===1?' corte':' cortes')+' por p\u00e9rdida de se\u00f1al';
+}
+function confirmaParar(){
+ let falta='';
+ if(routeCumulative.length>1&&Number.isFinite(ultimoAlong)){
+  const total=routeCumulative[routeCumulative.length-1];
+  const hecho=Math.max(0,Math.min(total,sentidoRuta>0?ultimoAlong:total-ultimoAlong));
+  const queda=total-hecho;
+  if(queda>300)falta='\n\nTe faltan '+fmt(queda)+' de la ruta.';
+ }
+ return confirm('\u00bfFinalizar la grabaci\u00f3n y la navegaci\u00f3n?'+falta);
+}
+$('recordPause').onclick=()=>pausaGrabacion(true);
+$('recordResume').onclick=()=>pausaGrabacion(false);
+$('recordStop').onclick=()=>{if(!confirmaParar())return;pausado=false;if(window.TrabakutikAndroid)window.TrabakutikAndroid.stopRecording();apagaGps();recording=false;recordingPendingSave=true;recordingControls('stopped');notice((window.TrabakutikAndroid?'Salida finalizada · Guardar GPX o Descartar':recorded.length<2?'Salida finalizada · faltan 2 posiciones para guardar GPX':'Salida finalizada · Guardar GPX o Descartar')+avisoDeCortes())};
+$('saveRecording').onclick=()=>{
+ if(!nativeTrackComplete&&window.TrabakutikAndroid?.saveRecording){
+  window.TrabakutikAndroid.saveRecording();
+  notice('Elige dónde guardar el GPX completo; la pantalla solo muestra el tramo final.');
+  return;
+ }
+ if(recorded.filter(p=>p!==null).length<2){notice('No hay suficientes posiciones para guardar. Puedes descartar la grabación.');return}
+ const def='Grabación '+new Date().toLocaleDateString('es-ES')+' '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+ const name=prompt('Nombre para la grabación',def);
+ if(name===null)return;
+ openSaveDialog(recorded,name.trim()||def,'recording');
+};
+// Al terminar o descartar se apaga el GPS del todo. Antes nadie llamaba a clearWatch,
+// asi que el telefono seguia pidiendo posicion con la salida terminada y
+// la aplicacion se comportaba como si siguieras navegando. Se van la
+// flecha azul, las indicaciones de giro y el aviso de fuera de ruta, y se
+// para tambien el servicio de Android. La ruta elegida se queda dibujada
+// en el mapa, que para eso la elegiste; con el boton de centrar vuelve a
+// encenderse el GPS cuando quieras.
+function apagaGps(){
+ // Bloquear primero las posiciones y sondeos que ya estaban pendientes.
+ gpsApagadoPorTi=true;navegaNativo=false;giraNativo=false;
+ try{window.speechSynthesis?.cancel()}catch(e){}
+ if(audio){try{audio.close().catch(()=>{})}catch(e){}audio=null}
+ if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}
+ try{if(window.TrabakutikAndroid?.stopNavigation)window.TrabakutikAndroid.stopNavigation()}
+ catch(e){console.warn('No se pudo parar la navegación nativa',e)}
+ if(junctionActive>=0)resetJunctionView();
+ resetOffRoute();
+ if(me){map.removeLayer(me);me=null}
+ position=null;lastCourse=null;courseFix=null;ultimoFix=0;refParado=null;refParadoT=0;
+ // El servicio tarda un momento en pararse de verdad. Sin esta tregua el
+ // sondeo lo vería aún activo y volvería a encender la flecha recién apagada.
+ fuenteNativa=false;ultimoTiempoNativo=0;apagadoHasta=Date.now()+8000;
+ followGps=true;manualMapUntil=0;
+ // Lo has apagado TU. El vigilante de abajo no debe ponerse a anunciar que
+ // busca señal: no la busca nadie. Antes lo hacia, y a los cinco segundos
+ // «GPS apagado» se convertia en «Sin posicion reciente del GPS · buscando
+ // señal», que es mentira y ademas asusta.
+ gpsApagadoPorTi=true;
+ gpsSolicitado=false;
+ $('distance').textContent='GPS apagado';
+ pintaBotonNavegar();
+}
+$('discardRecording').onclick=()=>{
+ if(!confirm('¿Descartar esta grabación? Se borrará el recorrido sin guardarlo y se apagará el GPS.'))return;
+ if(window.TrabakutikAndroid)window.TrabakutikAndroid.discardRecording();
+ recording=false;recordingPendingSave=false;recorded=[];
+ if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}
+ recordingControls('ready');
+ apagaGps();
+ notice('Grabación descartada · GPS apagado');
+};
+window.trabakutikNativeGpxSaved=()=>{
+ if(!recording){
+  finishRecording();notice('GPX guardado en el móvil · navegación detenida');
+ }
+};
+window.addEventListener('beforeunload',e=>{if(recording||recordingPendingSave||(drawPoints.length>1&&!createdSavedItem)){e.preventDefault();e.returnValue=''}});
+// 'no-cache' no quiere decir que no se guarde: quiere decir que antes de
+// usar lo guardado se le pregunta al servidor. GitHub Pages manda
+// max-age=600, asi que durante diez minutos el WebView daba por buena la
+// copia vieja sin preguntar, y la lista seguia enseñando rutas de antes
+// aunque la pagina ya fuera la nueva. Con esto, si no ha cambiado nada el
+// servidor contesta 304 y no se descarga ni un byte; si ha cambiado, llega
+// lo nuevo. Importa sobre todo en trailhead.json, que son 500 kB.
+fetch('data/rutas.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
+ const es=d.es||{};
+ for(const k in es) if(es[k]&&es[k].h){ if(es[k].n)nombresDeRuta[es[k].h]=es[k].n; if(es[k].s)datosDeRuta[es[k].h]=es[k].s; }
+ // Puede llegar despues de que se haya pintado algo: se repinta.
+ if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href)}
+ updateElevation();
+ if(!$('routeDialog').classList.contains('hidden'))showRoutes();
+}).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
+fetch('data/trailhead.json',{cache:'no-cache'}).then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} rutasListas=true; }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
+// Guardar la pagina en el movil para poder abrirla SIN COBERTURA. Ver sw.js.
+// La aplicacion de Android no lleva la pagina dentro: la carga de GitHub
+// Pages y ademas con la cache del WebView desactivada, asi que sin esto, en
+// el monte y sin red, abrir la app de cero no daba nada.
+if('serviceWorker' in navigator){
+ addEventListener('load',()=>{
+  navigator.serviceWorker.register('sw.js')
+   .catch(e=>console.warn('Sin copia guardada para usar sin cobertura',e));
+ });
+}
+})();
+</script></body></html>
