@@ -122,7 +122,12 @@ public class MainActivity extends Activity {
  }
  @Override protected void onResume(){
   super.onResume();
-  if(web!=null&&showingGps)web.postDelayed(this::restoreGpsWeb,300);
+  if(web!=null&&showingGps){
+   final WebView objetivo=web;
+   objetivo.postDelayed(()->{
+    if(web==objetivo&&showingGps&&!isFinishing()&&!isDestroyed())restoreGpsWeb();
+   },300);
+  }
  }
  void showScreen(boolean gps){
   showingGps=gps;
