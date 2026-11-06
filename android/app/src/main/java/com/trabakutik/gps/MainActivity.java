@@ -184,6 +184,12 @@ public class MainActivity extends Activity {
   w.setBackgroundColor(0xff07131d);
   w.getSettings().setJavaScriptEnabled(true);
   w.getSettings().setDomStorageEnabled(true);
+  // No hay carga de contenido file://; los GPX se reciben mediante el selector SAF.
+  // Reducir la superficie de acceso del WebView que expone el puente nativo.
+  w.getSettings().setAllowFileAccess(false);
+  w.getSettings().setAllowFileAccessFromFileURLs(false);
+  w.getSettings().setAllowUniversalAccessFromFileURLs(false);
+  w.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW);
    if(navigator)w.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
   w.getSettings().setGeolocationEnabled(true);
   w.getSettings().setUseWideViewPort(true);
