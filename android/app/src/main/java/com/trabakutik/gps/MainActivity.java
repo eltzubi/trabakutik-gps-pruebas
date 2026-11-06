@@ -590,7 +590,7 @@ public class MainActivity extends Activity {
  void beginPermissionSetup(){
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))return;
   new AlertDialog.Builder(this).setTitle("Preparar Trabakutik GPS")
-   .setMessage("Para navegar y grabar con la pantalla bloqueada, permite la ubicación precisa y las notificaciones. Después podrás revisar la batería para evitar que Samsung suspenda el GPS.")
+   .setMessage("Configuraremos todo seguido: 1. Ubicación precisa, 2. Notificaciones, 3. Batería sin restricciones. Android pide la batería en una pantalla distinta. Puedes decidir cada permiso.")
    .setPositiveButton("Configurar", (d,w)->requestStartupLocation())
    .setNegativeButton("Más tarde",(d,w)->getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply())
    .show();
@@ -605,9 +605,10 @@ public class MainActivity extends Activity {
   if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},101);return;
   }
-  showBatterySetup();
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)showBatterySetup();
  }
  void showBatteryReminderIfNeeded(){
+  if(batteryOptimizationExempt())return;
   if(getPreferences(MODE_PRIVATE).getBoolean("battery_reminder_v13",false))return;
   getPreferences(MODE_PRIVATE).edit().putBoolean("battery_reminder_v13",true).apply();
   new AlertDialog.Builder(this).setTitle("GPS con pantalla bloqueada")
@@ -621,10 +622,18 @@ public class MainActivity extends Activity {
    startActivity(intent);
   }catch(Exception e){Toast.makeText(this,"Ajustes > Aplicaciones > Trabakutik GPS > Batería",Toast.LENGTH_LONG).show();}
  }
+ boolean batteryOptimizationExempt(){
+  android.os.PowerManager pm=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+  return pm!=null&&pm.isIgnoringBatteryOptimizations(getPackageName());
+ }
  void showBatterySetup(){
+  if(batteryOptimizationExempt()){
+   getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply();
+   return;
+  }
   getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).putBoolean("battery_reminder_v13",true).apply();
-  new AlertDialog.Builder(this).setTitle("Grabación con pantalla apagada")
-   .setMessage("Para reducir cortes del track, en Ajustes de Trabakutik GPS revisa Batería y selecciona Sin restricciones si tu Samsung lo permite. Android no deja que la aplicación active esta opción por sí sola.")
+  new AlertDialog.Builder(this).setTitle("Paso 3 de 3 · Batería")
+   .setMessage("Último paso. Para reducir cortes al bloquear la pantalla, abre Batería y elige Sin restricciones para Trabakutik GPS si tu Samsung lo permite. Esta autorización es distinta de los permisos normales y puede aumentar el consumo.")
    .setPositiveButton("Abrir ajustes", (d,w)->{
     openBatteryAppSettings();
    })
@@ -662,7 +671,8 @@ public class MainActivity extends Activity {
    boolean veniaDeUnaAccion=pendingGpsAction!=null;
    pendingGpsAction=null;
    Toast.makeText(this,"Para navegar necesitas permitir la ubicación precisa.",Toast.LENGTH_LONG).show();
-   if(!veniaDeUnaAccion)showBatterySetup();
+   // Sin ubicación no se abre la configuración de batería: no serviría para navegar.
+   if(!veniaDeUnaAccion)getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply();
    return;
   }
   if(pendingGpsAction!=null){
