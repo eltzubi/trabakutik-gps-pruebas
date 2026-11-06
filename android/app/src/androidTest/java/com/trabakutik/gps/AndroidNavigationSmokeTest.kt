@@ -115,9 +115,10 @@ class AndroidNavigationSmokeTest {
     @Test
     fun openingApplicationDoesNotStartGpsTrackingWithoutUserAction() {
         assertFalse(TrackingService.ACTIVO)
-        ActivityScenario.launch<MainActivity>(
-            Intent(InstrumentationRegistry.getInstrumentation().targetContext, MainActivity::class.java),
-        ).use { scenario ->
+        ActivityScenario
+            .launch<MainActivity>(
+                Intent(InstrumentationRegistry.getInstrumentation().targetContext, MainActivity::class.java),
+            ).use { scenario ->
             scenario.onActivity {
                 assertFalse(TrackingService.ACTIVO)
             }
