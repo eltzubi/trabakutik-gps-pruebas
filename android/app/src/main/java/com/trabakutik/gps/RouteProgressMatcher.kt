@@ -6,81 +6,135 @@ import kotlin.math.hypot
 import kotlin.math.max
 
 /**
- * Proyecta posiciones GPS sobre el trazado, conservando la continuidad
- * al pasar por cruces, bucles o segmentos cercanos entre sí.
- *
- * No accede a Android, almacenamiento ni a la red.
+ * Busca el tramo del GPX coherente con la posición actual y el progreso previo.
+ * Todas las distancias se expresan en metros; no depende de APIs de Android.
  */
 object RouteProgressMatcher {
+    private const val METERS_PER_DEGREE = 111_195.0
+    private const val MIN_LATITUDE = -90.0
+    private const val MAX_LATITUDE = 90.0
+    private const val MIN_LONGITUDE = -180.0
+    private const val MAX_LONGITUDE = 180.0
+    private const val HISTORY_TIMEOUT_SECONDS = 15.0
+    private const val MIN_TRAVEL_WINDOW_METERS = 35.0
+    private const val BASE_TRAVEL_WINDOW_METERS = 20.0
+    private const val MAX_SPEED_METERS_PER_SECOND = 30.0
+    private const val MAX_CONTINUITY_ERROR_METERS = 8.0
+    private const val MIN_SEGMENT_METERS = 0.001
+
+    data class Position(
+        val latitude: Double,
+        val longitude: Double,
+    )
+
+    data class History(
+        val progressMeters: Double,
+        val secondsAgo: Double,
+        val speedMetersPerSecond: Double,
+    )
+
     data class Match(
         val progressMeters: Double,
         val distanceMeters: Double,
     )
 
+    private data class SegmentProjection(
+        val progress: Double,
+        val error: Double,
+        val length: Double,
+    )
+
     @JvmStatic
     fun match(
         route: List<DoubleArray>,
-        latitude: Double,
-        longitude: Double,
-        previousProgressMeters: Double,
-        secondsSincePrevious: Double,
-        speedMetersPerSecond: Double,
+        position: Position,
+        history: History,
     ): Match? {
-        if (route.size < 2) return null
-        if (!latitude.isFinite() || !longitude.isFinite()) return null
-        if (latitude !in -90.0..90.0) return null
-        if (longitude !in -180.0..180.0) return null
+        if (!isValid(route, position)) return null
 
-        val scale = 111_195.0
-        val lonScale = scale * cos(Math.toRadians(latitude))
-        val usePrevious =
-            previousProgressMeters.isFinite() &&
-                secondsSincePrevious.isFinite() &&
-                secondsSincePrevious >= 0.0 &&
-                secondsSincePrevious < 15.0
-        val speed = if (speedMetersPerSecond.isFinite()) speedMetersPerSecond.coerceIn(0.0, 30.0) else 0.0
-        val travelWindow = max(35.0, speed * secondsSincePrevious.coerceAtLeast(0.0) + 20.0)
+        val longitudeScale = METERS_PER_DEGREE * cos(Math.toRadians(position.latitude))
+        val continuity = history.progressMeters.isFinite() &&
+            history.secondsAgo.isFinite() &&
+            history.secondsAgo in 0.0..<HISTORY_TIMEOUT_SECONDS
+        val speed = history.speedMetersPerSecond.takeIf(Double::isFinite)?.coerceIn(
+            0.0,
+            MAX_SPEED_METERS_PER_SECOND,
+        ) ?: 0.0
+        val distanceWindow = max(
+            MIN_TRAVEL_WINDOW_METERS,
+            speed * history.secondsAgo.coerceAtLeast(0.0) + BASE_TRAVEL_WINDOW_METERS,
+        )
 
-        var bestDistance = Double.POSITIVE_INFINITY
-        var bestProgress = 0.0
-        var nearDistance = Double.POSITIVE_INFINITY
-        var nearProgress = Double.NaN
-        var cumulative = 0.0
+        var best = Match(0.0, Double.POSITIVE_INFINITY)
+        var near = Match(Double.NaN, Double.POSITIVE_INFINITY)
+        var progress = 0.0
 
         for (index in 1 until route.size) {
-            val a = route[index - 1]
-            val b = route[index]
-            if (a.size < 2 || b.size < 2) return null
-            if (!a[0].isFinite() || !a[1].isFinite()) return null
-            if (!b[0].isFinite() || !b[1].isFinite()) return null
-
-            val dx = (b[1] - a[1]) * lonScale
-            val dy = (b[0] - a[0]) * scale
-            val ax = (a[1] - longitude) * lonScale
-            val ay = (a[0] - latitude) * scale
-            val length = hypot(dx, dy)
-            val projection = if (length < 0.001) 0.0 else -(ax * dx + ay * dy) / (length * length)
-            val t = projection.coerceIn(0.0, 1.0)
-            val distance = hypot(ax + t * dx, ay + t * dy)
-            val progress = cumulative + t * length
-
-            if (distance < bestDistance) {
-                bestDistance = distance
-                bestProgress = progress
+            val point = project(
+                route[index - 1],
+                route[index],
+                position,
+                longitudeScale,
+                progress,
+            )
+            if (point.error < best.distanceMeters) {
+                best = Match(point.progress, point.error)
             }
-            if (usePrevious && abs(progress - previousProgressMeters) <= travelWindow) {
-                if (distance < nearDistance) {
-                    nearDistance = distance
-                    nearProgress = progress
-                }
+            if (continuity &&
+                abs(point.progress - history.progressMeters) <= distanceWindow &&
+                point.error < near.distanceMeters
+            ) {
+                near = Match(point.progress, point.error)
             }
-            cumulative += length
+            progress += point.length
         }
 
-        return if (nearProgress.isFinite() && nearDistance <= bestDistance + 8.0) {
-            Match(nearProgress, nearDistance)
+        return if (near.progressMeters.isFinite() &&
+            near.distanceMeters <= best.distanceMeters + MAX_CONTINUITY_ERROR_METERS
+        ) {
+            near
         } else {
-            Match(bestProgress, bestDistance)
+            best
         }
+    }
+
+    private fun isValid(
+        route: List<DoubleArray>,
+        position: Position,
+    ): Boolean {
+        if (route.size < 2) return false
+        if (!position.latitude.isFinite() || !position.longitude.isFinite()) return false
+        if (position.latitude !in MIN_LATITUDE..MAX_LATITUDE) return false
+        if (position.longitude !in MIN_LONGITUDE..MAX_LONGITUDE) return false
+        return route.all { point ->
+            point.size >= 2 && point[0].isFinite() && point[1].isFinite() &&
+                point[0] in MIN_LATITUDE..MAX_LATITUDE &&
+                point[1] in MIN_LONGITUDE..MAX_LONGITUDE
+        }
+    }
+
+    private fun project(
+        start: DoubleArray,
+        end: DoubleArray,
+        position: Position,
+        longitudeScale: Double,
+        cumulative: Double,
+    ): SegmentProjection {
+        val dx = (end[1] - start[1]) * longitudeScale
+        val dy = (end[0] - start[0]) * METERS_PER_DEGREE
+        val ax = (start[1] - position.longitude) * longitudeScale
+        val ay = (start[0] - position.latitude) * METERS_PER_DEGREE
+        val length = hypot(dx, dy)
+        val projection = if (length < MIN_SEGMENT_METERS) {
+            0.0
+        } else {
+            -(ax * dx + ay * dy) / (length * length)
+        }
+        val fraction = projection.coerceIn(0.0, 1.0)
+        return SegmentProjection(
+            cumulative + fraction * length,
+            hypot(ax + fraction * dx, ay + fraction * dy),
+            length,
+        )
     }
 }
