@@ -144,7 +144,13 @@ public class MainActivity extends Activity {
     webRoutes.reload();
    }
   }
-  web.postDelayed(()->{if(gps){web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);restoreGpsWeb();}},120);
+  final WebView objetivo=web;
+  objetivo.postDelayed(()->{
+   if(gps&&web==objetivo&&!isFinishing()&&!isDestroyed()){
+    objetivo.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);
+    restoreGpsWeb();
+   }
+  },120);
  }
  @android.annotation.TargetApi(29)
  boolean guardaEnDescargas(String name,String xml){
