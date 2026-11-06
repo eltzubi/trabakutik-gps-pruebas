@@ -115,7 +115,8 @@ object RouteProgressMatcher {
                 position.longitude.isFinite() &&
                 position.latitude in MIN_LATITUDE..MAX_LATITUDE &&
                 position.longitude in MIN_LONGITUDE..MAX_LONGITUDE
-        return route.size >= 2 && validPosition &&
+        return route.size >= 2 &&
+            validPosition &&
             route.all { point ->
                 point.size >= 2 &&
                     point[0].isFinite() &&
