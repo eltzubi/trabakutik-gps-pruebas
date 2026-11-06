@@ -85,4 +85,20 @@ class AndroidNavigationSmokeTest {
             file.delete()
         }
     }
+    @Test
+    fun routeAndTurnJsonUseAtomicWrites() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "route-atomic-test.json")
+        try {
+            AtomicNavigationStore.write(file, "[[43.0,-2.0],[43.1,-2.1]]")
+            assertEquals("[[43.0,-2.0],[43.1,-2.1]]", file.readText())
+            AtomicNavigationStore.write(file, "[[43.0,-2.0],[43.2,-2.2]]")
+            assertEquals("[[43.0,-2.0],[43.2,-2.2]]", file.readText())
+        } finally {
+            file.delete()
+            File(file.path + ".new").delete()
+            File(file.path + ".bak").delete()
+        }
+    }
+
 }
