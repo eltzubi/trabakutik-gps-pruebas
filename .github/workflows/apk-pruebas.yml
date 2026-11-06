@@ -52,8 +52,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/qa/app-qa.apk TrabakutikGPS-QA2-Giros.apk
-          gh release create qa2-giros-20261106 TrabakutikGPS-QA2-Giros.apk \\
-            --repo "$GITHUB_REPOSITORY" --title "Trabakutik GPS QA2 · giros" \\
-            --notes "Aplicación de pruebas independiente (com.trabakutik.gps.qa2). No sustituye la estable. Avisos de giros y cruces." \\
-            --prerelease || gh release upload qa2-giros-20261106 TrabakutikGPS-QA2-Giros.apk \\
+          gh release create qa2-giros-20261106 TrabakutikGPS-QA2-Giros.apk \
+            --repo "$GITHUB_REPOSITORY" --title "Trabakutik GPS QA2 · giros" \
+            --notes "Aplicación de pruebas independiente (com.trabakutik.gps.qa2). No sustituye la estable. Avisos de giros y cruces." \
+            --prerelease || gh release upload qa2-giros-20261106 TrabakutikGPS-QA2-Giros.apk \
             --repo "$GITHUB_REPOSITORY" --clobber
