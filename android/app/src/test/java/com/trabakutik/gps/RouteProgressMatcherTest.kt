@@ -27,11 +27,8 @@ class RouteProgressMatcherTest {
     ): RouteProgressMatcher.Match? =
         RouteProgressMatcher.match(
             route,
-            latitude,
-            longitude,
-            previous,
-            seconds,
-            speed,
+            RouteProgressMatcher.Position(latitude, longitude),
+            RouteProgressMatcher.History(previous, seconds, speed),
         )
 
     @Test
