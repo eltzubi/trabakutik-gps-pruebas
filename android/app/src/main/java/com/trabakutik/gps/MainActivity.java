@@ -431,7 +431,7 @@ public class MainActivity extends Activity {
     }
     getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("routeError").apply();
     File f=new File(getFilesDir(),"ruta-activa.json");
-    try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    AtomicNavigationStore.write(f,json);
     // Y AVISAR AL SERVICIO. Antes solo se guardaba el fichero, con un
     // comentario que decia que NAVIGATE lo lee una vez al empezar. Eso dejaba
     // al servicio midiendo la ruta vieja: al cambiar de ruta con el servicio
@@ -461,7 +461,7 @@ public class MainActivity extends Activity {
     org.json.JSONArray turns=new org.json.JSONArray(json);
     if(turns.length()>400||json.length()>40000)return;
     File f=new File(getFilesDir(),"giros-activos.json");
-    try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    AtomicNavigationStore.write(f,json);
     // Antes esto se quedaba aqui: «se leen al iniciar NAVIGATE». Pero si ya
     // se estaba navegando, el servicio no se enteraba nunca y se quedaba sin
     // giros -o con los de la ruta anterior-, mientras la pagina se callaba
@@ -505,7 +505,7 @@ public class MainActivity extends Activity {
       org.json.JSONArray list=new org.json.JSONArray(json);
       if(list.length()<2||list.length()>15000||json.length()>2000000)return;
       File f=new File(getFilesDir(),"ruta-activa.json");
-      try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+      AtomicNavigationStore.write(f,json);
       runOnUiThread(()->startNavigationService());
     }catch(Exception e){android.util.Log.e("TrabakutikGPS","Ruta de navegacion incorrecta",e);}
   }
