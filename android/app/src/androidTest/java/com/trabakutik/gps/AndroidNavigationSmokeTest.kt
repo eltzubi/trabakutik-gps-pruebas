@@ -111,4 +111,100 @@ class AndroidNavigationSmokeTest {
         val second = Thread.getDefaultUncaughtExceptionHandler()
         assertTrue(first === second)
     }
+
+    @Test
+    fun openingApplicationDoesNotStartGpsTrackingWithoutUserAction() {
+        assertFalse(TrackingService.ACTIVO)
+        ActivityScenario.launch<MainActivity>(
+            Intent(InstrumentationRegistry.getInstrumentation().targetContext, MainActivity::class.java),
+        ).use { scenario ->
+            scenario.onActivity {
+                assertFalse(TrackingService.ACTIVO)
+            }
+        }
+        assertFalse(TrackingService.ACTIVO)
+    }
+
+    @Test
+    fun atomicRouteStoreKeepsCompleteFileAfterManyUpdates() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "atomic-updates-stress.json")
+        try {
+            repeat(200) { i ->
+                val value = "[[43.0,-2.0],[43.1,-2.1],[$i,$i]]"
+                AtomicNavigationStore.write(file, value)
+                assertEquals(value, file.readText())
+            }
+            assertFalse(File(file.path + ".new").exists())
+        } finally {
+            file.delete()
+            File(file.path + ".new").delete()
+            File(file.path + ".bak").delete()
+        }
+    }
+
+    @Test
+    fun atomicStoreRejectsNullAndPreservesPreviousRoute() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "atomic-preserve.json")
+        try {
+            AtomicNavigationStore.write(file, "[[43.0,-2.0]]")
+            var rejected = false
+            try {
+                AtomicNavigationStore.write(file, null)
+            } catch (expected: IllegalArgumentException) {
+                rejected = true
+            }
+            assertTrue(rejected)
+            assertEquals("[[43.0,-2.0]]", file.readText())
+        } finally {
+            file.delete()
+            File(file.path + ".new").delete()
+            File(file.path + ".bak").delete()
+        }
+    }
+
+    @Test
+    fun closedRecordingIsNotAlteredByRecovery() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "closed-recording.gpx")
+        try {
+            val complete = "<gpx><trk><trkseg>\n<trkpt lat=\\"43\\" lon=\\"-2\\"/>\n</trkseg></trk></gpx>\n"
+            file.writeText(complete)
+            assertFalse(TrackingService.cierraGpxSiQuedoAbierto(file))
+            assertEquals(complete, file.readText())
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun emptyRecordingIsNotModifiedByRecovery() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "empty-recording.gpx")
+        try {
+            file.writeText("")
+            assertFalse(TrackingService.cierraGpxSiQuedoAbierto(file))
+            assertEquals(0L, file.length())
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun repairedRecordingDoesNotGrowOnRepeatedChecks() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "recovery-repeat.gpx")
+        try {
+            file.writeText("<gpx><trk><trkseg>\n<trkpt lat=\\"43\\" lon=\\"-2\\"/>\n")
+            assertTrue(TrackingService.cierraGpxSiQuedoAbierto(file))
+            val sizeAfterRepair = file.length()
+            repeat(25) {
+                assertFalse(TrackingService.cierraGpxSiQuedoAbierto(file))
+                assertEquals(sizeAfterRepair, file.length())
+            }
+        } finally {
+            file.delete()
+        }
+    }
 }
