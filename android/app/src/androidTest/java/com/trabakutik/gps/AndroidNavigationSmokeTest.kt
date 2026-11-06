@@ -39,16 +39,16 @@ class AndroidNavigationSmokeTest {
                     MainActivity::class.java,
                 ),
             ).use { scenario ->
-            scenario.onActivity { activity ->
-                assertFalse(activity.isFinishing)
-                assertNotNull(activity.window.decorView)
+                scenario.onActivity { activity ->
+                    assertFalse(activity.isFinishing)
+                    assertNotNull(activity.window.decorView)
+                }
+                scenario.recreate()
+                scenario.onActivity { activity ->
+                    assertFalse(activity.isFinishing)
+                    assertEquals(InstrumentationRegistry.getInstrumentation().targetContext.packageName, activity.packageName)
+                }
             }
-            scenario.recreate()
-            scenario.onActivity { activity ->
-                assertFalse(activity.isFinishing)
-                assertEquals(InstrumentationRegistry.getInstrumentation().targetContext.packageName, activity.packageName)
-            }
-        }
     }
 
     @Test
