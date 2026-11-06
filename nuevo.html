@@ -2082,7 +2082,12 @@ function computeJunctions(){
    const confirma=geometriaEn(i,20);
    if(confirma!==null&&confirma.angle<(angle>=130?100:85))continue; // descartar picos aislados
   }
-  if(junctions.length&&dist(junctions[junctions.length-1].point,b)<35)continue;
+  // Una distancia fija de 35 m eliminaba giros reales consecutivos,
+  // por ejemplo dos cambios de camino seguidos en una carretera.
+  // Agrupar solo candidatos que pertenecen al mismo giro (ventanas de 12 m).
+  // Los distintos se conservan, también si tienen la misma dirección.
+  const anterior=junctions[junctions.length-1];
+  if(anterior&&routeCumulative[i]-anterior.along<VENTANA)continue;
   const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
   junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle),cruce});
  }
