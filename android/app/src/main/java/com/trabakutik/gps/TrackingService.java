@@ -296,6 +296,9 @@ public class TrackingService extends Service implements LocationListener {
     int tipo=p.optInt("t",1);
     if(at>=0&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo});
    }
+   // El algoritmo recorre los indices de ruta en orden; los giros importados
+   // pueden llegar desordenados y, sin ordenar, se pierden los avisos.
+   turns.sort((a,b)->Double.compare(a[0],b[0]));
   }catch(Exception e){android.util.Log.w("TrabakutikGPS","Giros no disponibles",e);}
  }
  // La velocidad cruda del GPS pega saltos y los avisos se calculan con ella:
