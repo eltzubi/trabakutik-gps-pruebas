@@ -37,7 +37,8 @@ class RouteProgressMatcherTest {
 
     @Test fun prefersContinuityWhenRouteReturnsToStart() {
         val earlier = RouteProgressMatcher.match(crossing, 43.0, -2.0, 0.0, 1.0, 1.0)
-        val later = RouteProgressMatcher.match(crossing, 43.0, -2.0, 130.0, 1.0, 1.0)
+        // La vuelta completa mide unos 166 m: la posición anterior debe estar cerca.
+        val later = RouteProgressMatcher.match(crossing, 43.0, -2.0, 160.0, 1.0, 1.0)
         assertNotNull(earlier)
         assertNotNull(later)
         assertTrue(later!!.progressMeters > earlier!!.progressMeters + 60.0)
