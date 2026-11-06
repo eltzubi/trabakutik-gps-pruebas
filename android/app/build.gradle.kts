@@ -1,4 +1,7 @@
-plugins { id("com.android.application") }
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
 android {
  namespace = "com.trabakutik.gps"
  compileSdk = 35
@@ -8,4 +11,7 @@ android {
 
 // La unica dependencia del proyecto, y entra solo por el FileProvider: es el
 // que espera cualquier app que reciba un GPX por la hoja de compartir.
-dependencies { implementation("androidx.core:core:1.13.1") }
+dependencies {
+    implementation("androidx.core:core:1.13.1")
+    testImplementation("junit:junit:4.13.2")
+}
