@@ -2066,7 +2066,11 @@ function computeJunctions(){
   return false;
  };
  for(let i=1;i<pts.length-1;i++){
-  const giro=geometriaEn(i,VENTANA);
+  // Cerca del inicio o final hay menos de 12 m a ambos lados.
+  // Ajustar solo esos giros; evitar quiebros inferiores a 6 m por ruido GPS.
+  const margen=Math.min(routeCumulative[i],routeCumulative[pts.length-1]-routeCumulative[i]);
+  if(margen<6)continue;
+  const giro=geometriaEn(i,Math.min(VENTANA,margen));
   if(!giro)continue;
   const {angle,cross}=giro,b=pts[i];
   if(angle<40)continue; // por debajo de CRUCE_GIRO no hay nada que mirar
