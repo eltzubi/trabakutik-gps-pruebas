@@ -42,12 +42,12 @@ public class MainActivity extends Activity {
   bar.setPadding(dp(12),dp(1),dp(9),dp(1));
   bar.setBackgroundColor(0xff0b1e28);
   TextView title=new TextView(this);
-  title.setText("Trabakutik");title.setTextColor(0xffd9edec);title.setTextSize(12);
+  title.setText(R.string.app_header);title.setTextColor(0xffd9edec);title.setTextSize(12);
   title.setTypeface(null,android.graphics.Typeface.BOLD);title.setGravity(android.view.Gravity.CENTER_VERTICAL);
   title.setOnLongClickListener(v->{CrashReport.show(MainActivity.this);return true;});
   bar.addView(title,new LinearLayout.LayoutParams(0,dp(30),1));
 
-  switchPage=new TextView(this);switchPage.setText("Web");
+  switchPage=new TextView(this);switchPage.setText(R.string.web_tab);
   switchPage.setTextColor(0xffb9eaf1);switchPage.setTextSize(10);
   switchPage.setGravity(android.view.Gravity.CENTER);
   GradientDrawable outline=new GradientDrawable();
