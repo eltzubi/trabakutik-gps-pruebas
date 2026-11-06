@@ -36,7 +36,7 @@ android {
         create("qa") {
             initWith(getByName("debug"))
             applicationIdSuffix = ".qa2"
-            versionNameSuffix = "-pruebas-giros"
+            versionNameSuffix = "-pruebas-giros-qa2"
             isDebuggable = true
             matchingFallbacks += listOf("debug")
         }
