@@ -60,10 +60,14 @@ object RouteProgressMatcher {
             0.0,
             MAX_SPEED_METERS_PER_SECOND,
         ) ?: 0.0
-        val distanceWindow = max(
-            MIN_TRAVEL_WINDOW_METERS,
-            speed * history.secondsAgo.coerceAtLeast(0.0) + BASE_TRAVEL_WINDOW_METERS,
-        )
+        val distanceWindow = if (continuity) {
+            max(
+                MIN_TRAVEL_WINDOW_METERS,
+                speed * history.secondsAgo + BASE_TRAVEL_WINDOW_METERS,
+            )
+        } else {
+            MIN_TRAVEL_WINDOW_METERS
+        }
 
         var best = Match(0.0, Double.POSITIVE_INFINITY)
         var near = Match(Double.NaN, Double.POSITIVE_INFINITY)
@@ -102,11 +106,11 @@ object RouteProgressMatcher {
         route: List<DoubleArray>,
         position: Position,
     ): Boolean {
-        if (route.size < 2) return false
-        if (!position.latitude.isFinite() || !position.longitude.isFinite()) return false
-        if (position.latitude !in MIN_LATITUDE..MAX_LATITUDE) return false
-        if (position.longitude !in MIN_LONGITUDE..MAX_LONGITUDE) return false
-        return route.all { point ->
+        val validPosition = position.latitude.isFinite() &&
+            position.longitude.isFinite() &&
+            position.latitude in MIN_LATITUDE..MAX_LATITUDE &&
+            position.longitude in MIN_LONGITUDE..MAX_LONGITUDE
+        return route.size >= 2 && validPosition && route.all { point ->
             point.size >= 2 && point[0].isFinite() && point[1].isFinite() &&
                 point[0] in MIN_LATITUDE..MAX_LATITUDE &&
                 point[1] in MIN_LONGITUDE..MAX_LONGITUDE
