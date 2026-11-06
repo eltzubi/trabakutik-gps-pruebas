@@ -19,10 +19,11 @@ class AndroidNavigationSmokeTest {
     @Test
     fun manifestDeclaresRequiredLocationAndForegroundService() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val info = context.packageManager.getPackageInfo(
-            context.packageName,
-            PackageManager.GET_PERMISSIONS,
-        )
+        val info =
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_PERMISSIONS,
+            )
         val permissions = info.requestedPermissions?.toSet().orEmpty()
         assertTrue(permissions.contains(Manifest.permission.ACCESS_FINE_LOCATION))
         assertTrue(permissions.contains(Manifest.permission.FOREGROUND_SERVICE))
@@ -31,12 +32,13 @@ class AndroidNavigationSmokeTest {
 
     @Test
     fun launchAndRecreationDoNotFinishActivity() {
-        ActivityScenario.launch<MainActivity>(
-            Intent(
-                InstrumentationRegistry.getInstrumentation().targetContext,
-                MainActivity::class.java,
-            ),
-        ).use { scenario ->
+        ActivityScenario
+            .launch<MainActivity>(
+                Intent(
+                    InstrumentationRegistry.getInstrumentation().targetContext,
+                    MainActivity::class.java,
+                ),
+            ).use { scenario ->
             scenario.onActivity { activity ->
                 assertFalse(activity.isFinishing)
                 assertNotNull(activity.window.decorView)
@@ -44,7 +46,7 @@ class AndroidNavigationSmokeTest {
             scenario.recreate()
             scenario.onActivity { activity ->
                 assertFalse(activity.isFinishing)
-                assertEquals("com.trabakutik.gps", activity.packageName)
+                assertEquals(BuildConfig.APPLICATION_ID, activity.packageName)
             }
         }
     }
@@ -52,10 +54,11 @@ class AndroidNavigationSmokeTest {
     @Test
     fun gpsTrackingServiceIsNotExternallyExported() {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
-        val info = context.packageManager.getServiceInfo(
-            android.content.ComponentName(context, TrackingService::class.java),
-            0,
-        )
+        val info =
+            context.packageManager.getServiceInfo(
+                android.content.ComponentName(context, TrackingService::class.java),
+                0,
+            )
         assertFalse(info.exported)
     }
 }
