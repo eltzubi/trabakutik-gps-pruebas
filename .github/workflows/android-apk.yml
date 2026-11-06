@@ -5,6 +5,11 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 permissions:
   contents: write   # hace falta para publicar la Release con el APK
@@ -47,6 +52,7 @@ jobs:
       #   .../releases/latest/download/TrabakutikGPS.apk
       # Un toque y se descarga, sin cuenta y sin buscar nada.
       - name: Publicar la Release con el APK
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
