@@ -52,3 +52,12 @@ No fusionar PR #12 ni publicar Play hasta superar CI, validación instrumental y
 
 ## Decisión de publicación
 **NO APROBADA.** Compilación QA no sustituye cobertura, integración, pruebas reales y revisión de seguridad. No se ha fusionado la rama.
+
+## Ciclo QA posterior — escrituras atómicas y cierre de actividad
+- **Causa raíz:** `MainActivity.Bridge` guardaba `ruta-activa.json` y `giros-activos.json` directamente con `FileOutputStream`. Un cierre durante la escritura podía dejar un archivo JSON parcial.
+- **Corrección aplicada:** `AtomicNavigationStore.write()` utiliza `android.util.AtomicFile` con `finishWrite()` / `failWrite()`. La operación se serializa para evitar escrituras concurrentes del propio proceso. Las tres rutas de escritura identificadas en `MainActivity` usan este helper.
+- **Prueba añadida:** `routeAndTurnJsonUseAtomicWrites` en las pruebas instrumentadas de Android; valida creación y sustitución de archivo, pendiente confirmación de ejecución en el emulador.
+- **Causa raíz:** `CrashReport.install()` añadía un nuevo manejador `UncaughtExceptionHandler` global en cada creación de la Activity, encadenando manejadores tras sucesivas recreaciones.
+- **Corrección aplicada:** `install()` sincronizado e idempotente en el proceso. **Prueba añadida:** `crashReporterDoesNotStackHandlersAfterMultipleInstalls`.
+- **CI:** se ha corregido el orden de imports de la prueba Android informado por ktlint. Una nueva ejecución se inició sobre el último commit, pero la validación completa no está acreditada hasta que terminen emulador, Lint, Release y cobertura.
+- **Nota sobre cobertura:** JaCoCo midió 78/928 líneas (8,4 %) en la ejecución 42248648450. No se ha relajado el mínimo del 90 %, ni se han excluido clases heredadas.
