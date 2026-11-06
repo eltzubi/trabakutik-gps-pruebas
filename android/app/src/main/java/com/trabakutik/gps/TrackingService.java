@@ -123,6 +123,8 @@ public class TrackingService extends Service implements LocationListener {
  }
  boolean gpsReciente(){return ultimoFixGpsElapsed>0&&SystemClock.elapsedRealtime()-ultimoFixGpsElapsed<25000;}
  String estadoGps(){
+  if(recording&&getSharedPreferences("tracking_live",MODE_PRIVATE).getBoolean("recordingError",false))
+   return "ERROR guardando GPX · comprueba espacio libre";
   if(!ubicacionActivada())return "Activa la ubicación del teléfono";
   if(!gpsReciente())return "Esperando señal GPS";
   if(offRoute)return "FUERA DE RUTA · vuelve a la línea azul";
