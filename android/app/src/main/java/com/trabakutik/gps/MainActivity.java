@@ -520,7 +520,7 @@ public class MainActivity extends Activity {
      java.io.Writer w=new java.io.OutputStreamWriter(new java.io.FileOutputStream(f),"UTF-8");
      try{w.write(xml);}finally{w.close();}
      android.net.Uri uri=androidx.core.content.FileProvider.getUriForFile(
-       MainActivity.this,"com.trabakutik.gps.fileprovider",f);
+       MainActivity.this,getPackageName()+".fileprovider",f);
      Intent envio=new Intent(Intent.ACTION_SEND)
        .setType("application/gpx+xml")
        .putExtra(Intent.EXTRA_STREAM,uri)
