@@ -46,7 +46,7 @@ class AndroidNavigationSmokeTest {
             scenario.recreate()
             scenario.onActivity { activity ->
                 assertFalse(activity.isFinishing)
-                assertEquals(BuildConfig.APPLICATION_ID, activity.packageName)
+                assertEquals(InstrumentationRegistry.getInstrumentation().targetContext.packageName, activity.packageName)
             }
         }
     }
