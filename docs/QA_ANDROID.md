@@ -33,3 +33,22 @@ Rama `auditoria-gps-giros-ci-20261106`, PR #12. No se ha modificado `main`.
 
 ## Criterio de salida
 No fusionar PR #12 ni publicar Play hasta superar CI, validación instrumental y manual relevante. Registrar los informes en cada ejecución; no marcar pruebas sin ejecutar como realizadas.
+
+## Auditoría de uso prolongado y resistencia (segunda pasada)
+- **Avisos de giro desordenados:** el lector nativo suponía una lista de giros ya ordenada y el algoritmo podía omitir avisos posteriores. Ahora ordena los giros por índice de track. Pendiente ensayo real de retroceso y cruces repetidos.
+- **Grabación GPX interrumpida:** había un `catch(Exception ignored)` al escribir puntos de grabación. Ahora registra el fallo y marca `recordingError`, visible en la notificación del servicio. Pendiente comprobar escritura con almacenamiento lleno.
+- **Rutas largas:** el puente rechaza más de 15000 puntos / 2 MB, antes sin aviso. Ahora guarda un mensaje de error y muestra advertencia. El lector de rutas rechaza archivos truncados o coordenadas inválidas, en lugar de cargar parcialmente un track. Sigue pendiente soportar tracks mayores mediante otro modelo de datos y pruebas de memoria.
+- **WebView:** el código no destruía explícitamente ambas vistas ni cancelaba el selector de documentos al destruir la Activity. Se ha añadido liberación sin detener TrackingService. Pendiente análisis instrumental de memoria.
+- **Compatibilidad QA:** Java y Kotlin deben generar JVM 17 aunque la compilación utilice JDK 21. Solucionado en Gradle; probado previamente en `assembleQa`, debe validarse nuevamente tras cada cambio.
+- **Calidad estática:** ktlint y Detekt están activos y han bloqueado la rama; no se han apagado reglas. Se ha dividido el comparador GPX en métodos de menor complejidad. No se aprobará mientras el último pipeline no esté completamente verde.
+
+## Riesgos que siguen abiertos
+- El GPS escribe archivos GPX/TSV y evalúa hasta miles de segmentos en callbacks asociados al hilo principal. Puede provocar retrasos o ANR en dispositivos lentos y grabaciones muy largas. Hace falta medición y una refactorización cuidadosa con pruebas de concurrencia; no es seguro mover toda esa lógica de hilo sin proteger su estado.
+- `addJavascriptInterface` se expone desde WebViews que cargan páginas remotas. Necesita una revisión específica de límites de origen y contenido embebido antes de publicar.
+- La ruta base no está completamente disponible sin Internet (carga inicial de WebView y recursos web); una prueba unitaria de cálculo offline no acredita navegación offline.
+- El servicio usa `START_NOT_STICKY` y requiere ensayos tras muerte del proceso, reinicio y bloqueo prolongado.
+- La cobertura de líneas del 90 % todavía no se ha demostrado y las pruebas de memoria, batería, Android Auto y llamadas reales no han pasado.
+- Aunque GitHub Actions falle, impedir el merge en `main` requiere activar protección de rama / ruleset con checks obligatorios en la configuración de GitHub.
+
+## Decisión de publicación
+**NO APROBADA.** Compilación QA no sustituye cobertura, integración, pruebas reales y revisión de seguridad. No se ha fusionado la rama.
