@@ -23,12 +23,11 @@ class RouteProgressMatcherTest {
         longitude: Double,
         previous: Double = Double.NaN,
         seconds: Double = Double.POSITIVE_INFINITY,
-        speed: Double = 1.0,
     ): RouteProgressMatcher.Match? =
         RouteProgressMatcher.match(
             route,
             RouteProgressMatcher.Position(latitude, longitude),
-            RouteProgressMatcher.History(previous, seconds, speed),
+            RouteProgressMatcher.History(previous, seconds, 1.0),
         )
 
     @Test
@@ -95,7 +94,7 @@ class RouteProgressMatcherTest {
                 doubleArrayOf(40.0, -3.0 + index * 0.001)
             }
         val position = longRoute[2400]
-        val result = locate(longRoute, position[0], position[1], speed = 4.0)
+        val result = locate(longRoute, position[0], position[1])
         assertNotNull(result)
         assertTrue(result!!.progressMeters > 200_000)
         assertEquals(0.0, result.distanceMeters, 0.05)
