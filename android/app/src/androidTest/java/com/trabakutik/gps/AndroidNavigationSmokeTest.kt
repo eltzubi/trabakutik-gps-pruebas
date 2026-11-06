@@ -169,7 +169,7 @@ class AndroidNavigationSmokeTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.cacheDir, "closed-recording.gpx")
         try {
-            val complete = "<gpx><trk><trkseg>\n<trkpt lat=\\"43\\" lon=\\"-2\\"/>\n</trkseg></trk></gpx>\n"
+            val complete = "<gpx><trk><trkseg>\n<trkpt lat=\"43\" lon=\"-2\"/>\n</trkseg></trk></gpx>\n"
             file.writeText(complete)
             assertFalse(TrackingService.cierraGpxSiQuedoAbierto(file))
             assertEquals(complete, file.readText())
@@ -196,7 +196,7 @@ class AndroidNavigationSmokeTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.cacheDir, "recovery-repeat.gpx")
         try {
-            file.writeText("<gpx><trk><trkseg>\n<trkpt lat=\\"43\\" lon=\\"-2\\"/>\n")
+            file.writeText("<gpx><trk><trkseg>\n<trkpt lat=\"43\" lon=\"-2\"/>\n")
             assertTrue(TrackingService.cierraGpxSiQuedoAbierto(file))
             val sizeAfterRepair = file.length()
             repeat(25) {
