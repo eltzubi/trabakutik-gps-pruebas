@@ -6,7 +6,7 @@
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
  <uses-permission android:name="android.permission.WAKE_LOCK"/>
- <application android:label="Trabakutik GPS" android:icon="@drawable/trabakutik_icon" android:roundIcon="@drawable/trabakutik_icon" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="false">
+ <application android:label="Trabakutik GPS" android:icon="@drawable/trabakutik_icon" android:roundIcon="@drawable/trabakutik_icon" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules">
   <!-- Sin configChanges, cualquier giro de pantalla destruye y recrea la
        Activity: onCreate volvia a cargar nuevo.html SIN la ruta y hacia
        showScreen(false), o sea que el visitante se iba a trabakutik.com y
@@ -33,7 +33,7 @@
        encontraba con que no habia con que abrirla. Solo se expone la carpeta
        «compartir» de la cache. -->
   <provider android:name="androidx.core.content.FileProvider"
-   android:authorities="com.trabakutik.gps.fileprovider"
+   android:authorities="${applicationId}.fileprovider"
    android:exported="false" android:grantUriPermissions="true">
    <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/>
   </provider>

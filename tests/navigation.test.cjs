@@ -47,6 +47,18 @@ test('En un cruce identificado anuncia un cambio de camino y lo distingue de una
  assert.equal(turns.length,1);assert.equal(turns[0].cruce,true);
  assert.equal(detector().detect(corner(20),[point(0,0)]).length,0);
 });
+test('Detecta un giro junto al inicio o final aunque falten los 12 m habituales',()=>{
+ const cercaInicio=[point(-7,0),point(0,0),point(0,45)];
+ const cercaFinal=[point(-45,0),point(0,0),point(0,7)];
+ for(const points of [cercaInicio,cercaFinal]){
+  const turns=detector().detect(points);
+  assert.equal(turns.length,1);
+  assert.equal(turns[0].direction,'izquierda');
+ }
+});
+test('Un quiebro menor de seis metros en el extremo no crea un giro',()=>{
+ assert.equal(detector().detect([point(-4,0),point(0,0),point(0,50)]).length,0);
+});
 test('Una curva amplia de 90° no produce un aviso de giro cerrado',()=>{
  const points=[];
  for(let deg=-90;deg<=0;deg+=2)points.push(point(100*Math.cos(deg*Math.PI/180),100*Math.sin(deg*Math.PI/180)));
