@@ -677,5 +677,28 @@ public class MainActivity extends Activity {
   return nombre;
  }
  @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();pendingGpx=null;return;}try{String fin=aseguraExtensionGpx(data.getData());Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();}catch(Exception e){Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}pendingGpx=null;}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",Toast.LENGTH_SHORT).show();}}
+ @Override protected void onDestroy(){
+  // El servicio GPS tiene ciclo propio y no debe detenerse al cerrar la Activity.
+  // Los WebView, en cambio, retienen Activity y renderizadores si no se destruyen.
+  if(pendingFileChooser!=null){
+   pendingFileChooser.onReceiveValue(null);
+   pendingFileChooser=null;
+  }
+  if(web!=null){
+   web.stopLoading();
+   web.removeJavascriptInterface("TrabakutikAndroid");
+   if(pages!=null)pages.removeView(web);
+   web.destroy();
+   web=null;
+  }
+  if(webRoutes!=null){
+   webRoutes.stopLoading();
+   webRoutes.removeJavascriptInterface("TrabakutikRoutes");
+   if(pages!=null)pages.removeView(webRoutes);
+   webRoutes.destroy();
+   webRoutes=null;
+  }
+  super.onDestroy();
+ }
  @Override public void onBackPressed(){WebView current=showingGps?web:webRoutes;if(current.canGoBack())current.goBack();else if(!showingGps)showScreen(true);else super.onBackPressed();}
 }
