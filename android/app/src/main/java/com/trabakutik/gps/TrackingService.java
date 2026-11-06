@@ -329,7 +329,9 @@ public class TrackingService extends Service implements LocationListener {
     ?Math.max(0,(SystemClock.elapsedRealtime()-ultimoProgresoGiroMs)/1000.0)
     :Double.POSITIVE_INFINITY;
   RouteProgressMatcher.Match match=RouteProgressMatcher.match(
-    route,lat,lon,ultimoProgresoGiro,segundos,velocidadSuave);
+    route,
+    new RouteProgressMatcher.Position(lat,lon),
+    new RouteProgressMatcher.History(ultimoProgresoGiro,segundos,velocidadSuave));
   if(match==null)return;
   double along=match.getProgressMeters(),closest=match.getDistanceMeters();
   if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
