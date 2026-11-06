@@ -60,4 +60,58 @@ class RouteProgressMatcherTest {
         assertNotNull(result)
         assertTrue(result!!.progressMeters > 190.0)
     }
+
+    @Test fun supportsTracksLongerThanTwoHundredKilometresAndThousandPoints() {
+        // 2 502 segmentos de unos 111 m: recorrido sintetico de ~278 km.
+        val longRoute = (0..2502).map { i ->
+            doubleArrayOf(40.0, -3.0 + i * 0.001)
+        }
+        val position = longRoute[2100]
+        val result = RouteProgressMatcher.match(
+            longRoute, position[0], position[1],
+            Double.NaN, Double.POSITIVE_INFINITY, 4.0
+        )
+        assertNotNull(result)
+        assertTrue(result!!.progressMeters > 200_000)
+        assertEquals(0.0, result.distanceMeters, 0.05)
+    }
+
+    @Test fun recoveryAfterLongGpsSignalLossUsesCurrentLocation() {
+        val route = listOf(
+            doubleArrayOf(43.0, -2.0),
+            doubleArrayOf(43.001, -2.0),
+            doubleArrayOf(43.002, -2.0)
+        )
+        val result = RouteProgressMatcher.match(
+            route, 43.0018, -2.0, 0.0, 180.0, 1.5
+        )
+        assertNotNull(result)
+        assertTrue(result!!.progressMeters > 180.0)
+    }
+
+    @Test fun deviationReportsDistanceFromTheTrack() {
+        val route = listOf(
+            doubleArrayOf(43.0, -2.0),
+            doubleArrayOf(43.001, -2.0)
+        )
+        val result = RouteProgressMatcher.match(
+            route, 43.0005, -1.999, Double.NaN,
+            Double.POSITIVE_INFINITY, 1.5
+        )
+        assertNotNull(result)
+        assertTrue(result!!.distanceMeters > 70.0)
+    }
+
+    @Test fun offlineCalculationDoesNotRequireConnectivity() {
+        // El algoritmo no recibe Context, red ni proveedor de mapas.
+        // Prueba el calculo offline, NO el modo avion de Android.
+        val route = listOf(
+            doubleArrayOf(43.0, -2.0),
+            doubleArrayOf(43.0005, -2.0)
+        )
+        assertNotNull(RouteProgressMatcher.match(
+            route, 43.00025, -2.0, Double.NaN,
+            Double.POSITIVE_INFINITY, 0.0
+        ))
+    }
 }
