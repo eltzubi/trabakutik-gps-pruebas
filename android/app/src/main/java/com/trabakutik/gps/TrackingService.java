@@ -263,7 +263,7 @@ public class TrackingService extends Service implements LocationListener {
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
-  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
+  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).putBoolean("recordingError",false).apply();updateNotice();
  }
  void loadRoute(){
   route.clear();routeReached=false;offRoute=false;farSince=0;ultimoProgresoGiro=Double.NaN;ultimoProgresoGiroMs=0;
@@ -492,7 +492,17 @@ public class TrackingService extends Service implements LocationListener {
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
    forzarCorte=false;
    points++;if(points%10==0)updateNotice();
-  }catch(Exception ignored){}
+  }catch(IOException ex){
+   // Mantener la ruta activa, pero no ocultar que el GPX se ha dejado de escribir.
+   // El flag queda disponible para la UI y soporte incluso si se cierra el mapa.
+   android.util.Log.e("TrabakutikGPS","Error escribiendo GPX o trazado en almacenamiento interno",ex);
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recordingError",true).apply();
+   updateNotice();
+  }catch(RuntimeException ex){
+   android.util.Log.e("TrabakutikGPS","Error inesperado grabando una posición GPS",ex);
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recordingError",true).apply();
+   updateNotice();
+  }
  }
  Location makePreviousLocation(){Location p=new Location(LocationManager.GPS_PROVIDER);p.setLatitude(lastRecordedLat);p.setLongitude(lastRecordedLon);return p;}
  void endRecording(){
