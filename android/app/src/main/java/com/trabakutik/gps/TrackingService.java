@@ -236,8 +236,20 @@ public class TrackingService extends Service implements LocationListener {
    @Override public void onProviderEnabled(String p){updateNotice();}
    @Override public void onProviderDisabled(String p){updateNotice();}
   };
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED
+    && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   android.util.Log.w("TrabakutikGPS","Sin permiso para la ubicación por red");
+   red=null;
+   return;
+  }
   try{manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,5,red,Looper.getMainLooper());}
-  catch(Exception ignored){}
+  catch(SecurityException ex){
+   android.util.Log.w("TrabakutikGPS","Permiso de ubicación revocado al registrar red",ex);
+   red=null;
+  }catch(IllegalArgumentException ex){
+   android.util.Log.w("TrabakutikGPS","Proveedor de ubicación por red no disponible",ex);
+   red=null;
+  }
  }
  void sueltaRed(){
   if(red==null)return;
