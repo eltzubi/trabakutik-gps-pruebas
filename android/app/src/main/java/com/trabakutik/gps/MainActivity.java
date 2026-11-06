@@ -88,8 +88,8 @@ public class MainActivity extends Activity {
   String urlWeb = b == null ? null : b.getString("url_web");
   boolean verGps = b != null && b.getBoolean("ver_gps", false);
   showScreen(verGps);
-  web.loadUrl(urlGps != null && urlGps.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html")
-    ? urlGps : "https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
+  web.loadUrl(urlGps != null && urlGps.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo-qa.html")
+    ? urlGps : "https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo-qa.html?appversion=qa-giros-20261106");
   webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
     ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
@@ -272,7 +272,7 @@ public class MainActivity extends Activity {
       return false;
     }
     if("trabakutik.com".equals(host)||"www.trabakutik.com".equals(host)){
-      if(navigator){webRoutes.loadUrl(url.toString());showScreen(false);return true;}
+      if(navigator){openRouteUrl(url.toString());return true;}
       return false;
     }
     try{startActivity(new Intent(Intent.ACTION_VIEW,url));}catch(Exception ignored){}
@@ -288,6 +288,7 @@ public class MainActivity extends Activity {
  }
  void openRouteUrl(String url){
   if(url==null||!url.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"))return;
+   url=url.replace("/nuevo.html","/nuevo-qa.html");
   // Las fichas contienen galerias grandes; no conservar dos paginas pesadas
   // en memoria al mismo tiempo. La ficha se recarga al pulsar Web.
   String origin=webRoutes==null?null:webRoutes.getUrl();
