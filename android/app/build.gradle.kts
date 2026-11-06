@@ -18,7 +18,7 @@ android {
         applicationId = "com.trabakutik.gps"
         minSdk = 26
         targetSdk = 36
-        versionCode = 48
+        versionCode = 49
         versionName = "4.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,8 +35,8 @@ android {
     buildTypes {
         create("qa") {
             initWith(getByName("debug"))
-            applicationIdSuffix = ".qa"
-            versionNameSuffix = "-pruebas"
+            applicationIdSuffix = ".qa2"
+            versionNameSuffix = "-pruebas-giros"
             isDebuggable = true
             matchingFallbacks += listOf("debug")
         }
