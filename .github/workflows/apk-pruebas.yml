@@ -6,6 +6,11 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/apk-pruebas.yml'
+  push:
+    branches: [auditoria-gps-giros-ci-20261106]
+    paths:
+      - 'android/**'
+      - '.github/workflows/apk-pruebas.yml'
   workflow_dispatch:
 
 permissions:
@@ -38,7 +43,7 @@ jobs:
       - name: Guardar APK QA para instalación privada
         uses: actions/upload-artifact@v4
         with:
-          name: TrabakutikGPS-QA-Instalable
+          name: TrabakutikGPS-QA2-Giros-Instalable
           path: android/app/build/outputs/apk/qa/app-qa.apk
           if-no-files-found: error
           retention-days: 14
