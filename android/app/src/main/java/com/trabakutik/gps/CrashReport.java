@@ -19,7 +19,9 @@ import java.util.Locale;
 public final class CrashReport {
  private CrashReport(){}
  private static File reportFile(Context context){return new File(context.getFilesDir(),"ultimo-fallo.txt");}
- public static void install(Context context){
+ private static boolean installed=false;
+ public static synchronized void install(Context context){
+  if(installed)return;
   final Context app=context.getApplicationContext();
   final Thread.UncaughtExceptionHandler previous=Thread.getDefaultUncaughtExceptionHandler();
   Thread.setDefaultUncaughtExceptionHandler((thread,error)->{
@@ -38,6 +40,7 @@ public final class CrashReport {
    if(previous!=null)previous.uncaughtException(thread,error);
    else android.os.Process.killProcess(android.os.Process.myPid());
   });
+  installed=true;
  }
  public static void note(Context context,String message){
   try{

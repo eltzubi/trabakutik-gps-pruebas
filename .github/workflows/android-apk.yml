@@ -5,6 +5,11 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 permissions:
   contents: write   # hace falta para publicar la Release con el APK
@@ -19,34 +24,96 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Preparar SDK Android del servidor
         run: |
           echo "SDK: $ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Compilar APK de prueba
-        run: gradle :app:assembleDebug --no-daemon
+      - name: Limpiar compilación
+        run: gradle clean --no-daemon
+      - name: Estilo Kotlin (ktlint)
+        run: gradle ktlintCheck --no-daemon
+      - name: Análisis estático Kotlin (detekt)
+        run: gradle detekt --no-daemon
+      - name: Pruebas unitarias
+        run: gradle :app:testDebugUnitTest --no-daemon
+      - name: Cobertura JaCoCo (mínimo 90%)
+        id: coverage
+        continue-on-error: true
+        run: gradle :app:jacocoCoverageVerification --no-daemon
+      - name: Análisis estático Android Lint
+        id: lint
+        continue-on-error: true
+        run: gradle :app:lintDebug --no-daemon
+      - name: Pruebas instrumentadas en emulador Android
+        id: instrumentation
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: cd android && gradle :app:connectedDebugAndroidTest --no-daemon
+      - name: Compilar APK Debug y Release
+        id: build
+        continue-on-error: true
+        run: gradle :app:assembleDebug :app:assembleRelease --no-daemon
       - name: Comprobar que existe el APK
+        id: verify_apks
+        continue-on-error: true
         run: |
           echo "Archivos generados:"
           find app/build/outputs -type f -maxdepth 6 -print
           test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Resumen de calidad
+        if: always()
+        run: python3 scripts/quality_summary.py
+      - name: Guardar informes de calidad
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrabakutikGPS-Informes
+          path: |
+            android/app/build/reports/
+            android/app/build/test-results/
+            android/app/build/outputs/androidTest-results/
+            android/app/build/outputs/code_coverage/
+          retention-days: 30
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: TrabakutikGPS-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
           retention-days: 30
-          if-no-files-found: error
+          if-no-files-found: warn
+      - name: Puerta de calidad obligatoria
+        if: always()
+        run: |
+          echo "Cobertura: ${{ steps.coverage.outcome }}"
+          echo "Lint: ${{ steps.lint.outcome }}"
+          echo "Emulador: ${{ steps.instrumentation.outcome }}"
+          echo "Compilación: ${{ steps.build.outcome }}"
+          echo "Archivos APK: ${{ steps.verify_apks.outcome }}"
+          test "${{ steps.coverage.outcome }}" = success
+          test "${{ steps.lint.outcome }}" = success
+          test "${{ steps.instrumentation.outcome }}" = success
+          test "${{ steps.build.outcome }}" = success
+          test "${{ steps.verify_apks.outcome }}" = success
       # El artefacto de arriba solo lo puede bajar quien tenga cuenta de
       # GitHub. La Release es publica y, sobre todo, da un enlace FIJO que
       # siempre apunta a la ultima version:
       #   .../releases/latest/download/TrabakutikGPS.apk
       # Un toque y se descarga, sin cuenta y sin buscar nada.
       - name: Publicar la Release con el APK
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -12,7 +12,7 @@ import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -123,6 +123,8 @@ public class TrackingService extends Service implements LocationListener {
  }
  boolean gpsReciente(){return ultimoFixGpsElapsed>0&&SystemClock.elapsedRealtime()-ultimoFixGpsElapsed<25000;}
  String estadoGps(){
+  if(recording&&getSharedPreferences("tracking_live",MODE_PRIVATE).getBoolean("recordingError",false))
+   return "ERROR guardando GPX · comprueba espacio libre";
   if(!ubicacionActivada())return "Activa la ubicación del teléfono";
   if(!gpsReciente())return "Esperando señal GPS";
   if(offRoute)return "FUERA DE RUTA · vuelve a la línea azul";
@@ -175,7 +177,7 @@ public class TrackingService extends Service implements LocationListener {
   if("SENTIDO".equals(action)){
    int s=i.getIntExtra("sentido",1);
    int antes=sentido;
-   sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";
+   sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";ultimoProgresoGiro=Double.NaN;ultimoProgresoGiroMs=0;
    if(sentido!=antes)habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
      :"Vuelves al sentido de la ruta");
    if(active)updateNotice();
@@ -236,8 +238,20 @@ public class TrackingService extends Service implements LocationListener {
    @Override public void onProviderEnabled(String p){updateNotice();}
    @Override public void onProviderDisabled(String p){updateNotice();}
   };
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED
+    && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   android.util.Log.w("TrabakutikGPS","Sin permiso para la ubicación por red");
+   red=null;
+   return;
+  }
   try{manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,5,red,Looper.getMainLooper());}
-  catch(Exception ignored){}
+  catch(SecurityException ex){
+   android.util.Log.w("TrabakutikGPS","Permiso de ubicación revocado al registrar red",ex);
+   red=null;
+  }catch(IllegalArgumentException ex){
+   android.util.Log.w("TrabakutikGPS","Proveedor de ubicación por red no disponible",ex);
+   red=null;
+  }
  }
  void sueltaRed(){
   if(red==null)return;
@@ -251,18 +265,37 @@ public class TrackingService extends Service implements LocationListener {
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
-  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
+  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).putBoolean("recordingError",false).apply();updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;
+  route.clear();routeReached=false;offRoute=false;farSince=0;ultimoProgresoGiro=Double.NaN;ultimoProgresoGiroMs=0;
   File f=new File(getFilesDir(),"ruta-activa.json");
   if(!f.exists()){loadTurns();return;}
+  if(f.length()>2000000){
+   android.util.Log.e("TrabakutikGPS","Archivo de ruta excede el límite de 2 MB");
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+     .putString("routeError","GPX demasiado grande para la navegación nativa").apply();
+   loadTurns();return;
+  }
   try {
-   byte[] raw=new byte[(int)Math.min(f.length(),2000000)];
+   byte[] raw=new byte[(int)f.length()];
    try(FileInputStream in=new FileInputStream(f)){int n=0,k;while(n<raw.length&&(k=in.read(raw,n,raw.length-n))>0)n+=k;}
    JSONArray pts=new JSONArray(new String(raw,java.nio.charset.StandardCharsets.UTF_8));
-   for(int i=0;i<pts.length()&&i<15000;i++){JSONArray p=pts.optJSONArray(i);if(p!=null&&p.length()>=2){double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);if(Double.isFinite(lat)&&Double.isFinite(lon))route.add(new double[]{lat,lon});}}
-  }catch(Exception ignored){}
+   if(pts.length()>15000)throw new IllegalArgumentException("Ruta con más de 15000 puntos");
+   for(int i=0;i<pts.length();i++){
+    JSONArray p=pts.optJSONArray(i);
+    if(p==null||p.length()<2)continue;
+    double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);
+    if(Double.isFinite(lat)&&Double.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180)
+     route.add(new double[]{lat,lon});
+   }
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("routeError").apply();
+  }catch(Exception ex){
+   route.clear();
+   android.util.Log.e("TrabakutikGPS","Archivo de ruta inválido o incompleto",ex);
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+     .putString("routeError","No se pudo leer el GPX para navegación nativa").apply();
+  }
   loadTurns();
  }
  void loadTurns(){
@@ -282,6 +315,9 @@ public class TrackingService extends Service implements LocationListener {
     int tipo=p.optInt("t",1);
     if(at>=0&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo});
    }
+   // El algoritmo recorre los indices de ruta en orden; los giros importados
+   // pueden llegar desordenados y, sin ordenar, se pierden los avisos.
+   turns.sort((a,b)->Double.compare(a[0],b[0]));
   }catch(Exception e){android.util.Log.w("TrabakutikGPS","Giros no disponibles",e);}
  }
  // La velocidad cruda del GPS pega saltos y los avisos se calculan con ella:
@@ -311,18 +347,17 @@ public class TrackingService extends Service implements LocationListener {
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
   double lat=l.getLatitude(),lon=l.getLongitude();
   double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat));
-  double closest=Double.POSITIVE_INFINITY,along=0,cumulative=0;
-  for(int i=1;i<route.size();i++){
-   double[] a=route.get(i-1),b=route.get(i);
-   double dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*scale;
-   double ax=(a[1]-lon)*lonScale,ay=(a[0]-lat)*scale;
-   double length=Math.hypot(dx,dy);
-   double t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
-   double error=Math.hypot(ax+t*dx,ay+t*dy);
-   if(error<closest){closest=error;along=cumulative+t*length;}
-   cumulative+=length;
-  }
+  double segundos=ultimoProgresoGiroMs>0
+    ?Math.max(0,(SystemClock.elapsedRealtime()-ultimoProgresoGiroMs)/1000.0)
+    :Double.POSITIVE_INFINITY;
+  RouteProgressMatcher.Match match=RouteProgressMatcher.match(
+    route,
+    new RouteProgressMatcher.Position(lat,lon),
+    new RouteProgressMatcher.History(ultimoProgresoGiro,segundos,velocidadSuave));
+  if(match==null)return;
+  double along=match.getProgressMeters(),closest=match.getDistanceMeters();
   if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
+  ultimoProgresoGiro=along;ultimoProgresoGiroMs=SystemClock.elapsedRealtime();
   double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
@@ -483,7 +518,17 @@ public class TrackingService extends Service implements LocationListener {
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
    forzarCorte=false;
    points++;if(points%10==0)updateNotice();
-  }catch(Exception ignored){}
+  }catch(IOException ex){
+   // Mantener la ruta activa, pero no ocultar que el GPX se ha dejado de escribir.
+   // El flag queda disponible para la UI y soporte incluso si se cierra el mapa.
+   android.util.Log.e("TrabakutikGPS","Error escribiendo GPX o trazado en almacenamiento interno",ex);
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recordingError",true).apply();
+   updateNotice();
+  }catch(RuntimeException ex){
+   android.util.Log.e("TrabakutikGPS","Error inesperado grabando una posición GPS",ex);
+   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recordingError",true).apply();
+   updateNotice();
+  }
  }
  Location makePreviousLocation(){Location p=new Location(LocationManager.GPS_PROVIDER);p.setLatitude(lastRecordedLat);p.setLongitude(lastRecordedLon);return p;}
  void endRecording(){
