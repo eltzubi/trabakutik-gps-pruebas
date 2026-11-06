@@ -409,7 +409,16 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void setRoute(String json){
    try{
     org.json.JSONArray list=new org.json.JSONArray(json);
-    if(list.length()<2||list.length()>15000||json.length()>2000000)return;
+    if(list.length()<2||list.length()>15000||json.length()>2000000){
+     android.util.Log.e("TrabakutikGPS","Ruta rechazada: "+list.length()+" puntos, "+json.length()+" caracteres");
+     getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+       .putString("routeError","Ruta demasiado larga o incompleta para la navegación nativa").apply();
+     runOnUiThread(()->Toast.makeText(MainActivity.this,
+       "No se pudo cargar esta ruta en el GPS. Conserva la ruta anterior.",
+       Toast.LENGTH_LONG).show());
+     return;
+    }
+    getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("routeError").apply();
     File f=new File(getFilesDir(),"ruta-activa.json");
     try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
     // Y AVISAR AL SERVICIO. Antes solo se guardaba el fichero, con un
