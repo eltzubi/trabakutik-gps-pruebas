@@ -311,36 +311,15 @@ public class TrackingService extends Service implements LocationListener {
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
   double lat=l.getLatitude(),lon=l.getLongitude();
   double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat));
-  double closest=Double.POSITIVE_INFINITY,along=0,cumulative=0;
-  double continuidadError=Double.POSITIVE_INFINITY,continuidadAlong=Double.NaN;
-  long ahora=SystemClock.elapsedRealtime();
-  // En cruces y bucles varios tramos pueden pasar por el mismo punto.
-  // Se favorece el avance cercano al ultimo progreso, sin impedir recuperar
-  // la ruta tras una perdida de señal prolongada.
-  boolean continuidad=Double.isFinite(ultimoProgresoGiro)
-    && ahora-ultimoProgresoGiroMs<15000;
-  double margenAvance=Math.max(35,Math.max(0,velocidadSuave)*((ahora-ultimoProgresoGiroMs)/1000.0)+20);
-  for(int i=1;i<route.size();i++){
-   double[] a=route.get(i-1),b=route.get(i);
-   double dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*scale;
-   double ax=(a[1]-lon)*lonScale,ay=(a[0]-lat)*scale;
-   double length=Math.hypot(dx,dy);
-   double t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
-   double error=Math.hypot(ax+t*dx,ay+t*dy);
-   double avance=cumulative+t*length;
-   if(error<closest){closest=error;along=avance;}
-   if(continuidad&&Math.abs(avance-ultimoProgresoGiro)<=margenAvance&&error<continuidadError){
-    continuidadError=error;continuidadAlong=avance;
-   }
-   cumulative+=length;
-  }
-  // No se fuerza la continuidad si el tramo anterior queda claramente
-  // mas lejos que el mas proximo: asi se puede corregir un desvio real.
-  if(Double.isFinite(continuidadAlong)&&continuidadError<=closest+8){
-   along=continuidadAlong;closest=continuidadError;
-  }
+  double segundos=ultimoProgresoGiroMs>0
+    ?Math.max(0,(SystemClock.elapsedRealtime()-ultimoProgresoGiroMs)/1000.0)
+    :Double.POSITIVE_INFINITY;
+  RouteProgressMatcher.Match match=RouteProgressMatcher.match(
+    route,lat,lon,ultimoProgresoGiro,segundos,velocidadSuave);
+  if(match==null)return;
+  double along=match.getProgressMeters(),closest=match.getDistanceMeters();
   if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
-  ultimoProgresoGiro=along;ultimoProgresoGiroMs=ahora;
+  ultimoProgresoGiro=along;ultimoProgresoGiroMs=SystemClock.elapsedRealtime();
   double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
