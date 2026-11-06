@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 public final class AtomicNavigationStore {
  private AtomicNavigationStore() {}
 
- public static void write(File destination, String content) throws IOException {
+ public static synchronized void write(File destination, String content) throws IOException {
   if(destination==null||content==null)throw new IllegalArgumentException("Archivo o contenido ausente");
   AtomicFile atomic=new AtomicFile(destination);
   FileOutputStream output=null;
