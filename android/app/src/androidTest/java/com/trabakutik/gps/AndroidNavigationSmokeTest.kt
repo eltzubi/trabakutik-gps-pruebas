@@ -101,4 +101,14 @@ class AndroidNavigationSmokeTest {
         }
     }
 
+    @Test
+    fun crashReporterDoesNotStackHandlersAfterMultipleInstalls() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        CrashReport.install(context)
+        val first = Thread.getDefaultUncaughtExceptionHandler()
+        CrashReport.install(context)
+        val second = Thread.getDefaultUncaughtExceptionHandler()
+        assertTrue(first === second)
+    }
+
 }
