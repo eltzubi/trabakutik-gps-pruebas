@@ -85,6 +85,7 @@ class AndroidNavigationSmokeTest {
             file.delete()
         }
     }
+
     @Test
     fun routeAndTurnJsonUseAtomicWrites() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -110,5 +111,4 @@ class AndroidNavigationSmokeTest {
         val second = Thread.getDefaultUncaughtExceptionHandler()
         assertTrue(first === second)
     }
-
 }
