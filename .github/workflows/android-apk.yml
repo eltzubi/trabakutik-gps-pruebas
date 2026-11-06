@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Preparar SDK Android del servidor
         run: |
           echo "SDK: $ANDROID_HOME"
@@ -33,10 +33,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Pruebas unitarias de navegación
+      - name: Limpiar compilación
+        run: gradle clean --no-daemon
+      - name: Estilo Kotlin (ktlint)
+        run: gradle ktlintCheck --no-daemon
+      - name: Análisis estático Kotlin (detekt)
+        run: gradle detekt --no-daemon
+      - name: Pruebas unitarias
         run: gradle :app:testDebugUnitTest --no-daemon
+      - name: Cobertura JaCoCo (mínimo 90%)
+        run: gradle :app:jacocoCoverageVerification --no-daemon
       - name: Análisis estático Android Lint
         run: gradle :app:lintDebug --no-daemon
+      - name: Pruebas instrumentadas en emulador Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: cd android && gradle :app:connectedDebugAndroidTest --no-daemon
       - name: Compilar APK Debug y Release
         run: gradle :app:assembleDebug :app:assembleRelease --no-daemon
       - name: Comprobar que existe el APK
@@ -44,6 +60,7 @@ jobs:
           echo "Archivos generados:"
           find app/build/outputs -type f -maxdepth 6 -print
           test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s app/build/outputs/apk/release/app-release-unsigned.apk
       - name: Guardar informes de calidad
         if: always()
         uses: actions/upload-artifact@v4
@@ -52,12 +69,16 @@ jobs:
           path: |
             android/app/build/reports/
             android/app/build/test-results/
+            android/app/build/outputs/androidTest-results/
+            android/app/build/outputs/code_coverage/
           retention-days: 30
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: TrabakutikGPS-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
           retention-days: 30
           if-no-files-found: error
       # El artefacto de arriba solo lo puede bajar quien tenga cuenta de
