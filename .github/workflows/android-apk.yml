@@ -42,10 +42,16 @@ jobs:
       - name: Pruebas unitarias
         run: gradle :app:testDebugUnitTest --no-daemon
       - name: Cobertura JaCoCo (mínimo 90%)
+        id: coverage
+        continue-on-error: true
         run: gradle :app:jacocoCoverageVerification --no-daemon
       - name: Análisis estático Android Lint
+        id: lint
+        continue-on-error: true
         run: gradle :app:lintDebug --no-daemon
       - name: Pruebas instrumentadas en emulador Android
+        id: instrumentation
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -54,8 +60,12 @@ jobs:
           disable-animations: true
           script: cd android && gradle :app:connectedDebugAndroidTest --no-daemon
       - name: Compilar APK Debug y Release
+        id: build
+        continue-on-error: true
         run: gradle :app:assembleDebug :app:assembleRelease --no-daemon
       - name: Comprobar que existe el APK
+        id: verify_apks
+        continue-on-error: true
         run: |
           echo "Archivos generados:"
           find app/build/outputs -type f -maxdepth 6 -print
@@ -83,7 +93,20 @@ jobs:
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/apk/release/*.apk
           retention-days: 30
-          if-no-files-found: error
+          if-no-files-found: warn
+      - name: Puerta de calidad obligatoria
+        if: always()
+        run: |
+          echo "Cobertura: ${{ steps.coverage.outcome }}"
+          echo "Lint: ${{ steps.lint.outcome }}"
+          echo "Emulador: ${{ steps.instrumentation.outcome }}"
+          echo "Compilación: ${{ steps.build.outcome }}"
+          echo "Archivos APK: ${{ steps.verify_apks.outcome }}"
+          test "${{ steps.coverage.outcome }}" = success
+          test "${{ steps.lint.outcome }}" = success
+          test "${{ steps.instrumentation.outcome }}" = success
+          test "${{ steps.build.outcome }}" = success
+          test "${{ steps.verify_apks.outcome }}" = success
       # El artefacto de arriba solo lo puede bajar quien tenga cuenta de
       # GitHub. La Release es publica y, sobre todo, da un enlace FIJO que
       # siempre apunta a la ultima version:
