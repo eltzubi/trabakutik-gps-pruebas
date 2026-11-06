@@ -61,3 +61,35 @@ No fusionar PR #12 ni publicar Play hasta superar CI, validación instrumental y
 - **Corrección aplicada:** `install()` sincronizado e idempotente en el proceso. **Prueba añadida:** `crashReporterDoesNotStackHandlersAfterMultipleInstalls`.
 - **CI:** se ha corregido el orden de imports de la prueba Android informado por ktlint. Una nueva ejecución se inició sobre el último commit, pero la validación completa no está acreditada hasta que terminen emulador, Lint, Release y cobertura.
 - **Nota sobre cobertura:** JaCoCo midió 78/928 líneas (8,4 %) en la ejecución 42248648450. No se ha relajado el mínimo del 90 %, ni se han excluido clases heredadas.
+
+## Batería y navegación: pruebas ampliadas (noviembre 2026)
+
+### Riesgos confirmados por revisión de código
+- GPS de alta frecuencia: `TrackingService.start()` solicita `GPS_PROVIDER` cada 1000 ms, sin distancia mínima. No se ha reducido porque podría afectar a giros y desvíos.
+- `PARTIAL_WAKE_LOCK` hasta 12 horas, liberado en `finish()`. Evita suspensiones en ciertos casos, pero puede aumentar el gasto con pantalla apagada; **el límite de 12 h no significa que consuma 12 h si se detiene antes**.
+- Listener de ubicación por red: se retira tras obtener la primera posición GPS; se mantiene durante adquisición inicial.
+- Persistencia de GPX/TSV, preferencias y comprobación de ruta desde `onLocationChanged()` en hilo principal: riesgo de CPU, E/S y ANR en tracks largos.
+- Configurar "Batería sin restricciones" NO reduce consumo; evita restricciones del sistema. No prometer ahorro sin medir.
+- Sin instrumentación de consumo físico ni pruebas de 4-5 horas en Samsung S25: no hay datos válidos de porcentaje/hora.
+
+### Pruebas automáticas añadidas
+- `openingApplicationDoesNotStartGpsTrackingWithoutUserAction`: abrir la Activity no debe arrancar un servicio de rastreo.
+- `atomicRouteStoreKeepsCompleteFileAfterManyUpdates`: 200 sustituciones de ruta atómicas consecutivas.
+- `atomicStoreRejectsNullAndPreservesPreviousRoute`: una escritura inválida no elimina la ruta anterior.
+- `closedRecordingIsNotAlteredByRecovery`: un GPX terminado debe permanecer idéntico.
+- `emptyRecordingIsNotModifiedByRecovery`: ningún cierre ficticio en fichero vacío.
+- `repairedRecordingDoesNotGrowOnRepeatedChecks`: 25 comprobaciones consecutivas sin duplicar cierres.
+Estas pruebas no miden mAh, temperatura ni consumo real. Hay que confirmar el resultado en GitHub Actions y sobre el móvil.
+
+### Protocolo reproducible de batería — Samsung S25
+1. Cargar al menos al 80 %, dejar brillo fijo, mismo modo de ahorro de energía, datos móviles y cobertura comparable en todas las pruebas; anotar hora, temperatura aproximada, porcentaje inicial/final.
+2. **Control:** 30 minutos sin navegar ni grabar, con la aplicación cerrada y pantalla bloqueada.
+3. **Solo grabar:** 30-60 minutos de movimiento con pantalla apagada, exportar GPX; comprobar puntos, duración, saltos y cortes.
+4. **Navegar + grabar:** 30-60 minutos con pantalla apagada; pasar por cruces reales, comprobar avisos y GPX.
+5. **Mapa encendido:** repetir un tramo comparable con brillo fijo; comparar con pantalla apagada.
+6. **Sin red:** modo avión si está permitido y se tiene el track/mapas cargados; comprobar qué funciones siguen disponibles (no interpretar disponibilidad de GPS como disponibilidad del mapa offline).
+7. **Interrupciones:** llamada, volver de segundo plano, bloquear/desbloquear, detención voluntaria; asegurarse de que al pulsar parar no persiste la notificación ni la localización.
+8. **Sesión larga:** 3-5 horas reales, comparando el GPX final con el recorrido; revisar batería en Ajustes > Batería > uso por aplicación.
+9. Calcular porcentaje de batería por hora = (porcentaje inicial - porcentaje final) / duración en horas; distinguir condiciones de cobertura, brillo y movimiento.
+
+**Criterio:** sin porcentaje medido en móvil no se puede afirmar reducción de consumo. La estabilidad del track y los avisos prevalece sobre un ahorro no demostrado.
