@@ -36,18 +36,18 @@ public class MainActivity extends Activity {
   }
   getWindow().setStatusBarColor(0xff07131d);
   getWindow().setNavigationBarColor(0xff07131d);
-  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(0xff07131d);
+  LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(0xff07131d);
   LinearLayout bar=new LinearLayout(this);
   bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
   bar.setPadding(dp(12),dp(1),dp(9),dp(1));
   bar.setBackgroundColor(0xff0b1e28);
   TextView title=new TextView(this);
-  title.setText("Trabakutik");title.setTextColor(0xffd9edec);title.setTextSize(12);
-  title.setTypeface(null,1);title.setGravity(android.view.Gravity.CENTER_VERTICAL);
+  title.setText(R.string.app_header);title.setTextColor(0xffd9edec);title.setTextSize(12);
+  title.setTypeface(null,android.graphics.Typeface.BOLD);title.setGravity(android.view.Gravity.CENTER_VERTICAL);
   title.setOnLongClickListener(v->{CrashReport.show(MainActivity.this);return true;});
   bar.addView(title,new LinearLayout.LayoutParams(0,dp(30),1));
 
-  switchPage=new TextView(this);switchPage.setText("Web");
+  switchPage=new TextView(this);switchPage.setText(R.string.web_tab);
   switchPage.setTextColor(0xffb9eaf1);switchPage.setTextSize(10);
   switchPage.setGravity(android.view.Gravity.CENTER);
   GradientDrawable outline=new GradientDrawable();
@@ -88,8 +88,8 @@ public class MainActivity extends Activity {
   String urlWeb = b == null ? null : b.getString("url_web");
   boolean verGps = b != null && b.getBoolean("ver_gps", false);
   showScreen(verGps);
-  web.loadUrl(urlGps != null && urlGps.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html")
-    ? urlGps : "https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
+  web.loadUrl(urlGps != null && urlGps.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo-qa.html")
+    ? urlGps : "https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo-qa.html?appversion=qa-giros-20261106");
   webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
     ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
@@ -122,7 +122,12 @@ public class MainActivity extends Activity {
  }
  @Override protected void onResume(){
   super.onResume();
-  if(web!=null&&showingGps)web.postDelayed(this::restoreGpsWeb,300);
+  if(web!=null&&showingGps){
+   final WebView objetivo=web;
+   objetivo.postDelayed(()->{
+    if(web==objetivo&&showingGps&&!isFinishing()&&!isDestroyed())restoreGpsWeb();
+   },300);
+  }
  }
  void showScreen(boolean gps){
   showingGps=gps;
@@ -144,9 +149,17 @@ public class MainActivity extends Activity {
     webRoutes.reload();
    }
   }
-  web.postDelayed(()->{if(gps){web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);restoreGpsWeb();}},120);
+  final WebView objetivo=web;
+  objetivo.postDelayed(()->{
+   if(gps&&web==objetivo&&!isFinishing()&&!isDestroyed()){
+    objetivo.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);
+    restoreGpsWeb();
+   }
+  },120);
  }
+ @android.annotation.TargetApi(29)
  boolean guardaEnDescargas(String name,String xml){
+  if(Build.VERSION.SDK_INT<29)return false;
   android.net.Uri uri=null;
   try{
    android.content.ContentValues v=new android.content.ContentValues();
@@ -159,7 +172,7 @@ public class MainActivity extends Activity {
    if(out==null)return false;
    try{out.write(xml.getBytes(java.nio.charset.StandardCharsets.UTF_8));}finally{out.close();}
    String fin=nombreDe(uri);
-   if(fin!=null&&!fin.toLowerCase().endsWith(".gpx")){
+   if(fin!=null&&!fin.toLowerCase(java.util.Locale.ROOT).endsWith(".gpx")){
     android.content.ContentValues r=new android.content.ContentValues();
     r.put(android.provider.MediaStore.Downloads.DISPLAY_NAME,name);
     try{getContentResolver().update(uri,r,null,null);}catch(Exception ignored){}
@@ -182,6 +195,12 @@ public class MainActivity extends Activity {
   w.setBackgroundColor(0xff07131d);
   w.getSettings().setJavaScriptEnabled(true);
   w.getSettings().setDomStorageEnabled(true);
+  // No hay carga de contenido file://; los GPX se reciben mediante el selector SAF.
+  // Reducir la superficie de acceso del WebView que expone el puente nativo.
+  w.getSettings().setAllowFileAccess(false);
+  w.getSettings().setAllowFileAccessFromFileURLs(false);
+  w.getSettings().setAllowUniversalAccessFromFileURLs(false);
+  w.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW);
    if(navigator)w.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
   w.getSettings().setGeolocationEnabled(true);
   w.getSettings().setUseWideViewPort(true);
@@ -253,7 +272,7 @@ public class MainActivity extends Activity {
       return false;
     }
     if("trabakutik.com".equals(host)||"www.trabakutik.com".equals(host)){
-      if(navigator){webRoutes.loadUrl(url.toString());showScreen(false);return true;}
+      if(navigator){openRouteUrl(url.toString());return true;}
       return false;
     }
     try{startActivity(new Intent(Intent.ACTION_VIEW,url));}catch(Exception ignored){}
@@ -269,6 +288,7 @@ public class MainActivity extends Activity {
  }
  void openRouteUrl(String url){
   if(url==null||!url.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"))return;
+   url=url.replace("/nuevo.html","/nuevo-qa.html");
   // Las fichas contienen galerias grandes; no conservar dos paginas pesadas
   // en memoria al mismo tiempo. La ficha se recarga al pulsar Web.
   String origin=webRoutes==null?null:webRoutes.getUrl();
@@ -401,9 +421,18 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void setRoute(String json){
    try{
     org.json.JSONArray list=new org.json.JSONArray(json);
-    if(list.length()<2||list.length()>15000||json.length()>2000000)return;
+    if(list.length()<2||list.length()>15000||json.length()>2000000){
+     android.util.Log.e("TrabakutikGPS","Ruta rechazada: "+list.length()+" puntos, "+json.length()+" caracteres");
+     getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+       .putString("routeError","Ruta demasiado larga o incompleta para la navegación nativa").apply();
+     runOnUiThread(()->Toast.makeText(MainActivity.this,
+       "No se pudo cargar esta ruta en el GPS. Conserva la ruta anterior.",
+       Toast.LENGTH_LONG).show());
+     return;
+    }
+    getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("routeError").apply();
     File f=new File(getFilesDir(),"ruta-activa.json");
-    try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    AtomicNavigationStore.write(f,json);
     // Y AVISAR AL SERVICIO. Antes solo se guardaba el fichero, con un
     // comentario que decia que NAVIGATE lo lee una vez al empezar. Eso dejaba
     // al servicio midiendo la ruta vieja: al cambiar de ruta con el servicio
@@ -433,7 +462,7 @@ public class MainActivity extends Activity {
     org.json.JSONArray turns=new org.json.JSONArray(json);
     if(turns.length()>400||json.length()>40000)return;
     File f=new File(getFilesDir(),"giros-activos.json");
-    try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    AtomicNavigationStore.write(f,json);
     // Antes esto se quedaba aqui: «se leen al iniciar NAVIGATE». Pero si ya
     // se estaba navegando, el servicio no se enteraba nunca y se quedaba sin
     // giros -o con los de la ruta anterior-, mientras la pagina se callaba
@@ -477,7 +506,7 @@ public class MainActivity extends Activity {
       org.json.JSONArray list=new org.json.JSONArray(json);
       if(list.length()<2||list.length()>15000||json.length()>2000000)return;
       File f=new File(getFilesDir(),"ruta-activa.json");
-      try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+      AtomicNavigationStore.write(f,json);
       runOnUiThread(()->startNavigationService());
     }catch(Exception e){android.util.Log.e("TrabakutikGPS","Ruta de navegacion incorrecta",e);}
   }
@@ -518,7 +547,7 @@ public class MainActivity extends Activity {
      java.io.Writer w=new java.io.OutputStreamWriter(new java.io.FileOutputStream(f),"UTF-8");
      try{w.write(xml);}finally{w.close();}
      android.net.Uri uri=androidx.core.content.FileProvider.getUriForFile(
-       MainActivity.this,"com.trabakutik.gps.fileprovider",f);
+       MainActivity.this,getPackageName()+".fileprovider",f);
      Intent envio=new Intent(Intent.ACTION_SEND)
        .setType("application/gpx+xml")
        .putExtra(Intent.EXTRA_STREAM,uri)
@@ -562,7 +591,7 @@ public class MainActivity extends Activity {
  void beginPermissionSetup(){
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))return;
   new AlertDialog.Builder(this).setTitle("Preparar Trabakutik GPS")
-   .setMessage("Para navegar y grabar con la pantalla bloqueada, permite la ubicación precisa y las notificaciones. Después podrás revisar la batería para evitar que Samsung suspenda el GPS.")
+   .setMessage("Configuraremos todo seguido: 1. Ubicación precisa, 2. Notificaciones, 3. Batería sin restricciones. Android pide la batería en una pantalla distinta. Puedes decidir cada permiso.")
    .setPositiveButton("Configurar", (d,w)->requestStartupLocation())
    .setNegativeButton("Más tarde",(d,w)->getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply())
    .show();
@@ -577,9 +606,10 @@ public class MainActivity extends Activity {
   if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},101);return;
   }
-  showBatterySetup();
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)showBatterySetup();
  }
  void showBatteryReminderIfNeeded(){
+  if(batteryOptimizationExempt())return;
   if(getPreferences(MODE_PRIVATE).getBoolean("battery_reminder_v13",false))return;
   getPreferences(MODE_PRIVATE).edit().putBoolean("battery_reminder_v13",true).apply();
   new AlertDialog.Builder(this).setTitle("GPS con pantalla bloqueada")
@@ -593,10 +623,18 @@ public class MainActivity extends Activity {
    startActivity(intent);
   }catch(Exception e){Toast.makeText(this,"Ajustes > Aplicaciones > Trabakutik GPS > Batería",Toast.LENGTH_LONG).show();}
  }
+ boolean batteryOptimizationExempt(){
+  android.os.PowerManager pm=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+  return pm!=null&&pm.isIgnoringBatteryOptimizations(getPackageName());
+ }
  void showBatterySetup(){
+  if(batteryOptimizationExempt()){
+   getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply();
+   return;
+  }
   getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).putBoolean("battery_reminder_v13",true).apply();
-  new AlertDialog.Builder(this).setTitle("Grabación con pantalla apagada")
-   .setMessage("Para reducir cortes del track, en Ajustes de Trabakutik GPS revisa Batería y selecciona Sin restricciones si tu Samsung lo permite. Android no deja que la aplicación active esta opción por sí sola.")
+  new AlertDialog.Builder(this).setTitle("Paso 3 de 3 · Batería")
+   .setMessage("Último paso. Para reducir cortes al bloquear la pantalla, abre Batería y elige Sin restricciones para Trabakutik GPS si tu Samsung lo permite. Esta autorización es distinta de los permisos normales y puede aumentar el consumo.")
    .setPositiveButton("Abrir ajustes", (d,w)->{
     openBatteryAppSettings();
    })
@@ -634,7 +672,8 @@ public class MainActivity extends Activity {
    boolean veniaDeUnaAccion=pendingGpsAction!=null;
    pendingGpsAction=null;
    Toast.makeText(this,"Para navegar necesitas permitir la ubicación precisa.",Toast.LENGTH_LONG).show();
-   if(!veniaDeUnaAccion)showBatterySetup();
+   // Sin ubicación no se abre la configuración de batería: no serviría para navegar.
+   if(!veniaDeUnaAccion)getPreferences(MODE_PRIVATE).edit().putBoolean("initial_permissions_guided_v1",true).apply();
    return;
   }
   if(pendingGpsAction!=null){
@@ -643,8 +682,8 @@ public class MainActivity extends Activity {
   }else if(code==100)requestStartupNotifications();
   else if(code==101)showBatterySetup();
  }
- void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;
- if(latest==null){Toast.makeText(this,"Primero graba y para una ruta",0).show();return;}
+ void saveTrack(){File dir=new File(getFilesDir(),"grabaciones");File[] all=dir.listFiles((d,n)->n.endsWith(".gpx"));if(all==null||all.length==0){Toast.makeText(this,"Primero graba y para una ruta",Toast.LENGTH_SHORT).show();return;}File latest=null;for(File f:all)if(f.length()>0&&(latest==null||f.lastModified()>latest.lastModified()))latest=f;
+ if(latest==null){Toast.makeText(this,"Primero graba y para una ruta",Toast.LENGTH_SHORT).show();return;}
  // Red de seguridad: nunca exportar un GPX sin cerrar. Solo si no hay
  // servicio vivo, que si lo hay es el que lo esta escribiendo y lo cerrara el.
  if(!TrackingService.ACTIVO)TrackingService.cierraGpxSiQuedoAbierto(latest);
@@ -660,7 +699,7 @@ public class MainActivity extends Activity {
     new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null);
   if(c!=null)try{if(c.moveToFirst())nombre=c.getString(0);}finally{c.close();}
   if(nombre==null)return "GPX";
-  if(nombre.toLowerCase().endsWith(".gpx"))return nombre;
+  if(nombre.toLowerCase(java.util.Locale.ROOT).endsWith(".gpx"))return nombre;
   try{
    android.net.Uri nueva=android.provider.DocumentsContract.renameDocument(
      getContentResolver(),uri,nombre+".gpx");
@@ -668,6 +707,29 @@ public class MainActivity extends Activity {
   }catch(Exception ignored){}
   return nombre;
  }
- @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();pendingGpx=null;return;}try{String fin=aseguraExtensionGpx(data.getData());Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();}catch(Exception e){Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}pendingGpx=null;}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",0).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",0).show();}}
+ @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();pendingGpx=null;return;}try{String fin=aseguraExtensionGpx(data.getData());Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();}catch(Exception e){Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}pendingGpx=null;}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null)try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}catch(Exception e){Toast.makeText(this,"No se pudo guardar",Toast.LENGTH_SHORT).show();}}
+ @Override protected void onDestroy(){
+  // El servicio GPS tiene ciclo propio y no debe detenerse al cerrar la Activity.
+  // Los WebView, en cambio, retienen Activity y renderizadores si no se destruyen.
+  if(pendingFileChooser!=null){
+   pendingFileChooser.onReceiveValue(null);
+   pendingFileChooser=null;
+  }
+  if(web!=null){
+   web.stopLoading();
+   web.removeJavascriptInterface("TrabakutikAndroid");
+   if(pages!=null)pages.removeView(web);
+   web.destroy();
+   web=null;
+  }
+  if(webRoutes!=null){
+   webRoutes.stopLoading();
+   webRoutes.removeJavascriptInterface("TrabakutikRoutes");
+   if(pages!=null)pages.removeView(webRoutes);
+   webRoutes.destroy();
+   webRoutes=null;
+  }
+  super.onDestroy();
+ }
  @Override public void onBackPressed(){WebView current=showingGps?web:webRoutes;if(current.canGoBack())current.goBack();else if(!showingGps)showScreen(true);else super.onBackPressed();}
 }
