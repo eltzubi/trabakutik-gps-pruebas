@@ -177,7 +177,7 @@ async function setup(context) {
     await page.setViewportSize({ width: 390, height: 844 });
     // Aislar la prueba del proveedor: imagen válida y después fallo de red.
     const topoPattern='https://*.tile.opentopomap.org/**';
-    const tile=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aM1cAAAAASUVORK5CYII=','base64');
+    const tile=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNIWRAFAALKAV9N6S9TAAAAAElFTkSuQmCC','base64');
     await context.route(topoPattern,r=>r.fulfill({status:200,contentType:'image/png',body:tile}));
     await page.selectOption('#basemap','topo');
     await page.waitForFunction(()=>document.querySelector('img.leaflet-tile-loaded[src*="opentopomap.org"]'));
