@@ -1,0 +1,4 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+for(const file of ['nuevo.html','nuevo-qa.html'])test(file+': sincroniza el sentido al enviar una ruta a Android',()=>{
+ const h=fs.readFileSync(path.join(__dirname,'..',file),'utf8');const c={routePoints:[[43,-2],[43.1,-2]],sentidoRuta:1,console,enviaGirosNativos(){c.calls.push('giros')},calls:[],window:{TrabakutikAndroid:{setRoute(){c.calls.push('ruta')},setSentido(v){c.calls.push(v)}}}};vm.createContext(c);vm.runInContext(h.slice(h.indexOf('function syncNativeRoute(){'),h.indexOf('function enciendeNavegacionNativa(){')),c);c.syncNativeRoute();assert.deepEqual(c.calls,['ruta',1,'giros']);c.calls=[];c.sentidoRuta=-1;c.syncNativeRoute();assert.deepEqual(c.calls,['ruta',-1,'giros']);
+});
