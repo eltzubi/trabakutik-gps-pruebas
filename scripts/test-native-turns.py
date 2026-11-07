@@ -13,7 +13,7 @@ public class NativeTurnsTest {
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon; Location(double m){lat=m/111195.;lon=0;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return 4;}}
- double avisoLargo(){return 120;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
+ double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
  void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){spoken.add(Integer.parseInt(s));}
  String fraseGiro(int lado,boolean cruce,String fase,double ahead){return ""+lado;}
 '''+method(' void checkTurns(Location l)')+'''
@@ -22,7 +22,7 @@ public class NativeTurnsTest {
  public static void main(String[] args){
   NativeTurnsTest c=setup();c.checkTurns(new Location(0));require(c.spoken.equals(Arrays.asList(-1)),"Debe anunciar solo la izquierda próxima, no la derecha posterior: "+c.spoken);require(c.upcomingTurn.startsWith("Izquierda"),c.upcomingTurn);
   c.checkTurns(new Location(0));require(c.spoken.size()==1,"No repetir la misma fase");
-  c=setup();c.sentido=-1;c.checkTurns(new Location(250));require(c.spoken.equals(Arrays.asList(-1)),"En inverso, la derecha próxima se convierte en izquierda: "+c.spoken);
+  c=setup();c.sentido=-1;c.checkTurns(new Location(280));require(c.spoken.equals(Arrays.asList(-1)),"En inverso, la derecha próxima se convierte en izquierda: "+c.spoken);
   c=setup();c.checkTurns(new Location(145));require(c.upcomingTurn.startsWith("Derecha"),"Un giro ya pasado no debe tapar el siguiente");
   System.out.println("PASS Java: giro próximo, voz única, inverso y giro pasado");
  }
