@@ -185,6 +185,7 @@ async function setup(context) {
     await context.unroute(topoPattern);
     await page.selectOption('#basemap','osm');
     await context.route(topoPattern,r=>r.abort());
+    await page.click('#plus'); // pedir teselas nuevas, fuera de la caché de imágenes
     await page.selectOption('#basemap','topo');
     await page.waitForFunction(()=>document.querySelector('#basemap').value==='ign');
     assert.match(await page.locator('#status').textContent(),/Topo no está disponible/);
