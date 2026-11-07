@@ -175,6 +175,21 @@ async function setup(context) {
     assert(await page.locator('#savedDialog').isHidden(),'Escape cierra Mis rutas');
     console.log('PASS Chromium: controles de 48 px, zoom accesible en horizontal y cierre exterior/Escape');
     await page.setViewportSize({ width: 390, height: 844 });
+    // Aislar la prueba del proveedor: imagen válida y después fallo de red.
+    const topoPattern='https://*.tile.opentopomap.org/**';
+    const tile=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aM1cAAAAASUVORK5CYII=','base64');
+    await context.route(topoPattern,r=>r.fulfill({status:200,contentType:'image/png',body:tile}));
+    await page.selectOption('#basemap','topo');
+    await page.waitForFunction(()=>document.querySelector('img.leaflet-tile-loaded[src*="opentopomap.org"]'));
+    assert.match(await page.locator('#mapCredit').textContent(),/OpenTopoMap.*CC-BY-SA/);
+    await context.unroute(topoPattern);
+    await page.selectOption('#basemap','osm');
+    await context.route(topoPattern,r=>r.abort());
+    await page.selectOption('#basemap','topo');
+    await page.waitForFunction(()=>document.querySelector('#basemap').value==='ign');
+    assert.match(await page.locator('#status').textContent(),/Topo no está disponible/);
+    await context.unroute(topoPattern);
+    console.log('PASS Chromium: Topo carga y un fallo del proveedor recupera IGN');
     await page.selectOption("#basemap", "ign");
     assert.match(await page.locator("#mapCredit").textContent(), /conexión/);
     await page.click("#savedRoutes");
