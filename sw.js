@@ -27,6 +27,7 @@ const TESELAS_MAX = 900;
 // Lo imprescindible para que la pagina abra sin red.
 const BASICOS = [
   'nuevo.html',
+  'nuevo-qa.html',
   'vendor/leaflet/leaflet.css',
   'vendor/leaflet/leaflet.js',
   'data/trailhead.json',
@@ -57,6 +58,10 @@ self.addEventListener('activate', function (e) {
 });
 
 function esTesela(url) {
+  const parsed = new URL(url);
+  if (parsed.origin === 'https://www.ign.es' &&
+      /^\/wmts\/(mapa-raster|pnoa-ma)$/.test(parsed.pathname) &&
+      parsed.searchParams.get('REQUEST') === 'GetTile') return true;
   return /^https?:\/\/[a-d]?\.?tile\.openstreetmap\.org\//.test(url) ||
          /^https?:\/\/(server|services)\.arcgisonline\.com\//.test(url) ||
          /\/\{?z\}?\/.*\.png$/.test(url);
@@ -88,11 +93,13 @@ self.addEventListener('fetch', function (e) {
           // Las teselas vienen de otro dominio: la respuesta es opaca y no se
           // puede mirar su estado. Se guarda igual, que es lo unico que hay.
           var copia = red.clone();
-          caches.open(TESELAS).then(function (c) {
-            c.put(peticion, copia).then(function () {
-              recorta(TESELAS, TESELAS_MAX);
-            }).catch(function () {});
-          });
+          if (red.ok || red.type === 'opaque') e.waitUntil(
+            caches.open(TESELAS).then(function (c) {
+              return c.put(peticion, copia).then(function () {
+                return recorta(TESELAS, TESELAS_MAX);
+              });
+            }).catch(function () {})
+          );
           return red;
         });
       })
