@@ -358,16 +358,9 @@ const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.
 // brujula para volver al norte fijo, asi que aqui tambien (boton de la
 // flecha, arriba a la derecha).
 //
-// «Creo que el mapa no se vuelva loco»: ese es el peligro de verdad. El
-// rumbo del GPS parado es ruido y giraria como una peonza. Dos defensas:
-//   1. Sobre la ruta el rumbo NO sale del GPS, sale de la geometria del
-//      camino corregida por el sentido en que lo haces (la misma h que
-//      mueve la flecha azul). Eso no puede dar vueltas.
-//   2. Fuera de la ruta solo se hace caso al rumbo del GPS por encima de
-//      7 km/h, el mismo umbral que usa Komoot. Por debajo se MANTIENE el
-//      ultimo rumbo bueno, asi que parado el mapa se queda quieto.
-// Komoot por debajo de 7 km/h gira con el magnetometro; desde la pagina
-// eso no es fiable, asi que ahi se mantiene el rumbo en vez de girar.
+// El mapa y la flecha comparten un rumbo de movimiento filtrado.
+// Las posiciones imprecisas y el GPS parado conservan la última orientación.
+// La geometría del track no decide el rumbo en tramos de ida y vuelta.
 //
 // Leaflet 1.9 no sabe girar el mapa, asi que gira el contenedor por CSS.
 // Dos consecuencias que hay que atender a mano:
@@ -2282,6 +2275,43 @@ function rumboDeLaRuta(p){
  }
  return null;
 }
+// La orientación sigue el movimiento, también si ida y vuelta comparten track.
+// El tramo más cercano no permite distinguir esos dos sentidos.
+let orientacionFix=null,orientacionTiempo=0;
+function rumboDeMovimiento(pos,ahora){
+ const c=pos.coords,t=Number.isFinite(pos.timestamp)?pos.timestamp:ahora;
+ const mantener=()=>rumboSuave;
+ if(ahora-t>10000||t>ahora+1000||!Number.isFinite(c.accuracy)||c.accuracy>25
+    ||(orientacionFix&&t<=orientacionFix.t))return mantener();
+ const p=[c.latitude,c.longitude];
+ let objetivo=null;
+ const dt=orientacionFix?(t-orientacionFix.t)/1000:0;
+ const paso=orientacionFix?dist(orientacionFix.p,p):0;
+ // No orientar con un salto aislado ni unir posiciones separadas por una pausa.
+ if(orientacionFix&&dt>0&&dt<=15&&paso/dt>80)return mantener();
+ if(Number.isFinite(c.heading)&&c.heading>=0&&c.heading<360
+    &&Number.isFinite(c.speed)&&c.speed>=1){
+  objetivo=c.heading;
+ }else if(orientacionFix&&dt>0&&dt<=15
+    &&paso>=Math.max(6,(c.accuracy+orientacionFix.accuracy)/2)
+    &&!(Number.isFinite(c.speed)&&c.speed<0.5)){
+  objetivo=bearingBetween(orientacionFix.p,p);
+ }
+ if(!orientacionFix||dt>15||objetivo!==null)
+  orientacionFix={p,t,accuracy:c.accuracy};
+ if(objetivo===null)return mantener();
+ lastCourse=objetivo;
+ if(rumboSuave===null)rumboSuave=objetivo;
+ else{
+  let d=(objetivo-rumboSuave+540)%360-180;
+  // Camino angular más corto y límite por tiempo, no por número de lecturas.
+  const segundos=Math.min(2,Math.max(0,(t-orientacionTiempo)/1000));
+  const giro=d*(1-Math.exp(-segundos/0.8)),limite=45*segundos;
+  if(Math.abs(d)>=3)rumboSuave=(rumboSuave+Math.max(-limite,Math.min(limite,giro))+360)%360;
+ }
+ orientacionTiempo=t;
+ return rumboSuave;
+}
 function onFix(pos){
  if(gpsApagadoPorTi)return; // Ignorar una posición pendiente después de finalizar.
  ultimoFix=Date.now();
@@ -2289,55 +2319,14 @@ function onFix(pos){
  if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
   notice(guiaIniciada()?'Posición recibida · siguiendo ruta':'Posición recibida');
  ultimoErrorGps=null;ultimoErrorGpsText='';
- const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
+ const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
- if(gpsHeading!==null)lastCourse=gpsHeading;
- else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
- if(!courseFix||dist(courseFix,p)>=8)courseFix=p.slice();
- // La flecha apunta EN EL SENTIDO DE LA RUTA mientras la sigues, no al
- // rumbo del GPS. Lo pidio el autor: «solo quiero, cuando este navegando,
- // que la flecha que nos indica la direccion vaya en el sentido de la
- // ruta». El rumbo del GPS solo es fiable andando y con buena senal:
- // parado o despacio se queda viejo y la flecha puede apuntar incluso al
- // reves de por donde va el camino. Si estas sobre la ruta, el camino si
- // sabe hacia donde sigue. Lejos de ella o sin ruta, el rumbo de siempre.
- let h=lastCourse,hDeRuta=false;
- if(guiaIniciada()){
-  const r=rumboDeLaRuta(p);
-  if(r!==null){
-   // La forma del camino la da la ruta; EL SENTIDO lo das tu. Si vas al
-   // reves de como esta grabada —cosa normal: la misma ruta se anda en
-   // los dos sentidos— la flecha se da la vuelta. Lo vio el autor: «la
-   // flecha va al reves», con la grabacion roja saliendo justo por el
-   // lado contrario al que apuntaba.
-   // Solo se decide cuando hay rumbo de verdad (lastCourse se refresca
-   // andando 8 m), y entre medias se mantiene el ultimo decidido, para
-   // que parado no se ponga a dar vueltas.
-   decideSentido(progressOnRoute(p).along);
-   h=(r+(sentidoRuta<0?180:0))%360;hDeRuta=true;
-  }
- }
- // La flecha giraba de golpe porque el rumbo salta de un segmento a otro.
- // Suavizado circular: cada lectura la acerca al rumbo nuevo, no la planta
- // encima. Medido sobre la ruta de Berriz, el salto mayor baja de 179 a 80
- // grados y los bruscos se reducen a menos de la mitad. Los que quedan son
- // curvas de verdad del circuito.
- if(h!==null){
-  if(rumboSuave===null)rumboSuave=h;
-  else{let dd=(h-rumboSuave)%360;if(dd>180)dd-=360;if(dd<-180)dd+=360;
-       rumboSuave=(rumboSuave+dd*0.45+360)%360;}
-  h=rumboSuave;
- }
+ const h=rumboDeMovimiento(pos,ultimoFix);
+ // El sentido global sigue siendo necesario para los avisos; no debe invertir
+ // la orientación de la flecha ni del mapa en los tramos compartidos.
+ if(guiaIniciada()&&pos.coords.accuracy<=25)decideSentido(progressOnRoute(p).along);
  pintaBrujula(h);
- // Sobre la ruta el rumbo es geometrico y vale siempre; fuera de ella
- // viene del GPS y solo se hace caso por encima de 7 km/h. Si no, se
- // mantiene el ultimo: parado el mapa no gira.
- // El «rumboMapa===null» es el primer rumbo de todos y va aparte: sin el,
- // recien cargada la pagina y parado fuera de ruta no habia NADA que
- // girar, y el boton solo cambiaba de color. Lo dijo el autor: «N no hace
- // nada, solo cambia color». lastCourse no es ruido: solo se refresca con
- // rumbo bueno del GPS o tras andar 8 m con buena senal.
- if(h!==null&&(hDeRuta||velocidadSuave>=GIRO_VELOCIDAD||rumboMapa===null))rumboMapa=h;
+ if(h!==null)rumboMapa=h;
  aplicaGiroMapa(false);
  pintaMandos();
  // La flecha de antes medía 36 px y el círculo se la comía: de reojo se veía
@@ -2699,7 +2688,7 @@ function apagaGps(){
  if(junctionActive>=0)resetJunctionView();
  resetOffRoute();
  if(me){map.removeLayer(me);me=null}
- position=null;lastCourse=null;courseFix=null;ultimoFix=0;refParado=null;refParadoT=0;
+ position=null;lastCourse=null;courseFix=null;rumboSuave=null;orientacionFix=null;orientacionTiempo=0;rumboMapa=null;ultimoFix=0;refParado=null;refParadoT=0;
  // El servicio tarda un momento en pararse de verdad. Sin esta tregua el
  // sondeo lo vería aún activo y volvería a encender la flecha recién apagada.
  fuenteNativa=false;ultimoTiempoNativo=0;apagadoHasta=Date.now()+8000;
