@@ -36,8 +36,11 @@ jobs:
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
-      - name: Compilar APK QA con identificador independiente
-        run: gradle :app:assembleQa --no-daemon
+      - name: Generar prueba de instrucciones nativas
+        working-directory: .
+        run: python3 scripts/test-native-turns.py --generate-junit
+      - name: Verificar giros y compilar APK QA
+        run: gradle :app:testDebugUnitTest :app:assembleQa --no-daemon
       - name: Verificar que la APK se ha generado
         run: test -s app/build/outputs/apk/qa/app-qa.apk
       - name: Guardar APK QA para instalación privada
