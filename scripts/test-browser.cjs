@@ -154,6 +154,26 @@ async function setup(context) {
         "desborde a " + width,
       );
     }
+    // Controles utilizables incluso cuando la columna no cabe completa.
+    for (const size of [{width:320,height:568},{width:568,height:320},{width:390,height:844}]) {
+      await page.setViewportSize(size);
+      for (const id of ['eye','locate','orient','audioMode','plus','minus']) {
+        const box=await page.locator('#'+id).boundingBox();
+        assert(box.width>=48&&box.height>=48,'zona táctil de '+id);
+      }
+      await page.locator('#minus').scrollIntoViewIfNeeded();
+      const last=await page.locator('#minus').boundingBox();
+      assert(last.y>=0&&last.y+last.height<=size.height,'zoom accesible con poca altura');
+    }
+    await page.click('#choose');
+    await page.locator('#search').click();
+    assert(await page.locator('#routeDialog').isVisible(),'tocar dentro conserva el selector');
+    await page.locator('#routeDialog').click({position:{x:3,y:3}});
+    assert(await page.locator('#routeDialog').isHidden(),'tocar fuera cierra el selector');
+    await page.click('#savedRoutes');
+    await page.keyboard.press('Escape');
+    assert(await page.locator('#savedDialog').isHidden(),'Escape cierra Mis rutas');
+    console.log('PASS Chromium: controles de 48 px, zoom accesible en horizontal y cierre exterior/Escape');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.selectOption("#basemap", "ign");
     assert.match(await page.locator("#mapCredit").textContent(), /conexión/);

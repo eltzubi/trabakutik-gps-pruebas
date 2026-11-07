@@ -295,6 +295,11 @@ body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .
  #elevationPanel.navigation-profile:not(.collapsed):not(.profile-empty){height:112px}
  #elevationPanel.navigation-profile #elevationSvg{height:37px}
 }
+/* Zonas táctiles amplias sin agrandar los iconos. */
+.tools button,body.creating-route .tools button{width:48px;height:48px}
+.tools{max-height:calc(100% - 24px);overflow-y:auto;overscroll-behavior:contain}
+.sheet .sheet-header .close{flex-basis:48px;width:48px;height:48px;min-height:48px}
+.sheet button,.actions button,.modes button{min-height:48px}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">PNOA</option></select></label></div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
@@ -646,6 +651,15 @@ function updateNativeLaunchLink(){
  link.href=enlaceApp(slug);
  link.classList.remove('hidden');
 }
+async function fetchRouteJson(url,options={}){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),15000);
+ try{
+  const response=await fetch(url,{...options,signal:controller.signal});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  return await response.json();
+ }finally{clearTimeout(timer)}
+}
 let selectedRouteRequest=0;
 async function loadDetailedSelected(i,request){
  const slug=tracks[i]?.href?.replace(/\.html$/,'');
@@ -653,9 +667,7 @@ async function loadDetailedSelected(i,request){
  try{
   // El mapa general tiene una simplificación de 10 m; cada ficha conserva 1 m.
   const url='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/'+slug+'.json';
-  const response=await fetch(url,{cache:'no-store'});
-  if(!response.ok)throw new Error('HTTP '+response.status);
-  const payload=await response.json();
+  const payload=await fetchRouteJson(url,{cache:'no-store'});
   const pts=payload.tracks?.[0]?.points;
   if(!Array.isArray(pts)||pts.length<2||pts.length>15000||!pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])))throw new Error('Trazado detallado no válido');
   if(chosen!==i||selectedRouteRequest!==request)return;
@@ -2732,11 +2744,22 @@ fetch('data/rutas.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
  updateElevation();
  if(!$('routeDialog').classList.contains('hidden'))showRoutes();
 }).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
-fetch('data/trailhead.json',{cache:'no-cache'}).then(r=>r.json()).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} rutasListas=true; }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
+fetchRouteJson('data/trailhead.json',{cache:'no-cache'}).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta desde Trabakutik o pulsa Iniciar GPS')} rutasListas=true; }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
 // Guardar la pagina en el movil para poder abrirla SIN COBERTURA. Ver sw.js.
 // La aplicacion de Android no lleva la pagina dentro: la carga de GitHub
 // Pages y ademas con la cache del WebView desactivada, asi que sin esto, en
 // el monte y sin red, abrir la app de cero no daba nada.
+// Tocar el panel no cierra; tocar su fondo equivale a la X.
+for(const [id,close] of [['routeDialog',()=>$('closeDialog').click()],['savedDialog',()=>$('closeSaved').click()],['saveDialog',closeSaveDialog]]){
+ $(id).addEventListener('click',e=>{if(e.target===$(id))close()});
+}
+document.addEventListener('keydown',e=>{
+ if(e.key!=='Escape')return;
+ for(const id of ['closeSave','closeSaved','closeDialog']){
+  const button=$(id);if(!button.closest('.popup').classList.contains('hidden')){button.click();break}
+ }
+});
+
 if('serviceWorker' in navigator){
  addEventListener('load',()=>{
   navigator.serviceWorker.register('sw.js')
