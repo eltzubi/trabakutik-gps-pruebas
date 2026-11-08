@@ -1770,7 +1770,20 @@ function marcaAlReves(si){
  const c=$('reverseWarn');
  if(c)c.classList.toggle('hidden',!si);
 }
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
+// Y SE LE DICE AL SERVICIO. Esto faltaba y es el fallo de «me dice derecha
+// cuando es izquierda» al encadenar rutas. setSentido solo se llamaba cuando
+// el sentido CAMBIA (en decideSentido), asi que al cargar otra ruta la pagina
+// se ponia en «normal» y el servicio se quedaba con el «al reves» de la ruta
+// anterior -si en aquella anduviste un tramo del reves- y seguia invirtiendo
+// izquierda y derecha en la nueva. El servicio solo lo reiniciaba al PARAR la
+// navegacion, no al cambiar de ruta. Lo conto el autor: con las rutas de la
+// web va bien, y al crear una ruta y juntarla con una guardada «va fatal».
+// resetOffRoute() se llama en los cinco sitios donde se cambia de ruta y en
+// ninguno mas, asi que aqui no se repite por cada posicion.
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;
+ try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
+ marcaAlReves(false);
+refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
 function updateOffRoute(d,accuracy){
  if(!guiaIniciada())return;
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;

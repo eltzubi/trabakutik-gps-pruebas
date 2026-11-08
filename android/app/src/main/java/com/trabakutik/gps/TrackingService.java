@@ -182,6 +182,10 @@ public class TrackingService extends Service implements LocationListener {
    return START_NOT_STICKY;
   }
   if("ROUTE".equals(action)){
+   // Ruta nueva: el sentido de la anterior no vale. Sin esto, el servicio se
+   // quedaba con el «al reves» de la ruta de antes y cantaba izquierda por
+   // derecha en la nueva. Solo se reiniciaba al PARAR la navegacion.
+   sentido=1;
    loadRoute();loadTurns();
    if(route.size()<2)navigating=false;
    publicaEstado();
