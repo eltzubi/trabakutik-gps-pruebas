@@ -120,9 +120,39 @@ public class MainActivity extends Activity {
   if(web==null)return;
   web.evaluateJavascript("window.trabakutikSyncNative&&window.trabakutikSyncNative()",null);
  }
+ // Una respuesta de JavaScript puede llegar despues de volver a la app.
+ // El numero de ciclo impide que esa respuesta suspenda una pantalla visible.
+ boolean appEnSegundoPlano=false;
+ int cicloSegundoPlano=0;
  @Override protected void onResume(){
   super.onResume();
+  appEnSegundoPlano=false;
+  cicloSegundoPlano++;
+  // Los temporizadores son globales: reanudar tambien si Android recreo
+  // la Activity mientras la anterior estaba suspendida.
+  if(web!=null){web.resumeTimers();web.onResume();}
+  if(webRoutes!=null)webRoutes.onResume();
   if(web!=null&&showingGps)web.postDelayed(this::restoreGpsWeb,300);
+ }
+ @Override protected void onStop(){
+  super.onStop();
+  appEnSegundoPlano=true;
+  final int ciclo=++cicloSegundoPlano;
+  if(web==null||TrackingService.ACTIVO||pendingGpsAction!=null)return;
+  // Consultar tambien la pagina: puede estar creando o arrancando una salida
+  // antes de que el servicio nativo haya pasado a ACTIVO. Si no responde,
+  // se conserva su funcionamiento; nunca se adivina que esta inactiva.
+  web.evaluateJavascript(
+    "(function(){return typeof mode!=='undefined'&&typeof recording!=='undefined'"+
+    "&&typeof navegaNativo!=='undefined'&&mode!=='create'&&!recording&&!navegaNativo;})()",
+    libre->{
+     if(!appEnSegundoPlano||ciclo!=cicloSegundoPlano||isFinishing()||isDestroyed()
+       ||TrackingService.ACTIVO||pendingGpsAction!=null||!"true".equals(libre))return;
+     web.onPause();
+     if(webRoutes!=null)webRoutes.onPause();
+     // pauseTimers afecta a las dos WebView. Se llama solo estando inactiva.
+     web.pauseTimers();
+    });
  }
  void showScreen(boolean gps){
   showingGps=gps;
