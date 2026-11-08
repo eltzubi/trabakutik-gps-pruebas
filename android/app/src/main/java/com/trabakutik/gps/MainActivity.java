@@ -122,17 +122,16 @@ public class MainActivity extends Activity {
  }
  // Una respuesta de JavaScript puede llegar despues de volver a la app.
  // El numero de ciclo impide que esa respuesta suspenda una pantalla visible.
- boolean appEnSegundoPlano=false,temporizadoresSuspendidos=false;
+ boolean appEnSegundoPlano=false;
  int cicloSegundoPlano=0;
  @Override protected void onResume(){
   super.onResume();
   appEnSegundoPlano=false;
   cicloSegundoPlano++;
-  if(temporizadoresSuspendidos){
-   if(web!=null){web.resumeTimers();web.onResume();}
-   if(webRoutes!=null)webRoutes.onResume();
-   temporizadoresSuspendidos=false;
-  }
+  // Los temporizadores son globales: reanudar tambien si Android recreo
+  // la Activity mientras la anterior estaba suspendida.
+  if(web!=null){web.resumeTimers();web.onResume();}
+  if(webRoutes!=null)webRoutes.onResume();
   if(web!=null&&showingGps)web.postDelayed(this::restoreGpsWeb,300);
  }
  @Override protected void onStop(){
@@ -153,7 +152,6 @@ public class MainActivity extends Activity {
      if(webRoutes!=null)webRoutes.onPause();
      // pauseTimers afecta a las dos WebView. Se llama solo estando inactiva.
      web.pauseTimers();
-     temporizadoresSuspendidos=true;
     });
  }
  void showScreen(boolean gps){

@@ -33,7 +33,7 @@ public class BackgroundLifecycleTest extends Activity {
   check(idle.web.paused==1&&idle.webRoutes.paused==1&&idle.web.timersPaused==1);
   idle.onResume();
   check(idle.web.resumed==1&&idle.webRoutes.resumed==1&&idle.web.timersResumed==1);
-  idle.onResume();check(idle.web.timersResumed==1);
+  idle.onResume();check(idle.web.timersResumed==2);
   for(String result:new String[]{"false","null"}){
    BackgroundLifecycleTest busy=new BackgroundLifecycleTest();
    busy.onStop();busy.web.respond(result);check(busy.web.timersPaused==0);
