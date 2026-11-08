@@ -2132,8 +2132,36 @@ function computeJunctions(){
  enviaGirosNativos();
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
+// DONDE ESTAS EN LA RUTA, SIN PERDER EL HILO. Esto cogia el tramo mas cercano
+// de TODA la ruta, sin mirar por donde ibas hace un segundo. En una ruta que
+// pasa dos veces por el mismo sitio -ida y vuelta, un circuito que repite un
+// trozo, o una ruta creada que se junta con una guardada y comparten camino-
+// los dos pasos estan encima el uno del otro y la eleccion la decidia un metro
+// de diferencia: se enganchaba al paso equivocado, el avance pasaba a
+// retroceso y decideSentido te daba la vuelta a los giros. Lo conto el autor:
+// «cuando creo una ruta y la junto con una ruta ya guardada va fatal, las
+// indicaciones gira ahora a la derecha, gira a la izquierda, seria totalmente
+// [al reves]».
+// Ahora se mira primero CERCA de donde ibas (VENTANA_SEGUIR metros de ruta a
+// cada lado) y solo se salta a otro tramo si el de lejos esta mejor por mas de
+// MARGEN_SALTO metros. Con eso, dos pasos superpuestos ya no se pelean: hay
+// que irse de verdad para cambiar de rama. La primera posicion y las de fuera
+// de ruta siguen buscando en toda la ruta, que ahi no hay hilo que seguir.
+// La ventana es ASIMETRICA, y esto es lo que de verdad arregla la ida y
+// vuelta: 200 m hacia delante y solo 40 hacia atras. En el punto de retorno
+// las dos pasadas estan pegadas -la ida acaba y la vuelta empieza en el mismo
+// metro- y mirando a los dos lados por igual la eleccion la decide el ruido
+// del GPS: medido andando una ida y vuelta de 3 km, el sentido se daba la
+// vuelta tres veces con la ventana simetrica y dos con una de 150 a cada lado.
+// Prefiriendo seguir hacia delante no hay empate que valga.
+// Y NO rompe el aviso de «vas al reves» cuando te das la vuelta de verdad:
+// ahi te alejas de la ventana, el tramo correcto queda a 0 m y el de la
+// ventana a 60, asi que gana el de fuera por mas de MARGEN_SALTO y el sentido
+// cambia como debe.
+const VENTANA_SEGUIR=200,VENTANA_ATRAS=40,MARGEN_SALTO=15;
 function progressOnRoute(p){
- let best=Infinity,along=0;
+ let best=Infinity,along=0,cerca=Infinity,alongCerca=0;
+ const ref=Number.isFinite(ultimoAlong)?ultimoAlong:null;
  const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
  for(let i=1;i<routePoints.length;i++){
   const a=routePoints[i-1],b=routePoints[i];
@@ -2141,8 +2169,15 @@ function progressOnRoute(p){
   const dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*latScale;
   const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));
   const meters=Math.hypot(ax+t*dx,ay+t*dy);
-  if(meters<best){best=meters;along=routeCumulative[i-1]+t*(routeCumulative[i]-routeCumulative[i-1])}
+  const cand=routeCumulative[i-1]+t*(routeCumulative[i]-routeCumulative[i-1]);
+  if(meters<best){best=meters;along=cand}
+  if(ref!==null&&cand>=ref-VENTANA_ATRAS&&cand<=ref+VENTANA_SEGUIR&&meters<cerca){cerca=meters;alongCerca=cand}
  }
+ if(ref!==null&&cerca<Infinity&&cerca<=best+MARGEN_SALTO){best=cerca;along=alongCerca}
+ // El hilo se guarda aqui, y solo con una posicion que este DE VERDAD sobre la
+ // ruta: si se guardara estando lejos, la ventana se quedaria anclada donde no
+ // estas y no habria manera de volver a engancharse.
+ if(best<=30)ultimoAlong=along;
  return {along,distance:best};
 }
 // Parado no hay giro que anunciar. «Gira a la derecha · En 50 m» solo
