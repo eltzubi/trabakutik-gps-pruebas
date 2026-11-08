@@ -821,7 +821,7 @@ function changeMode(m){
  $('soloApp').classList.toggle('hidden',enLaApp||m!=='nav');
  if(m==='create'&&!calculandoMapaGps)estadoMapaGps('');$('createActions').classList.toggle('hidden',m!=='create');$('drawTip').hidden=m!=='create';if(m==='create'&&!redGps){notice('Preparando caminos y alturas…');fetch('data/alturas.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null).then(alt=>{alturasGps=alt;if(!anclasGps.length&&!calculandoMapaGps)redGps=construyeRed(tracks,alturasGps);notice(alt?'Red y desniveles disponibles. Marca el inicio.':'Red lista; no se han podido cargar las alturas.');}).catch(()=>notice('No se pudo preparar la red.'))}notice(m==='create'?'Marca puntos sobre las rutas. En un cruce, elige la bolita azul de continuación':routePoints.length>1?(guiaIniciada()?'Siguiendo la ruta seleccionada':'Ruta cargada · pulsa Iniciar grabación para comenzar'):'Elige una ruta para empezar a navegar');map.closePopup();updateElevation();setTimeout(()=>map.invalidateSize(),60)}
 $('modeNav').onclick=()=>changeMode('nav');$('modeCreate').onclick=()=>changeMode('create');
-const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
+const CELDA_M=15,PASO_M=5,MAX_ENGANCHE_M=120,MARCA_LARGA=120,LAT0=43.2,KX=111320*Math.cos(LAT0*Math.PI/180);
 let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null,createdSavedItem=null;
 // Los puntos manuales solo pertenecen al borrador: nunca se añaden a las
 // conexiones ni a las cestas de la red pública de caminos.
@@ -835,11 +835,19 @@ let trazadoManual=false;
 // de bus en vez de seguir la general -y es correcto por su parte, pero el no
 // lo quiere-, y crear desde su casa manda esas coordenadas a un servicio de
 // fuera, cosa que en Manual no pasa porque no se calcula nada.
-//   0 Caminos    : el planificador de FOSSGIS, por cualquier camino de OSM.
-//   1 Trabakutik : solo por los trazados de las rutas de la web, sin salir.
-//   2 Manual     : lo que tocas, unido en linea recta. No manda nada fuera.
+//   0 Caminos : el planificador de FOSSGIS, por cualquier camino de OSM.
+//   1 Manual  : lo que tocas, unido en linea recta. No manda nada fuera.
+//
+// EL TERCERO SE QUITO, Y NO SE VUELVE A PONER SIN QUE EL AUTOR LO PIDA. Habia
+// un modo «Rutas» que calculaba por la red de los 71 trazados de la web, sin
+// salirse de ellos. El autor lo dijo asi: «¿no podemos marcar las rutas
+// tambien con caminos? ya que los tres es un poco liante». Y es verdad: sus
+// rutas van por caminos de verdad, asi que el planificador normalmente las
+// sigue igual. Lo que se pierde es la GARANTIA de no salirse; cuando se sale,
+// para eso esta Manual. El codigo de esa red sigue estando -nodoCerca,
+// tramoGps, redGps- porque lo usa el enganche de puntos; lo unico que se ha
+// quitado es la posicion del boton.
 const MODOS_TRAZO=[['✎ Caminos','Por cualquier camino: lo calcula un servicio de fuera'],
-                   ['✎ Rutas','Solo por los trazados de Trabakutik'],
                    ['✎ Manual','Línea recta entre los puntos que toques, sin calcular nada']];
 let modoTrazo=0;
 function pintaModoTrazo(){
@@ -848,7 +856,7 @@ function pintaModoTrazo(){
  b.dataset.rotulo=MODOS_TRAZO[modoTrazo][0].replace('✎ ','');
  b.title=MODOS_TRAZO[modoTrazo][1];
  seguirMapaGps=modoTrazo===0;
- trazadoManual=modoTrazo===2;
+ trazadoManual=modoTrazo===1;
 }
 const nodosManualesGps=new Set();
 
@@ -1393,7 +1401,36 @@ map.on('click',e=>{
  const node=trazadoManual?nodoManualGps(e.latlng.lat,e.latlng.lng):nodoCerca(redGps,e.latlng.lat,e.latlng.lng);
  if(node<0){notice('Ese punto no está en los trazados de Trabakutik. Elige Manual para marcarlo.');return}
  if(!anclasGps.length){anclasGps.push(node);tramosGps.push([node]);updateDraw();notice('Punto inicial marcado. Toca otro punto del camino.');return}
- const prev=anclasGps[anclasGps.length-1],segment=tramoGps(prev,node);
+ const prev=anclasGps[anclasGps.length-1];
+ let segment=tramoGps(prev,node);
+ // EN MANUAL, EL TOQUE LARGO BUSCA CAMINO. Lo pidio el autor: «marcaje en
+ // corto, recto; marcaje largo que busque el camino o ruta por donde va y que
+ // lo marque bien». Por debajo de MARCA_LARGA metros se queda la recta de
+ // siempre -que es para lo que se usa: forzar un trozo, cruzar donde no hay
+ // camino-; por encima se intenta ir por los trazados de Trabakutik. Se hace
+ // con la red local, NO con el planificador de fuera: en Manual no sale del
+ // movil ni una coordenada, y eso se mantiene.
+ // Si no hay conexion por los trazados, o el rodeo es desproporcionado, se
+ // queda la recta y no se dice nada: el toque hace lo que hacia.
+ if(trazadoManual&&segment.manual){
+  const pa=redGps.nodos[prev],pb=redGps.nodos[node],recto=metros(pa,pb);
+  if(recto>=MARCA_LARGA){
+   const na=nodoCerca(redGps,pa[0],pa[1]),nb=nodoCerca(redGps,pb[0],pb[1]);
+   if(na>=0&&nb>=0&&na!==nb){
+    const via=camino(redGps,na,nb);
+    if(via&&via.length>1){
+     const largo=via.slice(1).reduce((v,id,i)=>v+metros(redGps.nodos[via[i]],redGps.nodos[id]),0);
+     if(largo<=Math.max(300,recto*2.5)){
+      const tr=[prev];
+      for(const id of via)if(id!==tr[tr.length-1])tr.push(id);
+      if(node!==tr[tr.length-1])tr.push(node);
+      segment=tr;
+      notice('Tramo por los caminos de Trabakutik · '+(largo/1000).toFixed(2)+' km');
+     }
+    }
+   }
+  }
+ }
  if(!segment){notice('No hay conexión por los trazados de Trabakutik. Puedes añadir el enlace en Manual.');return}
  if(segment.length===1)return;
  anclasGps.push(node);tramosGps.push(segment);updateDraw();
