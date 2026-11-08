@@ -126,15 +126,35 @@ body:has(#modeCreate[aria-pressed="true"]) .status{margin-top:3px;white-space:no
 
 /* Creador cartográfico: herramientas en el borde y mapa casi completo. */
 #app{position:relative}
+/* CADA BOTON CON SU NOMBRE DEBAJO. Eran cuadrados de 42 px con solo un
+   simbolo y el autor lo dijo claro: «mucho boton pero sin saber para que
+   sirve cada uno, ¿cerrar circulo?, por ejemplo». El rotulo va en un ::after
+   de 8 px porque el boton lleva font-size:0 -su texto de verdad es el que se
+   ve fuera del creador-. La columna pasa de 42 a 58 px de ancho; en una
+   pantalla de 390 sigue sobrando mapa de sobra. */
 body.creating-route #createActions{
  position:absolute;z-index:735;left:8px;top:118px;
  display:flex;flex-direction:column;gap:6px;
- background:transparent;min-height:0;width:42px;max-width:42px;
+ background:transparent;min-height:0;width:58px;max-width:58px;
 }
 body.creating-route #createActions button{
- min-width:42px;width:42px;height:42px;min-height:42px;max-height:42px;
+ min-width:58px;width:58px;height:48px;min-height:48px;max-height:48px;
  padding:0;border-radius:11px;font-size:0;flex:none;box-shadow:0 2px 10px #03172380;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
 }
+body.creating-route #createActions button::before{line-height:1}
+body.creating-route #createActions button::after{
+ font-size:8px;line-height:1.05;letter-spacing:.01em;font-weight:700;opacity:.9;
+ max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+body.creating-route #createActions #undo::after{content:'Deshacer'}
+body.creating-route #createActions #clearCreated::after{content:'Borrar'}
+body.creating-route #createActions #saveCreated::after{content:'Guardar'}
+body.creating-route #createActions #navCreated::after{content:'Navegar'}
+body.creating-route #createActions #cerrarCirculo::after{content:'Círculo'}
+body.creating-route #createActions #idaVuelta::after{content:'Ida y vta.'}
+body.creating-route #createActions #modoTrazo::before{content:'✎';font-size:21px}
+body.creating-route #createActions #modoTrazo::after{content:attr(data-rotulo)}
 body.creating-route #createActions #undo::before{content:'↶';font-size:23px}
 body.creating-route #createActions #clearCreated::before{content:'×';font-size:25px}
 body.creating-route #createActions #saveCreated::before{content:'✓';font-size:22px}
@@ -309,7 +329,7 @@ body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .
  <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
 </section>
-<footer class="bottom"><div id="soloApp" class="solo-app hidden"><b>La navegación va solo en la aplicación</b><span>En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Cerca de mí</button><button id="savedRoutes">Mis rutas</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Navegar</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
+<footer class="bottom"><div id="soloApp" class="solo-app hidden"><b>La navegación va solo en la aplicación</b><span>En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="nearbyAction" type="button" aria-pressed="false">⌖ Cerca de mí</button><button id="savedRoutes">Mis rutas</button><a id="openNativeGps" class="open-native hidden" href="#" title="Seguir esta ruta con la pantalla bloqueada">↗ Navegar con pantalla bloqueada en la app</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Navegar</button><button id="modoTrazo" title="Cómo se une un punto con el siguiente">✎ Caminos</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Iniciar grabación</button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="legend"><span><i class="dot" style="background:#5bebff"></i>Elegida</span><span><i class="dot" style="background:#ff9d42"></i>Otras</span><span><i class="dot" style="background:#ff354c"></i>Grabación</span></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · GPS al pulsar Iniciar</div></footer>
 <div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
 </div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Abrir ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
@@ -806,6 +826,30 @@ let redGps=null,anclasGps=[],tramosGps=[],alturasGps=null,createdSavedItem=null;
 // Los puntos manuales solo pertenecen al borrador: nunca se añaden a las
 // conexiones ni a las cestas de la red pública de caminos.
 let trazadoManual=false;
+// LOS TRES MODOS DE TRAZAR, QUE ESTABAN SIN BOTON. El codigo tenia los tres
+// -el planificador de FOSSGIS, la red de las rutas de Trabakutik y la linea a
+// mano- pero en la pantalla no habia forma de cambiar: siempre se usaba el
+// planificador. Habia hasta un aviso que decia «Elige Manual para marcarlo»
+// señalando a algo que no se podia elegir. Hizo falta por dos cosas que conto
+// el autor: el planificador de a pie se mete por el apartadero de la parada
+// de bus en vez de seguir la general -y es correcto por su parte, pero el no
+// lo quiere-, y crear desde su casa manda esas coordenadas a un servicio de
+// fuera, cosa que en Manual no pasa porque no se calcula nada.
+//   0 Caminos    : el planificador de FOSSGIS, por cualquier camino de OSM.
+//   1 Trabakutik : solo por los trazados de las rutas de la web, sin salir.
+//   2 Manual     : lo que tocas, unido en linea recta. No manda nada fuera.
+const MODOS_TRAZO=[['✎ Caminos','Por cualquier camino: lo calcula un servicio de fuera'],
+                   ['✎ Rutas','Solo por los trazados de Trabakutik'],
+                   ['✎ Manual','Línea recta entre los puntos que toques, sin calcular nada']];
+let modoTrazo=0;
+function pintaModoTrazo(){
+ const b=$('modoTrazo');if(!b)return;
+ b.textContent=MODOS_TRAZO[modoTrazo][0];
+ b.dataset.rotulo=MODOS_TRAZO[modoTrazo][0].replace('✎ ','');
+ b.title=MODOS_TRAZO[modoTrazo][1];
+ seguirMapaGps=modoTrazo===0;
+ trazadoManual=modoTrazo===2;
+}
 const nodosManualesGps=new Set();
 
 function nodoManualGps(lat,lon,elevation=null){
@@ -1692,6 +1736,14 @@ $('saveCreated').onclick=()=>{
  if(name===null)return;
  openSaveDialog(drawPoints,name.trim()||'Mi ruta','created');
 };
+$('modoTrazo').onclick=()=>{
+ if(calculandoMapaGps)cancelaMapaGps();
+ modoTrazo=(modoTrazo+1)%MODOS_TRAZO.length;
+ pintaModoTrazo();
+ estadoMapaGps('');
+ notice(MODOS_TRAZO[modoTrazo][0].replace('✎ ','')+' · '+MODOS_TRAZO[modoTrazo][1]);
+};
+pintaModoTrazo();
 $('navCreated').onclick=()=>{
  if(!createdSavedItem)return;
  loadSaved(createdSavedItem);
