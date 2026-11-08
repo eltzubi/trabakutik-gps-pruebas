@@ -5,6 +5,12 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'tests/background_lifecycle.py'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 permissions:
   contents: write   # hace falta para publicar la Release con el APK
@@ -28,6 +34,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: Comprobar reposo y reanudación
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/background_lifecycle.py
       - name: Compilar APK de prueba
         run: gradle :app:assembleDebug --no-daemon
       - name: Comprobar que existe el APK
@@ -47,6 +56,7 @@ jobs:
       #   .../releases/latest/download/TrabakutikGPS.apk
       # Un toque y se descarga, sin cuenta y sin buscar nada.
       - name: Publicar la Release con el APK
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -68,6 +78,7 @@ jobs:
       # Cuesta unos 2 MB en el repositorio por cada version. El autor lo sabe y
       # lo aprobo.
       - name: Dejar el APK en la web de instalacion
+        if: github.event_name != 'pull_request'
         run: |
           cd "$GITHUB_WORKSPACE"
           cp android/app/build/outputs/apk/debug/app-debug.apk TrabakutikGPS.apk
