@@ -1009,6 +1009,54 @@ function aplicaMapaGps(result){
  });
  updateDraw();
 }
+// AÑADIR UN TRAMO SIN TOCAR LO DE ANTES. aplicaMapaGps sustituye el trazado
+// ENTERO por lo que devuelve el planificador, y eso estaba detras de un fallo
+// que conto el autor: trazas un trozo recto a mano, cambias de modo, tocas un
+// punto y «el desvio de antes vuelve a salir». Claro: el planificador rehacia
+// la ruta desde la primera ancla y se llevaba por delante lo hecho a mano.
+// Esto añade el tramo calculado al final y deja lo anterior como estaba.
+function anadeTramoMapa(result){
+ const a=result.anchors[0],b=result.anchors[1];
+ if(!anclasGps.length){
+  const ini=nodoManualGps(a[0],a[1],a[2]);
+  anclasGps.push(ini);tramosGps.push([ini]);
+ }
+ const ini=anclasGps[anclasGps.length-1];
+ const fin=nodoManualGps(b[0],b[1],b[2]);
+ const pts=result.parts[0]||[];
+ const tr=[ini,...pts.slice(1,-1).map(q=>nodoManualGps(q[0],q[1],q[2])),fin];
+ tr.mapa=true;
+ anclasGps.push(fin);tramosGps.push(tr);
+ updateDraw();
+}
+// Un solo tramo: del ultimo punto puesto al que acabas de tocar. Se esperan
+// tambien las alturas antes de pintarlo, que asi se añade una sola vez y no
+// hay que repintar el tramo a medias.
+async function planificaTramoMapa(desde,hasta){
+ if(!coordenadaMapaGps(desde)||!coordenadaMapaGps(hasta))return;
+ if(!permisoMapaGps){
+  permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap). ¿Continuar?');
+  if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
+ }
+ cancelaMapaGps();const version=calculoMapaGps;
+ const controller=new AbortController();peticionMapaGps=controller;calculandoMapaGps=true;
+ $('saveCreated').disabled=true;estadoMapaGps('Calculando tramo…');
+ const timer=setTimeout(()=>controller.abort(),30000);
+ try{
+  const result=await solicitaMapaGps([desde,hasta],controller.signal);
+  if(version!==calculoMapaGps)return;
+  try{await alturasTerrenoGps(result,controller.signal);}catch(e){}
+  if(version!==calculoMapaGps)return;
+  anadeTramoMapa(result);
+  const completo=result.parts.every(part=>part.every(q=>Number.isFinite(q[2])));
+  estadoMapaGps(completo?'':'Faltan alturas en este tramo.');
+ }catch(e){
+  if(version===calculoMapaGps)estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':e.message);
+ }finally{
+  clearTimeout(timer);
+  if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}
+ }
+}
 async function planificaMapaGps(coords){
  if(coords.some(p=>!coordenadaMapaGps(p))||coords.length>80){estadoMapaGps('Marca hasta 80 puntos de paso por recorrido.');return}
  cancelaMapaGps();const version=calculoMapaGps;
@@ -1333,7 +1381,15 @@ function updateDraw(){
 map.on('click',e=>{
  if(mode!=='create')return;
  if(!redGps){notice('Preparando red de caminos…');return}
- if(seguirMapaGps){if(calculandoMapaGps)return;const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));const p=[e.latlng.lat,e.latlng.lng];if(pts.length&&dist(pts[pts.length-1],p)<1)return;planificaMapaGps([...pts,p]);return}
+ if(seguirMapaGps){
+  if(calculandoMapaGps)return;
+  const p=[e.latlng.lat,e.latlng.lng];
+  if(!anclasGps.length){planificaMapaGps([p]);return}
+  const ult=redGps.nodos[anclasGps[anclasGps.length-1]].slice(0,2);
+  if(dist(ult,p)<1)return;
+  planificaTramoMapa(ult,p);
+  return;
+ }
  const node=trazadoManual?nodoManualGps(e.latlng.lat,e.latlng.lng):nodoCerca(redGps,e.latlng.lat,e.latlng.lng);
  if(node<0){notice('Ese punto no está en los trazados de Trabakutik. Elige Manual para marcarlo.');return}
  if(!anclasGps.length){anclasGps.push(node);tramosGps.push([node]);updateDraw();notice('Punto inicial marcado. Toca otro punto del camino.');return}
