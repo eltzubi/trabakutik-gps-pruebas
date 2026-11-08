@@ -860,9 +860,29 @@ function pintaModoTrazo(){
 }
 const nodosManualesGps=new Set();
 
+// LA ALTURA DE UN PUNTO MARCADO A MANO SE LA PRESTAN TUS RUTAS. Un punto
+// manual nacia sin altura, y en Manual no se le pide a nadie -ese es el trato:
+// ahi no sale una coordenada del movil-. Resultado: el perfil se quedaba con
+// un hueco justo en el tramo hecho a mano y el desnivel no lo contaba. Lo vio
+// el autor en su pantalla: «al cambiar de manual a caminos, en manual no
+// marca el grafico».
+// Los nodos de la red SI tienen altura -salen de data/alturas.json, que el
+// creador ya se baja-, asi que se coge la del punto de tus rutas mas cercano
+// si esta a 60 m o menos. Mas lejos no se inventa nada: se queda sin altura,
+// que es la verdad -ahi no hay ninguna ruta tuya de la que copiarla-.
+const ALTURA_PRESTADA_M=60;
+function alturaCerca(lat,lon){
+ if(!redGps)return null;
+ const n=nodoCerca(redGps,lat,lon);
+ if(n<0)return null;
+ const q=redGps.nodos[n];
+ if(!Number.isFinite(q&&q[2]))return null;
+ return metros(q,[lat,lon])<=ALTURA_PRESTADA_M?q[2]:null;
+}
 function nodoManualGps(lat,lon,elevation=null){
  const n=redGps.nodos.length;
- redGps.nodos.push([lat,lon,Number.isFinite(elevation)?elevation:null]);redGps.ady.push([]);nodosManualesGps.add(n);
+ const h=Number.isFinite(elevation)?elevation:alturaCerca(lat,lon);
+ redGps.nodos.push([lat,lon,Number.isFinite(h)?h:null]);redGps.ady.push([]);nodosManualesGps.add(n);
  return n;
 }
 function tramoGps(a,b,manual=trazadoManual){
