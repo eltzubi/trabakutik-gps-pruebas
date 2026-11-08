@@ -58,3 +58,27 @@ jobs:
             --title "Trabakutik GPS $VERSION" \
             --notes "Descarga directa: TrabakutikGPS.apk. Instrucciones de instalacion en https://eltzubi.github.io/trabakutik-gps-pruebas/instalar.html" \
             || gh release upload "v$VERSION" TrabakutikGPS.apk --repo "$GITHUB_REPOSITORY" --clobber
+      # Y ADEMAS, EL APK EN LA PROPIA WEB. El enlace de la Release pasa por un
+      # reenvio de GitHub a otro servidor, y Brave en Android se queda colgado
+      # en «Descargando...» con el fichero ya entero y sin instalar nada. Lo
+      # conto el autor: «siempre se queda asi». Servido desde Pages no hay
+      # ningun salto y baja como cualquier otro fichero.
+      # Esto NO vuelve a disparar este workflow: solo se dispara con cambios en
+      # android/** y en este mismo fichero, y el APK va en la raiz.
+      # Cuesta unos 2 MB en el repositorio por cada version. El autor lo sabe y
+      # lo aprobo.
+      - name: Dejar el APK en la web de instalacion
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cp android/app/build/outputs/apk/debug/app-debug.apk TrabakutikGPS.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add TrabakutikGPS.apk
+          if git diff --cached --quiet; then
+            echo "El APK no ha cambiado"
+            exit 0
+          fi
+          VERSION=$(grep -o 'versionName = "[^"]*"' android/app/build.gradle.kts | cut -d'"' -f2)
+          git commit -m "Publicar TrabakutikGPS.apk $VERSION en la web de instalacion"
+          git pull --rebase origin main
+          git push origin HEAD:main
