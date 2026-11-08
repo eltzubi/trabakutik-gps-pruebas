@@ -2043,7 +2043,14 @@ function computeJunctions(){
  // 85° sobre 12 m: las curvas suaves no producen una indicación.
  const VENTANA=12;
  const CRUCE_GIRO=45;
- const CURVA_SOLA=85;
+ // 130 GRADOS Y NO 85. Estuvo en 85 unos dias y el autor lo mando volver:
+ // «cruces y curvas cerradas». Con 85 avisa de esquinas corrientes, que es
+ // justo lo que el pidio quitar -«en realidad solo queria que me indicaran los
+ // cruces no las curvas»-. Medido sobre 137,8 km de siete rutas: con 130 son
+ // 218 avisos, uno cada 632 m, de los que 38 son curvas; con 85 son 276, uno
+ // cada 499 m, y las curvas suben a 100. En la ruta de Lekeitio, 7 curvas
+ // frente a 30. Antes de volver a bajarlo, preguntarselo.
+ const CURVA_SOLA=130;
  const CERCA_CRUCE=25;
  const CELDA=0.0006,rejCruces=new Map();
  for(const c of crucesOsm){
