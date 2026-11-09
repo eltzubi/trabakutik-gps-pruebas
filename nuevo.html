@@ -2262,6 +2262,21 @@ function computeJunctions(){
  // cada 499 m, y las curvas suben a 100. En la ruta de Lekeitio, 7 curvas
  // frente a 30. Antes de volver a bajarlo, preguntarselo.
  const CURVA_SOLA=130;
+ // HORQUILLAS: LAS REVUELTAS EN ZETA DE LAS PISTAS. En 12 m una horquilla
+ // apenas dobla 80 grados, asi que se callaba; y la de al lado SI avisaba, por
+ // tener encima un cruce de OSM -donde basta con 45-. En la misma pista, una
+ // hablaba y la otra no, y eso desconcierta andando. Lo autorizo el autor con
+ // los numeros delante.
+ // 160 GRADOS Y NO 150. Medido sobre las 72 rutas, 1600 km, con los cruces
+ // publicados: hoy 1732 avisos, uno cada 924 m. Con 150 se van a 2088, uno
+ // cada 766 m, un 21% mas; con 160 a 1961, uno cada 816 m, un 13% mas, que es
+ // lo que el autor autorizo. La tabla entera, por si hay que mover el dial:
+ //   150/40 -> 2088 (uno cada 766 m)   160/40 -> 1961 (816 m)
+ //   150/30 -> 2027 (789 m)            160/30 -> 1920 (833 m)
+ //   170/40 -> 1860 (860 m)            175/25 -> 1782 (898 m)
+ // Las curvas corrientes no se enteran: un arco de radio 25 m solo dobla 92
+ // grados en 40 m, y una S entra y sale con el mismo rumbo, asi que da 0.
+ const HORQUILLA=160,VENTANA_HORQUILLA=40;
  const CERCA_CRUCE=25;
  const CELDA=0.0006,rejCruces=new Map();
  for(const c of crucesOsm){
@@ -2302,6 +2317,32 @@ function computeJunctions(){
   }
   return false;
  };
+ // LAS HORQUILLAS SE MIDEN POR EL CAMBIO DE RUMBO, NO POR LA FORMA. Mirar la
+ // forma desde 40 m -con geometriaEn- no sirve: en una zeta cuyos ramales se
+ // separan, esos dos extremos quedan muy abiertos y el angulo sale pequeño.
+ // Lo que define una horquilla es que el camino se dobla sobre si mismo: el
+ // rumbo al entrar y el rumbo al salir son opuestos. Se compara eso en
+ // VENTANA_HORQUILLA metros de camino.
+ // Una S no cuenta -entra y sale casi con el mismo rumbo- y el ruido del GPS
+ // tampoco, porque se va en un sentido y vuelve en el otro y se anula.
+ // Una sola por horquilla: encontrada, se salta hasta su final.
+ const rumboTramo=(a,b)=>Math.atan2((b[1]-a[1])*Math.cos(a[0]*R),b[0]-a[0])*180/Math.PI;
+ const horquillas=new Map();
+ // La ventana se mide DESDE i hacia delante, no desde el punto anterior: la
+ // copia simplificada deja rectas larguisimas, asi que el punto de antes puede
+ // estar a 150 m y la ventana no se abriria nunca. Lo que se compara es el
+ // rumbo con el que LLEGAS a i y el rumbo con el que SALES de la ventana;
+ // esas rectas largas no estorban, porque lo que dicen es por donde vas.
+ for(let i=1;i<pts.length-1;i++){
+  let j=i;
+  while(j+2<pts.length&&routeCumulative[j+1]-routeCumulative[i]<=VENTANA_HORQUILLA)j++;
+  if(j<=i)continue;
+  let d=Math.abs(rumboTramo(pts[j],pts[j+1])-rumboTramo(pts[i-1],pts[i]))%360;
+  if(d>180)d=360-d;
+  if(d<HORQUILLA)continue;
+  horquillas.set(i,Math.round(d));
+  i=j;
+ }
  for(let i=1;i<pts.length-1;i++){
   // Cerca del inicio o final hay menos de 12 m a ambos lados.
   // Ajustar solo esos giros; evitar quiebros inferiores a 6 m por ruido GPS.
@@ -2310,22 +2351,39 @@ function computeJunctions(){
   const giro=geometriaEn(i,Math.min(VENTANA,margen));
   if(!giro)continue;
   const {angle,cross}=giro,b=pts[i];
-  if(angle<40)continue; // por debajo de CRUCE_GIRO no hay nada que mirar
   // NO INTENTAR DETECTAR CRUCES MIRANDO SI PASA OTRA RUTA CERCA. Esta medido
   // y es PEOR: en Mallabia las 70 rutas comparten camino durante kilometros,
   // asi que «otra ruta a menos de 28 m» es cierto casi todo el rato y no
   // significa cruce, significa que van juntas. Por eso los cruces se traen de
   // OSM y no de las propias rutas.
   const cruce=hayCruce(b);
+  let grados=angle;
   if(cruce){if(angle<CRUCE_GIRO)continue}
   else{
-   if(angle<CURVA_SOLA)continue;
-   const confirma=geometriaEn(i,20);
-   if(confirma!==null&&confirma.angle<(angle>=130?100:85))continue; // descartar picos aislados
+   let vale=angle>=CURVA_SOLA;
+   if(vale){
+    const confirma=geometriaEn(i,20);
+    if(confirma!==null&&confirma.angle<(angle>=130?100:85))vale=false; // pico aislado
+   }
+   if(!vale){
+    // Lo que no es curva cerrada en 12 m puede ser una horquilla. Un pico
+    // aislado del GPS tambien cae aqui, y el prepaso no lo marca porque se va
+    // y vuelve: por eso se consulta despues y no en vez de.
+    const h=horquillas.get(i);
+    if(!h)continue;
+    grados=h;
+   }
   }
-  if(junctions.length&&dist(junctions[junctions.length-1].point,b)<35)continue;
-  const direction=angle>145?'vuelta':cross>0?'izquierda':'derecha';
-  junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(angle),cruce});
+  // Dos avisos pegados serian dos «ahora» uno encima del otro. Pero EL CRUCE
+  // MANDA: si el de antes era una curva o una horquilla y este es un cruce, se
+  // queda el cruce, que es lo que el autor pidio que no se perdiera nunca.
+  const previo=junctions[junctions.length-1];
+  if(previo&&dist(previo.point,b)<35){
+   if(!(cruce&&!previo.cruce))continue;
+   junctions.pop();
+  }
+  const direction=grados>145?'vuelta':cross>0?'izquierda':'derecha';
+  junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(grados),cruce});
  }
  enviaGirosNativos();
 }

@@ -83,18 +83,83 @@ test('No crea giro por un quiebro inferior a seis metros al inicio',()=>{
  assert.equal(detector().detect([point(-4,0),point(0,0),tramo(140,50)]).length,0);
  assert.equal(detector().detect([point(-7,0),point(0,0),tramo(140,50)]).length,1);
 });
-test('Una curva amplia no avisa, y la ventana de 12 m es la que lo decide',()=>{
- // Media vuelta con radio de 100 m: en los 12 m que se miden apenas se dobla.
- const amplia=[];
- for(let deg=-90;deg<=90;deg+=2)amplia.push(tramo(deg,100));
- assert.equal(detector().detect(amplia).length,0);
- // Un lazo de 8 m de radio tambien calla, y este caso SI depende de los 12 m:
- // midiendo sobre 20 m o mas, el mismo lazo pasa a avisar «media vuelta». Esta
- // es la prueba que sujeta VENTANA. Si algun dia el autor quiere que un lazo
- // tan cerrado como este SI avise, es esta linea la que hay que cambiar.
+test('Una curva amplia no avisa, por cerrada que acabe siendo',()=>{
+ // Media vuelta de radio 100 m: en los 12 m que se miden apenas se dobla, y en
+ // 40 m dobla 23 grados, asi que tampoco cuenta como horquilla. Lo mismo hasta
+ // radios muy justos: un arco de 15 m de radio sigue callado.
+ for(const radio of [100,60,40,25,15]){
+  const amplia=[];
+  for(let deg=-90;deg<=90;deg+=2)amplia.push(tramo(deg,radio));
+  assert.equal(detector().detect(amplia).length,0,`radio ${radio} m`);
+ }
+});
+// LAS HORQUILLAS: LAS REVUELTAS EN ZETA DE UNA PISTA QUE SUBE. Lo pidio el
+// autor el 9 de noviembre con los numeros delante: antes, de las 552 que hay
+// en sus rutas, 334 avisaban y 218 se callaban, y la diferencia era la suerte
+// de tener o no un cruce de OSM encima. Se avisa cuando el rumbo con el que
+// llegas y el rumbo con el que sales son opuestos -160 grados- en 40 m de
+// camino. Suena «curva de herradura», que es lo que ya decia el servicio.
+// Recta larga hacia el este, U de `ancho` metros, y vuelta hacia el oeste.
+// `salida` es el rumbo del ramal de vuelta: 180 es justo al reves.
+function horquilla(ancho,salida=180){
+ const points=[],G=Math.PI/180;
+ for(let x=-150;x<=0;x+=10)points.push(point(x,0));
+ for(let a=-90;a<=90;a+=15)points.push(point((ancho/2)*Math.cos(a*G),ancho/2+(ancho/2)*Math.sin(a*G)));
+ for(let d=10;d<=150;d+=10)points.push(point(d*Math.cos(salida*G),ancho+d*Math.sin(salida*G)));
+ return points;
+}
+// Una pista que sube en zeta: `n` revueltas con ramales de `largo` metros
+// separados `ancho`. Es la forma de verdad del monte, no una U suelta.
+function zeta(n,largo,ancho){
+ const points=[],G=Math.PI/180;
+ let y=0,hacia=1;
+ for(let k=0;k<n;k++){
+  const x0=hacia>0?-largo:0,x1=hacia>0?0:-largo;
+  for(let x=x0;hacia>0?x<=x1:x>=x1;x+=hacia*10)points.push(point(x,y));
+  const r=ancho/2;
+  for(let a=-90;a<=90;a+=15)points.push(point(x1+hacia*r*Math.cos(a*G),y+r+r*Math.sin(a*G)));
+  y+=ancho;hacia=-hacia;
+ }
+ for(let d=0;d<=largo;d+=10)points.push(point(hacia>0?-largo+d:-d,y));
+ return points;
+}
+test('Una horquilla de pista avisa como curva de herradura',()=>{
+ for(const ancho of [6,10,16,24]){
+  const turns=detector().detect(horquilla(ancho));
+  assert.equal(turns.length,1,`U de ${ancho} m`);
+  assert.equal(turns[0].direction,'vuelta',`U de ${ancho} m`);
+  assert.equal(turns[0].cruce,false,`U de ${ancho} m`);
+ }
+ // Una U de 40 m de ancho ya no se dobla dentro de los 40 m de la ventana: es
+ // un lazo grande, no una horquilla, y se queda callada.
+ assert.equal(detector().detect(horquilla(40)).length,0);
+ // Un lazo cerradisimo tambien cuenta.
  const lazo=[];
  for(let deg=0;deg<360;deg+=10)lazo.push(tramo(deg,8));
- assert.equal(detector().detect(lazo).length,0);
+ assert.equal(detector().detect(lazo).length,1);
+ // El umbral son 160 grados: con el ramal de vuelta a 162 avisa y a 158 no.
+ // Sin estas dos lineas, subir el umbral a 179 no se notaria: todas las
+ // horquillas de arriba doblan justo 180.
+ assert.equal(detector().detect(horquilla(10,162)).length,1,'162 grados');
+ assert.equal(detector().detect(horquilla(10,158)).length,0,'158 grados');
+});
+test('Una pista en zeta da un aviso por revuelta, no varios',()=>{
+ // Cuatro revueltas seguidas subiendo: cuatro avisos, uno en cada una.
+ for(const ancho of [10,24,30]){
+  assert.equal(detector().detect(zeta(4,60,ancho)).length,4,`ramales a ${ancho} m`);
+ }
+ assert.equal(detector().detect(zeta(3,80,16)).length,3);
+});
+test('Una S no es una horquilla: entra y sale con el mismo rumbo',()=>{
+ // Dos curvas de 10 m de radio seguidas, una a cada lado. Es la forma que mas
+ // se parece a una horquilla sin serlo; si se midiera el giro acumulado en vez
+ // del rumbo de entrada contra el de salida, esto avisaria por las dos.
+ const points=[];
+ for(let x=-100;x<=0;x+=10)points.push(point(x,0));
+ for(let a=-90;a<=0;a+=10)points.push(point(10*Math.cos(a*Math.PI/180),10+10*Math.sin(a*Math.PI/180)));
+ for(let a=180;a>=90;a-=10)points.push(point(20+10*Math.cos(a*Math.PI/180),10+10*Math.sin(a*Math.PI/180)));
+ for(let x=20;x<=120;x+=10)points.push(point(x,20));
+ assert.equal(detector().detect(points).length,0);
 });
 test('Una desviación aislada del GPS y los puntos repetidos no crean giros falsos',()=>{
  const points=[];for(let x=-60;x<=60;x+=5)points.push(point(x,x===0?10:0));
@@ -110,11 +175,13 @@ test('Una desviación aislada del GPS y los puntos repetidos no crean giros fals
 });
 // Zigzag: recta larga, giro cerrado a la izquierda, tramo de `separacion`
 // metros y vuelta al rumbo de antes, que es otro giro cerrado a la derecha.
+// El segundo vertice del zigzag, a `separacion` metros del primero.
+const vertice=separacion=>[separacion*Math.cos(140*Math.PI/180),separacion*Math.sin(140*Math.PI/180)];
 function zigzag(separacion){
  const points=[];
  for(let x=-120;x<0;x+=10)points.push(point(x,0));
  points.push(point(0,0));
- const q=[separacion*Math.cos(140*Math.PI/180),separacion*Math.sin(140*Math.PI/180)];
+ const q=vertice(separacion);
  points.push(point(q[0],q[1]));
  for(let d=10;d<=120;d+=10)points.push(point(q[0]+d,q[1]));
  return points;
@@ -126,6 +193,19 @@ test('Dos giros cerrados seguidos se avisan por separado; pegados, uno solo',()=
  assert.equal(lejos.map(j=>j.direction).join(' '),'izquierda derecha');
  // A menos de 35 m no se repite: serian dos «ahora» uno encima del otro.
  assert.equal(detector().detect(zigzag(20)).length,1);
+});
+test('De dos avisos pegados se queda el cruce, no la curva',()=>{
+ // Lo que el autor pidio que no se perdiera nunca son los CRUCES. Antes se
+ // quedaba el primero que llegara: con una curva cerrada y un cruce a 30 m,
+ // ganaba la curva y el cruce no se decia. Medido en sus 72 rutas, esto
+ // recupera 7 avisos de cruce que se estaban perdiendo.
+ const puntos=zigzag(30),q=vertice(30);
+ const turns=detector().detect(puntos,[point(q[0],q[1])]);
+ assert.equal(turns.length,1);
+ assert.equal(turns[0].cruce,true,'el que se queda es el cruce');
+ // Sin el cruce marcado, se queda la curva: el aviso no se duplica.
+ const solas=detector().detect(puntos);
+ assert.equal(solas.length,1);assert.equal(solas[0].cruce,false);
 });
 test('Rutas vacías, de dos puntos y demasiado cortas no inventan indicaciones',()=>{
  for(const points of [[],[point(0,0)],[point(0,0),point(0,50)],[point(-2,0),point(0,0),tramo(140,2)]])assert.equal(detector().detect(points).length,0);
