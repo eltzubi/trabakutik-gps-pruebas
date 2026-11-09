@@ -175,9 +175,12 @@ public class TrackingService extends Service implements LocationListener {
   if("SENTIDO".equals(action)){
    int s=i.getIntExtra("sentido",1);
    int antes=sentido;
-   sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";
-   if(sentido!=antes)habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
-     :"Vuelves al sentido de la ruta");
+   sentido=s<0?-1:1;
+   if(sentido!=antes){
+    warnedTurns.clear();upcomingTurn="";
+    habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
+      :"Vuelves al sentido de la ruta");
+   }
    if(active)updateNotice();
    return START_NOT_STICKY;
   }
@@ -258,7 +261,7 @@ public class TrackingService extends Service implements LocationListener {
   recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;
+  route.clear();routeReached=false;offRoute=false;farSince=0;sentido=1;
   File f=new File(getFilesDir(),"ruta-activa.json");
   if(!f.exists()){loadTurns();return;}
   try {
@@ -331,19 +334,24 @@ public class TrackingService extends Service implements LocationListener {
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
   double progress=0;String next="";
-  int k=0;
+  int k=0,bestTurn=-1;double bestAhead=0;
   for(int i=1;i<route.size();i++){
    double[] a=route.get(i-1),b=route.get(i);
    progress+=Math.hypot((b[1]-a[1])*lonScale,(b[0]-a[0])*scale);
    while(k<turns.size()&&(int)turns.get(k)[0]==i){
     double ahead=(progress-along)*sentido;
-    // El suelo va con la velocidad, como el techo. Con los -7 m fijos de
-    // antes el pitido del propio cruce se perdia: este GPS da una posicion
-    // cada 1,5 s, 17 m de salto a 40 km/h, y la ventana de 7 m no la pisaba
-    // ninguna lectura. Simulado con 10 arranques distintos: 5 de 10 a
-    // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
-    if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8){
-     double[] giro=turns.get(k);
+    if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8
+       &&(bestTurn<0||Math.abs(ahead-15)<Math.abs(bestAhead-15))){
+     bestTurn=k;bestAhead=ahead;
+    }
+    k++;
+   }
+  }
+  // Un único giro por posición: el mismo criterio que usa la pantalla.
+  // Anunciar todos los cruces de la ventana pisaba el primero con el siguiente.
+  if(bestTurn>=0){
+   double ahead=bestAhead;
+     double[] giro=turns.get(bestTurn);
      int d=(int)giro[1];
      boolean esCruce=giro.length<3||giro[2]!=0;
      // Al reves, lo que se grabo como derecha es izquierda.
@@ -364,7 +372,7 @@ public class TrackingService extends Service implements LocationListener {
      String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>0?"2":ahead<=0?"3"
        :ahead<=dv?"v":null;
      if(fase!=null){
-      String clave=k+":"+fase;
+      String clave=bestTurn+":"+fase;
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
@@ -373,9 +381,6 @@ public class TrackingService extends Service implements LocationListener {
        if("v".equals(fase)||"3".equals(fase))habla(fraseGiro(lado,esCruce,fase,ahead));
       }
      }
-    }
-    k++;
-   }
   }
   if(!next.equals(upcomingTurn)){upcomingTurn=next;updateNotice();}
  }

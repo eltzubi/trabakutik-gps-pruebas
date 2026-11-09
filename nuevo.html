@@ -2822,7 +2822,7 @@ setInterval(()=>{
  const mensaje='Sin posición reciente del GPS · buscando señal';
  if($('status').textContent!==mensaje)notice(mensaje);
 },5000);
-function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1){window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));enviaGirosNativos();}}catch(e){console.warn('Ruta nativa no enviada',e)}}
+function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1){window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));window.TrabakutikAndroid.setSentido?.(sentidoRuta);enviaGirosNativos();}}catch(e){console.warn('Ruta nativa no enviada',e)}}
 // Elegir una ruta prepara puntos y giros sin arrancar el GPS ni la guía.
 // Iniciar grabación activa también el servicio que avisa con pantalla apagada.
 function enciendeNavegacionNativa(){

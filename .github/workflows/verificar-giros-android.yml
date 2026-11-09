@@ -1,0 +1,26 @@
+name: Verificar giros Android
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  giros:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python3 scripts/test-native-turns.py
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Compilar APK de revisión
+        working-directory: android
+        run: gradle :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Trabakutik-GPS-revision-giros
+          path: android/app/build/outputs/apk/debug/app-debug.apk
