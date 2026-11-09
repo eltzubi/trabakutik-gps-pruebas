@@ -381,7 +381,7 @@ public class TrackingService extends Service implements LocationListener {
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
   double progress=0;String next="";
-  int k=0;
+  int k=0,mejor=-1;double mejorAhead=0;
   for(int i=1;i<route.size();i++){
    double[] a=route.get(i-1),b=route.get(i);
    progress+=Math.hypot((b[1]-a[1])*lonScale,(b[0]-a[0])*scale);
@@ -392,8 +392,20 @@ public class TrackingService extends Service implements LocationListener {
     // cada 1,5 s, 17 m de salto a 40 km/h, y la ventana de 7 m no la pisaba
     // ninguna lectura. Simulado con 10 arranques distintos: 5 de 10 a
     // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
-    if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8){
-     double[] giro=turns.get(k);
+    if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8
+       &&(mejor<0||Math.abs(ahead-15)<Math.abs(mejorAhead-15))){
+     mejor=k;mejorAhead=ahead;
+    }
+    k++;
+   }
+  }
+  // UN SOLO giro por posicion. Anunciando todos los que caian en la
+  // ventana, dos cruces seguidos sonaban pisados -«izquierda» y
+  // «derecha» de una tirada- y no habia forma de saber cual era cual.
+  // Se queda el que esta a unos 15 m, que es el que tienes delante.
+  if(mejor>=0){
+     double ahead=mejorAhead;
+     double[] giro=turns.get(mejor);
      int d=(int)giro[1];
      boolean esCruce=giro.length<3||giro[2]!=0;
      // Al reves, lo que se grabo como derecha es izquierda.
@@ -414,7 +426,7 @@ public class TrackingService extends Service implements LocationListener {
      String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>0?"2":ahead<=0?"3"
        :ahead<=dv?"v":null;
      if(fase!=null){
-      String clave=k+":"+fase;
+      String clave=mejor+":"+fase;
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
@@ -423,9 +435,6 @@ public class TrackingService extends Service implements LocationListener {
        if("v".equals(fase)||"3".equals(fase))habla(fraseGiro(lado,esCruce,fase,ahead));
       }
      }
-    }
-    k++;
-   }
   }
   if(!next.equals(upcomingTurn)){upcomingTurn=next;updateNotice();}
  }
