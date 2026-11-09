@@ -4,11 +4,17 @@ name: Revisar el codigo de Android (Lint)
 # encuentra algo, el APK se sigue compilando y publicando igual: una version
 # no se puede quedar sin salir por un aviso de estilo.
 #
-# DE MOMENTO SOLO INFORMA. El paso lleva continue-on-error porque primero hay
-# que ver que dice sobre el codigo que YA EXISTE: si fallara de entrada,
-# tendriamos el repositorio en rojo desde el primer dia, que es justo lo que
-# acabamos de arreglar. Cuando la lista este limpia, se le quita esa linea y
-# pasa a mandar de verdad.
+# YA MANDA DE VERDAD. La primera pasada saco 6 errores y 11 avisos; los 6
+# errores se ordenaron en 4.9.4 -ninguno era un fallo, comprobados uno a uno-
+# y desde entonces el paso pasa solo, asi que se le ha quitado el
+# continue-on-error que llevaba al principio. Si vuelve a salir un error,
+# este flujo se pone en rojo, que es para lo que esta.
+#
+# Falla con los ERRORES, no con los avisos. Quedan 11 avisos a proposito:
+# SetJavaScriptEnabled es toda la app -es un WebView-, GradleDependency
+# saltaria sola cada vez que alguien publique una version nueva de una
+# libreria, y las demas son cosmeticas. Si algun dia se quieren tambien en
+# rojo, se pone lint { warningsAsErrors = true } en build.gradle.kts.
 #
 # Android Lint ya venia con el plugin de Gradle: no se instala nada nuevo.
 # Ve cosas que ni las pruebas ni ESLint ven: permisos mal pedidos, APIs que
@@ -57,7 +63,6 @@ jobs:
 
       - name: Pasar Android Lint
         id: lint
-        continue-on-error: true
         run: gradle :app:lintDebug --no-daemon
 
       - name: Contar lo que ha encontrado
