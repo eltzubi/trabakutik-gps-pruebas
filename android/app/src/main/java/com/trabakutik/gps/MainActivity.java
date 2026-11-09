@@ -89,7 +89,7 @@ public class MainActivity extends Activity {
   boolean verGps = b != null && b.getBoolean("ver_gps", false);
   showScreen(verGps);
   web.loadUrl(urlGps != null && urlGps.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html")
-    ? urlGps : "https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261030b");
+    ? urlGps : "https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?appversion=20261109");
   webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
     ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
