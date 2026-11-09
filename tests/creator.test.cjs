@@ -179,3 +179,43 @@ test('Crear no ofrece selector de métodos ni instrucciones permanentes',()=>{
  assert(!html.includes("$('drawMethod')"));
  assert(!html.includes('Marca puntos en los caminos del mapa · a pie · necesita conexión.'));
 });
+
+// EL PRIMER PUNTO SE QUEDABA SIN ALTURA. En Caminos la primera ancla nace en
+// el primer toque, cuando todavia no se le ha preguntado la altura a nadie, y
+// anadeTramoMapa la reutiliza tal cual. La respuesta del servicio para ESE
+// mismo punto llega con el primer tramo. Las dos mitades importan: ponersela
+// cuando falta, y NO pisar la que presta tu propia red de rutas.
+test('el primer punto de un recorrido en Caminos recibe altura, y la prestada no se pisa',()=>{
+ const tramo=(lat,lon,h)=>({anchors:[[lat,lon,h],[lat+.001,lon,h+15]],
+  parts:[[[lat,lon,h],[lat+.001,lon,h+15]]]});
+
+ const lejos=creatorContext();
+ const suelto=lejos.nodoManualGps(43.5,-2.5);
+ assert.equal(lejos.state().red.nodos[suelto][2],null,'lejos de tus rutas nace sin altura');
+ lejos.draft([suelto],[[suelto]]);
+ lejos.anadeTramoMapa(tramo(43.5,-2.5,340));
+ assert.equal(lejos.state().red.nodos[suelto][2],340,'el tramo del planificador le pone la altura');
+
+ // La otra mitad: si el punto YA tiene altura no se le escribe encima. En el
+ // movil esa altura es la que presta tu propia red de rutas (alturaCerca, 60 m),
+ // que es lo que pediste el dia 8; aqui se pone a mano, porque la red de la
+ // prueba se construye sin el fichero de alturas y no tiene ninguna que prestar.
+ const cerca=creatorContext();
+ const prestada=cerca.nodoManualGps(43.5,-2.5,412);
+ assert.equal(cerca.state().red.nodos[prestada][2],412);
+ cerca.draft([prestada],[[prestada]]);
+ cerca.anadeTramoMapa(tramo(43.5,-2.5,777));
+ assert.equal(cerca.state().red.nodos[prestada][2],412,'la altura que ya tenia no se pisa');
+
+ // Y a un nodo de la red de caminos no se le escribe encima, aunque le falte:
+ // esa red la comparten todas las rutas y su altura sale de data/alturas.json.
+ // A cambio, una ruta empezada en Manual sobre un nodo de la red sin altura
+ // conserva ese hueco. Es raro -en el movil los nodos la traen- y es a
+ // proposito: antes de cambiarlo, preguntarselo al autor.
+ const red=creatorContext();
+ const nodo=red.nodoCerca(red.state().red,43,-2);
+ assert(nodo>=0);assert.equal(red.state().red.nodos[nodo][2],null);
+ red.draft([nodo],[[nodo]]);
+ red.anadeTramoMapa(tramo(43,-2,500));
+ assert.equal(red.state().red.nodos[nodo][2],null,'la red compartida no se toca');
+});

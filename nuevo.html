@@ -1064,6 +1064,15 @@ function anadeTramoMapa(result){
   anclasGps.push(ini);tramosGps.push([ini]);
  }
  const ini=anclasGps[anclasGps.length-1];
+ // EL PRIMER PUNTO SE QUEDABA SIN ALTURA. Esto reutiliza el ancla que ya
+ // existe, y la primera nace en el primer toque, cuando todavia no se le ha
+ // preguntado la altura a nadie -antes aplicaMapaGps rehacia TODAS las anclas
+ // con la altura del servicio, y por eso no se notaba-. Si esa ancla sigue sin
+ // altura, la respuesta para ese mismo punto llega con este tramo: se le pone.
+ // Si ya tiene -prestada de tus rutas por alturaCerca- no se toca.
+ // Solo si es un punto puesto a mano: a un nodo de la red de caminos no se le
+ // escribe encima, que lo comparten todas las rutas.
+ if(nodosManualesGps.has(ini)&&redGps.nodos[ini]&&!Number.isFinite(redGps.nodos[ini][2])&&Number.isFinite(a[2]))redGps.nodos[ini][2]=a[2];
  const fin=nodoManualGps(b[0],b[1],b[2]);
  const pts=result.parts[0]||[];
  const tr=[ini,...pts.slice(1,-1).map(q=>nodoManualGps(q[0],q[1],q[2])),fin];

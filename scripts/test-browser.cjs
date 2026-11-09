@@ -279,7 +279,12 @@ async function setup(context) {
     );
     // Coordenadas ficticias, lejos de las rutas: crear no necesita publicar
     // ni recuperar un trazado privado del servidor.
-    const personal = await browser.newContext({viewport:{width:390,height:844}});
+    // SIN SERVICE WORKER EN ESTE CONTEXTO. El puente window.__creator se
+    // inyecta interceptando la peticion de nuevo.html, y Playwright no
+    // intercepta lo que sirve el service worker: al recargar, la pagina salia
+    // de su cache sin el puente y la prueba moria con «__creator undefined».
+    // El service worker tiene su propio contexto mas abajo, el de sin conexion.
+    const personal = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
     await setup(personal);
     // El creador vive dentro de una IIFE. Solo esta respuesta de prueba
     // expone el estado: la página y la APK entregadas no llevan este puente.
