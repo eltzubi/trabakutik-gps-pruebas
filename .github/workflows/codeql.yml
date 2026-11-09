@@ -1,0 +1,61 @@
+name: Analisis a fondo (CodeQL)
+
+# ESTE FLUJO NO PUEDE ROMPER NADA, Y ESO ES A PROPOSITO.
+# Va completamente aparte: no compila el APK, no publica la pagina y no
+# escribe ni un fichero en el repositorio. Si falla o si encuentra cosas, el
+# APK se sigue compilando y publicando en su propio flujo y las pruebas
+# siguen corriendo en el suyo, igual que hoy.
+#
+# Los avisos NO salen como un fallo aqui: se suben a la pestaña Security >
+# Code scanning del repositorio, que es donde se pueden mirar con calma e ir
+# cerrando uno a uno. Por eso el flujo sale en verde aunque haya avisos.
+#
+# Es gratis: CodeQL y los minutos de GitHub Actions no se cobran en
+# repositorios publicos, y este lo es.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Los lunes por la mañana. Sirve para que aparezcan tambien los avisos
+    # nuevos que CodeQL aprende con el tiempo, sin haber tocado nosotros nada.
+    - cron: '37 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # lo unico que escribe: los avisos de la pestaña Security
+
+jobs:
+  analizar:
+    name: ${{ matrix.lenguaje }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false      # si un lenguaje falla, el otro sigue su camino
+      matrix:
+        lenguaje: [javascript-typescript, java-kotlin]
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Preparar CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.lenguaje }}
+          # Sin compilar nada. Vale para los lenguajes interpretados y
+          # tambien para este Java: el proyecto no tiene Kotlin, que es lo
+          # unico que obligaria a compilar para poder analizarlo.
+          build-mode: none
+          config: |
+            paths-ignore:
+              - vendor/**        # Leaflet no es codigo nuestro
+              - nuevo-qa.html    # resto de la rama de la APK de prueba
+              - tests/**         # las pruebas se revisan solas al fallar
+
+      - name: Analizar
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.lenguaje }}"

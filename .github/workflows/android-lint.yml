@@ -1,0 +1,112 @@
+name: Revisar el codigo de Android (Lint)
+
+# APARTE DEL FLUJO QUE COMPILA EL APK, A PROPOSITO. Si esta revision
+# encuentra algo, el APK se sigue compilando y publicando igual: una version
+# no se puede quedar sin salir por un aviso de estilo.
+#
+# DE MOMENTO SOLO INFORMA. El paso lleva continue-on-error porque primero hay
+# que ver que dice sobre el codigo que YA EXISTE: si fallara de entrada,
+# tendriamos el repositorio en rojo desde el primer dia, que es justo lo que
+# acabamos de arreglar. Cuando la lista este limpia, se le quita esa linea y
+# pasa a mandar de verdad.
+#
+# Android Lint ya venia con el plugin de Gradle: no se instala nada nuevo.
+# Ve cosas que ni las pruebas ni ESLint ven: permisos mal pedidos, APIs que
+# no existen en Android 8, fugas de memoria, recursos que no se cierran.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-lint.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-lint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar SDK Android del servidor
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Pasar Android Lint
+        id: lint
+        continue-on-error: true
+        run: gradle :app:lintDebug --no-daemon
+
+      - name: Contar lo que ha encontrado
+        if: always()
+        run: |
+          INFORME=app/build/reports/lint-results-debug.xml
+          if [ ! -s "$INFORME" ]; then
+            echo "No hay informe de lint: mira el paso de arriba." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 - "$INFORME" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import collections, sys, xml.etree.ElementTree as ET
+          # Si lint murio a medias deja el XML cortado. Eso NO puede tumbar el
+          # flujo: se dice y se sigue, que el fallo de verdad esta arriba.
+          try:
+              raiz = ET.parse(sys.argv[1]).getroot()
+          except Exception as e:
+              print('## Android Lint\n')
+              print(f'El informe esta incompleto ({e}): mira el paso de arriba.')
+              raise SystemExit
+          avisos = list(raiz.iter('issue'))
+          por_nivel = collections.Counter(a.get('severity', '?') for a in avisos)
+          print('## Android Lint\n')
+          print(f'**{len(avisos)} avisos** ·',
+                ' · '.join(f'{n}: {c}' for n, c in sorted(por_nivel.items())) or 'ninguno')
+          if not avisos:
+              raise SystemExit
+          print('\n| nivel | tipo | cuantos | donde sale el primero |')
+          print('|---|---|---|---|')
+          por_tipo = collections.defaultdict(list)
+          for a in avisos:
+              por_tipo[(a.get('severity', '?'), a.get('id', '?'))].append(a)
+          orden = {'Fatal': 0, 'Error': 1, 'Warning': 2, 'Information': 3}
+          for (nivel, tipo), lista in sorted(
+                  por_tipo.items(), key=lambda kv: (orden.get(kv[0][0], 9), -len(kv[1]))):
+              sitio = lista[0].find('location')
+              donde = '-'
+              if sitio is not None:
+                  donde = (sitio.get('file') or '').split('/')[-1]
+                  if sitio.get('line'):
+                      donde += ':' + sitio.get('line')
+              print(f'| {nivel} | {tipo} | {len(lista)} | {donde} |')
+          PY
+
+      - name: Guardar el informe entero
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-android-lint
+          path: android/app/build/reports/lint-results-debug.*
+          if-no-files-found: warn
+          retention-days: 30
