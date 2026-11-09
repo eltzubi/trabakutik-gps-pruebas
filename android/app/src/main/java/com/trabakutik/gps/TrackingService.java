@@ -12,7 +12,7 @@ import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -123,6 +123,10 @@ public class TrackingService extends Service implements LocationListener {
  }
  boolean gpsReciente(){return ultimoFixGpsElapsed>0&&SystemClock.elapsedRealtime()-ultimoFixGpsElapsed<25000;}
  String estadoGps(){
+  // Un fallo guardando va el primero: es el unico que te hace perder la
+  // salida entera, y antes no se decia en ninguna parte.
+  if(!errorGrabacion.isEmpty())return errorGrabacion;
+  if(!errorRuta.isEmpty())return errorRuta;
   if(!ubicacionActivada())return "Activa la ubicación del teléfono";
   if(!gpsReciente())return "Esperando señal GPS";
   if(offRoute)return "FUERA DE RUTA · vuelve a la línea azul";
@@ -175,9 +179,15 @@ public class TrackingService extends Service implements LocationListener {
   if("SENTIDO".equals(action)){
    int s=i.getIntExtra("sentido",1);
    int antes=sentido;
-   sentido=s<0?-1:1;warnedTurns.clear();upcomingTurn="";
-   if(sentido!=antes)habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
-     :"Vuelves al sentido de la ruta");
+   sentido=s<0?-1:1;
+   // Solo cuando el sentido cambia DE VERDAD. La pagina manda SENTIDO
+   // repetidamente, y limpiando warnedTurns en cada mensaje los giros ya
+   // avisados volvian a avisarse una y otra vez.
+   if(sentido!=antes){
+    warnedTurns.clear();upcomingTurn="";
+    habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
+      :"Vuelves al sentido de la ruta");
+   }
    if(active)updateNotice();
    return START_NOT_STICKY;
   }
@@ -240,8 +250,24 @@ public class TrackingService extends Service implements LocationListener {
    @Override public void onProviderEnabled(String p){updateNotice();}
    @Override public void onProviderDisabled(String p){updateNotice();}
   };
+  // Sin permiso, requestLocationUpdates lanza SecurityException. Antes se
+  // tragaba la excepcion con «red» ya asignada, asi que esta funcion no
+  // volvia a intentarlo nunca: la posicion por red se quedaba muerta para
+  // siempre aunque luego concedieras el permiso.
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED
+    && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   android.util.Log.w("TrabakutikGPS","Sin permiso para la ubicación por red");
+   red=null;
+   return;
+  }
   try{manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,5,red,Looper.getMainLooper());}
-  catch(Exception ignored){}
+  catch(SecurityException ex){
+   android.util.Log.w("TrabakutikGPS","Permiso de ubicación revocado al registrar red",ex);
+   red=null;
+  }catch(IllegalArgumentException ex){
+   android.util.Log.w("TrabakutikGPS","Proveedor de ubicación por red no disponible",ex);
+   red=null;
+  }
  }
  void sueltaRed(){
   if(red==null)return;
@@ -252,21 +278,39 @@ public class TrackingService extends Service implements LocationListener {
   File dir=new File(getFilesDir(),"grabaciones");dir.mkdirs();
   String name=new SimpleDateFormat("yyyyMMdd-HHmmss",Locale.ROOT).format(new Date());
   file=new File(dir,"trabakutik-"+name+".gpx");
+  errorGrabacion="";
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
   recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;
+  route.clear();routeReached=false;offRoute=false;farSince=0;errorRuta="";
   File f=new File(getFilesDir(),"ruta-activa.json");
   if(!f.exists()){loadTurns();return;}
+  // Los dos topes de antes -2 MB de fichero y 15.000 puntos- recortaban la
+  // ruta sin decir nada: te ibas al monte navegando media ruta y creyendo
+  // que la llevabas entera. Mejor no navegar que navegar a medias.
+  if(f.length()>2000000){
+   android.util.Log.e("TrabakutikGPS","Ruta de "+f.length()+" bytes, por encima del limite");
+   errorRuta="Ruta demasiado grande para navegar";loadTurns();return;
+  }
   try {
-   byte[] raw=new byte[(int)Math.min(f.length(),2000000)];
+   byte[] raw=new byte[(int)f.length()];
    try(FileInputStream in=new FileInputStream(f)){int n=0,k;while(n<raw.length&&(k=in.read(raw,n,raw.length-n))>0)n+=k;}
    JSONArray pts=new JSONArray(new String(raw,java.nio.charset.StandardCharsets.UTF_8));
-   for(int i=0;i<pts.length()&&i<15000;i++){JSONArray p=pts.optJSONArray(i);if(p!=null&&p.length()>=2){double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);if(Double.isFinite(lat)&&Double.isFinite(lon))route.add(new double[]{lat,lon});}}
-  }catch(Exception ignored){}
+   if(pts.length()>15000)throw new IllegalArgumentException("Ruta con mas de 15000 puntos");
+   for(int i=0;i<pts.length();i++){
+    JSONArray p=pts.optJSONArray(i);if(p==null||p.length()<2)continue;
+    double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);
+    if(Double.isFinite(lat)&&Double.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180)
+     route.add(new double[]{lat,lon});
+   }
+  }catch(Exception ex){
+   route.clear();
+   android.util.Log.e("TrabakutikGPS","Ruta ilegible o incompleta",ex);
+   errorRuta="No se pudo leer la ruta para navegar";
+  }
   loadTurns();
  }
  void loadTurns(){
@@ -493,7 +537,14 @@ public class TrackingService extends Service implements LocationListener {
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
    forzarCorte=false;
    points++;if(points%10==0)updateNotice();
-  }catch(Exception ignored){}
+   if(!errorGrabacion.isEmpty()){errorGrabacion="";updateNotice();}
+  }catch(Exception ex){
+   android.util.Log.e("TrabakutikGPS","No se pudo escribir el punto en el GPX",ex);
+   if(errorGrabacion.isEmpty()){
+    errorGrabacion="ERROR guardando GPX · comprueba el espacio libre";
+    updateNotice();
+   }
+  }
  }
  Location makePreviousLocation(){Location p=new Location(LocationManager.GPS_PROVIDER);p.setLatitude(lastRecordedLat);p.setLongitude(lastRecordedLon);return p;}
  void endRecording(){
