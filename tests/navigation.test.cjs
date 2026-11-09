@@ -416,3 +416,29 @@ test('Avanzar por la ruta al revés mantiene la guía; estar quieto la caduca',(
  assert.equal(c.avanzaPorLaRuta(70,30000),true);
  assert.equal(c.avanzaPorLaRuta(70,51000),false);
 });
+
+test('El número de versión sale solo en la app, y una APK vieja se nota',()=>{
+ // Lo pidio el autor para no tener que ir a los Ajustes de Android. En un
+ // navegador no se pone nada, que ahi no hay APK; y una APK anterior a la
+ // 4.9.3 no sabe decir su version, asi que se dice eso, que tambien contesta.
+ const casos=[
+  [{},'',true,'en un navegador no se pone nada'],
+  [{TrabakutikAndroid:{}},'Trabakutik GPS · versión anterior a la 4.9.3',false,'APK vieja'],
+  [{TrabakutikAndroid:{getAppVersion:()=>''}},'Trabakutik GPS · versión anterior a la 4.9.3',false,'APK que devuelve vacio'],
+  [{TrabakutikAndroid:{getAppVersion(){throw Error('no existe')}}},'Trabakutik GPS · versión anterior a la 4.9.3',false,'APK que revienta'],
+  [{TrabakutikAndroid:{getAppVersion:()=>'4.9.3'}},'Trabakutik GPS 4.9.3',false,'APK al dia'],
+ ];
+ for(const [ventana,texto,oculto,quien] of casos){
+  const clases=new Set(['hidden']);
+  const nodo={textContent:'',classList:{add:k=>clases.add(k),remove:k=>clases.delete(k),contains:k=>clases.has(k)}};
+  const c={$:id=>(id==='appVersion'?nodo:null),window:ventana};
+  vm.createContext(c);
+  vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
+  assert.equal(nodo.textContent,texto,quien);
+  assert.equal(clases.has('hidden'),oculto,quien);
+ }
+ // Y si el hueco no existe en la pagina, no revienta.
+ const c={$:()=>null,window:{TrabakutikAndroid:{getAppVersion:()=>'4.9.3'}}};
+ vm.createContext(c);
+ vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
+});

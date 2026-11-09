@@ -312,6 +312,12 @@ public class MainActivity extends Activity {
   if(current==null||!current.equals(url))web.loadUrl(url);
  }
  public class Bridge {
+  // La version de la APK, para que la pagina la pueda ensenar. Se saca del
+  // paquete instalado y no de una constante escrita a mano, que se queda vieja.
+  @JavascriptInterface public String getAppVersion(){
+   try{String v=getPackageManager().getPackageInfo(getPackageName(),0).versionName;return v==null?"":v;}
+   catch(Exception e){return "";}
+  }
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
   /** Solo la posicion, sin el trazado. El snapshot entero devuelve los puntos
    *  cada vez que cambia el archivo, que grabando es con cada punto nuevo, y

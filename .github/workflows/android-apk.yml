@@ -87,12 +87,24 @@ jobs:
           cp android/app/build/outputs/apk/debug/app-debug.apk TrabakutikGPS.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add TrabakutikGPS.apk
+          VERSION=$(grep -o 'versionName = "[^"]*"' android/app/build.gradle.kts | cut -d'"' -f2)
+          # EL NUMERO DE VERSION EN LA WEB, PUESTO AQUI Y NO A MANO. Escrito a
+          # mano se queda viejo en la primera version que se nos olvide.
+          python3 - "$VERSION" <<'PY'
+          import pathlib,re,sys
+          v=sys.argv[1]
+          p=pathlib.Path('instalar.html');t=p.read_text(encoding='utf-8')
+          n=re.sub(r'(<!--VER-->).*?(<!--/VER-->)',lambda m:m.group(1)+v+m.group(2),t,flags=re.S)
+          if n==t and ('<!--VER-->'+v+'<!--/VER-->') not in t:
+              raise SystemExit('No esta la marca <!--VER--> en instalar.html: el numero de version no se ha puesto')
+          p.write_text(n,encoding='utf-8')
+          print('instalar.html: version',v)
+          PY
+          git add TrabakutikGPS.apk instalar.html
           if git diff --cached --quiet; then
-            echo "El APK no ha cambiado"
+            echo "Ni el APK ni la version de la web han cambiado"
             exit 0
           fi
-          VERSION=$(grep -o 'versionName = "[^"]*"' android/app/build.gradle.kts | cut -d'"' -f2)
           git commit -m "Publicar TrabakutikGPS.apk $VERSION en la web de instalacion"
           git pull --rebase origin main
           git push origin HEAD:main

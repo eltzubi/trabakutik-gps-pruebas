@@ -42,6 +42,7 @@ async function setup(context) {
       complete: true,
     };
     window.TrabakutikAndroid = {
+      getAppVersion: () => "4.9.3",
       getPosition: () =>
         JSON.stringify({
           active: window.__native.active,
@@ -230,6 +231,11 @@ async function setup(context) {
       0,
     );
     assert(await page.locator("#recordStart").isVisible());
+    assert.equal(
+      await page.locator("#appVersion").textContent(),
+      "Trabakutik GPS 4.9.3",
+      "el numero de version se ve en la app",
+    );
     assert.match(await page.locator("#distance").textContent(), /\+96 \/ -96/);
     fs.mkdirSync(path.join(root, ".test-artifacts"), { recursive: true });
     await page.screenshot({
