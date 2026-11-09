@@ -18,15 +18,23 @@ public class NativeTurnsTest {
  double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
  void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){spoken.add(Integer.parseInt(s));}
  String fraseGiro(int lado,boolean cruce,String fase,double ahead){return ""+lado;}
-'''+method(' void checkTurns(Location l)')+'''
+'''+method(' static double coste(double ahead)')+method(' void checkTurns(Location l)')+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
+ static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  public static void main(String[] args){
   NativeTurnsTest c=setup();c.checkTurns(new Location(0));require(c.spoken.equals(Arrays.asList(-1)),"Debe anunciar solo la izquierda próxima, no la derecha posterior: "+c.spoken);require(c.upcomingTurn.startsWith("Izquierda"),c.upcomingTurn);
   c.checkTurns(new Location(0));require(c.spoken.size()==1,"No repetir la misma fase");
   c=setup();c.sentido=-1;c.checkTurns(new Location(280));require(c.spoken.equals(Arrays.asList(-1)),"En inverso, la derecha próxima se convierte en izquierda: "+c.spoken);
   c=setup();c.checkTurns(new Location(145));require(c.upcomingTurn.startsWith("Derecha"),"Un giro ya pasado no debe tapar el siguiente");
-  System.out.println("PASS Java: giro próximo, voz única, inverso y giro pasado");
+  // Dos cruces dentro de la misma ventana, uno detras y otro delante: manda
+  // el que viene. Con el criterio de «el mas cercano a 15 m» ganaba el de
+  // atras y el de delante no se avisaba.
+  c=setup2();c.checkTurns(new Location(95));require(c.upcomingTurn.startsWith("Derecha"),"Un cruce 25 m atras no debe tapar al que viene a 75 m: "+c.upcomingTurn);
+  // Pero el que acabas de cruzar si manda: para eso esta el suelo negativo
+  // de la ventana, para no perder el pitido del propio cruce.
+  c=setup2();c.checkTurns(new Location(75));require(c.spoken.equals(Arrays.asList(-1)),"El cruce recien pasado debe seguir sonando: "+c.spoken);
+  System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras y cruce recien pasado");
  }
 }'''
 if '--generate-junit' in sys.argv:

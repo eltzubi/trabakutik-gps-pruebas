@@ -125,8 +125,11 @@ public class TrackingService extends Service implements LocationListener {
  String estadoGps(){
   // Un fallo guardando va el primero: es el unico que te hace perder la
   // salida entera, y antes no se decia en ninguna parte.
-  if(!errorGrabacion.isEmpty())return errorGrabacion;
-  if(!errorRuta.isEmpty())return errorRuta;
+  // Cada aviso, solo mientras tenga sentido: sin esto, un fallo al grabar
+  // seguia en pantalla despues de parar, y el de la ruta salia aunque
+  // estuvieras solo grabando sin navegar.
+  if(recording&&!errorGrabacion.isEmpty())return errorGrabacion;
+  if(navigating&&!errorRuta.isEmpty())return errorRuta;
   if(!ubicacionActivada())return "Activa la ubicación del teléfono";
   if(!gpsReciente())return "Esperando señal GPS";
   if(offRoute)return "FUERA DE RUTA · vuelve a la línea azul";
@@ -361,6 +364,13 @@ public class TrackingService extends Service implements LocationListener {
  // de 12 km/h para arriba no cambia nada, porque ahi manda ya el v*18.
  double avisoVoz(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(200,Math.max(35,v*18));}
  double avisoCorto(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(30,Math.max(8,v*3));}
+ // Cual de los giros de la ventana es «el tuyo». Manda el que tienes
+ // DELANTE y mas cerca; uno ya pasado solo gana si lo acabas de cruzar,
+ // que es para lo que existe el suelo negativo de la ventana: que no se
+ // pierda el pitido del propio cruce cuando el GPS da un salto de 17 m.
+ // Penalizar los metros de atras por cuatro deja las dos cosas: a -5 m
+ // gana al que viene a +75, y a -30 ya no le gana al que viene a +70.
+ static double coste(double ahead){return ahead>=0?ahead:-ahead*4;}
  void checkTurns(Location l){
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
   double lat=l.getLatitude(),lon=l.getLongitude();
@@ -393,7 +403,7 @@ public class TrackingService extends Service implements LocationListener {
     // ninguna lectura. Simulado con 10 arranques distintos: 5 de 10 a
     // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
     if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8
-       &&(mejor<0||Math.abs(ahead-15)<Math.abs(mejorAhead-15))){
+       &&(mejor<0||coste(ahead)<coste(mejorAhead))){
      mejor=k;mejorAhead=ahead;
     }
     k++;
