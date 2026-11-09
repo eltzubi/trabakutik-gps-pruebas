@@ -248,7 +248,24 @@ async function setup(context) {
     });
     await page.waitForTimeout(1300);
     await page.evaluate(() => window.trabakutikSyncNative());
+    // Al arrancar la guia la pantalla se despeja: la botonera de abajo se
+    // esconde sola y vuelve con el boton de mandos. Hay que pasar por ahi,
+    // igual que en el monte, para poder pulsar Parar.
+    assert(
+      !(await page.locator("#recordStop").isVisible()),
+      "al grabar, la botonera se esconde sola",
+    );
+    assert(await page.locator("#despeja").isVisible());
+    await page.click("#despeja");
+    assert(
+      await page.locator("#recordStop").isVisible(),
+      "el boton de mandos devuelve la botonera",
+    );
     await page.click("#recordStop");
+    assert(
+      await page.locator("#saveRecording").isVisible(),
+      "al parar, la botonera vuelve sin tocar nada",
+    );
     await page.click("#saveRecording");
     assert.equal(
       await page.evaluate(() => window.__native.saves),

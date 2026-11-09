@@ -10,6 +10,9 @@ function source(start,end){
  return html.slice(a,b);
 }
 const point=(x,y)=>[43.2+y/111195,-2.5+x/(111195*Math.cos(43.2*Math.PI/180))];
+// Punto a `largo` metros del origen en la direccion `deg` (0 = hacia el este,
+// positivo = hacia la izquierda de quien viene del oeste).
+const tramo=(deg,largo)=>point(largo*Math.cos(deg*Math.PI/180),largo*Math.sin(deg*Math.PI/180));
 function meters(a,b){
  const r=Math.PI/180,q=Math.sin((b[0]-a[0])*r/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;
  return 12742000*Math.asin(Math.min(1,Math.sqrt(q)));
@@ -24,32 +27,49 @@ function detector(){
 }
 function corner(deg){
  const points=[];for(let x=-50;x<=0;x+=5)points.push(point(x,0));
- for(let d=5;d<=50;d+=5)points.push(point(d*Math.cos(deg*Math.PI/180),d*Math.sin(deg*Math.PI/180)));
+ for(let d=5;d<=50;d+=5)points.push(tramo(deg,d));
  return points;
 }
-test('La copia simplificada de tres puntos conserva los giros de 90° en ambos sentidos',()=>{
- for(const [angle,direction] of [[90,'izquierda'],[-90,'derecha']]){
+// LOS UMBRALES JUSTOS NO VALEN PARA MEDIR. Sin cruce se avisa desde 130°, en un
+// cruce desde 45°, y se dice «vuelta» por encima de 145°; pero con esta
+// geometria corner(130) mide 129,999999999 y corner(45) mide 44,999999999, asi
+// que el umbral exacto cae del lado que NO avisa. Por eso aqui no se usa nunca
+// el valor del umbral: hasta 125 no avisa y desde 135 si; en un cruce, 40 no y
+// 50 si; «vuelta» se mide con 150, no con 145.
+test('La copia simplificada de tres puntos conserva los giros cerrados en ambos sentidos',()=>{
+ for(const [angle,direction] of [[140,'izquierda'],[-140,'derecha']]){
   const c=detector(),turns=c.detect(corner(angle));
   assert.equal(c.routePoints.length,3);assert.equal(turns.length,1);
   assert.equal(turns[0].direction,direction);assert.equal(turns[0].cruce,false);
-  assert(Math.abs(turns[0].angle-90)<=1);
+  assert(Math.abs(turns[0].angle-140)<=1);
  }
 });
-test('Sin OSM: no avisa giros pequeños; sí giros cerrados y cambios de sentido',()=>{
- for(const angle of [0,15,30,45,60,75])assert.equal(detector().detect(corner(angle)).length,0,`${angle} grados`);
- for(const angle of [90,110,140,160,180]){
+test('Sin OSM: solo avisa curvas cerradas, no las esquinas corrientes',()=>{
+ // Lo pidio asi el autor: «en realidad solo queria que me indicaran los
+ // cruces, no las curvas». Una esquina de 90° sin cruce conocido NO avisa.
+ for(const angle of [0,15,30,45,60,75,90,110,125])assert.equal(detector().detect(corner(angle)).length,0,`${angle} grados`);
+ for(const angle of [135,140,150,170,180]){
   const turns=detector().detect(corner(angle));assert.equal(turns.length,1,`${angle} grados`);
-  if(angle>=160)assert.equal(turns[0].direction,'vuelta');
+  assert.equal(turns[0].direction,angle>145?'vuelta':'izquierda',`${angle} grados`);
  }
 });
 test('En un cruce identificado anuncia un cambio de camino y lo distingue de una curva',()=>{
  const turns=detector().detect(corner(60),[point(0,0)]);
  assert.equal(turns.length,1);assert.equal(turns[0].cruce,true);
+ // En un cruce conocido basta con 45°, que es lo que distingue un cambio de
+ // camino de una curva: 50 avisa, 40 y 20 se callan.
+ assert.equal(detector().detect(corner(50),[point(0,0)]).length,1);
+ assert.equal(detector().detect(corner(40),[point(0,0)]).length,0);
  assert.equal(detector().detect(corner(20),[point(0,0)]).length,0);
+ // El cruce cuenta si esta a menos de 25 m del giro, no solo justo encima:
+ // el nodo de OSM casi nunca cae en el mismo punto que el vertice del GPX.
+ assert.equal(detector().detect(corner(60),[point(0,20)])[0].cruce,true);
+ assert.equal(detector().detect(corner(60),[point(0,30)]).length,0);
 });
-test('Detecta giros importantes cerca de los extremos de la ruta',()=>{
- const cercaInicio=[point(-7,0),point(0,0),point(0,45)];
- const cercaFinal=[point(-45,0),point(0,0),point(0,7)];
+test('Detecta giros cerrados cerca de los extremos de la ruta',()=>{
+ // Con menos de 12 m a un lado se mide sobre lo que hay; el giro no se pierde.
+ const cercaInicio=[point(-7,0),point(0,0),tramo(140,45)];
+ const cercaFinal=[point(-45,0),point(0,0),tramo(140,7)];
  for(const points of [cercaInicio,cercaFinal]){
   const turns=detector().detect(points);
   assert.equal(turns.length,1);
@@ -57,28 +77,71 @@ test('Detecta giros importantes cerca de los extremos de la ruta',()=>{
  }
 });
 test('No crea giro por un quiebro inferior a seis metros al inicio',()=>{
- assert.equal(detector().detect([point(-4,0),point(0,0),point(0,50)]).length,0);
+ // El giro es el mismo que avisa en la prueba anterior: lo unico que lo calla
+ // es el margen de 6 m. El segundo caso lo demuestra -con 7 m si avisa-, para
+ // que esta prueba no pase por el angulo en vez de por la guarda.
+ assert.equal(detector().detect([point(-4,0),point(0,0),tramo(140,50)]).length,0);
+ assert.equal(detector().detect([point(-7,0),point(0,0),tramo(140,50)]).length,1);
 });
-test('Una curva amplia de 90° no produce un aviso de giro cerrado',()=>{
- const points=[];
- for(let deg=-90;deg<=0;deg+=2)points.push(point(100*Math.cos(deg*Math.PI/180),100*Math.sin(deg*Math.PI/180)));
- assert.equal(detector().detect(points).length,0);
+test('Una curva amplia no avisa, y la ventana de 12 m es la que lo decide',()=>{
+ // Media vuelta con radio de 100 m: en los 12 m que se miden apenas se dobla.
+ const amplia=[];
+ for(let deg=-90;deg<=90;deg+=2)amplia.push(tramo(deg,100));
+ assert.equal(detector().detect(amplia).length,0);
+ // Un lazo de 8 m de radio tambien calla, y este caso SI depende de los 12 m:
+ // midiendo sobre 20 m o mas, el mismo lazo pasa a avisar «media vuelta». Esta
+ // es la prueba que sujeta VENTANA. Si algun dia el autor quiere que un lazo
+ // tan cerrado como este SI avise, es esta linea la que hay que cambiar.
+ const lazo=[];
+ for(let deg=0;deg<360;deg+=10)lazo.push(tramo(deg,8));
+ assert.equal(detector().detect(lazo).length,0);
 });
 test('Una desviación aislada del GPS y los puntos repetidos no crean giros falsos',()=>{
  const points=[];for(let x=-60;x<=60;x+=5)points.push(point(x,x===0?10:0));
  assert.equal(detector().detect(points).length,0);
- const repeats=[point(-50,0),point(-50,0),point(0,0),point(0,0),point(0,50)];
+ // Un salto del GPS de 12 m de lado, con los vecinos a 4 m, mide 143° sobre
+ // 12 m, asi que pasaria de largo el umbral de curva cerrada. Lo descarta la
+ // confirmacion a 20 m, que para entonces ya ha vuelto a la recta. Es el unico
+ // caso medido en el que esa confirmacion decide algo: si se toca, se nota aqui.
+ const salto=[point(-120,0),point(-4,0),point(0,12),point(4,0),point(120,0)];
+ assert.equal(detector().detect(salto).length,0);
+ const repeats=[point(-50,0),point(-50,0),point(0,0),point(0,0),tramo(140,50)];
  assert.equal(detector().detect(repeats).length,1);
 });
+// Zigzag: recta larga, giro cerrado a la izquierda, tramo de `separacion`
+// metros y vuelta al rumbo de antes, que es otro giro cerrado a la derecha.
+function zigzag(separacion){
+ const points=[];
+ for(let x=-120;x<0;x+=10)points.push(point(x,0));
+ points.push(point(0,0));
+ const q=[separacion*Math.cos(140*Math.PI/180),separacion*Math.sin(140*Math.PI/180)];
+ points.push(point(q[0],q[1]));
+ for(let d=10;d<=120;d+=10)points.push(point(q[0]+d,q[1]));
+ return points;
+}
+test('Dos giros cerrados seguidos se avisan por separado; pegados, uno solo',()=>{
+ const lejos=detector().detect(zigzag(40));
+ assert.equal(lejos.length,2);
+ // Comparado como texto: el array lo crea el vm y deepStrictEqual mira el prototipo.
+ assert.equal(lejos.map(j=>j.direction).join(' '),'izquierda derecha');
+ // A menos de 35 m no se repite: serian dos «ahora» uno encima del otro.
+ assert.equal(detector().detect(zigzag(20)).length,1);
+});
 test('Rutas vacías, de dos puntos y demasiado cortas no inventan indicaciones',()=>{
- for(const points of [[],[point(0,0)],[point(0,0),point(0,50)],[point(-2,0),point(0,0),point(0,2)]])assert.equal(detector().detect(points).length,0);
+ for(const points of [[],[point(0,0)],[point(0,0),point(0,50)],[point(-2,0),point(0,0),tramo(140,2)]])assert.equal(detector().detect(points).length,0);
 });
 test('Los índices enviados a Android corresponden a la ruta simplificada',()=>{
  const c=detector(),sent=[];c.window.TrabakutikAndroid.setJunctions=json=>sent.push(JSON.parse(json));
  vm.runInContext(source('function enviaGirosNativos(){','function computeJunctions(){'),c);
- c.detect(corner(-90));assert.equal(sent.length,1);
+ c.detect(corner(-140));assert.equal(sent.length,1);
  assert.equal(sent[0][0].i,1);assert.equal(sent[0][0].dir,1);assert.equal(sent[0][0].t,0);
  assert(sent[0][0].i<c.routePoints.length);
+ // Un giro en un cruce conocido viaja marcado con t:1; el servicio lo dice de
+ // otra manera -«toma el camino de la derecha» y no «gira a la derecha»-.
+ const d=detector(),cruces=[];d.window.TrabakutikAndroid.setJunctions=json=>cruces.push(JSON.parse(json));
+ vm.runInContext(source('function enviaGirosNativos(){','function computeJunctions(){'),d);
+ d.detect(corner(60),[point(0,0)]);
+ assert.deepEqual(cruces.at(-1),[{i:1,dir:-1,t:1}]);
 });
 function savedFlow(){
  const c=detector(),nodes=new Map(),calls=[];
@@ -95,7 +158,7 @@ function savedFlow(){
  vm.runInContext(source('function sameTrack(a,b){','function clearDraft(){'),c);
  vm.runInContext(source("$('recordStart').onclick=",'// En un circuito te cruzas'),c);
  c.calls=calls;
- c.save=(points=corner(90))=>{c.drawPoints=points;c.pendingSave={points,name:'Mi ruta',kind:'created'};c.savePendingToMine()};
+ c.save=(points=corner(140))=>{c.drawPoints=points;c.pendingSave={points,name:'Mi ruta',kind:'created'};c.savePendingToMine()};
  return c;
 }
 test('Abrir una ruta guardada prepara puntos y giros sin iniciar GPS ni navegación',()=>{
@@ -120,11 +183,11 @@ test('Grabar sin una ruta conserva la grabación libre y lo dice con claridad',(
  assert.equal(c.status,'Grabando · sin ruta activa para navegar');
 });
 test('Un borrador modificado después de guardar no activa silenciosamente la copia antigua',()=>{
- const c=savedFlow();c.save();c.drawPoints=corner(-90);c.$('recordStart').onclick();
+ const c=savedFlow();c.save();c.drawPoints=corner(-140);c.$('recordStart').onclick();
  assert.equal(c.routePoints.length,0);assert.equal(c.recording,true);
 });
 test('Una ruta que ya estaba activa tiene prioridad al iniciar la grabación',()=>{
- const c=savedFlow();c.save();c.routePoints=c.compactRoutePoints(corner(-90));c.computeJunctions();
+ const c=savedFlow();c.save();c.routePoints=c.compactRoutePoints(corner(-140));c.computeJunctions();
  c.$('mapTitle').textContent='Otra ruta';c.$('recordStart').onclick();
  assert.equal(c.junctions[0].direction,'derecha');assert.equal(c.$('mapTitle').textContent,'Otra ruta');
  assert.match(c.status,/Grabando y siguiendo · Otra ruta/);
@@ -144,7 +207,7 @@ function endSessionFlow(){
   recording:true,recordingPendingSave:false,recorded:[point(0,0),point(10,0)],recordLayer:{},
   lastBrowserRecordTime:1,lastBrowserRecordPoint:point(10,0),pausado:false,
   fuenteNativa:true,ultimoTiempoNativo:1,apagadoHasta:0,position:point(10,0),me:{},
-  routePoints:corner(90),lastCourse:1,courseFix:point(0,0),ultimoFix:1,refParado:point(0,0),refParadoT:1,
+  routePoints:corner(140),lastCourse:1,courseFix:point(0,0),ultimoFix:1,refParado:point(0,0),refParadoT:1,
   followGps:false,manualMapUntil:1,routeCumulative:[],ultimoAlong:null,lastNativeSync:0,lastNativeTrackVersion:'',cortesGrabacion:0,reconciliaBotonera(){},
   map:{removeLayer(){calls.push('remove-layer')}},resetJunctionView(){calls.push('reset-turn');c.junctionActive=-1},resetOffRoute(){calls.push('reset-off-route')},
   pintaBotonNavegar(){calls.push('nav-button')},recordingControls:state=>c.controls=state,
@@ -214,19 +277,28 @@ test('Cancelar Parar y usar Pausa mantienen la navegación activa',()=>{
 });
 
 
-test('La botonera no recupera un segundo inicio de Navegar al parar o guardar',()=>{
- const hidden=new Set();
- const c={$:()=>({classList:{add:k=>hidden.add(k)}})};vm.createContext(c);
- vm.runInContext(source('function pintaBotonNavegar(){','function reconciliaBotonera(){'),c);
+test('La botonera no recupera un segundo inicio de Navegar, y el pie sigue a la guía',()=>{
+ // Cada id lleva sus propias clases: con un unico juego compartido, esconder
+ // el pie de mandos tapaba que el boton de Navegar hubiera reaparecido.
+ const clases=new Map(),g=id=>{if(!clases.has(id))clases.set(id,new Set());return clases.get(id)},cuerpo=new Set();
+ const c={$:id=>({textContent:'',classList:{add:k=>g(id).add(k),remove:k=>g(id).delete(k),contains:k=>g(id).has(k),toggle(k,on){if(on)g(id).add(k);else g(id).delete(k)}}}),
+  document:{body:{classList:{contains:k=>cuerpo.has(k),toggle(k,on){if(on)cuerpo.add(k);else cuerpo.delete(k)}}}},
+  map:{invalidateSize(){}}};
+ c.guiaIniciada=()=>c.navegaNativo;
+ vm.createContext(c);
+ vm.runInContext(source('let guiandoAntes=false;','function reconciliaBotonera(){'),c);
  for(const active of [false,true,false]){
-  c.navegaNativo=active;c.enLaApp=true;c.mode='nav';c.routePoints=corner(90);
-  c.pintaBotonNavegar();assert(hidden.has('hidden'));
+  c.navegaNativo=active;c.enLaApp=true;c.mode='nav';c.routePoints=corner(140);
+  c.pintaBotonNavegar();
+  assert(g('navGo').has('hidden'),`Navegar visible con la guia ${active?'activa':'parada'}`);
+  assert.equal(g('despeja').has('hidden'),!active,`pie de mandos con la guia ${active?'activa':'parada'}`);
+  assert.equal(cuerpo.has('despejado'),active,`pantalla despejada con la guia ${active?'activa':'parada'}`);
  }
 });
 
 test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progreso antes de grabar',()=>{
  const calls=[],classes=new Set();
- const c={mode:'nav',routePoints:corner(90),recording:false,navegaNativo:false,gpsApagadoPorTi:false,
+ const c={mode:'nav',routePoints:corner(140),recording:false,navegaNativo:false,gpsApagadoPorTi:false,
   $:()=>({classList:{add:k=>classes.add(k)},innerHTML:''}),routeCumulative:[0,100],
   sigueMoviendose:()=>true,alerted:false,junctions:[{}],junctionActive:1,
   resetJunctionView:()=>calls.push('reset-turn'),Number,
