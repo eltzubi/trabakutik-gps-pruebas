@@ -14,6 +14,10 @@ on:
 jobs:
   sintaxis:
     runs-on: ubuntu-latest
+    # node --test NO corta por su cuenta: si una prueba se queda esperando una
+    # respuesta que no llega, el trabajo seguiria ahi seis horas -lo que pone
+    # GitHub por defecto- gastando minutos para nada. Con esto se corta en 10.
+    timeout-minutes: 10
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
@@ -48,6 +52,7 @@ jobs:
 
   navegador:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

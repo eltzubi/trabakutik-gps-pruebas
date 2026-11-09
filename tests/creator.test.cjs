@@ -87,15 +87,38 @@ test('Manual permite mover un punto de la red fuera de los trazados',()=>{
   assert.equal(s.segments[1].manual,true);
 });
 
+// Codifica una polilinea como la devuelve Valhalla: 6 decimales.
+function codificaValhalla(pts){
+ let salida='',lat=0,lon=0;
+ const trozo=v=>{let s='',x=v<0?~(v<<1):(v<<1);
+  while(x>=0x20){s+=String.fromCharCode((0x20|(x&0x1f))+63);x>>=5}
+  return s+String.fromCharCode(x+63)};
+ for(const p of pts){
+  const la=Math.round(p[0]*1e6),lo=Math.round(p[1]*1e6);
+  salida+=trozo(la-lat)+trozo(lo-lon);lat=la;lon=lo;
+ }
+ return salida;
+}
+// La respuesta del planificador, con el rodeo de +0,001 que usan las pruebas
+// para comprobar que no se recorta la curva recibida.
 function mapReply(coords){
- return {code:'Ok',waypoints:coords.map(p=>({location:[p[1],p[0]]})),routes:[{legs:coords.slice(1).map((p,i)=>({steps:[{geometry:{type:'LineString',coordinates:[[coords[i][1],coords[i][0]],[coords[i][1]+.001,coords[i][0]],[p[1]+.001,p[0]],[p[1],p[0]]]}}]}))}]};
+ return {trip:{status:0,units:'kilometers',
+  locations:coords.map(p=>({lat:p[0],lon:p[1],type:'break'})),
+  legs:coords.slice(1).map((p,i)=>({shape:codificaValhalla(
+    [[coords[i][0],coords[i][1]],[coords[i][0],coords[i][1]+.001],[p[0],p[1]+.001],[p[0],p[1]]])}))}};
 }
 test('el planificador conserva las curvas recibidas y funciona sin tracks guardados',async()=>{
  const c=creatorContext(),coords=[[43,-2],[43.001,-2]];
  vm.runInContext('seguirMapaGps=true;redGps=construyeRed([],null)',c);
- c.fetch=async url=>{
+ c.fetch=async(url,opciones)=>{
   if(url.includes('/height?')){const q=JSON.parse(new URL(url).searchParams.get('json'));return {ok:true,json:async()=>({height:q.shape.map((p,i)=>100+i*2),shape:q.shape})};}
-  assert.match(url,/routed-foot/);assert.match(url,/geometries=geojson/);assert.match(url,/steps=true/);return {ok:true,status:200,json:async()=>mapReply(coords)};
+  assert.match(url,/valhalla1\.openstreetmap\.de\/route/,'va al planificador de Valhalla');
+  // A PIE. Con el perfil de coche las sendas y los caminos de monte no
+  // existen, que es justo lo que el autor necesita que si exista.
+  const pedido=JSON.parse(opciones.body);
+  assert.equal(pedido.costing,'pedestrian','pide el perfil de a pie');
+  assert.equal(pedido.locations.length,coords.length);
+  return {ok:true,status:200,json:async()=>mapReply(coords)};
  };
  await c.planificaMapaGps(coords);
  const s=c.state();assert.equal(s.anchors.length,2);assert(s.segments[1].length>=4);
@@ -105,11 +128,33 @@ test('el planificador conserva las curvas recibidas y funciona sin tracks guarda
 });
 test('si no hay camino o servicio conserva el borrador sin dibujar una recta',async()=>{
  const c=creatorContext(),before=c.state();
- c.fetch=async()=>({ok:true,status:200,json:async()=>({code:'NoRoute'})});
+ // Valhalla no contesta 200 con un codigo: contesta 400 con un numero.
+ c.fetch=async()=>({ok:false,status:400,json:async()=>({error_code:171,error:'No suitable edges near location'})});
  await c.planificaMapaGps([[43,-2],[43.001,-2]]);
  assert.equal(c.state().anchors.length,0);assert.equal(c.state().red,before.red);
  assert.match(c.$('plannerStatus').textContent,/No hay conexión/);
  assert.throws(()=>c.respuestaMapaGps(mapReply([[43,-2],[43.001,-2]]),[[44,-2],[44.001,-2]]),/cerca/);
+});
+test('un fallo del servidor no se cuenta como que no hay camino',async()=>{
+ // La diferencia no es cosmetica: si el planificador esta caido y le decimos
+ // «no hay camino», el autor mueve el punto en el monte buscando un paso que
+ // si existe. Tiene que leer que el problema es del servicio.
+ const c=creatorContext();
+ c.fetch=async()=>({ok:false,status:500,json:async()=>({error:'Internal error'})});
+ await c.planificaMapaGps([[43,-2],[43.001,-2]]);
+ assert.match(c.$('plannerStatus').textContent,/No se pudo conectar/);
+ assert.equal(c.state().anchors.length,0);
+});
+test('un tramo de menos en la respuesta no se toma por la ruta entera',async()=>{
+ // Con tres puntos marcados pedimos dos tramos. Si llega uno solo y no se
+ // cuenta, el tercer punto desaparece sin avisar y el trazado se queda corto.
+ const c=creatorContext(),coords=[[43,-2],[43,-1.999],[43.001,-1.999]];
+ const j=mapReply(coords);
+ j.trip.legs.pop();
+ assert.throws(()=>c.respuestaMapaGps(j,coords),/incompleta/);
+ c.fetch=async()=>({ok:true,status:200,json:async()=>j});
+ await c.planificaMapaGps(coords);
+ assert.equal(c.state().anchors.length,0,'no se dibuja media ruta');
 });
 test('cancelar un cálculo impide que su respuesta tardía cambie el borrador',async()=>{
  const c=creatorContext(),coords=[[43,-2],[43.001,-2]];let finish;
@@ -120,6 +165,30 @@ test('cancelar un cálculo impide que su respuesta tardía cambie el borrador',a
  assert.equal(c.state().anchors.length,1);
  assert.equal(c.state().red.nodos[c.state().anchors[0]][0],44);
 });
+test('entre dos peticiones al planificador espera el segundo largo que pide OSM',async()=>{
+ // El servidor de Valhalla es gratis y lo paga FOSSGIS: si se le aprieta
+ // acaba cerrando la puerta y la aplicacion se queda sin planificador. Aqui
+ // no se espera de verdad, solo se comprueba cuanto PIDE esperar.
+ const c=creatorContext();
+ vm.runInContext('seguirMapaGps=true;redGps=construyeRed([],null)',c);
+ let rutas=0;const esperas=[];
+ c.fetch=async(url,opciones)=>{
+  if(url.includes('/height?')){const q=JSON.parse(new URL(url).searchParams.get('json'));return {ok:true,json:async()=>({height:q.shape.map(()=>100),shape:q.shape})};}
+  rutas++;
+  const pedido=JSON.parse(opciones.body).locations.map(l=>[l.lat,l.lon]);
+  return {ok:true,status:200,json:async()=>mapReply(pedido)};
+ };
+ await c.planificaMapaGps([[43,-2],[43.001,-2]]);
+ // Se adelantan solo las esperas cortas: el aviso de los 30 s que corta un
+ // calculo encallado tiene que seguir siendo de 30 s, o aborta la peticion.
+ c.setTimeout=(fn,ms)=>{if(ms<5000)esperas.push([ms,rutas]);return setTimeout(fn,ms<5000?0:ms)};
+ // Otros puntos, para que sea una peticion nueva de verdad.
+ await c.planificaMapaGps([[43.002,-2],[43.003,-2]]);
+ assert.equal(rutas,2,'la segunda peticion se envia');
+ const antes=esperas.filter(([,r])=>r===1);
+ assert.equal(antes.length,1,'espera una sola vez antes de la segunda peticion');
+ assert(antes[0][0]>900&&antes[0][0]<=1100,`espera ${antes[0][0]} ms, deberia ser algo menos de 1.100`);
+});
 test('sin aceptar el servicio no se envían coordenadas',async()=>{
  const c=creatorContext();let sent=0;c.confirm=()=>false;c.fetch=async()=>{sent++;throw Error('no debe enviarse')};
  await c.planificaMapaGps([[43,-2],[43.001,-2]]);
@@ -127,11 +196,42 @@ test('sin aceptar el servicio no se envían coordenadas',async()=>{
  assert.match(c.$('plannerStatus').textContent,/No se han enviado/);
 });
 
-test('rechaza geometrías separadas en vez de unirlas con una recta',()=>{
- const c=creatorContext(),coords=[[43,-2],[43.001,-2]],j=mapReply(coords);
- j.routes[0].legs[0].steps=[{geometry:{type:'LineString',coordinates:[[-2,43],[-1.999,43]]}},{geometry:{type:'LineString',coordinates:[[-1.998,43],[-2,43.001]]}}];
+test('rechaza un recorrido con un corte en vez de unirlo con una recta',()=>{
+ // Dos tramos que no se tocan: el primero acaba en 43,-1.999 y el segundo
+ // empieza 80 m mas alla. Eso no se dibuja como si fuera un camino.
+ const c=creatorContext(),coords=[[43,-2],[43,-1.999],[43.001,-1.999]];
+ const j=mapReply(coords);
+ j.trip.legs[1].shape=codificaValhalla([[43,-1.998],[43.001,-1.999]]);
  assert.throws(()=>c.respuestaMapaGps(j,coords),/corte/);
  assert.throws(()=>c.respuestaMapaGps(null,coords),/no es válida/);
+ assert.throws(()=>c.respuestaMapaGps({trip:{legs:[]}},coords),/incompleta/);
+});
+test('un rodeo desproporcionado se trata como que no hay camino',()=>{
+ // Valhalla, donde no hay paso, se inventa vueltas enormes: en un tramo de
+ // 176 m del autor devolvio 11,4 km. Sus 21 tramos sanos no pasan de x2,13.
+ const c=creatorContext(),coords=[[43,-2],[43.001,-2]];
+ const j=mapReply(coords);
+ j.trip.legs[0].shape=codificaValhalla([[43,-2],[43,-1.95],[43.001,-1.95],[43.001,-2]]);
+ assert.throws(()=>c.respuestaMapaGps(j,coords),/No hay conexión/);
+ // Y un rodeo normal sigue valiendo.
+ assert.equal(c.respuestaMapaGps(mapReply(coords),coords).parts.length,1);
+});
+test('un rodeo normal en un tramo largo no se confunde con falta de camino',()=>{
+ // El tope del rodeo tiene un suelo de 400 m para que en los tramos cortos no
+ // salte por nada. En un tramo LARGO manda la proporcion, no el suelo, y eso
+ // hay que comprobarlo aparte: con la prueba de arriba sola, un tope de x1,05
+ // -que rechazaria media sierra- pasaria sin que nadie se enterase.
+ const c=creatorContext(),coords=[[43,-2],[43.01,-2]];   // 1.113 m en linea recta
+ const j=mapReply(coords);
+ // Un camino que sale al este, sube y vuelve: 2.215 m, x1,99. El peor tramo
+ // sano del autor es x2,13, asi que esto es un rodeo de los normales.
+ j.trip.legs[0].shape=codificaValhalla([[43,-2],[43,-1.9932],[43.01,-1.9932],[43.01,-2]]);
+ const r=c.respuestaMapaGps(j,coords);
+ assert.equal(r.parts.length,1);
+ let largo=0;const pts=r.parts[0];
+ for(let k=1;k<pts.length;k++)largo+=c.dist(pts[k-1],pts[k]);
+ assert(largo/c.dist(coords[0],coords[1])>1.5,'el tramo de prueba da un rodeo de verdad');
+ assert(largo>400,'y es mas largo que el suelo de los 400 m');
 });
 
 test('detecta una cima intermedia en una recta nueva y exporta sus alturas',async()=>{

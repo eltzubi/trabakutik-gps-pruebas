@@ -305,12 +305,35 @@ async function setup(context) {
       await route.fulfill({contentType:'text/html',body:source.replace(end,'\n'+bridge+end)});
     });
     let failPlanner=false,plannerRequests=0;
-    // El servicio está simulado: no se envían posiciones a ningún servidor.
-    await personal.route('https://routing.openstreetmap.de/**',async route=>{
+    // Polilinea de Valhalla: 6 decimales.
+    const codificaValhalla=pts=>{
+      let salida='',lat=0,lon=0;
+      const trozo=v=>{let s='',x=v<0?~(v<<1):(v<<1);
+        while(x>=0x20){s+=String.fromCharCode((0x20|(x&0x1f))+63);x>>=5}
+        return s+String.fromCharCode(x+63)};
+      for(const p of pts){
+        const la=Math.round(p[0]*1e6),lo=Math.round(p[1]*1e6);
+        salida+=trozo(la-lat)+trozo(lo-lon);lat=la;lon=lo;
+      }
+      return salida;
+    };
+    // El planificador está simulado: no se envían posiciones a ningún servidor.
+    // Va por POST a /route; las alturas, que son del mismo servidor, siguen
+    // atendidas por su propia intercepción, mas abajo.
+    await personal.route('https://valhalla1.openstreetmap.de/route',async route=>{
       plannerRequests++;
-      const list=new URL(route.request().url()).pathname.split('/').pop().split(';').map(p=>p.split(',').map(Number));
-      const body=failPlanner?{code:'NoRoute'}:{code:'Ok',waypoints:list.map(p=>({location:p})),routes:[{legs:list.slice(1).map((p,i)=>({steps:[{geometry:{type:'LineString',coordinates:[list[i],[list[i][0]+.001,list[i][1]],[p[0]+.001,p[1]],p]}}]}))}]};
-      await route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
+      if(failPlanner){
+        await route.fulfill({status:400,contentType:'application/json',
+          body:JSON.stringify({error_code:171,error:'No suitable edges near location'})});
+        return;
+      }
+      const pedido=JSON.parse(route.request().postData()||'{}');
+      const puntos=(pedido.locations||[]).map(l=>[l.lat,l.lon]);
+      const legs=puntos.slice(1).map((p,i)=>({shape:codificaValhalla(
+        [puntos[i],[puntos[i][0],puntos[i][1]+.001],[p[0],p[1]+.001],p])}));
+      await route.fulfill({contentType:'application/json',
+        body:JSON.stringify({trip:{status:0,units:'kilometers',
+          locations:puntos.map(p=>({lat:p[0],lon:p[1],type:'break'})),legs}})});
     });
     let failHeights=false;
     await personal.route('https://valhalla1.openstreetmap.de/height?**',async route=>{

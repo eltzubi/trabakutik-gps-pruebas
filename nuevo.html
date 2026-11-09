@@ -922,33 +922,81 @@ function cancelaMapaGps(){
 function coordenadaMapaGps(p){
  return Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180;
 }
+// EL PLANIFICADOR ES VALHALLA EN MODO PEATON, NO EL «A PIE» DE OSRM.
+// Lo conto el autor dos veces: «se mete por el apartadero de la parada de bus
+// de Apoita en vez de seguir la BI-633» y «no hay forma de que marque el
+// camino recto sin que haga salir y entrar». No era su mapa ni sus puntos: el
+// perfil a pie de OSRM prefiere cualquier camino de servicio antes que la
+// carretera, y al lado del puente de la BI-633 hay uno de 196 m a 18 metros.
+//
+// MEDIDO, EN EL PUENTE DE LA BI-633 (43.2063 a 43.2095):
+//   OSRM a pie   608 m, se sale 43 m de la carretera   <- lo que veia el autor
+//   OSRM bici    540 m, 0 m
+//   Valhalla pie 540 m, 0 m
+// Y EN LA PARADA DE APOITA: OSRM a pie 460 m / 18 m fuera; Valhalla 446 / 0.
+//
+// POR QUE NO LA BICI, QUE TAMBIEN LO ARREGLABA: respeta los sentidos unicos, y
+// un peaton no. De 6 calles de sentido unico de la zona recorridas al reves,
+// en 2 la bici da un rodeo del doble (una de 341 m se va a 649). Valhalla en
+// peaton las pasa de largo, como se anda.
+// Y NO SE PUEDE ARREGLAR DENTRO DE OSRM: su perfil a pie no admite «exclude»
+// -probado, lo rechaza- y no ofrece rutas alternativas en ese punto.
+//
+// EN EL MONTE NO CAMBIA NADA: 24 tramos de 400 m sacados al azar de las 72
+// rutas del autor, 23 identicos metro a metro.
+//
+// EL SERVIDOR ES EL MISMO QUE YA SE USA PARA LAS ALTURAS, asi que esto no
+// añade peticiones a nadie: mueve la del planificador de un servidor de
+// FOSSGIS a otro. Se mantiene el limite de una peticion por segundo largo.
+const URL_PLANIFICADOR='https://valhalla1.openstreetmap.de/route';
+// VALHALLA SE INVENTA RODEOS DONDE NO HAY CAMINO. Donde OSRM decia
+// honestamente «no hay conexion», Valhalla devuelve una vuelta enorme: en un
+// tramo de 176 m en linea recta del autor devolvio 11,4 km. Medido sobre 22
+// tramos suyos, los 21 sanos no pasan de 2,13 veces la linea recta. Con el
+// tope en 4 se separan de sobra y se dice lo mismo que decia OSRM.
+const RODEO_MAXIMO=4;
+// La geometria de Valhalla viene como polilinea codificada con 6 decimales.
+function descodificaValhalla(texto){
+ if(typeof texto!=='string'||!texto)return [];
+ const pts=[];let i=0,lat=0,lon=0;
+ while(i<texto.length){
+  let desp=0,res=0,b;
+  do{b=texto.charCodeAt(i++)-63;res|=(b&0x1f)<<desp;desp+=5}while(b>=0x20);
+  lat+=(res&1)?~(res>>1):(res>>1);
+  desp=0;res=0;
+  do{b=texto.charCodeAt(i++)-63;res|=(b&0x1f)<<desp;desp+=5}while(b>=0x20);
+  lon+=(res&1)?~(res>>1):(res>>1);
+  // Redondear a los 6 decimales que trae Valhalla. Sin esto, 1e-6 por un
+  // entero deja basura de coma flotante: -1999000*1e-6 no es -1.999, es
+  // -1.9989999999999999, y eso se arrastra hasta el GPX.
+  const p=[Number((lat*1e-6).toFixed(6)),Number((lon*1e-6).toFixed(6))];
+  if(!pts.length||dist(pts[pts.length-1],p)>.01)pts.push(p);
+ }
+ return pts;
+}
 function respuestaMapaGps(data,solicitados){
- if(!data||typeof data!=='object')throw Error('La respuesta del planificador no es válida.');
- if(data.code==='NoRoute'||data.code==='NoSegment')throw Error('No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.');
- if(data.code!=='Ok'||!Array.isArray(data.routes)||!data.routes[0])throw Error('El servicio no ha podido calcular el recorrido.');
- const wp=data.waypoints,legs=data.routes[0].legs;
- if(!Array.isArray(wp)||wp.length!==solicitados.length||!Array.isArray(legs)||legs.length!==solicitados.length-1)throw Error('La respuesta del planificador está incompleta.');
- const anchors=wp.map((w,i)=>{
-  const p=Array.isArray(w.location)?[w.location[1],w.location[0]]:null;
-  if(!coordenadaMapaGps(p)||dist(p,solicitados[i])>40)throw Error('No hay un camino suficientemente cerca del punto marcado.');
-  return p;
- });
- const parts=legs.map((leg,i)=>{
-  if(!Array.isArray(leg.steps))throw Error('Falta el trazado del camino.');
-  const pts=[];
-  for(const step of leg.steps){
-   if(step.geometry?.type!=='LineString'||!Array.isArray(step.geometry.coordinates))throw Error('Falta el trazado del camino.');
-   const inicio=step.geometry.coordinates[0];
-   if(pts.length&&(!Array.isArray(inicio)||dist(pts[pts.length-1],[inicio[1],inicio[0]])>1))throw Error('El recorrido contiene un corte.');
-   for(const raw of step.geometry.coordinates){
-    const p=Array.isArray(raw)?[raw[1],raw[0]]:null;
-    if(!coordenadaMapaGps(p))throw Error('El recorrido contiene coordenadas inválidas.');
-    if(!pts.length||dist(pts[pts.length-1],p)>.01)pts.push(p);
-   }
-  }
-  if(pts.length<2||dist(pts[0],anchors[i])>1||dist(pts[pts.length-1],anchors[i+1])>1)throw Error('El recorrido no conecta los puntos marcados.');
+ const viaje=data&&data.trip;
+ if(!viaje||typeof viaje!=='object')throw Error('La respuesta del planificador no es válida.');
+ const tramos=viaje.legs;
+ if(!Array.isArray(tramos)||tramos.length!==solicitados.length-1)throw Error('La respuesta del planificador está incompleta.');
+ const sinCamino='No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.';
+ const parts=tramos.map((tramo,i)=>{
+  const pts=descodificaValhalla(tramo&&tramo.shape);
+  if(pts.length<2)throw Error(sinCamino);
+  for(const p of pts)if(!coordenadaMapaGps(p))throw Error('El recorrido contiene coordenadas inválidas.');
+  let largo=0;for(let k=1;k<pts.length;k++)largo+=dist(pts[k-1],pts[k]);
+  if(largo>Math.max(400,dist(solicitados[i],solicitados[i+1])*RODEO_MAXIMO))throw Error(sinCamino);
   return pts;
  });
+ if(!parts.length)throw Error('La respuesta del planificador está incompleta.');
+ // Valhalla devuelve en «locations» los puntos que le has pedido, no los que
+ // ha pegado al camino: las anclas de verdad son los extremos del trazado.
+ const anchors=[parts[0][0],...parts.map(p=>p[p.length-1])];
+ anchors.forEach((p,i)=>{
+  if(dist(p,solicitados[i])>40)throw Error('No hay un camino suficientemente cerca del punto marcado.');
+ });
+ for(let i=1;i<parts.length;i++)
+  if(dist(parts[i-1][parts[i-1].length-1],parts[i][0])>1)throw Error('El recorrido contiene un corte.');
  return {anchors,parts};
 }
 async function solicitaMapaGps(coords,signal){
@@ -960,11 +1008,19 @@ async function solicitaMapaGps(coords,signal){
  });
  if(signal.aborted)throw Error('Cálculo cancelado.');
  ultimaPeticionMapaGps=Date.now();
- const locations=coords.map(p=>p[1].toFixed(6)+','+p[0].toFixed(6)).join(';');
- const url='https://routing.openstreetmap.de/routed-foot/route/v1/foot/'+locations+'?overview=full&geometries=geojson&steps=true&continue_straight=false&radiuses='+coords.map(()=>'35').join(';');
- const r=await fetch(url,{signal,cache:'no-store',credentials:'omit',headers:{Accept:'application/json'}});
+ const cuerpo=JSON.stringify({
+  locations:coords.map(p=>({lat:Number(p[0].toFixed(6)),lon:Number(p[1].toFixed(6)),type:'break'})),
+  costing:'pedestrian',directions_options:{units:'kilometers'}});
+ const r=await fetch(URL_PLANIFICADOR,{method:'POST',body:cuerpo,signal,cache:'no-store',credentials:'omit',
+  headers:{Accept:'application/json','Content-Type':'application/json','X-Client-Id':'trabakutik.com'}});
  if(r.status===429)throw Error('El planificador está ocupado. Espera unos segundos y vuelve a intentarlo.');
- if(!r.ok&&r.status!==400)throw Error('No se pudo conectar con el planificador. Conservamos el trazado anterior.');
+ if(!r.ok){
+  // Valhalla contesta 400 con un numero cuando no encuentra camino cerca.
+  let codigo=0;try{codigo=(await r.json()).error_code|0}catch(e){}
+  if([154,170,171,172,442,443,444].includes(codigo))
+   throw Error('No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.');
+  throw Error('No se pudo conectar con el planificador. Conservamos el trazado anterior.');
+ }
  return respuestaMapaGps(await r.json(),coords);
 }
 // Muestrear el terreno cada 30 m, con un límite por recorrido. Se conservan
