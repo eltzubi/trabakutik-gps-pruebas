@@ -411,8 +411,23 @@ public class TrackingService extends Service implements LocationListener {
  // Penalizar los metros de atras por cuatro deja las dos cosas: a -5 m
  // gana al que viene a +75, y a -30 ya no le gana al que viene a +70.
  static double coste(double ahead){return ahead>=0?ahead:-ahead*4;}
+ // EL CORTE ESTABA EN 22 m Y DEJABA AL AUTOR SIN AVISOS. Este mismo fichero,
+ // unas lineas mas abajo, tiene medido que bajo arbolado 25-35 m de precision
+ // es lo normal y que con el movil en el bolsillo son 20-45: o sea que con el
+ // corte en 22 casi ninguna lectura pasaba, y los giros no se cantaban justo
+ // donde mas falta hacen, con la pantalla apagada y el cielo tapado.
+ //
+ // Es el MISMO fallo que ya se arreglo en el aviso de fuera de ruta -donde
+ // estaba medido que avisaba el 0,0% de las veces bajo arbolado, y lo conto
+ // el autor: «al salirme de la ruta no me ha pitado ni me ha hablado»-. Alli
+ // se subio a 60 y aqui se quedo en 22.
+ //
+ // 60 m es el mismo corte de cordura que usa checkDeviation y el mismo que
+ // usa la pagina para esto. Por encima de eso la posicion es basura. Con 40 m
+ // de error el «ahora» puede llegar unos metros antes o despues; callarse del
+ // todo es peor.
  void checkTurns(Location l){
-  if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>22)return;
+  if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>60)return;
   double lat=l.getLatitude(),lon=l.getLongitude();
   double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat));
   double closest=Double.POSITIVE_INFINITY,along=0,cumulative=0;

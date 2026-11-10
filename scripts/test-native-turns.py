@@ -14,7 +14,7 @@ public class NativeTurnsTest {
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  static class SystemClock {static long elapsedRealtime(){return 1000;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
- static class Location {double lat,lon; Location(double m){lat=m/111195.;lon=0;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return 4;}}
+ static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
  double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
  void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){spoken.add(Integer.parseInt(s));}
  String fraseGiro(int lado,boolean cruce,String fase,double ahead){return ""+lado;}
@@ -34,7 +34,17 @@ public class NativeTurnsTest {
   // Pero el que acabas de cruzar si manda: para eso esta el suelo negativo
   // de la ventana, para no perder el pitido del propio cruce.
   c=setup2();c.checkTurns(new Location(75));require(c.spoken.equals(Arrays.asList(-1)),"El cruce recien pasado debe seguir sonando: "+c.spoken);
-  System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras y cruce recien pasado");
+  // CON MALA SEÑAL TAMBIEN SE AVISA. El corte estaba en 22 m y bajo arbolado
+  // la precision normal es de 25 a 45: el autor se quedaba sin avisos justo
+  // con el movil en el bolsillo y el cielo tapado, que es cuando los necesita.
+  for(float acc:new float[]{4,25,40,59}){
+   c=setup();c.checkTurns(new Location(0,acc));
+   require(c.spoken.equals(Arrays.asList(-1)),"con "+acc+" m de precision tiene que avisar: "+c.spoken);
+  }
+  // Pero una posicion de 70 m de error es basura y no vale para decidir.
+  c=setup();c.checkTurns(new Location(0,70));
+  require(c.spoken.isEmpty(),"con 70 m no se avisa: "+c.spoken);
+  System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras, cruce recien pasado y avisos con mala señal");
  }
 }'''
 if '--generate-junit' in sys.argv:
