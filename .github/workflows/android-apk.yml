@@ -18,11 +18,74 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    # NO ENTRAR EN BUCLE. Este flujo termina dejando un commit con el APK, y
+    # desde que ese commit lleva tambien android/app/build.gradle.kts -por el
+    # numero de version- cae dentro de android/** y volveria a dispararse el
+    # solo, una y otra vez. Ese commit no tiene nada que compilar.
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'Publicar TrabakutikGPS.apk')
     defaults:
       run:
         working-directory: android
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Hace falta algo de historial para saber que ha cambiado en este
+          # empujon. Sin los blobs -para los nombres de los ficheros basta con
+          # los arboles- porque bajarse los APK viejos serian 23 MB para nada.
+          fetch-depth: 50
+          filter: blob:none
+      - name: Subir el numero de version si ha cambiado el codigo de la app
+        # EL NUMERO SUBE SOLO. Antes habia que acordarse a mano, y si se
+        # olvidaba pasaba lo peor: la app nueva se compilaba pero NO llegaba a
+        # la web -la web solo guarda un APK por numero de version-, asi que la
+        # gente seguia bajandose la de antes, sin el arreglo, y no fallaba
+        # nada que se viera. Ahora, si el codigo de la app ha cambiado y el
+        # numero no, lo sube este paso antes de compilar.
+        #
+        # Solo cuenta el codigo de la app: si lo unico que cambia es este
+        # fichero de flujo, el numero se queda quieto. Si no, cada retoque de
+        # aqui publicaria una version nueva que no cambia nada en el movil.
+        if: github.event_name == 'push'
+        working-directory: ${{ github.workspace }}
+        run: |
+          ANTES='${{ github.event.before }}'
+          APP=si
+          if [ -n "$ANTES" ] && [ "$ANTES" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "$ANTES^{commit}" 2>/dev/null; then
+            TOCADO=$(git diff --name-only "$ANTES" "$GITHUB_SHA" -- \
+              android/app/src android/build.gradle.kts \
+              android/settings.gradle.kts android/gradle.properties | head -1)
+            # De build.gradle.kts solo cuenta lo que NO sea el numero de
+            # version: subirlo no es cambiar la app, y contarlo volveria a
+            # subirlo en la vuelta siguiente, y asi para siempre.
+            OTRO=$(git diff "$ANTES" "$GITHUB_SHA" -- android/app/build.gradle.kts \
+              | grep -E '^[+-][^+-]' | grep -v 'versionCode = ' | head -1)
+            [ -z "$TOCADO" ] && [ -z "$OTRO" ] && APP=no
+          fi
+          # Si no se puede saber -un empujon forzado, una rama nueva- se da por
+          # cambiado: mas vale un numero de mas que una version sin publicar.
+          if [ "$APP" = "no" ]; then
+            echo "No ha cambiado el codigo de la app: la version se queda como esta."
+            exit 0
+          fi
+          VERSION=$(grep -o 'versionName = "[^"]*"' android/app/build.gradle.kts | cut -d'"' -f2)
+          PUBLICADA=$(grep -o '<!--VER-->[^<]*<!--/VER-->' instalar.html | sed 's/<!--VER-->//; s|<!--/VER-->||')
+          if [ "$VERSION" != "$PUBLICADA" ]; then
+            echo "La version ya sube: la web tiene la $PUBLICADA y se va a compilar la $VERSION."
+            exit 0
+          fi
+          python3 - <<'PY'
+          import pathlib,re
+          p=pathlib.Path('android/app/build.gradle.kts');t=p.read_text(encoding='utf-8')
+          m=re.search(r'versionCode = (\d+); versionName = "([\d.]+)"',t)
+          if not m:
+              raise SystemExit('No se encuentra versionCode/versionName en build.gradle.kts')
+          partes=m.group(2).split('.');partes[-1]=str(int(partes[-1])+1)
+          nueva='.'.join(partes);code=int(m.group(1))+1
+          p.write_text(t[:m.start()]+f'versionCode = {code}; versionName = "{nueva}"'+t[m.end():],encoding='utf-8')
+          print(f'La version sube sola: {m.group(2)} -> {nueva} (versionCode {code})')
+          PY
+          echo "### Version subida sola a $(grep -o 'versionName = \"[^\"]*\"' android/app/build.gradle.kts | cut -d'\"' -f2)" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -121,7 +184,7 @@ jobs:
             git checkout -- TrabakutikGPS.apk 2>/dev/null || true
             exit 0
           fi
-          git add TrabakutikGPS.apk instalar.html
+          git add TrabakutikGPS.apk instalar.html android/app/build.gradle.kts
           if git diff --cached --quiet; then
             echo "Ni el APK ni la version de la web han cambiado"
             exit 0
