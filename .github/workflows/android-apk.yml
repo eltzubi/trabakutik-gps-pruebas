@@ -83,11 +83,22 @@ jobs:
       # Esto NO vuelve a disparar este workflow: solo se dispara con cambios en
       # android/** y en este mismo fichero, y el APK va en la raiz.
       # Cuesta unos 2 MB en el repositorio por cada version. El autor lo sabe y
-      # lo aprobo.
+      # lo aprobo. Lo que NO vale es guardar otros 2 MB por cada recompilacion
+      # de la MISMA version: la 4.9.1 se guardo seis veces el 8 y el 9 de
+      # noviembre, doce megas por un numero de version que no cambiaba. Un
+      # APK de debug nunca sale igual dos veces -lleva la hora dentro-, asi
+      # que git veia un fichero nuevo cada vez. Ahora, si la version ya es la
+      # que esta publicada en la web, el APK no se vuelve a guardar: un
+      # numero de version, un APK. Para que el de la web cambie, hay que
+      # subir versionName en android/app/build.gradle.kts, que es justo para
+      # lo que esta. La Release si se actualiza igual, que no cuesta
+      # historial.
       - name: Dejar el APK en la web de instalacion
         if: github.event_name != 'pull_request'
         run: |
           cd "$GITHUB_WORKSPACE"
+          PUBLICADA=$(grep -o '<!--VER-->[^<]*<!--/VER-->' instalar.html | sed 's/<!--VER-->//; s|<!--/VER-->||')
+          echo "La web sirve ahora la $PUBLICADA"
           cp android/app/build/outputs/apk/debug/app-debug.apk TrabakutikGPS.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -104,6 +115,12 @@ jobs:
           p.write_text(n,encoding='utf-8')
           print('instalar.html: version',v)
           PY
+          if [ "$PUBLICADA" = "$VERSION" ]; then
+            echo "La web ya sirve la $VERSION: no se guarda otra copia del APK."
+            echo "Si has cambiado el codigo de Android, sube versionName en android/app/build.gradle.kts." >> "$GITHUB_STEP_SUMMARY"
+            git checkout -- TrabakutikGPS.apk 2>/dev/null || true
+            exit 0
+          fi
           git add TrabakutikGPS.apk instalar.html
           if git diff --cached --quiet; then
             echo "Ni el APK ni la version de la web han cambiado"

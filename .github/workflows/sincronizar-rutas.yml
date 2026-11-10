@@ -6,7 +6,13 @@ on:
     paths:
       - .github/workflows/sincronizar-rutas.yml
   schedule:
-    - cron: '*/15 * * * *'
+    # UNA VEZ POR HORA, no cada quince minutos. Cada cuarto de hora son 96
+    # pasadas al dia bajandose las rutas de trabakutik.com para, casi siempre,
+    # no encontrar ningun cambio. Las rutas se publican cada varios dias.
+    # El minuto 23 y no el 0 a proposito: a en punto es cuando se amontona
+    # todo el mundo en los servidores de GitHub y las pasadas se retrasan.
+    # Si hace falta antes, el boton «Run workflow» la dispara al momento.
+    - cron: '23 * * * *'
   workflow_dispatch:
 
 permissions:
