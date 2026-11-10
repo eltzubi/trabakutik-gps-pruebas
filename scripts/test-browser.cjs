@@ -256,6 +256,15 @@ async function setup(context) {
     await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='recibiendo');
     assert(await page.locator('#gpsState').isVisible(),'el GPS sigue visible con los mandos ocultos');
     assert.match(await page.locator('#gpsState').textContent(),/±5 m/);
+    for(const width of [320,390,768,1280]){
+      await page.setViewportSize({width,height:844});
+      const gpsBox=await page.locator('#gpsState').boundingBox();
+      const toolsBox=await page.locator('.tools').boundingBox();
+      assert(gpsBox.x>=0&&gpsBox.x+gpsBox.width<toolsBox.x,'estado GPS sin tapar mandos a '+width);
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'sin desborde durante la guía');
+      await page.screenshot({path:path.join(root,'.test-artifacts/gps-activo-'+width+'.png')});
+    }
+    await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>window.__native.locationEnabled=false);
     await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='apagada');
     await page.evaluate(()=>{window.__native.locationEnabled=true;window.__native.accuracy=45});
