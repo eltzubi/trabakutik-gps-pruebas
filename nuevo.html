@@ -331,9 +331,17 @@ body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .
 .tools{max-height:calc(100% - 24px);overflow-y:auto;overscroll-behavior:contain}
 .sheet .sheet-header .close{flex-basis:48px;width:48px;height:48px;min-height:48px}
 .sheet button,.actions button,.modes button{min-height:48px}
+/* Estado visible también con los mandos ocultos; no añade una cabecera. */
+#gpsState{display:flex;align-items:center;gap:6px;margin-top:5px;color:#b2c7d2;font-size:10px;line-height:1.4;font-variant-numeric:tabular-nums}
+#gpsState::before{content:'';width:7px;height:7px;border-radius:50%;background:#819ba8;flex:none}
+#gpsState[data-estado="recibiendo"]::before{background:#92fca8}
+#gpsState[data-estado="buscando"]::before,#gpsState[data-estado="impreciso"]::before{background:#ffd089}
+#gpsState[data-estado="sin-senal"]::before,#gpsState[data-estado="apagada"]::before,#gpsState[data-estado="permiso"]::before{background:#ff7b8e}
+#audioMode{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#audioMode .audio-label{font-size:8px;line-height:1;font-weight:700}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="topo">Topo</option><option value="pnoa">Sat.</option></select></label></div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="topo">Topo</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
  <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -521,6 +529,7 @@ function warnGps(err){
    :'Sin señal GPS ahora mismo · seguimos intentándolo';
  ultimoErrorGps=err&&Number.isFinite(err.code)?err.code:null;
  ultimoErrorGpsText=err?text:'';
+ errorVisualGps=ultimoErrorGps;pintaEstadoGps();
  notice(text);
  // Un alert() bloquea la pantalla y hay que tocarla para seguir. Saltaba
  // cada seis segundos, y bajo arbolado el GPS falla a ratos: ibas pedaleando
@@ -534,6 +543,30 @@ let navegaNativo=false;
 let gpsApagadoPorTi=false;
 let gpsSolicitado=false;
 let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
+// Solo presentación: reutiliza las lecturas y los relojes existentes.
+// No pide posiciones, no arranca servicios y no cambia los avisos.
+let fixVisualGps=null,ubicacionVisualGps=null,errorVisualGps=null;
+function estadoGpsVisual({solicitado,apagado,error,fix,ubicacion,ahora}){
+ if(apagado||!solicitado)return {estado:'inactivo',texto:apagado?'GPS detenido':'GPS sin iniciar'};
+ if(ubicacion===false)return {estado:'apagada',texto:'Ubicación apagada'};
+ if(error===1)return {estado:'permiso',texto:'Sin permiso de ubicación'};
+ if(error!==null)return {estado:'sin-senal',texto:'Sin señal GPS'};
+ if(!fix)return {estado:'buscando',texto:'Buscando posición GPS'};
+ const edad=ahora-fix.time;
+ if(!Number.isFinite(edad)||edad<0||edad>=25000)return {estado:'sin-senal',texto:'Sin señal GPS reciente'};
+ if(edad>=12000)return {estado:'buscando',texto:'Buscando señal GPS'};
+ const acc=fix.accuracy;
+ if(!Number.isFinite(acc)||acc<0)return {estado:'impreciso',texto:'Posición · precisión desconocida'};
+ return {estado:acc<=35?'recibiendo':'impreciso',texto:'Posición · ±'+Math.ceil(acc)+' m'};
+}
+function pintaEstadoGps(){
+ const el=$('gpsState');if(!el)return;
+ const estado=estadoGpsVisual({solicitado:gpsSolicitado||fuenteNativa||watch!==null,
+  apagado:gpsApagadoPorTi,error:errorVisualGps,fix:fixVisualGps,
+  ubicacion:ubicacionVisualGps,ahora:Date.now()});
+ el.dataset.estado=estado.estado;
+ if(el.textContent!==estado.texto)el.textContent=estado.texto;
+}
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // EL RUMBO DE LA FLECHA cuando no lo marca la ruta, y el suavizado que le
 // quita los saltos. Estan aparte de onFix para poder probarlos: hasta ahora
@@ -2136,6 +2169,11 @@ function pintaModoAudio(){
  b.dataset.modo=audioModo;
  const nombres={voz:'Voz y pitidos',pitidos:'Solo pitidos',silencio:'Silencio'};
  b.title='Avisos sonoros: '+nombres[audioModo];b.setAttribute('aria-label','Avisos sonoros: '+nombres[audioModo]);
+ const altavoz='<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>';
+ const dibujos={voz:altavoz+'<path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
+  pitidos:'<path d="M3 12h3l3-7 6 14 3-7h3"/>',
+  silencio:altavoz+'<path d="m16 9 6 6m0-6-6 6"/>'};
+ b.innerHTML='<svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+dibujos[audioModo]+'</svg><small class="audio-label" aria-hidden="true">'+({voz:'Voz',pitidos:'Pitidos',silencio:'Silencio'})[audioModo]+'</small>';
 }
 function hablarGiro(texto){if(!giraNativo)hablaPagina(texto)}
 function hablar(texto){
@@ -2787,6 +2825,9 @@ function onFix(pos){
  if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
   notice(guiaIniciada()?'Posición recibida · siguiendo ruta':'Posición recibida');
  ultimoErrorGps=null;ultimoErrorGpsText='';
+ errorVisualGps=null;
+ fixVisualGps={time:Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),accuracy:pos.coords.accuracy};
+ pintaEstadoGps();
  const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
  ({rumbo:lastCourse,ref:courseFix}=rumboAndando(pos.coords,p,courseFix,lastCourse));
@@ -2963,6 +3004,8 @@ function miraPosicionNativa(){
  if(gpsApagadoPorTi||Date.now()<apagadoHasta)return;
  let d;
  try{d=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}')}catch(e){return}
+ ubicacionVisualGps=typeof d.locationEnabled==='boolean'?d.locationEnabled:null;
+ pintaEstadoGps();
  if(!d.active){
   navegaNativo=false;
 
@@ -3022,6 +3065,7 @@ function miraPosicionNativa(){
 setInterval(miraPosicionNativa,1000);
 const GUIA_CADUCA_MS=25000;
 setInterval(()=>{
+ pintaEstadoGps();
  if(gpsApagadoPorTi)return;   // lo has apagado tu: no hay nada que vigilar
  if(watch===null&&!fuenteNativa&&!recording&&!navegaNativo)return; // Ruta cargada, GPS aún sin iniciar.
  let ubicacionApagada=false;
@@ -3072,7 +3116,9 @@ function enciendeNavegacionNativa(){
  }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
 }
 function startGPS(forRecording=false){
+ if(!gpsSolicitado){fixVisualGps=null;ubicacionVisualGps=null;errorVisualGps=null;}
  gpsApagadoPorTi=false;apagadoHasta=0;gpsSolicitado=true;sinGpsAvisado=false;
+ pintaEstadoGps();
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
   try{syncNativeRoute()}catch(e){console.warn(e)}
  }
@@ -3089,7 +3135,7 @@ function startGPS(forRecording=false){
  if(e&&e.code===1){if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null}
 },{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
 if(!enLaApp){$('navActions').classList.add('hidden');$('recordActions').classList.add('hidden');$('soloApp').classList.remove('hidden');}
-$('audioMode').onclick=conmutaModoAudio;pintaModoAudio();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+$('audioMode').onclick=conmutaModoAudio;pintaModoAudio();pintaEstadoGps();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
 // Esto solo sabia manejar TRANSICIONES: si el servicio no grababa y la pagina
 // tampoco creia grabar, no entraba en ninguna rama y la botonera se quedaba
 // como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin
@@ -3217,6 +3263,7 @@ function apagaGps(){
  // señal», que es mentira y ademas asusta.
  gpsApagadoPorTi=true;
  gpsSolicitado=false;
+ fixVisualGps=null;ubicacionVisualGps=null;pintaEstadoGps();
  $('distance').textContent='GPS apagado';
  pintaBotonNavegar();
 }
