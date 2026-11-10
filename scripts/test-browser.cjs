@@ -346,7 +346,7 @@ async function setup(context) {
     creator.on('pageerror',e=>creatorErrors.push(e.message));
     creator.on('dialog',d=>d.accept(d.type()==='prompt'?'Ruta personal de prueba':undefined));
     await creator.goto(base+'nuevo.html');
-    await creator.click('#modeCreate');
+    await creator.click('#crearDesdeRuta');
     await creator.waitForFunction(()=>window.__creator&&window.__creator.redGps!==null);
     assert.equal(await creator.locator('#drawMethod').count(),0,'un único creador sin selector');
     assert(!(await creator.locator('#plannerStatus').isVisible()),'sin aviso fijo al entrar');
@@ -376,7 +376,7 @@ async function setup(context) {
     await creator.getByRole('button',{name:/Ruta personal de prueba/}).click();
     assert.match(await creator.locator('#distance').textContent(),/m aprox/);
     assert(!/sin alturas/.test(await creator.locator('#distance').textContent()));
-    await creator.click('#modeCreate');
+    await creator.click('#crearDesdeRuta');
 
     // Editar con un solo creador: puntos nuevos, arrastre, cierre y guardado.
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.01,-2.01)}));
