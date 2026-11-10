@@ -11,6 +11,7 @@ on:
       - 'android/**'
       - 'tests/background_lifecycle.py'
       - 'tests/sin_senal_gps.py'
+      - 'tests/silencio.py'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 # CUIDADO AL ESCRIBIR LOS MENSAJES DE LOS COMMITS. GitHub busca ciertas
@@ -115,6 +116,9 @@ jobs:
       - name: Comprobar el aviso de quedarse sin señal GPS
         working-directory: ${{ github.workspace }}
         run: python3 tests/sin_senal_gps.py
+      - name: Comprobar que Silencio calla en el acto
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/silencio.py
       - name: Compilar APK de prueba
         run: gradle :app:assembleDebug --no-daemon
       - name: Comprobar que existe el APK

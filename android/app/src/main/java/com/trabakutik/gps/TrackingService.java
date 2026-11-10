@@ -12,7 +12,7 @@ import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -128,6 +128,22 @@ public class TrackingService extends Service implements LocationListener {
   // 10 m llega mientras todavia suena el de 50, el que vale es el de 10.
   try{voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"trabakutik");}catch(Exception ignored){}
  }
+ // CALLAR AHORA MISMO, no «a partir de ahora». Antes el modo se miraba solo
+ // al empezar a hablar o a pitar, asi que al poner silencio la frase que ya
+ // estaba sonando terminaba de decirse y los pitidos de esa tanda seguian
+ // saliendo uno detras de otro.
+ void callaYa(){
+  try{if(voz!=null)voz.stop();}catch(Exception ignored){}
+  pitidoHandler.removeCallbacksAndMessages(null);
+  // Los pitidos pendientes se han quedado sin reloj, asi que el que iba a
+  // soltar el tono tampoco va a correr: hay que soltarlo aqui o se queda
+  // cogido.
+  sueltaTono();
+ }
+ void sueltaTono(){
+  ToneGenerator t=tonoEnCurso;tonoEnCurso=null;
+  if(t!=null)try{t.release();}catch(Exception ignored){}
+ }
  String fraseGiro(int lado,boolean esCruce,String fase,double ahead){
   // Lo que pidio el autor fue que le avisaran de los CRUCES, asi que la voz
   // dice si es un cruce o una curva. Y «cambio de sentido» en un sendero
@@ -184,6 +200,7 @@ public class TrackingService extends Service implements LocationListener {
    if("voz".equals(m)||"pitidos".equals(m)||"silencio".equals(m)){
     audioModo=m;
     getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("audioModo",m).apply();
+    if(!"voz".equals(m))callaYa();
     if("voz".equals(m)&&i.getBooleanExtra("probar",false))pruebaVoz();
    }
    return START_NOT_STICKY;
@@ -485,13 +502,14 @@ public class TrackingService extends Service implements LocationListener {
   // pitando con «Silencio» puesto. Lo dijo el autor.
   if("silencio".equals(modoAudio()))return;
   try{
+   sueltaTono();pitidoHandler.removeCallbacksAndMessages(null);
    final ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,90);
-   final Handler handler=new Handler(Looper.getMainLooper());
+   tonoEnCurso=tone;
    for(int i=0;i<n;i++){
     final int delay=i*sep;
-    handler.postDelayed(()->{try{tone.startTone(ToneGenerator.TONE_PROP_BEEP,160);}catch(Exception ignored){}},delay);
+    pitidoHandler.postDelayed(()->{try{tone.startTone(ToneGenerator.TONE_PROP_BEEP,160);}catch(Exception ignored){}},delay);
    }
-   handler.postDelayed(tone::release,n*sep+500);
+   pitidoHandler.postDelayed(this::sueltaTono,n*sep+500);
   }catch(Exception ignored){}
  }
  // «guiando» y «navigating» se escribian SOLO dentro de onLocationChanged.
@@ -597,5 +615,5 @@ public class TrackingService extends Service implements LocationListener {
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
  }
  void finish(){navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
- @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
+ @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);callaYa();if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

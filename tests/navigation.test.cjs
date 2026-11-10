@@ -183,6 +183,54 @@ test('Quedarse sin satélites se dice en alto, una vez, y la vuelta también',()
  assert.match(source('function onFix(pos){','function miraPosicionNativa('),/vuelveElGps\(\)/,
    'y al llegar una posición se dice que ha vuelto');
 });
+test('Poner silencio calla en el acto: la frase y los pitidos ya lanzados',()=>{
+ // Antes el modo se miraba solo al EMPEZAR a hablar o a pitar. Ponias
+ // silencio y la frase en curso terminaba de decirse y los pitidos de esa
+ // tanda seguian saliendo uno detras de otro.
+ const parados=[];let cancelada=0,dicho=0;
+ // OJO: cada pitido ya nace con su parada programada -stop(cuando)-. Lo que
+ // cuenta aqui es el stop() SIN hora, que es «para ya mismo».
+ const osc=()=>({frequency:{},connect(){},start(){},
+   stop(cuando){if(cuando===undefined)parados.push(1)},onended:null});
+ const c={gpsApagadoPorTi:false,audioModo:'voz',navegaNativo:false,
+   audio:{currentTime:0,createOscillator:osc,
+     createGain:()=>({gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){}}),
+     destination:{}},
+   window:{speechSynthesis:{cancel(){cancelada++}}},
+   localStorage:{setItem(){}},notice(){},pintaModoAudio(){},avisaModoAudioNativo(){},
+   hablar(){dicho++}};
+ c.window.window=c.window;
+ vm.createContext(c);
+ // conmutaModoAudio esta ANTES que los pitidos en el fichero, asi que son
+ // dos trozos distintos y en este orden.
+ vm.runInContext(source('function conmutaModoAudio(){','function getAudio('),c);
+ vm.runInContext(source('let pitidosEnCurso=[];','function closestMeters('),c);
+
+ // Suenan tres pitidos y, con «voz», se habla.
+ c.pitidos(3,.3);
+ assert.equal(vm.runInContext('pitidosEnCurso.length',c),3);
+
+ // De «voz» a «pitidos»: se corta la voz, los pitidos siguen su camino.
+ c.conmutaModoAudio();
+ assert.equal(c.audioModo,'pitidos');
+ assert.equal(cancelada,1,'la frase en curso se corta');
+ assert.equal(parados.length,0,'pero los pitidos no, que ese modo los quiere');
+
+ // De «pitidos» a «silencio»: se corta todo, incluidos los ya lanzados.
+ c.conmutaModoAudio();
+ assert.equal(c.audioModo,'silencio');
+ assert.equal(parados.length,3,'los tres pitidos pendientes se paran');
+ assert.equal(vm.runInContext('pitidosEnCurso.length',c),0);
+
+ // Y en silencio ya no se programa ninguno nuevo.
+ c.pitidos(2,.3);
+ assert.equal(vm.runInContext('pitidosEnCurso.length',c),0);
+
+ // De vuelta a «voz» se avisa hablando, que para eso se ha encendido.
+ c.conmutaModoAudio();
+ assert.equal(c.audioModo,'voz');
+ assert.equal(dicho,1);
+});
 // Reflejada norte-sur: lo que giraba a la izquierda gira a la derecha.
 const espejo=pts=>pts.map(([la,lo])=>[2*43.2-la,lo]);
 test('La herradura guarda el lado y la flecha se dibuja hacia ese lado',()=>{
