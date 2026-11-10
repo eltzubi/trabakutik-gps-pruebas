@@ -552,8 +552,14 @@ function estadoGpsVisual({solicitado,apagado,error,fix,ubicacion,ahora}){
  if(error===1)return {estado:'permiso',texto:'Sin permiso de ubicación'};
  if(error!==null)return {estado:'sin-senal',texto:'Sin señal GPS'};
  if(!fix)return {estado:'buscando',texto:'Buscando posición GPS'};
+ // La edad sale de restar la hora que trae el GPS a la del telefono, y son
+ // dos relojes distintos. Si el del movil va unas decimas por detras del
+ // satelite, la resta sale NEGATIVA: eso no es falta de señal, es que los
+ // relojes no coinciden, asi que una posicion «del futuro» cuenta como
+ // recien llegada. Lo que si es un dato roto -y se trata como falta de
+ // señal- es una edad que no sea un numero.
  const edad=ahora-fix.time;
- if(!Number.isFinite(edad)||edad<0||edad>=25000)return {estado:'sin-senal',texto:'Sin señal GPS reciente'};
+ if(!Number.isFinite(edad)||edad>=25000)return {estado:'sin-senal',texto:'Sin señal GPS reciente'};
  if(edad>=12000)return {estado:'buscando',texto:'Buscando señal GPS'};
  const acc=fix.accuracy;
  if(!Number.isFinite(acc)||acc<0)return {estado:'impreciso',texto:'Posición · precisión desconocida'};
@@ -3116,7 +3122,15 @@ function enciendeNavegacionNativa(){
  }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
 }
 function startGPS(forRecording=false){
- if(!gpsSolicitado){fixVisualGps=null;ubicacionVisualGps=null;errorVisualGps=null;}
+ // La POSICION anterior se conserva al volver a encender -si habia una
+ // buena, sigue valiendo-, pero el ERROR no: arrancar el GPS es pedir un
+ // intento nuevo. Sin esto, al denegar el permiso y concederlo despues, el
+ // chivato se quedaba en rojo con «Sin permiso de ubicación» hasta que
+ // entrara la primera posicion, diciendo lo contrario que el texto de abajo.
+ // Lo de la ubicacion no hace falta tocarlo: el vigilante lo refresca cada
+ // cinco segundos, asi que nunca se queda viejo.
+ if(!gpsSolicitado){fixVisualGps=null;ubicacionVisualGps=null;}
+ errorVisualGps=null;
  gpsApagadoPorTi=false;apagadoHasta=0;gpsSolicitado=true;sinGpsAvisado=false;
  pintaEstadoGps();
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){

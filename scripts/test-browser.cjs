@@ -270,8 +270,13 @@ async function setup(context) {
     await page.evaluate(()=>{window.__native.locationEnabled=true;window.__native.accuracy=45});
     await page.waitForFunction(()=>document.querySelector('#gpsState').textContent.includes('±45 m'));
     assert.equal(await page.locator('#gpsState').getAttribute('data-estado'),'impreciso');
-    await page.evaluate(()=>{window.__native.fixedTime=Date.now();window.__native.accuracy=5});
-    await page.clock.setFixedTime(new Date(Date.now()+30000));
+    // Se envejece la POSICION, no se adelanta el reloj. Congelar el reloj
+    // de la pagina lo dejaba parado el resto de la prueba, y a partir de ahi
+    // todo lo que depende de que pase el tiempo -el vigilante de GPS, la
+    // tregua de 8 s al parar- ya no se ejercitaba de verdad.
+    // 28 s: pasa de los 25 que caducan la posicion y no llega a los 30 con
+    // los que el puente nativo la descarta antes de entregarla.
+    await page.evaluate(()=>{window.__native.fixedTime=Date.now()-28000;window.__native.accuracy=5});
     await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='sin-senal');
     await page.evaluate(()=>window.__native.fixedTime=null);
     await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='recibiendo');

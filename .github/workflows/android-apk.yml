@@ -8,7 +8,11 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'nuevo.html'
+      # nuevo.html NO entra aqui: ninguna de las comprobaciones de este
+      # trabajo lo lee, y montar el SDK de Android y compilar entero por
+      # cambiar la pagina son minutos tirados. Ademas estaba solo en las
+      # solicitudes de cambio y no en las subidas a main, asi que lo que
+      # fuera que se queria vigilar, en main no se vigilaba.
       - 'android/**'
       - 'tests/background_lifecycle.py'
       - 'tests/sin_senal_gps.py'
