@@ -509,7 +509,7 @@ changeBase(initialBase);
 pintaOrient();
 $('orient').onclick=()=>{cursoArriba=!cursoArriba;pintaOrient();notice(!cursoArriba?'Mapa con el norte arriba':rumboMapa===null?'Mapa orientado al rumbo · girará en cuanto sepa hacia dónde vas':'Mapa orientado al rumbo');try{localStorage.setItem('trabakutik-curso-arriba',cursoArriba?'si':'no')}catch(e){}manualMapUntil=0;aplicaGiroMapa(true);pintaMandos()};
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,nearbyRadius=4000,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null,crucesOsm=[];
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null,crucesOsm=[];
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 
@@ -538,29 +538,63 @@ let gpsApagadoPorTi=false;
 let gpsSolicitado=false;
 let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
-// Cerca de mí: rutas de hasta 15 km con salida a 4 km o trazado a 1,5 km o trazado a menos de 1,5 km.
-const nearbyMaxLength=15000;
+// CERCA DE MI: salida a 4 km o trazado a 1,5 km, y como mucho las 20 mas
+// cercanas.
+//
+// Antes habia ademas un tope de 15 km de largo, y por eso el autor, parado en
+// Intxorta, veia UNA ruta cuando por delante le pasaban nueve: 47 de sus 72
+// rutas pasan de 15 km. Una ruta larga que te pasa a doscientos metros esta
+// cerca de ti; lo larga que sea es otra cosa. El tope de largo se ha quitado.
+//
+// En su sitio hay un tope de CUANTAS, no de cuan largas, porque sin ninguno
+// el boton no servia de nada en el sitio donde mas falta hace: 55 de sus
+// rutas arrancan en 500 m de Trabakua, asi que ahi «cerca de mi» serian 62
+// de 72 y la pantalla quedaria igual que con «Todas».
+//
+// Orden: por lo cerca que te pasa. A igualdad -en Trabakua todas salen del
+// mismo punto- la mas corta primero, que es la que se puede hacer desde ahi.
+const nearbyRadius=4000,nearbyPaso=1500,nearbyMaximo=20;
+let nearbyCercanas=new Set();
 function routeLength(i){
  const t=tracks[i];if(!t?.points?.length)return Infinity;
  if(t._nearLength===undefined){let sum=0;for(let j=1;j<t.points.length;j++)sum+=dist(t.points[j-1],t.points[j]);t._nearLength=sum}
  return t._nearLength;
 }
-function nearTrack(i){
- return !nearbyOnly||(!!nearbyOrigin&&tracks[i]?.points?.length>1&&routeLength(i)<=nearbyMaxLength&&(dist(nearbyOrigin,tracks[i].points[0])<=nearbyRadius||closestMeters(nearbyOrigin,tracks[i].points)<=1500));
+// Lo cerca que te pilla esa ruta: por su salida o por donde pasa, lo que mande.
+function distanciaCerca(i){
+ const t=tracks[i];
+ if(!nearbyOrigin||!(t?.points?.length>1))return Infinity;
+ // La salida es un punto del propio trazado, asi que esto ya la incluye: no
+ // hace falta mirarla aparte.
+ return closestMeters(nearbyOrigin,t.points);
 }
+function dentroDeCerca(i){
+ const t=tracks[i];
+ return !!nearbyOrigin&&t?.points?.length>1&&
+  (dist(nearbyOrigin,t.points[0])<=nearbyRadius||closestMeters(nearbyOrigin,t.points)<=nearbyPaso);
+}
+function recalculaCerca(){
+ nearbyCercanas=new Set();
+ if(!nearbyOnly||!nearbyOrigin||!tracks.length)return;
+ const dentro=tracks.map((t,i)=>i).filter(dentroDeCerca);
+ dentro.sort((a,b)=>distanciaCerca(a)-distanciaCerca(b)||routeLength(a)-routeLength(b));
+ for(const i of dentro.slice(0,nearbyMaximo))nearbyCercanas.add(i);
+ nearbyCount=nearbyCercanas.size;
+}
+function nearTrack(i){return !nearbyOnly||nearbyCercanas.has(i)}
 function updateNearbyLayers(){
  if(!nearbyOnly||!tracks.length)return;
- nearbyCount=tracks.reduce((n,t,i)=>n+(nearTrack(i)?1:0),0);
+ recalculaCerca();
  refreshRouteLayers();
  $('nearbyAction').textContent='Todas';
- $('nearbyAction').title=nearbyCount+' rutas de menos de 15 km con salida a 4 km o trazado a 1,5 km';
+ $('nearbyAction').title=nearbyCount+' rutas con salida a 4 km o que te pasan a 1,5 km';
 }
 function applyNearbyPosition(p){
  if(!nearbyOnly)return;
  nearbyOrigin=p.slice();nearbyLast=p.slice();
  updateNearbyLayers();
  showRoutesIfOpen();
- notice(nearbyCount?nearbyCount+' rutas cortas con salida a 4 km o trazado a 1,5 km':'No hay rutas de menos de 15 km con salida cercana o trazado a 1,5 km');
+ notice(nearbyCount?nearbyCount+' rutas cerca de ti · de la que más cerca te pasa a la que menos':'No hay ninguna ruta con salida a 4 km ni que te pase a 1,5 km');
 }
 function showRoutesIfOpen(){if(!$('routeDialog').classList.contains('hidden'))showRoutes()}
 function nearbyButtonState(){
@@ -775,7 +809,7 @@ function selectRoute(i){
 let routeListScope='all';
 function syncScopeMap(){
  nearbyOnly=routeListScope==='near';nearbyButtonState();
- nearbyCount=nearbyOnly?tracks.reduce((n,t,i)=>n+(nearTrack(i)?1:0),0):0;
+ if(nearbyOnly)recalculaCerca();else{nearbyCercanas=new Set();nearbyCount=0}
  refreshRouteLayers();
  if(routeListScope==='current')notice('Mostrando solo la ruta actual');
  else if(routeListScope==='near')notice(nearbyOrigin?nearbyCount+' rutas cercanas disponibles':'Buscando ubicación GPS…');
@@ -787,8 +821,13 @@ function showRoutes(){
  if(routeListScope==='near'&&!nearbyOrigin){list.textContent='Buscando tu posición GPS…';return}
  if(routeListScope==='current'&&chosen<0){list.textContent=routePoints.length>1?'Ruta propia activa: '+$('mapTitle').textContent:'No hay una ruta activa';return}
  let n=0;
- tracks.map((t,i)=>({t,i})).sort((a,b)=>routeListScope==='near'&&nearbyOrigin?dist(nearbyOrigin,a.t.points[0])-dist(nearbyOrigin,b.t.points[0]):a.i-b.i).forEach(({t,i})=>{
-  if(routeListScope==='near'&&!(routeLength(i)<=nearbyMaxLength&&(dist(nearbyOrigin,t.points[0])<=nearbyRadius||closestMeters(nearbyOrigin,t.points)<=1500)))return;
+ // La misma regla y el mismo orden que en el mapa, de un solo sitio: antes
+ // el listado llevaba su propia copia y ordenaba solo por la salida, asi que
+ // una ruta que te pasa por delante caia al final de la lista.
+ tracks.map((t,i)=>({t,i})).sort((a,b)=>routeListScope==='near'&&nearbyOrigin
+   ?(distanciaCerca(a.i)-distanciaCerca(b.i)||routeLength(a.i)-routeLength(b.i))
+   :a.i-b.i).forEach(({t,i})=>{
+  if(routeListScope==='near'&&!nearbyCercanas.has(i))return;
   if(routeListScope==='current'&&i!==chosen)return;
   if(!sinTildes(toName(t)).includes(sinTildes(q)))return;
   n++;const b=document.createElement('button');b.className='routeitem';
@@ -801,7 +840,7 @@ function showRoutes(){
   b.append(txt);
   const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b);
  });
- if(!n)list.textContent=routeListScope==='near'?'No hay rutas próximas de hasta 15 km':'Sin coincidencias';
+ if(!n)list.textContent=routeListScope==='near'?'No hay ninguna ruta cerca de ti':'Sin coincidencias';
 }
 document.querySelectorAll('#routeListScope button').forEach(b=>b.onclick=()=>{
  routeListScope=b.dataset.scope;
