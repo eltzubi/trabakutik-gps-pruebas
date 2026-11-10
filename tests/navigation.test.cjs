@@ -407,13 +407,14 @@ test('Una ruta que ya estaba activa tiene prioridad al iniciar la grabación',()
 function endSessionFlow(){
  const nodes=new Map(),calls=[];
  const c={console,Date,JSON,Number,Math,Set,Promise,
-  $:id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',classList:{add(){},remove(){},toggle(){}}});return nodes.get(id)},
+  $:id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',dataset:{},classList:{add(){},remove(){},toggle(){}}});return nodes.get(id)},
   window:{speechSynthesis:{cancel(){calls.push('cancel-voice')}},TrabakutikAndroid:{
    stopRecording(){calls.push('stop-record')},stopNavigation(){calls.push('stop-navigation')},clearLiveTrack(){calls.push('clear-track')},
    getPosition(){throw Error('No debe consultar el servicio después de terminar')},
    getTrackingSnapshot(){calls.push('snapshot');return JSON.stringify({recording:true})}
   }},navigator:{geolocation:{clearWatch(w){calls.push(['clear-watch',w])},watchPosition(){calls.push('watch');return 2}}},
   document:{hidden:false},audio:{close(){calls.push('close-audio');return Promise.resolve()}},
+  gpsSolicitado:true,ultimoErrorGps:null,fixVisualGps:null,ubicacionVisualGps:null,errorVisualGps:null,
   watch:1,gpsApagadoPorTi:false,navegaNativo:true,giraNativo:true,junctionActive:1,
   recording:true,recordingPendingSave:false,recorded:[point(0,0),point(10,0)],recordLayer:{},
   lastBrowserRecordTime:1,lastBrowserRecordPoint:point(10,0),pausado:false,
@@ -426,6 +427,7 @@ function endSessionFlow(){
   getAudio(){},mode:'nav',syncNativeRoute(){},enciendeNavegacionNativa(){calls.push('start-navigation')}
  };
  vm.createContext(c);
+ vm.runInContext(source('function estadoGpsVisual(', 'function bearingBetween('),c);
  vm.runInContext(source('function apagaGps(){',"$('discardRecording').onclick="),c);
  vm.runInContext(source('function finishRecording(){','function savePendingToMine(){'),c);
  vm.runInContext(source("$('recordStop').onclick=","$('saveRecording').onclick="),c);
@@ -532,7 +534,7 @@ test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progres
 
 
 test('El vigilante no anuncia pérdida de GPS si solo se ha cargado una ruta',()=>{
- const notices=[],c={gpsApagadoPorTi:false,watch:null,fuenteNativa:false,recording:false,navegaNativo:false,
+ const notices=[],c={pintaEstadoGps(){},gpsApagadoPorTi:false,watch:null,fuenteNativa:false,recording:false,navegaNativo:false,
   window:{TrabakutikAndroid:{getPosition(){throw Error('No debe vigilar sin GPS iniciado')}}},
   setInterval:fn=>c.tick=fn,notice:t=>notices.push(t)};
  vm.createContext(c);vm.runInContext(source('const GUIA_CADUCA_MS=', 'function syncNativeRoute()'),c);

@@ -64,3 +64,11 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Probar creador, guardado, grabación y apertura sin conexión
         run: node scripts/test-browser.cjs
+      - name: Guardar capturas de la revisión
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-navegador
+          path: .test-artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 7

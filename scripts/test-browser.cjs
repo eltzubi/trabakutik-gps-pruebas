@@ -49,11 +49,11 @@ async function setup(context) {
           recording: window.__native.recording,
           navigating: window.__native.navigating,
           guiando: window.__native.navigating,
-          locationEnabled: true,
+          locationEnabled: window.__native.locationEnabled !== false,
           lat: 43.2,
           lon: -2.5,
-          accuracy: 5,
-          time: Date.now(),
+          accuracy: window.__native.accuracy ?? 5,
+          time: window.__native.fixedTime ?? Date.now(),
           speed: 0,
           bearing: 0,
           giros: 0,
@@ -231,6 +231,14 @@ async function setup(context) {
       0,
     );
     assert(await page.locator("#recordStart").isVisible());
+    assert.equal(await page.locator('#gpsState').textContent(),'GPS sin iniciar');
+    const audioDrawings=[];
+    for(const modo of ['voz','pitidos','silencio']){
+      assert.equal(await page.locator('#audioMode').getAttribute('data-modo'),modo);
+      audioDrawings.push(await page.locator('#audioIcon').innerHTML());
+      await page.click('#audioMode');
+    }
+    assert.equal(new Set(audioDrawings).size,3,'cada modo sonoro tiene su propio dibujo');
     assert.equal(
       await page.locator("#appVersion").textContent(),
       "Trabakutik GPS 4.9.3",
@@ -245,6 +253,19 @@ async function setup(context) {
     await page.waitForFunction(
       () => window.__native.navigating && window.__native.recording,
     );
+    await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='recibiendo');
+    assert(await page.locator('#gpsState').isVisible(),'el GPS sigue visible con los mandos ocultos');
+    assert.match(await page.locator('#gpsState').textContent(),/±5 m/);
+    await page.evaluate(()=>window.__native.locationEnabled=false);
+    await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='apagada');
+    await page.evaluate(()=>{window.__native.locationEnabled=true;window.__native.accuracy=45});
+    await page.waitForFunction(()=>document.querySelector('#gpsState').textContent.includes('±45 m'));
+    assert.equal(await page.locator('#gpsState').getAttribute('data-estado'),'impreciso');
+    await page.evaluate(()=>{window.__native.fixedTime=Date.now();window.__native.accuracy=5});
+    await page.clock.setFixedTime(new Date(Date.now()+30000));
+    await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='sin-senal');
+    await page.evaluate(()=>window.__native.fixedTime=null);
+    await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='recibiendo');
     await page.evaluate(() => {
       window.__native.points = [
         [43, -2],
@@ -268,6 +289,7 @@ async function setup(context) {
       "el boton de mandos devuelve la botonera",
     );
     await page.click("#recordStop");
+    assert.equal(await page.locator('#gpsState').textContent(),'GPS detenido');
     assert(
       await page.locator("#saveRecording").isVisible(),
       "al parar, la botonera vuelve sin tocar nada",
