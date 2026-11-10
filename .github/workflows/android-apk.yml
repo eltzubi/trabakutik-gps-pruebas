@@ -10,6 +10,7 @@ on:
     paths:
       - 'android/**'
       - 'tests/background_lifecycle.py'
+      - 'tests/sin_senal_gps.py'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 permissions:
@@ -40,6 +41,9 @@ jobs:
       - name: Comprobar los avisos de giro
         working-directory: ${{ github.workspace }}
         run: python3 scripts/test-native-turns.py
+      - name: Comprobar el aviso de quedarse sin señal GPS
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/sin_senal_gps.py
       - name: Compilar APK de prueba
         run: gradle :app:assembleDebug --no-daemon
       - name: Comprobar que existe el APK

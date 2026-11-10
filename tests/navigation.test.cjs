@@ -143,6 +143,89 @@ test('Una horquilla de pista avisa como curva de herradura',()=>{
  assert.equal(detector().detect(horquilla(10,162)).length,1,'162 grados');
  assert.equal(detector().detect(horquilla(10,158)).length,0,'158 grados');
 });
+test('Quedarse sin satélites se dice en alto, una vez, y la vuelta también',()=>{
+ // El autor corto los satelites a proposito y la aplicacion no dijo nada:
+ // solo cambiaba el texto de la barra de abajo, que con el movil en el
+ // bolsillo no se lee. Esta es la parte de la pagina; el servicio tiene la
+ // suya en tests/sin_senal_gps.py, que es la que suena con la pantalla
+ // apagada.
+ const dicho=[];let tonos=0;
+ const c={navegaNativo:false,getAudio(){},pitidos(n){tonos+=n},hablar(s){dicho.push(s)}};
+ vm.createContext(c);
+ vm.runInContext(source('let sinGpsAvisado=false;','function conmutaModoAudio('),c);
+ c.avisaSinGps(false);
+ assert.deepEqual(dicho,['Atención, sin señal GPS']);
+ assert(tonos>0,'y suena, para cuando los avisos van en solo pitidos');
+ c.avisaSinGps(false);c.avisaSinGps(false);
+ assert.equal(dicho.length,1,'no se repite cada cinco segundos');
+ c.vuelveElGps();
+ assert.deepEqual(dicho,['Atención, sin señal GPS','Señal GPS recuperada']);
+ c.vuelveElGps();
+ assert.equal(dicho.length,2,'la vuelta tampoco se repite');
+ // La ubicacion apagada se dice con sus palabras: no es lo mismo que no ver
+ // satelites, porque esto lo arregla el con un boton.
+ const otro={navegaNativo:false,getAudio(){},pitidos(){},hablar(s){dicho.push(s)}};
+ vm.createContext(otro);
+ vm.runInContext(source('let sinGpsAvisado=false;','function conmutaModoAudio('),otro);
+ otro.avisaSinGps(true);
+ assert.match(dicho[2],/ubicación del teléfono está apagada/);
+ // Si navega el servicio, los pitidos los pone el: la pagina no los duplica.
+ const nativo={navegaNativo:true,getAudio(){throw Error('no debe tocar el audio')},
+   pitidos(){throw Error('no debe pitar')},hablar(){}};
+ vm.createContext(nativo);
+ vm.runInContext(source('let sinGpsAvisado=false;','function conmutaModoAudio('),nativo);
+ nativo.avisaSinGps(false);
+ // Y el vigilante tiene que llamarlo: sin esto la funcion estaria ahi sin que
+ // nadie la use, que es justo lo que pasaba antes.
+ const vigilante=source('const GUIA_CADUCA_MS=','function syncNativeRoute()');
+ assert.equal((vigilante.match(/avisaSinGps\(/g)||[]).length,3,
+   'el vigilante avisa en los tres casos sin posición: apagada, error y caducada');
+ assert.match(source('function onFix(pos){','function miraPosicionNativa('),/vuelveElGps\(\)/,
+   'y al llegar una posición se dice que ha vuelto');
+});
+// Reflejada norte-sur: lo que giraba a la izquierda gira a la derecha.
+const espejo=pts=>pts.map(([la,lo])=>[2*43.2-la,lo]);
+test('La herradura guarda el lado y la flecha se dibuja hacia ese lado',()=>{
+ // Lo vio el autor en una herradura de 173 grados: la curva iba a la
+ // izquierda y la flecha se dibujaba girando a la derecha. Pasados los 145
+ // grados el giro se quedaba en «vuelta» y el lado se perdia por el camino.
+ const izq=detector().detect(horquilla(10));
+ assert.equal(izq.length,1);
+ assert.equal(izq[0].direction,'vuelta');
+ assert.equal(izq[0].hacia,'izquierda');
+ const der=detector().detect(espejo(horquilla(10)));
+ assert.equal(der.length,1);
+ assert.equal(der[0].direction,'vuelta');
+ assert.equal(der[0].hacia,'derecha');
+ // En un giro normal las dos palabras dicen lo mismo.
+ for(const [angle,lado] of [[140,'izquierda'],[-140,'derecha']]){
+  const g=detector().detect(corner(angle))[0];
+  assert.equal(g.direction,lado);assert.equal(g.hacia,lado);
+ }
+ // Y lo que llega al dibujo es ese lado, no «derecha» por defecto.
+ const c={};vm.createContext(c);
+ vm.runInContext(source('function ladoFlecha(turn,alReves){','// Velocidad suavizada'),c);
+ vm.runInContext(source('function flechaGiro(','// Velocidad suavizada'),c);
+ assert.equal(c.ladoFlecha(izq[0],false),'izquierda');
+ assert.equal(c.ladoFlecha(der[0],false),'derecha');
+ // Al reves por la ruta, el lado se cambia, tambien en la herradura.
+ assert.equal(c.ladoFlecha(izq[0],true),'derecha');
+ assert.equal(c.ladoFlecha(der[0],true),'izquierda');
+ // Un giro guardado por una version vieja no trae «hacia»: no se rompe.
+ assert.equal(c.ladoFlecha({direction:'izquierda'},false),'izquierda');
+ assert.equal(c.ladoFlecha({direction:'vuelta'},false),'derecha');
+ // Y las dos flechas son una el espejo de la otra, no la misma.
+ const a=c.flechaGiro(173,-1,62,11),b=c.flechaGiro(173,1,62,11);
+ assert.notEqual(a,b,'la flecha de la izquierda no puede ser la de la derecha');
+ assert.match(a,/A17 17 0 0 0 /,'a la izquierda el arco va en un sentido');
+ assert.match(b,/A17 17 0 0 1 /,'y a la derecha en el otro');
+ // Y que la ficha de giro use ese lado y no «lado», que es el del TEXTO y
+ // vale «vuelta» en las herraduras: ahi estaba el fallo. Se mira en el
+ // fuente porque pintar la ficha necesita el mapa entero montado.
+ const ficha=source("const lado=turn.direction==='vuelta'","$('turnDirection')");
+ assert.match(ficha,/const sentido=ladoFlecha\(turn,alReves\)/,
+   'la flecha tiene que salir de ladoFlecha, no de la palabra del texto');
+});
 test('Una pista en zeta da un aviso por revuelta, no varios',()=>{
  // Cuatro revueltas seguidas subiendo: cuatro avisos, uno en cada una.
  for(const ancho of [10,24,30]){

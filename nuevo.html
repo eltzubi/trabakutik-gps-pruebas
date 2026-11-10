@@ -2100,6 +2100,27 @@ function hablaPagina(texto){
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
  try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
 }
+// QUEDARSE SIN SATELITES SE DICE EN ALTO, no solo escrito en la barra de
+// abajo. Con el movil en el bolsillo no te enterabas de que habias dejado de
+// estar guiado y seguias andando esperando el aviso del siguiente cruce. Lo
+// pidio el autor despues de cortar los satelites a proposito y no oir nada.
+// Si quien navega es el servicio, habla el -la pagina se duerme-: por eso va
+// por hablar() y los pitidos solo suenan si no esta el servicio detras.
+let sinGpsAvisado=false;
+function avisaSinGps(apagada){
+ if(sinGpsAvisado)return;
+ sinGpsAvisado=true;
+ // Dos pitidos lentos: los giros son de uno a tres seguidos, asi que este no
+ // se confunde con ninguno.
+ if(!navegaNativo){getAudio();pitidos(2,.7)}
+ hablar(apagada?'Atención, la ubicación del teléfono está apagada'
+               :'Atención, sin señal GPS');
+}
+function vuelveElGps(){
+ if(!sinGpsAvisado)return;
+ sinGpsAvisado=false;
+ hablar('Señal GPS recuperada');
+}
 function conmutaModoAudio(){
  audioModo=audioModo==='voz'?'pitidos':audioModo==='pitidos'?'silencio':'voz';
  try{localStorage.setItem('trabakutik-audio-modo',audioModo)}catch(e){}
@@ -2146,6 +2167,16 @@ function flechaGiro(deg,dir,tam,grosor){
   '<path d="'+d+'" fill="none" stroke="url(#'+id+')" stroke-width="'+grosor+'" stroke-linecap="round"/>'+
   '<path d="M'+px.toFixed(1)+' '+py.toFixed(1)+' L'+b1x.toFixed(1)+' '+b1y.toFixed(1)+
   ' L'+b2x.toFixed(1)+' '+b2y.toFixed(1)+' Z" fill="#c8fbff"/></svg>';
+}
+// HACIA DONDE SE CURVA LA FLECHA. Tambien en una herradura: antes, pasados
+// los 145 grados, el giro se quedaba en «vuelta» y el lado se perdia, asi que
+// una herradura a la izquierda se dibujaba girando a la derecha. Lo vio el
+// autor en una de 173 grados. El TEXTO no cambia: sigue diciendo «curva de
+// herradura» a secas, que es como lo pidio.
+// Esta aparte de la funcion que pinta para poder probarla sin montar el mapa.
+function ladoFlecha(turn,alReves){
+ const crudo=turn.hacia||(turn.direction==='vuelta'?'derecha':turn.direction);
+ return alReves?(crudo==='izquierda'?'derecha':'izquierda'):crudo;
 }
 // Velocidad suavizada, en m/s. Las indicaciones de giro se calculan con ella
 // y la cruda del GPS pega saltos: un pico de 12 m/s estando parado
@@ -2453,8 +2484,13 @@ function computeJunctions(){
    if(!(cruce&&!previo.cruce))continue;
    junctions.pop();
   }
-  const direction=grados>145?'vuelta':cross>0?'izquierda':'derecha';
-  junctions.push({i,point:b,along:routeCumulative[i],direction,angle:Math.round(grados),cruce});
+  // EL LADO SE GUARDA SIEMPRE, TAMBIEN EN UNA HERRADURA. Antes, al pasar de
+  // los 145 grados, «direction» se quedaba en «vuelta» y el lado se perdia por
+  // el camino: la flecha se dibujaba girando a la derecha aunque la curva
+  // fuera a la izquierda. Lo vio el autor en una herradura de 173 grados.
+  const hacia=cross>0?'izquierda':'derecha';
+  const direction=grados>145?'vuelta':hacia;
+  junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce});
  }
  enviaGirosNativos();
 }
@@ -2573,7 +2609,7 @@ function junctionGuidance(p,accuracy){
  const lado=turn.direction==='vuelta'?'vuelta'
    :alReves?(turn.direction==='izquierda'?'derecha':'izquierda')
    :turn.direction;
- const sentido=lado==='izquierda'?-1:1;
+ const sentido=ladoFlecha(turn,alReves)==='izquierda'?-1:1;
  const grados=Number.isFinite(turn.angle)?turn.angle:(turn.direction==='vuelta'?160:85);
  $('turnArrow').innerHTML=flechaGiro(grados,sentido,62,11);
  if(!turnMarker||turnMarker.options.turnIndex!==j){
@@ -2680,6 +2716,7 @@ function rumboDeLaRuta(p){
 function onFix(pos){
  if(gpsApagadoPorTi)return; // Ignorar una posición pendiente después de finalizar.
  ultimoFix=Date.now();
+ vuelveElGps();
  const estadoGps=$('status').textContent;
  if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
   notice(guiaIniciada()?'Posición recibida · siguiendo ruta':'Posición recibida');
@@ -2942,12 +2979,14 @@ setInterval(()=>{
   if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
   const mensaje='Ubicación del teléfono apagada · actívala para recibir posición GPS';
   if($('status').textContent!==mensaje)notice(mensaje);
+  avisaSinGps(true);
   return;
  }
  if(ultimoErrorGps!==null){
   if(junctionActive>=0)resetJunctionView();
   if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
   if($('status').textContent!==ultimoErrorGpsText)notice(ultimoErrorGpsText);
+  avisaSinGps(false);
   return;
  }
  if(ultimoFix){
@@ -2964,6 +3003,7 @@ setInterval(()=>{
  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
  const mensaje='Sin posición reciente del GPS · buscando señal';
  if($('status').textContent!==mensaje)notice(mensaje);
+ avisaSinGps(false);
 },5000);
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1){window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));enviaGirosNativos();}}catch(e){console.warn('Ruta nativa no enviada',e)}}
 // Elegir una ruta prepara puntos y giros sin arrancar el GPS ni la guía.
@@ -2978,7 +3018,7 @@ function enciendeNavegacionNativa(){
  }catch(e){console.warn('No se pudo encender la navegacion nativa',e)}
 }
 function startGPS(forRecording=false){
- gpsApagadoPorTi=false;apagadoHasta=0;gpsSolicitado=true;
+ gpsApagadoPorTi=false;apagadoHasta=0;gpsSolicitado=true;sinGpsAvisado=false;
  if(!forRecording&&mode==='nav'&&routePoints.length>1&&window.TrabakutikAndroid){
   try{syncNativeRoute()}catch(e){console.warn(e)}
  }
@@ -3112,7 +3152,7 @@ function apagaGps(){
  if(junctionActive>=0)resetJunctionView();
  resetOffRoute();
  if(me){map.removeLayer(me);me=null}
- position=null;lastCourse=null;courseFix=null;ultimoFix=0;refParado=null;refParadoT=0;
+ position=null;lastCourse=null;courseFix=null;ultimoFix=0;refParado=null;refParadoT=0;sinGpsAvisado=false;
  // El servicio tarda un momento en pararse de verdad. Sin esta tregua el
  // sondeo lo vería aún activo y volvería a encender la flecha recién apagada.
  fuenteNativa=false;ultimoTiempoNativo=0;apagadoHasta=Date.now()+8000;

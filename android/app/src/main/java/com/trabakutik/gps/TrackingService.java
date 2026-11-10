@@ -12,7 +12,7 @@ import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -56,9 +56,33 @@ public class TrackingService extends Service implements LocationListener {
   @Override public void run(){
    if(!active)return;
    String estado=estadoGps();if(!estado.equals(ultimoEstadoAviso))updateNotice();
+   avisaSinGps();
    avisoHandler.postDelayed(this,5000);
   }
  };
+ // QUEDARSE SIN SATELITES SE DICE EN ALTO. Antes solo cambiaba el texto de la
+ // notificacion, y con el movil en el bolsillo no te enterabas de que habias
+ // dejado de estar guiado: seguias andando creyendo que la aplicacion te iba
+ // a avisar del siguiente cruce. Lo pidio el autor despues de cortar los
+ // satelites a proposito y no oir nada.
+ //
+ // Solo se avisa de una PERDIDA, no del arranque: al encender todavia no hay
+ // posicion y decir «sin señal» ahi seria mentira y ademas asustaria. Por eso
+ // hace falta haber tenido al menos un punto (ultimoFixGpsElapsed>0). La
+ // ubicacion apagada si se dice desde el primer momento: eso no se arregla
+ // esperando.
+ void avisaSinGps(){
+  boolean apagada=!ubicacionActivada();
+  boolean sinGps=apagada||(ultimoFixGpsElapsed>0&&!gpsReciente());
+  if(sinGps==sinGpsAvisado)return;
+  sinGpsAvisado=sinGps;
+  if(!sinGps){habla("Señal GPS recuperada");return;}
+  // Dos pitidos lentos: los giros van de uno a tres seguidos y el de fuera
+  // de ruta son cuatro rapidos, asi que este no se confunde con ninguno.
+  pitidos(2,700);
+  habla(apagada?"Atención, la ubicación del teléfono está apagada"
+               :"Atención, sin señal GPS");
+ }
  // La voz vive AQUI y no en la pagina. La pagina se duerme con la pantalla
  // apagada —es la misma razon por la que los pitidos se mudaron al servicio—
  // y con el movil en el bolsillo la voz no sonaba justo cuando hace falta.
@@ -148,7 +172,7 @@ public class TrackingService extends Service implements LocationListener {
   if(action==null){finish();return START_NOT_STICKY;}
   if("STOP".equals(action)){finish();return START_NOT_STICKY;}
   if("STOP_NAVIGATION".equals(action)){
-   navigating=false;routeReached=false;offRoute=false;farSince=0;sentido=1;
+   navigating=false;routeReached=false;offRoute=false;farSince=0;sentido=1;sinGpsAvisado=false;
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
    publicaEstado();
    if(!recording){finish();return START_NOT_STICKY;}
@@ -288,7 +312,7 @@ public class TrackingService extends Service implements LocationListener {
   recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;errorRuta="";
+  route.clear();routeReached=false;offRoute=false;farSince=0;errorRuta="";sinGpsAvisado=false;
   File f=new File(getFilesDir(),"ruta-activa.json");
   if(!f.exists()){loadTurns();return;}
   // Los dos topes de antes -2 MB de fichero y 15.000 puntos- recortaban la
