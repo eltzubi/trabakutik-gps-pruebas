@@ -164,7 +164,7 @@ body.creating-route #createActions button::after{
 body.creating-route #createActions #undo::after{content:'Deshacer'}
 body.creating-route #createActions #clearCreated::after{content:'Borrar'}
 body.creating-route #createActions #saveCreated::after{content:'Guardar'}
-body.creating-route #createActions #navCreated::after{content:'Navegar'}
+body.creating-route #createActions #navCreated::after{content:'Abrir ruta'}
 body.creating-route #createActions #cerrarCirculo::after{content:'Círculo'}
 body.creating-route #createActions #idaVuelta::after{content:'Ida y vta.'}
 body.creating-route #createActions #modoTrazo::before{content:'✎';font-size:21px}
@@ -268,9 +268,6 @@ body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .
 #navActions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
 #navActions.hidden{display:none!important}
 #navActions button{min-width:0;font-size:11px;padding:8px 3px;white-space:nowrap}
-#nearbyAction[aria-pressed="true"]{background:#146275;border-color:#75d3e9;color:#eaffff}
-#nearbyAction[aria-pressed="true"]{background:#146275;border-color:#75d3e9;color:#eaffff}
-#nearbyAction{font-size:10px!important}
  .route-list-scope{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0 12px}.route-list-scope button{font-size:11px;min-height:38px;padding:7px 2px;border:1px solid #47677a;border-radius:10px;color:#c1dbe6;background:#193646}.route-list-scope button[aria-pressed='true']{background:#48cce7;color:#092331;font-weight:750;border-color:#48cce7}
 
 .info-top .route-title-link{
@@ -1720,7 +1717,7 @@ function savePendingToMine(){
   savedFromDialog=item;
   $('saveToMine').disabled=true;
   $('navigateSavedFromDialog').classList.remove('hidden');
-  $('saveStatus').textContent='Guardada en Mis rutas. Pulsa Abrir ruta y después Iniciar grabación para comenzar.';
+  $('saveStatus').textContent='Guardada en Mis rutas. Pulsa Abrir ruta y después Empezar.';
  }else closeSaveDialog();
  showSaved();
  notice('Guardada en Mis rutas · '+item.name);
@@ -3047,7 +3044,7 @@ setInterval(()=>{
 },5000);
 function syncNativeRoute(){try{if(window.TrabakutikAndroid&&routePoints.length>1){window.TrabakutikAndroid.setRoute(JSON.stringify(routePoints.map(p=>[p[0],p[1]])));enviaGirosNativos();}}catch(e){console.warn('Ruta nativa no enviada',e)}}
 // Elegir una ruta prepara puntos y giros sin arrancar el GPS ni la guía.
-// Iniciar grabación activa también el servicio que avisa con pantalla apagada.
+// Empezar activa también el servicio que avisa con pantalla apagada.
 function enciendeNavegacionNativa(){
  if(!window.TrabakutikAndroid||mode!=='nav'||routePoints.length<2)return;
  try{
