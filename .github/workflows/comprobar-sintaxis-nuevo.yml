@@ -70,5 +70,6 @@ jobs:
         with:
           name: capturas-navegador
           path: .test-artifacts/*.png
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 7
