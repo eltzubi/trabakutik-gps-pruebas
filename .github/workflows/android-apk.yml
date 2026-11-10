@@ -13,6 +13,14 @@ on:
       - 'tests/sin_senal_gps.py'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
+# CUIDADO AL ESCRIBIR LOS MENSAJES DE LOS COMMITS. GitHub busca ciertas
+# palabras clave en el mensaje -la de saltarse la integracion continua y sus
+# variantes- y si las encuentra NO LANZA NINGUN FLUJO de esa subida, ni
+# siquiera las pruebas. Basta con que la palabra aparezca, aunque sea dentro
+# de una frase que explique que no se esta usando: paso de verdad el 10 de
+# noviembre y esa subida se quedo sin compilar y sin pruebas. Si hay que
+# nombrarla, se escribe partida o con otras palabras.
+
 permissions:
   contents: write   # hace falta para publicar la Release con el APK
 jobs:
