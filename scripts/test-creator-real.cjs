@@ -17,7 +17,10 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{execFileSync}=
    if(file.endsWith('nuevo.html'))body=body.toString().replace('\n})();\n</script>',"\nwindow.__creator={map,get redGps(){return redGps},get drawPoints(){return drawPoints},get anclasGps(){return anclasGps},get busy(){return calculandoMapaGps},get routePoints(){return routePoints},get junctions(){return junctions}};\n})();\n</script>");
    return route.fulfill({body,contentType:file.endsWith('.html')?'text/html':file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'application/json'});
   }
-  if(u.startsWith('https://routing.openstreetmap.de/')||u.startsWith('https://valhalla1.openstreetmap.de/height')){
+  // El planificador paso de OSRM a Valhalla el 9 de noviembre. Esta linea se
+  // quedo con el host viejo, asi que desde entonces esta prueba cortaba la
+  // peticion del planificador y no podia pasar.
+  if(u.startsWith('https://valhalla1.openstreetmap.de/')){
    requests.push(new URL(u).host);
    try{
     const body=execFileSync('python3',['-c',"import urllib.request,sys;req=urllib.request.Request(sys.argv[1],headers={'User-Agent':'Trabakutik-GPS-check/1.0','Accept':'application/json','X-Client-Id':'trabakutik.com'});sys.stdout.buffer.write(urllib.request.urlopen(req,timeout=20).read())",u],{timeout:25000,maxBuffer:2e6});

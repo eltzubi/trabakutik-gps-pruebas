@@ -140,7 +140,6 @@ public class TrackingService extends Service implements LocationListener {
   // La distancia de VERDAD, no el umbral: decia «en 200 metros» estando a 170.
   return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+hacia;
  }
- int metros(double d){return (int)(Math.round(d/5.0)*5);}
  boolean ubicacionActivada(){
   try{return manager.isProviderEnabled(LocationManager.GPS_PROVIDER)||manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);}
   catch(Exception ignored){return false;}

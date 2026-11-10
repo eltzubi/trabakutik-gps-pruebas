@@ -538,6 +538,36 @@ let gpsApagadoPorTi=false;
 let gpsSolicitado=false;
 let ultimoFix=0,fuenteNativa=false,ultimoTiempoNativo=0,apagadoHasta=0,lastCourse=null,courseFix=null,followGps=true,manualMapUntil=0,lastNativeSync=0,lastNativeTrackVersion='',lastBrowserRecordTime=0,lastBrowserRecordPoint=null;
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
+// EL RUMBO DE LA FLECHA cuando no lo marca la ruta, y el suavizado que le
+// quita los saltos. Estan aparte de onFix para poder probarlos: hasta ahora
+// las pruebas de orientacion miraban nuevo-qa.html, una copia congelada de
+// la pagina, y la funcion que probaban ya ni existe aqui.
+//
+// - El rumbo que da el GPS solo vale si viene y si te mueves: parado se
+//   queda viejo y la flecha llega a apuntar al reves del camino.
+// - Si no viene, se deduce de por donde has pasado, pero con 8 m andados y
+//   menos de 35 m de error. Con menos, el baile del GPS parado daria un
+//   rumbo inventado.
+// - La referencia se mueve cada 8 m, tambien cuando el rumbo lo da el GPS:
+//   asi nunca se mide contra un punto de hace media hora.
+function rumboAndando(coords,p,ref,ultimo){
+ const gps=Number.isFinite(coords.heading)&&coords.heading>=0
+   &&(!Number.isFinite(coords.speed)||coords.speed>0.5)?coords.heading:null;
+ const lejos=!!ref&&dist(ref,p)>=8;
+ const rumbo=gps!==null?gps
+   :(lejos&&coords.accuracy<=35?bearingBetween(ref,p):ultimo);
+ return {rumbo,ref:(!ref||lejos)?p.slice():ref};
+}
+// La flecha giraba de golpe porque el rumbo salta de un segmento a otro.
+// Suavizado circular: cada lectura la acerca al rumbo nuevo, no la planta
+// encima. Medido sobre la ruta de Berriz, el salto mayor baja de 179 a 80
+// grados y los bruscos se reducen a menos de la mitad. Los que quedan son
+// curvas de verdad del circuito. Cruza el norte por el lado corto.
+function suavizaRumbo(anterior,nuevo){
+ if(anterior===null)return nuevo;
+ let dd=(nuevo-anterior)%360;if(dd>180)dd-=360;if(dd<-180)dd+=360;
+ return (anterior+dd*0.45+360)%360;
+}
 // CERCA DE MI: salida a 4 km o trazado a 1,5 km, y como mucho las 20 mas
 // cercanas.
 //
@@ -2166,7 +2196,6 @@ function conmutaModoAudio(){
  pintaModoAudio();avisaModoAudioNativo();notice('Avisos sonoros: '+(audioModo==='voz'?'voz y pitidos':audioModo==='pitidos'?'solo pitidos':'silencio'));
  if(audioModo==='voz')hablar('Voz activada');
 }
-function compartirGpx(points,name){void shareGpx(points,name)}
 function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
 // Un grupo de n pitidos agudos, y el numero es el dato: 1 pitido = cruce a
 // 50 m, 2 = a 10 m, 3 = lo tienes encima, 4 = fuera de ruta. Los cuatro de
@@ -2760,11 +2789,9 @@ function onFix(pos){
  if(estadoGps==='Localizando…'||estadoGps.startsWith('Sin posición reciente')||estadoGps.startsWith('Sin posición GPS reciente')||estadoGps.startsWith('Ubicación del teléfono apagada')||estadoGps.startsWith('No se recibe la ubicación')||estadoGps.startsWith('Permiso de ubicación denegado')||estadoGps===ultimoErrorGpsText)
   notice(guiaIniciada()?'Posición recibida · siguiendo ruta':'Posición recibida');
  ultimoErrorGps=null;ultimoErrorGpsText='';
- const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;const gpsHeading=Number.isFinite(pos.coords.heading)&&pos.coords.heading>=0&&(!Number.isFinite(pos.coords.speed)||pos.coords.speed>0.5)?pos.coords.heading:null;
+ const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
- if(gpsHeading!==null)lastCourse=gpsHeading;
- else if(courseFix&&dist(courseFix,p)>=8&&pos.coords.accuracy<=35){lastCourse=bearingBetween(courseFix,p)}
- if(!courseFix||dist(courseFix,p)>=8)courseFix=p.slice();
+ ({rumbo:lastCourse,ref:courseFix}=rumboAndando(pos.coords,p,courseFix,lastCourse));
  // La flecha apunta EN EL SENTIDO DE LA RUTA mientras la sigues, no al
  // rumbo del GPS. Lo pidio el autor: «solo quiero, cuando este navegando,
  // que la flecha que nos indica la direccion vaya en el sentido de la
@@ -2788,17 +2815,7 @@ function onFix(pos){
    h=(r+(sentidoRuta<0?180:0))%360;hDeRuta=true;
   }
  }
- // La flecha giraba de golpe porque el rumbo salta de un segmento a otro.
- // Suavizado circular: cada lectura la acerca al rumbo nuevo, no la planta
- // encima. Medido sobre la ruta de Berriz, el salto mayor baja de 179 a 80
- // grados y los bruscos se reducen a menos de la mitad. Los que quedan son
- // curvas de verdad del circuito.
- if(h!==null){
-  if(rumboSuave===null)rumboSuave=h;
-  else{let dd=(h-rumboSuave)%360;if(dd>180)dd-=360;if(dd<-180)dd+=360;
-       rumboSuave=(rumboSuave+dd*0.45+360)%360;}
-  h=rumboSuave;
- }
+ if(h!==null)h=rumboSuave=suavizaRumbo(rumboSuave,h);
  pintaBrujula(h);
  // Sobre la ruta el rumbo es geometrico y vale siempre; fuera de ella
  // viene del GPS y solo se hace caso por encima de 7 km/h. Si no, se

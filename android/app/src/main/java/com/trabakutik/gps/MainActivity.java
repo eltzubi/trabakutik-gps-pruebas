@@ -588,7 +588,6 @@ public class MainActivity extends Activity {
   }
  }
  void startNavigationService(){ensureGpsPermissions("NAVIGATE");}
- boolean onNavigator(){return showingGps;}
  int dp(int px){return Math.round(px*getResources().getDisplayMetrics().density);}
  // TrackingService.ACTIVO y no «serviceActive»: ese campo es de ESTA
  // instancia de la Activity y nace en false. Si Android rehace la pantalla

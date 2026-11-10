@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-for(const file of ['nuevo.html','nuevo-qa.html']){
+for(const file of ['nuevo.html']){
  const html=fs.readFileSync(path.join(__dirname,'..',file),'utf8');
  test(file+': Topo limita peticiones a z17 y vuelve a IGN si falla',()=>{
   const layers=[],els={basemap:{},mapCredit:{}};

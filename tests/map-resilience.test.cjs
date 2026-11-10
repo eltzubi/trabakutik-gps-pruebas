@@ -11,7 +11,7 @@ test('La caché reconoce IGN y PNOA, sin incluir otros servicios IGN',()=>{
  assert(!context.esTesela('https://www.ign.es/wmts/pnoa-ma?REQUEST=GetCapabilities'));
  assert(!context.esTesela('https://otro.es/wmts/pnoa-ma?REQUEST=GetTile'));
 });
-for(const file of ['nuevo.html','nuevo-qa.html']){
+for(const file of ['nuevo.html']){
  const html=fs.readFileSync(path.join(root,file),'utf8');
  function runner(fetch){
   let fire,cleared=false;

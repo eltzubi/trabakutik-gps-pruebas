@@ -19,15 +19,20 @@
  * fondo gris, pero la linea de la ruta, tu posicion y los avisos de cruce
  * funcionan igual, que es lo que importa.
  */
-const VERSION = 'gps-2';
-const CONCHA = 'concha-' + VERSION;
-const TESELAS = 'teselas-' + VERSION;
+// LA CONCHA Y LAS TESELAS VAN POR SEPARADO, A PROPOSITO. Al cambiar lo que
+// se precarga hay que tirar la concha vieja -si no, nuevo-qa.html se quedaba
+// guardado en el movil para siempre-, pero las teselas NO se tocan: son
+// hasta 900 imagenes del monte descargadas para andar sin cobertura, y
+// volver a bajarlas cuesta datos y tiempo en un sitio donde no hay.
+const VERSION_CONCHA = 'gps-3';
+const VERSION_TESELAS = 'gps-2';
+const CONCHA = 'concha-' + VERSION_CONCHA;
+const TESELAS = 'teselas-' + VERSION_TESELAS;
 const TESELAS_MAX = 900;
 
 // Lo imprescindible para que la pagina abra sin red.
 const BASICOS = [
   'nuevo.html',
-  'nuevo-qa.html',
   'vendor/leaflet/leaflet.css',
   'vendor/leaflet/leaflet.js',
   'data/trailhead.json',

@@ -1,69 +1,128 @@
+// El rumbo de la flecha azul y de la brújula.
+//
+// OJO CON LO QUE PASÓ AQUÍ. Hasta el 10 de noviembre este fichero leía
+// nuevo-qa.html -una copia congelada de la página- y probaba una función,
+// rumboDeMovimiento, que en la página de verdad ya no existía. Once pruebas
+// en verde vigilando código que no se publicaba. Ahora lee nuevo.html.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const vm=require('node:vm');
-const html=fs.readFileSync(require('node:path').join(__dirname,'../nuevo-qa.html'),'utf8');
-function runner(){
- const c={rumboSuave:null,lastCourse:null,R:Math.PI/180};vm.createContext(c);
- vm.runInContext(html.slice(html.indexOf('function bearingBetween('),html.indexOf('// Cerca de mí:')),c);
- c.dist=(a,b)=>Math.hypot((b[0]-a[0])*111195,(b[1]-a[1])*111195*Math.cos(43.2*Math.PI/180));
- vm.runInContext(html.slice(html.indexOf('let orientacionFix='),html.indexOf('function onFix(pos){')),c);
- c.fix=(heading,speed=13.9,accuracy=4,t=100000,x=0,y=0,now=t)=>c.rumboDeMovimiento({timestamp:t,coords:{latitude:43.2+y/111195,longitude:-2.5+x/(111195*Math.cos(43.2*Math.PI/180)),heading,speed,accuracy}},now);
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
+function source(start,end){
+ const a=html.indexOf(start),b=html.indexOf(end,a);
+ assert(a>=0&&b>a,`No se encontró ${start}`);
+ return html.slice(a,b);
+}
+function rumbos(){
+ const c={R:Math.PI/180};
+ vm.createContext(c);
+ vm.runInContext(source('const dist=(a,b)=>','\n'),c);
+ vm.runInContext(source('function bearingBetween(','// CERCA DE MI:'),c);
  return c;
 }
-const delta=(a,b)=>(a-b+540)%360-180;
-test('A 50 km/h el regreso mantiene el rumbo real aunque el track esté grabado al contrario',()=>{
- const c=runner();assert.equal(c.fix(180),180);
- for(let i=1;i<=20;i++)assert.equal(c.fix(180,13.9,4,100000+i*1000,0,-13.9*i),180);
+// Punto a x metros al este e y al norte del origen de las pruebas.
+const punto=(x,y)=>[43.2+y/111195,-2.5+x/(111195*Math.cos(43.2*Math.PI/180))];
+const vuelta=(a,b)=>Math.abs((a-b+540)%360-180);
+
+test('Andando, el rumbo lo da el GPS',()=>{
+ const c=rumbos();
+ const r=c.rumboAndando({heading:77,speed:1.4,accuracy:5},punto(0,0),null,null);
+ assert.equal(r.rumbo,77);
+ assert.deepEqual(r.ref,punto(0,0),'y guarda desde dónde se mide el siguiente');
 });
-test('Un cambio de sentido real gira por pasos limitados y converge',()=>{
- const c=runner();let prev=c.fix(0);
- for(let i=1;i<=12;i++){
-  const h=c.fix(180,13.9,4,100000+i*1000,0,-13.9*i);
-  assert(Math.abs(delta(h,prev))<=45.001);prev=h;
+
+test('Parado no se hace caso al rumbo del GPS: se queda el último bueno',()=>{
+ // Es el fallo clásico del GPS: quieto, el rumbo que da es ruido, y la
+ // flecha se pondría a dar vueltas encima del mapa.
+ const c=rumbos();
+ const ref=punto(0,0);
+ for(const velocidad of [0,0.2,0.5]){
+  const r=c.rumboAndando({heading:300,speed:velocidad,accuracy:5},punto(1,0),ref,90);
+  assert.equal(r.rumbo,90,`a ${velocidad} m/s se mantiene el rumbo`);
  }
- assert(Math.abs(delta(prev,180))<3);
+ // Y en cuanto echas a andar de verdad, sí.
+ assert.equal(c.rumboAndando({heading:300,speed:0.6,accuracy:5},punto(1,0),ref,90).rumbo,300);
 });
-test('Cruzar el norte usa el recorrido angular corto',()=>{
- const c=runner();c.fix(359);const h=c.fix(4,13.9,4,101000,0,14);
- assert(Math.abs(delta(h,359))<5);assert(h<5);
+
+test('Sin rumbo del GPS se deduce andando, pero hacen falta 8 metros',()=>{
+ const c=rumbos();
+ const ref=punto(0,0);
+ // Menos de 8 m: el baile del GPS daría un rumbo inventado.
+ const quieto=c.rumboAndando({speed:1.4,accuracy:5},punto(7,0),ref,123);
+ assert.equal(quieto.rumbo,123,'con 7 m se mantiene el de antes');
+ assert.deepEqual(quieto.ref,ref,'y la referencia no se mueve');
+ // Ocho metros al este son rumbo 90.
+ const anda=c.rumboAndando({speed:1.4,accuracy:5},punto(9,0),ref,123);
+ assert(vuelta(anda.rumbo,90)<1,`rumbo ${anda.rumbo}, debería ser 90`);
+ assert.deepEqual(anda.ref,punto(9,0),'y la referencia se adelanta');
+ // Al norte, 0 grados.
+ assert(vuelta(c.rumboAndando({speed:1.4,accuracy:5},punto(0,9),ref,123).rumbo,0)<1);
 });
-test('Parado no giran ni la flecha ni el mapa con headings aleatorios',()=>{
- const c=runner();c.fix(70);
- for(let i=1;i<25;i++)assert.equal(c.fix((i*113)%360,0,4,100000+i*1000,i%2,0),70);
+
+test('Con mala señal no se deduce el rumbo del desplazamiento',()=>{
+ // Con 40 m de error, dos posiciones a 9 m pueden ser el mismo sitio.
+ const c=rumbos();
+ const ref=punto(0,0);
+ assert.equal(c.rumboAndando({speed:1.4,accuracy:40},punto(9,0),ref,123).rumbo,123);
+ assert(vuelta(c.rumboAndando({speed:1.4,accuracy:35},punto(9,0),ref,123).rumbo,90)<1,
+   'a 35 m justos todavía vale');
+ // Pero el rumbo que viene del propio GPS sí se acepta: ese no se deduce de
+ // dos posiciones, lo mide el receptor.
+ assert.equal(c.rumboAndando({heading:200,speed:1.4,accuracy:40},punto(9,0),ref,123).rumbo,200);
 });
-test('Lecturas imprecisas, antiguas, duplicadas o fuera de orden conservan el rumbo',()=>{
- const c=runner();c.fix(70);
- assert.equal(c.fix(250,13.9,60,101000,0,14),70);
- assert.equal(c.fix(250,13.9,4,101000,0,14,120000),70);
- assert.equal(c.fix(250,13.9,4,100000),70);
- assert.equal(c.fix(250,13.9,4,99000),70);
-});
-test('Un salto GPS aislado no cambia el rumbo',()=>{
- const c=runner();c.fix(70);assert.equal(c.fix(250,13.9,4,101000,1000,1000),70);
-});
-test('Sin bearing usa desplazamiento fiable al caminar',()=>{
- const c=runner();assert.equal(c.fix(null,null,3),null);
- const h=c.fix(null,null,3,106000,8,0);assert(Math.abs(delta(h,90))<0.1);
-});
-test('Sin desplazamiento suficiente ni velocidad fiable no inventa una dirección',()=>{
- const c=runner();assert.equal(c.fix(180,null),null);
- assert.equal(c.fix(null,null,15,101000,2,1),null);
-});
-test('No deduce rumbo uniendo posiciones después de una pausa',()=>{
- const c=runner();c.fix(70);
- assert.equal(c.fix(null,null,4,130000,-25,0),70);
-});
-test('El suavizado limita el giro también con muchas lecturas por segundo',()=>{
- const c=runner();let prev=c.fix(0);
- for(let i=1;i<=10;i++){
-  const h=c.fix(180,13.9,4,100000+i*100,0,-1.39*i);
-  assert(Math.abs(delta(h,prev))<=4.501);prev=h;
+
+test('Un rumbo imposible del GPS no se usa',()=>{
+ const c=rumbos();
+ const ref=punto(0,0);
+ for(const h of [null,undefined,NaN,-1]){
+  assert.equal(c.rumboAndando({heading:h,speed:1.4,accuracy:5},punto(1,0),ref,45).rumbo,45,
+    `heading ${h} no vale`);
  }
 });
-test('La integración comparte rumbo de movimiento sin sustituirlo por el segmento más cercano',()=>{
- const block=html.slice(html.indexOf('function onFix(pos){'),html.indexOf(' aplicaGiroMapa(false);',html.indexOf('function onFix(pos){')));
- assert(block.includes('const h=rumboDeMovimiento(pos,ultimoFix)'));
- assert(block.includes('pintaBrujula(h)'));assert(block.includes('rumboMapa=h'));
- assert(!block.includes('rumboDeLaRuta(p)'));
+
+test('Sin velocidad en la lectura se acepta el rumbo del GPS',()=>{
+ // Hay teléfonos que dan rumbo y no dan velocidad. Descartarlo ahí dejaría
+ // la flecha clavada toda la salida.
+ const c=rumbos();
+ assert.equal(c.rumboAndando({heading:12,accuracy:5},punto(0,0),null,null).rumbo,12);
+});
+
+test('El suavizado acerca el rumbo poco a poco y converge',()=>{
+ const c=rumbos();
+ // Del primero no hay nada que suavizar.
+ assert.equal(c.suavizaRumbo(null,90),90);
+ // Un salto de 180 no se planta encima: se recorre en varios pasos.
+ let r=c.suavizaRumbo(0,90);
+ assert(r>0&&r<90,`un paso lleva a ${r}, ni se queda ni salta`);
+ for(let i=0;i<40;i++)r=c.suavizaRumbo(r,90);
+ assert(vuelta(r,90)<0.5,`después de 40 lecturas llega a 90, no a ${r}`);
+});
+
+test('El suavizado cruza el norte por el lado corto',()=>{
+ // De 350 a 10 hay 20 grados por el norte, no 340 por el sur. Sin esto la
+ // flecha daba la vuelta entera cada vez que se pasaba por el norte.
+ const c=rumbos();
+ const r=c.suavizaRumbo(350,10);
+ assert(r>350||r<20,`se queda en ${r}, que no está entre 350 y 10`);
+ assert(vuelta(r,0)<20);
+ const s=c.suavizaRumbo(10,350);
+ assert(s>350||s<10,`se queda en ${s}`);
+});
+
+test('El suavizado siempre devuelve un rumbo de 0 a 360',()=>{
+ const c=rumbos();
+ // [358,20] y [2,340] son los que de verdad se salen si falta la vuelta al
+ // circulo: uno pasa de 360 y el otro se va a negativo.
+ for(const [a,b] of [[350,10],[10,350],[0,180],[180,0],[359.9,0.1],[90,270],[358,20],[2,340]]){
+  const r=c.suavizaRumbo(a,b);
+  assert(r>=0&&r<360,`de ${a} a ${b} sale ${r}`);
+ }
+});
+
+test('La página usa estas dos funciones y no una copia suya',()=>{
+ // Si alguien vuelve a meter el cálculo dentro de onFix, estas pruebas
+ // dejarían de vigilar lo que corre en el móvil. Como pasó con nuevo-qa.
+ const fix=source('function onFix(pos){','function miraPosicionNativa(');
+ assert.match(fix,/rumboAndando\(pos\.coords,p,courseFix,lastCourse\)/);
+ assert.match(fix,/suavizaRumbo\(rumboSuave,h\)/);
 });

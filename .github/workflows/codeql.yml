@@ -52,7 +52,6 @@ jobs:
           config: |
             paths-ignore:
               - vendor/**        # Leaflet no es codigo nuestro
-              - nuevo-qa.html    # resto de la rama de la APK de prueba
               - tests/**         # las pruebas se revisan solas al fallar
 
       - name: Analizar
