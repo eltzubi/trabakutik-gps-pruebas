@@ -9,7 +9,7 @@ def method(signature):
  return src[a:i]
 code='''import java.util.*;
 public class NativeTurnsTest {
- boolean navigating=true;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
+ boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  static class SystemClock {static long elapsedRealtime(){return 1000;}}
@@ -58,3 +58,6 @@ with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'NativeTurnsTest.java';p.write_text(code)
  subprocess.run(['javac',str(p)],check=True)
  subprocess.run(['java','-cp',d,'NativeTurnsTest'],check=True)
+# Run regression cases in the existing APK validation step.
+import runpy
+runpy.run_path('tests/regression_tracking.py',run_name='__main__')

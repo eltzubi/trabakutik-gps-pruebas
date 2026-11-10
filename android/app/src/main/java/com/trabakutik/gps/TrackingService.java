@@ -320,7 +320,10 @@ public class TrackingService extends Service implements LocationListener {
  void beginRecording() throws IOException {
   File dir=new File(getFilesDir(),"grabaciones");dir.mkdirs();
   String name=new SimpleDateFormat("yyyyMMdd-HHmmss",Locale.ROOT).format(new Date());
+  // Dos grabaciones en el mismo segundo iban al mismo fichero y la segunda
+  // borraba la primera. Como OsmAnd y OpenTracks: si ya existe, _2, _3...
   file=new File(dir,"trabakutik-"+name+".gpx");
+  for(int n=2;file.exists();n++)file=new File(dir,"trabakutik-"+name+"_"+n+".gpx");
   errorGrabacion="";
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
@@ -441,7 +444,9 @@ public class TrackingService extends Service implements LocationListener {
    if(error<closest){closest=error;along=cumulative+t*length;}
    cumulative+=length;
   }
-  if(closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
+  // Fuera de ruta no se anuncian giros: sonaban a la vez el aviso de
+  // «fuera del recorrido» y un pitido de giro. Al volver, siguen.
+  if(offRoute||closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
   double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
@@ -584,8 +589,16 @@ public class TrackingService extends Service implements LocationListener {
    offRoute=true;updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
   }
  }
+ static final long MAX_EDAD_FIX_NS=10_000_000_000L;
+ boolean esAntigua(Location l){
+  long t=l.getElapsedRealtimeNanos();
+  return t>0&&SystemClock.elapsedRealtimeNanos()-t>MAX_EDAD_FIX_NS;
+ }
  @Override public void onLocationChanged(Location l){
   if(!active)return;
+  // Posicion vieja: Android puede entregar una posicion guardada de hace
+  // rato. Si tiene mas de 10 s no vale ni para guiar ni para grabar.
+  if(esAntigua(l))return;
   if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
   if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
