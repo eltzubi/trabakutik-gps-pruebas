@@ -1002,8 +1002,23 @@ function tramoGps(a,b,manual=trazadoManual){
  }
  return camino(redGps,a,b);
 }
+function tramoManualGps(a,b){
+ const recta=tramoGps(a,b,true),pa=redGps.nodos[a],pb=redGps.nodos[b],recto=metros(pa,pb);
+ if(recto<MARCA_LARGA)return recta;
+ const na=nodoCerca(redGps,pa[0],pa[1]),nb=nodoCerca(redGps,pb[0],pb[1]);
+ if(na<0||nb<0||na===nb)return recta;
+ const via=camino(redGps,na,nb);
+ if(!via||via.length<2)return recta;
+ const largo=via.slice(1).reduce((v,id,i)=>v+metros(redGps.nodos[via[i]],redGps.nodos[id]),0);
+ if(largo>Math.max(300,recto*2.5))return recta;
+ const tr=[a];
+ for(const id of via)if(id!==tr[tr.length-1])tr.push(id);
+ if(b!==tr[tr.length-1])tr.push(b);
+ tr.local=true;
+ return tr;
+}
 function invierteTramoGps(tr){
- const vuelta=tr.slice().reverse();if(tr.manual)vuelta.manual=true;return vuelta;
+ const vuelta=tr.slice().reverse();if(tr.manual)vuelta.manual=true;if(tr.mapa)vuelta.mapa=true;if(tr.local)vuelta.local=true;return vuelta;
 }
 // Cálculo por la red peatonal de OpenStreetMap. Un error nunca se convierte
 // en una recta ni en una ruta por el grafo de tracks de Trabakutik.
@@ -1558,6 +1573,29 @@ function updateElevation(){
  }else{info.textContent='Pendiente sin datos';info.className=''}
 }
 
+function mitadIdaVueltaGps(){
+ const ultimo=tramosGps.length-1;
+ if(ultimo<2||ultimo%2!==0)return 0;
+ const mitad=ultimo/2;
+ for(let i=1;i<=mitad;i++){
+  const ida=tramosGps[i],vuelta=tramosGps[ultimo+1-i];
+  if(ida.length!==vuelta.length||ida.some((id,j)=>id!==vuelta[vuelta.length-1-j]))return 0;
+ }
+ return mitad;
+}
+
+function puntosDePasoGps(mitad){
+ const vistos=new Set(),ultimo=anclasGps.length-1;
+ return anclasGps.flatMap((id,i)=>{
+  if(vistos.has(id))return [];
+  vistos.add(id);
+  const inicio=i===0, vuelta=mitad>0&&id===anclasGps[mitad];
+  const final=ultimo>0&&id===anclasGps[ultimo];
+  const tipo=vuelta?'Punto de vuelta':inicio?(final?'Inicio y destino':'Inicio'):final?'Destino':'Punto';
+  return [{id,i,inicio,marcado:vuelta||(!inicio&&final),tipo}];
+ });
+}
+
 function updateDraw(){
  drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
  junctionMarks.forEach(m=>map.removeLayer(m));junctionMarks=[];
@@ -1568,22 +1606,18 @@ function updateDraw(){
   const p=redGps.nodos[tramosGps[k][j]];drawPoints.push(p.slice(0,3));
  }
  if(drawPoints.length)drawLayer=L.polyline(drawPoints.map(p=>p.slice(0,2)),{color:'#38bdf8',weight:6,opacity:1,interactive:false}).addTo(map);
- // Con el trazado cerrado el ultimo punto es el mismo nodo que el primero:
- // se dibuja una sola bola, o quedarian dos superpuestas y no se sabria cual
- // estas arrastrando.
- const cerradoGps=anclasGps.length>2&&anclasGps[0]===anclasGps[anclasGps.length-1];
- anclasGps.forEach((id,i)=>{
-  if(cerradoGps&&i===anclasGps.length-1)return;
-  const p=redGps.nodos[id];
-  const inicio=i===0, destino=!inicio&&!cerradoGps&&i===anclasGps.length-1;
-  const numero=i+1;
-  const tipo=inicio?(cerradoGps?'Inicio y destino':'Inicio'):destino?'Destino':'Punto';
+ puntosDePasoGps(mitadIdaVueltaGps()).forEach(({id,i,inicio,marcado,tipo})=>{
+  const p=redGps.nodos[id],numero=i+1;
   const mk=L.marker([p[0],p[1]],{draggable:true,autoPan:true,keyboard:false,title:tipo+' · '+numero,
     icon:L.divIcon({
-      className:'gps-dot'+(inicio?' es-primera':'')+(destino?' es-destino':''),
+      className:'gps-dot'+(inicio?' es-primera':'')+(marcado?' es-destino':''),
       html:String(numero),iconSize:[24,24],iconAnchor:[12,12]
     })}).addTo(map);
-  mk.on('dragend',ev=>{const ll=ev.target.getLatLng();mueveAnclaGps(i,ll.lat,ll.lng)});
+  mk.on('dragend',ev=>{
+   const ll=ev.target.getLatLng();
+   ev.target.setLatLng([p[0],p[1]]);
+   mueveAnclaGps(i,ll.lat,ll.lng);
+  });
   drawMarks.push(mk);
  });
  $('cerrarCirculo').classList.toggle('hidden',anclasGps.length<2);
@@ -1613,35 +1647,9 @@ map.on('click',e=>{
  if(node<0){notice('Ese punto no está en los trazados de Trabakutik. Elige Manual para marcarlo.');return}
  if(!anclasGps.length){anclasGps.push(node);tramosGps.push([node]);updateDraw();notice('Punto inicial marcado. Toca otro punto del camino.');return}
  const prev=anclasGps[anclasGps.length-1];
- let segment=tramoGps(prev,node);
- // EN MANUAL, EL TOQUE LARGO BUSCA CAMINO. Lo pidio el autor: «marcaje en
- // corto, recto; marcaje largo que busque el camino o ruta por donde va y que
- // lo marque bien». Por debajo de MARCA_LARGA metros se queda la recta de
- // siempre -que es para lo que se usa: forzar un trozo, cruzar donde no hay
- // camino-; por encima se intenta ir por los trazados de Trabakutik. Se hace
- // con la red local, NO con el planificador de fuera: en Manual no sale del
- // movil ni una coordenada, y eso se mantiene.
- // Si no hay conexion por los trazados, o el rodeo es desproporcionado, se
- // queda la recta y no se dice nada: el toque hace lo que hacia.
- if(trazadoManual&&segment.manual){
-  const pa=redGps.nodos[prev],pb=redGps.nodos[node],recto=metros(pa,pb);
-  if(recto>=MARCA_LARGA){
-   const na=nodoCerca(redGps,pa[0],pa[1]),nb=nodoCerca(redGps,pb[0],pb[1]);
-   if(na>=0&&nb>=0&&na!==nb){
-    const via=camino(redGps,na,nb);
-    if(via&&via.length>1){
-     const largo=via.slice(1).reduce((v,id,i)=>v+metros(redGps.nodos[via[i]],redGps.nodos[id]),0);
-     if(largo<=Math.max(300,recto*2.5)){
-      const tr=[prev];
-      for(const id of via)if(id!==tr[tr.length-1])tr.push(id);
-      if(node!==tr[tr.length-1])tr.push(node);
-      segment=tr;
-      notice('Tramo por los caminos de Trabakutik · '+(largo/1000).toFixed(2)+' km');
-     }
-    }
-   }
-  }
- }
+ // En Manual, los tramos largos pueden seguir los tracks de Trabakutik.
+ // Si la red local no conecta los puntos, se conserva la recta.
+ const segment=trazadoManual?tramoManualGps(prev,node):tramoGps(prev,node);
  if(!segment){notice('No hay conexión por los trazados de Trabakutik. Puedes añadir el enlace en Manual.');return}
  if(segment.length===1)return;
  anclasGps.push(node);tramosGps.push(segment);updateDraw();
@@ -1678,27 +1686,75 @@ function idaYVueltaGps(){
 // ARRASTRAR UN PUNTO YA PUESTO. Antes, para corregir el segundo toque de ocho
 // habia que deshacer los seis de despues. Solo se recalculan los dos tramos
 // que tocan al punto movido, y si alguno no sale no se toca nada.
-function mueveAnclaGps(i,lat,lon){
- if(seguirMapaGps){const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));const last=pts.length-1,closed=last>1&&anclasGps[0]===anclasGps[last];pts[i]=[lat,lon];if(closed&&(i===0||i===last)){pts[0]=[lat,lon];pts[last]=[lat,lon]}updateDraw();planificaMapaGps(pts);return}
- const n=(trazadoManual||nodosManualesGps.has(anclasGps[i]))?nodoManualGps(lat,lon):nodoCerca(redGps,lat,lon);
- if(n<0){notice('Ahí no pasa ningún camino. Suéltalo más cerca de uno.');updateDraw();return}
- const ult=anclasGps.length-1;
- const cerrado=ult>1&&anclasGps[0]===anclasGps[ult];
- const idx=(cerrado&&i===ult)?0:i;
- const na=anclasGps.slice(),nt=tramosGps.slice(),tocar=[];
- na[idx]=n;
- if(cerrado&&idx===0)na[ult]=n;
- if(idx>0)tocar.push(idx);
- if(idx+1<=ult)tocar.push(idx+1);
- if(cerrado&&idx===0&&tocar.indexOf(ult)<0)tocar.push(ult);
- for(const j of tocar){
-  const tr=tramoGps(na[j-1],na[j],!!nt[j].manual);
-  if(!tr){notice('No hay camino hasta ahí. El punto se queda donde estaba.');updateDraw();return}
+function aplicaMovimientoGps(original, pos, afectados, partes, mitad){
+ const base=redGps.nodos.length;
+ const n=seguirMapaGps||trazadoManual||nodosManualesGps.has(original)
+  ?nodoManualGps(pos[0],pos[1],pos[2]):nodoCerca(redGps,pos[0],pos[1]);
+ if(n<0){notice('Ahí no pasa ningún camino. Suéltalo más cerca de uno.');return false}
+ const na=anclasGps.map(id=>id===original?n:id),nt=tramosGps.slice();
+ if(na[0]===n)nt[0]=[n];
+ for(const j of afectados){
+  const desde=na[j-1],hasta=na[j],pts=partes.get(j);
+  const tr=pts?[desde,...pts.slice(1,-1).map(p=>nodoManualGps(p[0],p[1],p[2])),hasta]
+              :nt[j].local?tramoManualGps(desde,hasta):tramoGps(desde,hasta,!!nt[j].manual);
+  if(!tr){
+   for(let k=base;k<redGps.nodos.length;k++)nodosManualesGps.delete(k);
+   redGps.nodos.length=base;redGps.ady.length=base;
+   notice('No hay camino hasta ahí. El punto se queda donde estaba.');
+   return false;
+  }
+  if(pts)tr.mapa=true;
   nt[j]=tr;
+  if(mitad)nt[nt.length-j]=invierteTramoGps(tr);
  }
- if(idx===0)nt[0]=[n];
  anclasGps=na;tramosGps=nt;updateDraw();
  notice('Punto movido · '+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km');
+ return true;
+}
+
+async function mueveAnclaGps(i,lat,lon){
+ const original=anclasGps[i],pos=[lat,lon];
+ if(original===undefined||!coordenadaMapaGps(pos)||dist(redGps.nodos[original],pos)<.01)return;
+ if(calculandoMapaGps){cancelaMapaGps();$('saveCreated').disabled=drawPoints.length<2;estadoMapaGps('')}
+ const mitad=mitadIdaVueltaGps(),limite=mitad||tramosGps.length-1,afectados=[];
+ for(let j=1;j<=limite;j++)
+  if(anclasGps[j-1]===original||anclasGps[j]===original)afectados.push(j);
+ const caminos=seguirMapaGps?afectados.filter(j=>tramosGps[j].mapa):[];
+ const partes=new Map();
+ if(!caminos.length){aplicaMovimientoGps(original,pos,afectados,partes,mitad);return}
+ if(!permisoMapaGps){
+  permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap). ¿Continuar?');
+  if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
+ }
+ cancelaMapaGps();const version=calculoMapaGps;
+ const controller=new AbortController();peticionMapaGps=controller;calculandoMapaGps=true;
+ $('saveCreated').disabled=true;estadoMapaGps('Recalculando los tramos del punto…');
+ const timer=setTimeout(()=>controller.abort(),30000);
+ try{
+  let nuevaPos=pos;
+  for(let k=0;k<caminos.length;){
+   const primero=caminos[k++];
+   let ultimo=primero;
+   while(caminos[k]===ultimo+1)ultimo=caminos[k++];
+   const ids=anclasGps.slice(primero-1,ultimo+1);
+   const coords=ids.map(id=>id===original?nuevaPos:redGps.nodos[id]);
+   const result=await solicitaMapaGps(coords,controller.signal);
+   if(version!==calculoMapaGps||controller.signal.aborted)return;
+   try{await alturasTerrenoGps(result,controller.signal)}catch(e){}
+   if(version!==calculoMapaGps||controller.signal.aborted)return;
+   if(nuevaPos===pos)nuevaPos=result.anchors[ids.indexOf(original)];
+   result.parts.forEach((pts,j)=>partes.set(primero+j,pts));
+  }
+  if(aplicaMovimientoGps(original,nuevaPos,afectados,partes,mitad))estadoMapaGps('');
+ }catch(e){
+  if(version===calculoMapaGps)estadoMapaGps(controller.signal.aborted?'No se pudo recalcular el punto. Se conserva el trazado.':e.message||'No se pudo recalcular el punto.');
+ }finally{
+  clearTimeout(timer);
+  if(version===calculoMapaGps){
+   peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2;
+   if(controller.signal.aborted)estadoMapaGps('No se pudo recalcular el punto. Se conserva el trazado.');
+  }
+ }
 }
 $('cerrarCirculo').onclick=cierraCirculoGps;
 $('idaVuelta').onclick=idaYVueltaGps;
@@ -2066,7 +2122,7 @@ $('despeja').onclick=()=>{
  try{map.invalidateSize()}catch(e){}
 };
 $('modoTrazo').onclick=()=>{
- if(calculandoMapaGps)cancelaMapaGps();
+ if(calculandoMapaGps){cancelaMapaGps();$('saveCreated').disabled=drawPoints.length<2}
  modoTrazo=(modoTrazo+1)%MODOS_TRAZO.length;
  pintaModoTrazo();
  estadoMapaGps('');

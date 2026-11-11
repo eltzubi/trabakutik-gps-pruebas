@@ -36,6 +36,7 @@ function creatorContext() {
     globalThis.state=()=>({red:redGps,anchors:anclasGps,segments:tramosGps});
     globalThis.draft=(a,t)=>{anclasGps=a;tramosGps=t};
     globalThis.updateDraw=()=>{};`,ctx);
+  run(section('function mitadIdaVueltaGps()', 'function updateDraw(){'),ctx);
   run(section('function cierraCirculoGps()', 'let savedLine=null;'),ctx);
   return ctx;
 }
@@ -318,4 +319,72 @@ test('el primer punto de un recorrido en Caminos recibe altura, y la prestada no
  red.draft([nodo],[[nodo]]);
  red.anadeTramoMapa(tramo(43,-2,500));
  assert.equal(red.state().red.nodos[nodo][2],null,'la red compartida no se toca');
+});
+
+test('Ida y vuelta muestra una sola marca por punto y destaca el punto de vuelta',()=>{
+ const c=creatorContext();
+ const [inicio,paso,fin]=[[43,-2],[43.001,-2],[43.002,-2]].map(p=>c.nodoManualGps(...p));
+ c.draft([inicio,paso,fin],[[inicio],c.tramoGps(inicio,paso,true),c.tramoGps(paso,fin,true)]);
+ c.idaYVueltaGps();
+ assert.equal(c.mitadIdaVueltaGps(),2);
+ const marcas=Array.from(c.puntosDePasoGps(2),p=>[p.id,p.i,p.tipo,p.marcado]);
+ assert.deepEqual(marcas,[[inicio,0,'Inicio y destino',false],[paso,1,'Punto',false],[fin,2,'Punto de vuelta',true]]);
+ c.mueveAnclaGps(1,43.0015,-2.0001);
+ const {anchors,segments}=c.state();
+ assert.equal(anchors[1],anchors[3],'el paso compartido se mueve en los dos sentidos');
+ assert.equal(c.mitadIdaVueltaGps(),2);
+ assert.deepEqual(Array.from(segments[3]),Array.from(segments[2]).reverse());
+});
+
+test('mover en Caminos solo recalcula el tramo vecino y conserva los segmentos Manual',async()=>{
+ const c=creatorContext(),p=[[43,-2],[43.001,-2],[43.002,-2],[43.003,-2],[43.004,-2]];
+ const a=p.map(q=>c.nodoManualGps(q[0],q[1],100));
+ const remoto=[a[2],a[3]];remoto.mapa=true;
+ const mixto=[[a[0]],c.tramoGps(a[0],a[1],true),c.tramoGps(a[1],a[2],true),remoto,c.tramoGps(a[3],a[4],true)];
+ c.draft(a,mixto);
+ const peticiones=[];
+ c.calcula=async coords=>{
+  const par=coords.map(q=>Array.from(q).slice(0,2));
+  peticiones.push(par);
+  return {anchors:coords,parts:[coords]};
+ };
+ vm.runInContext('seguirMapaGps=true;permisoMapaGps=true;solicitaMapaGps=calcula;alturasTerrenoGps=async()=>{}',c);
+ await c.mueveAnclaGps(2,43.0023,-2.0003);
+ const estado=c.state();
+ assert.deepEqual(peticiones,[[[43.0023,-2.0003],p[3]]]);
+ assert.equal(estado.segments[1],mixto[1]);
+ assert.equal(estado.segments[4],mixto[4]);
+ assert(estado.segments[2].manual);
+ assert(estado.segments[3].mapa);
+ assert.equal(estado.segments[2].at(-1),estado.segments[3][0]);
+ assert.equal(estado.segments[3].at(-1),a[3]);
+});
+
+test('un fallo al recalcular dos tramos conserva todo el recorrido anterior',async()=>{
+ const c=creatorContext(),a=[[43,-2],[43.001,-2],[43.002,-2]].map(p=>c.nodoManualGps(...p));
+ const segmentos=[[a[0]],[a[0],a[1]],[a[1],a[2]]];
+ segmentos[1].mapa=segmentos[2].mapa=true;
+ c.draft(a,segmentos);
+ c.calcula=async coords=>{assert.equal(coords.length,3);throw Error('Servicio no disponible')};
+ vm.runInContext('seguirMapaGps=true;permisoMapaGps=true;solicitaMapaGps=calcula',c);
+ await c.mueveAnclaGps(1,43.0014,-2.0005);
+ assert.equal(c.state().anchors,a);
+ assert.equal(c.state().segments,segmentos);
+ assert.equal(c.$('plannerStatus').textContent,'Servicio no disponible');
+});
+
+test('mover un tramo largo de Manual sigue usando la red local desde Caminos',async()=>{
+ const c=creatorContext();
+ vm.runInContext('redGps=construyeRed([{points:[[43,-2,100],[43.001,-2,110],[43.003,-2,120]]}],null)',c);
+ const a=c.nodoManualGps(43,-2),b=c.nodoManualGps(43.003,-2);
+ const tramo=c.tramoManualGps(a,b);
+ assert(tramo.local);
+ c.draft([a,b],[[a],tramo]);
+ c.fetch=()=>assert.fail('el tramo local no sale del dispositivo');
+ vm.runInContext('seguirMapaGps=true',c);
+ await c.mueveAnclaGps(1,43.0029,-2.0001);
+ const s=c.state();
+ assert(s.segments[1].local);
+ assert.equal(s.red.nodos[s.anchors[1]][0],43.0029);
+ assert.equal(s.red.nodos[s.anchors[1]][1],-2.0001);
 });
