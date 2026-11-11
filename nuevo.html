@@ -305,6 +305,8 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
  border:2px solid #fff;box-sizing:border-box;cursor:grab;display:grid;place-items:center;
  color:#fff;font-size:11px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .gps-dot.es-primera{background:#0b1e28;border-color:#69e0f2}
+.gps-course{width:54px;height:54px;display:grid;place-items:center;transition:transform .4s linear}
+#compassNeedle{transform-origin:20px 20px;transition:transform .4s linear}
 .gps-dot.es-destino{background:#ffcb86;border-color:#fff;color:#172b38}
 .gps-dot::after{content:'';position:absolute;inset:-6px;border-radius:50%}
 .leaflet-dragging .gps-dot{cursor:grabbing}
@@ -434,7 +436,7 @@ const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.
 // Arrastrar es lo unico que Leaflet calcula con restas de pantalla
 // directas, sin pasar por ahi: por eso al empezar a arrastrar el mapa
 // vuelve de golpe al norte y se comporta como siempre.
-const GIRO_MINIMO=4,GIRO_VELOCIDAD=1.0;
+const GIRO_MINIMO=4;
 let cursoArriba=true,rumboMapa=null,anguloMapa=0,ladoMapa=0;
 try{cursoArriba=localStorage.getItem('trabakutik-curso-arriba')!=='no'}catch(e){}
 const rotEl=document.getElementById('mapRot');
@@ -457,7 +459,7 @@ L.Map.prototype.mouseEventToContainerPoint=function(e){
 function aplicaGiroMapa(deGolpe){
  const manual=Date.now()<manualMapUntil;
  const objetivo=(cursoArriba&&!manual&&mode!=='create'&&rumboMapa!==null)?-rumboMapa:0;
- let d=(objetivo-anguloMapa)%360;if(d>180)d-=360;if(d<-180)d+=360;
+ const d=diferenciaRumbo(anguloMapa,objetivo);
  // Zona muerta: sin esto el mapa tiembla con cada correccion de un grado.
  if(Math.abs(d)<GIRO_MINIMO&&!deGolpe)return;
  anguloMapa+=d;
@@ -580,6 +582,7 @@ function pintaEstadoGps(){
   ubicacion:ubicacionVisualGps,ahora:Date.now()});
  el.dataset.estado=estado.estado;
  if(el.textContent!==estado.texto)el.textContent=estado.texto;
+ if(estado.estado==='sin-senal'||estado.estado==='apagada'||estado.estado==='permiso')pintaBrujula(null);
 }
 function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;const y=Math.sin(dlon)*Math.cos(lat2),x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
 // EL RUMBO DE LA FLECHA cuando no lo marca la ruta, y el suavizado que le
@@ -595,11 +598,11 @@ function bearingBetween(a,b){const lat1=a[0]*R,lat2=b[0]*R,dlon=(b[1]-a[1])*R;co
 // - La referencia se mueve cada 8 m, tambien cuando el rumbo lo da el GPS:
 //   asi nunca se mide contra un punto de hace media hora.
 function rumboAndando(coords,p,ref,ultimo){
- const gps=Number.isFinite(coords.heading)&&coords.heading>=0
-   &&(!Number.isFinite(coords.speed)||coords.speed>0.5)?coords.heading:null;
+ const avanza=!Number.isFinite(coords.speed)||coords.speed>0.5;
+ const gps=avanza&&Number.isFinite(coords.heading)&&coords.heading>=0&&coords.heading<360?coords.heading:null;
  const lejos=!!ref&&dist(ref,p)>=8;
  const rumbo=gps!==null?gps
-   :(lejos&&coords.accuracy<=35?bearingBetween(ref,p):ultimo);
+   :(avanza&&lejos&&coords.accuracy<=35?bearingBetween(ref,p):ultimo);
  return {rumbo,ref:(!ref||lejos)?p.slice():ref};
 }
 // La flecha giraba de golpe porque el rumbo salta de un segmento a otro.
@@ -607,10 +610,15 @@ function rumboAndando(coords,p,ref,ultimo){
 // encima. Medido sobre la ruta de Berriz, el salto mayor baja de 179 a 80
 // grados y los bruscos se reducen a menos de la mitad. Los que quedan son
 // curvas de verdad del circuito. Cruza el norte por el lado corto.
+function diferenciaRumbo(anterior,nuevo){
+ let d=(nuevo-anterior)%360;
+ if(d>180)d-=360;
+ if(d<-180)d+=360;
+ return d;
+}
 function suavizaRumbo(anterior,nuevo){
  if(anterior===null)return nuevo;
- let dd=(nuevo-anterior)%360;if(dd>180)dd-=360;if(dd<-180)dd+=360;
- return (anterior+dd*0.45+360)%360;
+ return (anterior+diferenciaRumbo(anterior,nuevo)*0.45+360)%360;
 }
 // CERCA DE MI: salida a 4 km o trazado a 1,5 km, y como mucho las 20 mas
 // cercanas.
@@ -2116,20 +2124,17 @@ function decideSentido(along){
 // avance sobre el trazado, que es el mismo numero con el que se calculan los
 // avisos de giro. Al reves se empieza por el final, asi que lo recorrido es
 // lo que queda por detras.
-// La direccion en la que vamos, en grados y en rumbo. El mapa va siempre al
-// norte —Leaflet 1.9.4 no gira y rotarlo dejaria todos los toponimos de lado,
-// que es justo lo que mas valor tiene de esta capa—, asi que la N de la rosa
-// se queda arriba y lo que se mueve es la aguja. El rumbo no sale del
-// magnetometro sino del que ya se calcula para la flecha: sobre la ruta es el
-// del tramo que pisas, corregido por el sentido, y fuera de ella el del GPS.
+// La rosa indica el rumbo que usa la flecha, medido desde el norte.
 const RUMBOS=['N','NE','E','SE','S','SO','O','NO'];
+let anguloBrujula=null,anguloFlecha=null;
 function pintaBrujula(h){
  const caja=$('compass');
  if(!caja)return;
- if(!Number.isFinite(h)){caja.classList.add('hidden');return}
- const g=((h%360)+360)%360;
- $('compassNeedle').setAttribute('transform','rotate('+g.toFixed(0)+' 20 20)');
- $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' \u00b7 '+Math.round(g)+'\u00b0';
+ if(!Number.isFinite(h)){caja.classList.add('hidden');anguloBrujula=null;return}
+ const g=(Math.round(h)%360+360)%360;
+ anguloBrujula=anguloBrujula===null?h:anguloBrujula+diferenciaRumbo(anguloBrujula,h);
+ $('compassNeedle').style.transform='rotate('+anguloBrujula.toFixed(1)+'deg)';
+ $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' · '+g+'°';
  caja.classList.remove('hidden');
 }
 // Cargar una ruta o consultar la ubicación no inicia la guía.
@@ -2822,30 +2827,42 @@ function junctionGuidance(p,accuracy){
  }
  if(ahead< -(d2+5))resetJunctionView();
 }
-// Rumbo del tramo de la ruta mas cercano, en el sentido en que esta grabada.
-// Devuelve null a mas de 30 m: ahi ya no la estas siguiendo y vale mas el
-// rumbo del GPS. Se salta los tramos de largo cero, que darian un rumbo sin
-// sentido.
-function rumboDeLaRuta(p){
- if(!Array.isArray(routePoints)||routePoints.length<2)return null;
- const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
- let best=Infinity,bi=-1;
- for(let i=1;i<routePoints.length;i++){
-  const a=routePoints[i-1],b=routePoints[i];
-  const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale;
-  const dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*latScale;
-  const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
-  const m=Math.hypot(ax+t*dx,ay+t*dy);
-  if(m<best){best=m;bi=i}
+// Rumbo del mismo tramo que usa el progreso. En un cruce o en una ida y
+// vuelta, buscar otra vez el más cercano podría escoger la otra rama.
+function rumboDeLaRuta(progreso){
+ if(progreso.distance>30||routeCumulative.length!==routePoints.length)return null;
+ const fin=routeCumulative.at(-1);
+ if(!(fin>0))return null;
+ const objetivo=Math.max(0,Math.min(fin-.001,progreso.along+sentidoRuta*.5));
+ let i=1,j=routeCumulative.length-1;
+ while(i<j){
+  const mitad=(i+j)>>1;
+  if(routeCumulative[mitad]<=objetivo)i=mitad+1;
+  else j=mitad;
  }
- if(bi<0||best>30)return null;
- const a=routePoints[bi-1];
- for(let j=bi;j<routePoints.length;j++){
-  const b=routePoints[j];
-  if(Math.abs(b[0]-a[0])>1e-9||Math.abs(b[1]-a[1])>1e-9)return bearingBetween(a,b);
- }
- return null;
+ const h=bearingBetween(routePoints[i-1],routePoints[i]);
+ return (h+(sentidoRuta<0?180:0))%360;
 }
+
+function pintaPosicionGps(p,h){
+ const valido=Number.isFinite(h);
+ if(!me){
+  anguloFlecha=valido?h:null;
+  const icon=L.divIcon({className:'',iconSize:[54,54],iconAnchor:[27,27],html:
+   '<div class="gps-course" style="transform:rotate('+(anguloFlecha??0)+'deg)">'+
+   '<svg width="54" height="54" viewBox="0 0 54 54" overflow="visible">'+
+   '<path d="M27 0 L39.5 19 L27 14 L14.5 19 Z" fill="#187cff" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>'+
+   '<circle cx="27" cy="27" r="10.5" fill="#187cff" stroke="#fff" stroke-width="3.2"/>'+
+   '<circle cx="27" cy="27" r="3.5" fill="#fff"/></svg></div>'});
+  me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);
+ }else me.setLatLng(p);
+ const giro=me.getElement().firstElementChild;
+ giro.querySelector('path').style.visibility=valido?'':'hidden';
+ if(!valido){anguloFlecha=null;return}
+ anguloFlecha=anguloFlecha===null?h:anguloFlecha+diferenciaRumbo(anguloFlecha,h);
+ giro.style.transform='rotate('+anguloFlecha.toFixed(1)+'deg)';
+}
+
 function onFix(pos){
  if(gpsApagadoPorTi)return; // Ignorar una posición pendiente después de finalizar.
  ultimoFix=Date.now();
@@ -2860,52 +2877,23 @@ function onFix(pos){
  const p=[pos.coords.latitude,pos.coords.longitude],prior=position;position=p;
  actualizaVelocidad(pos.coords,prior,ultimoFix);
  ({rumbo:lastCourse,ref:courseFix}=rumboAndando(pos.coords,p,courseFix,lastCourse));
- // La flecha apunta EN EL SENTIDO DE LA RUTA mientras la sigues, no al
- // rumbo del GPS. Lo pidio el autor: «solo quiero, cuando este navegando,
- // que la flecha que nos indica la direccion vaya en el sentido de la
- // ruta». El rumbo del GPS solo es fiable andando y con buena senal:
- // parado o despacio se queda viejo y la flecha puede apuntar incluso al
- // reves de por donde va el camino. Si estas sobre la ruta, el camino si
- // sabe hacia donde sigue. Lejos de ella o sin ruta, el rumbo de siempre.
- let h=lastCourse,hDeRuta=false;
- if(guiaIniciada()){
-  const r=rumboDeLaRuta(p);
-  if(r!==null){
-   // La forma del camino la da la ruta; EL SENTIDO lo das tu. Si vas al
-   // reves de como esta grabada —cosa normal: la misma ruta se anda en
-   // los dos sentidos— la flecha se da la vuelta. Lo vio el autor: «la
-   // flecha va al reves», con la grabacion roja saliendo justo por el
-   // lado contrario al que apuntaba.
-   // Solo se decide cuando hay rumbo de verdad (lastCourse se refresca
-   // andando 8 m), y entre medias se mantiene el ultimo decidido, para
-   // que parado no se ponga a dar vueltas.
-   decideSentido(progressOnRoute(p).along);
-   h=(r+(sentidoRuta<0?180:0))%360;hDeRuta=true;
-  }
+ const progreso=mode!=='create'&&routePoints.length>1?progressOnRoute(p):null;
+ let h=lastCourse;
+ if(progreso&&guiaIniciada()&&progreso.distance<=30){
+  decideSentido(progreso.along);
+  h=rumboDeLaRuta(progreso)??h;
  }
  if(h!==null)h=rumboSuave=suavizaRumbo(rumboSuave,h);
  pintaBrujula(h);
- // Sobre la ruta el rumbo es geometrico y vale siempre; fuera de ella
- // viene del GPS y solo se hace caso por encima de 7 km/h. Si no, se
- // mantiene el ultimo: parado el mapa no gira.
- // El «rumboMapa===null» es el primer rumbo de todos y va aparte: sin el,
- // recien cargada la pagina y parado fuera de ruta no habia NADA que
- // girar, y el boton solo cambiaba de color. Lo dijo el autor: «N no hace
- // nada, solo cambia color». lastCourse no es ruido: solo se refresca con
- // rumbo bueno del GPS o tras andar 8 m con buena senal.
- if(h!==null&&(hDeRuta||velocidadSuave>=GIRO_VELOCIDAD||rumboMapa===null))rumboMapa=h;
+ if(h!==null)rumboMapa=h;
  aplicaGiroMapa(false);
  pintaMandos();
- // La flecha de antes medía 36 px y el círculo se la comía: de reojo se veía
- // un punto azul y la dirección había que buscarla. El autor eligió esta de
- // cuatro propuestas: círculo con el punto blanco en el centro -andando hace
- // falta saber EXACTAMENTE dónde estás, si te sales dos metros del sendero
- // quieres verlo- y encima una flecha más del doble de grande. Se descartó
- // la del cono de dirección porque tapa el camino de delante, que es justo
- // lo que uno mira en un sendero.
- // El ancla va en el centro del círculo, que es la posición de verdad, y el
- // giro es sobre ese mismo punto.
- const icon=L.divIcon({className:'',iconSize:[54,54],iconAnchor:[27,27],html:'<div style="width:54px;height:54px;display:grid;place-items:center;transform:rotate('+(h??0)+'deg)"><svg width="54" height="54" viewBox="0 0 54 54" overflow="visible">'+(h!==null?'<path d="M27 0 L39.5 19 L27 14 L14.5 19 Z" fill="#187cff" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>':'')+'<circle cx="27" cy="27" r="10.5" fill="#187cff" stroke="#fff" stroke-width="3.2"/><circle cx="27" cy="27" r="3.5" fill="#fff"/></svg></div>'});if(!me)me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);else{me.setLatLng(p);me.setIcon(icon)}if(followGps&&Date.now()>=manualMapUntil){const center=map.getCenter();if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});}if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
+ pintaPosicionGps(p,h);
+ if(followGps&&Date.now()>=manualMapUntil){
+  const center=map.getCenter();
+  if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});
+ }
+ if(nearbyOnly&&pos.coords.accuracy<=150&&(!nearbyLast||dist(nearbyLast,p)>50))applyNearbyPosition(p);
  if(recording&&!pausado&&!window.TrabakutikAndroid){
   const ts=Number.isFinite(pos.timestamp)?pos.timestamp:Date.now(),acc=pos.coords.accuracy;
   // El navegador puede suspender el GPS al bloquear la pantalla.
@@ -2938,7 +2926,7 @@ function onFix(pos){
   // ficha del cruce: asi no va un fix por detras.
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
-  pintaAvance(progressOnRoute(p).along);
+  pintaAvance(progreso.along);
   if(guiaIniciada()){
    updateOffRoute(d,pos.coords.accuracy);
    junctionGuidance(p,pos.coords.accuracy);
@@ -3294,6 +3282,8 @@ function apagaGps(){
  // sondeo lo vería aún activo y volvería a encender la flecha recién apagada.
  fuenteNativa=false;ultimoTiempoNativo=0;apagadoHasta=Date.now()+8000;
  followGps=true;manualMapUntil=0;
+ rumboSuave=null;rumboMapa=null;anguloFlecha=null;
+ pintaBrujula(null);aplicaGiroMapa(true);
  // Lo has apagado TU. El vigilante de abajo no debe ponerse a anunciar que
  // busca señal: no la busca nadie. Antes lo hacia, y a los cinco segundos
  // «GPS apagado» se convertia en «Sin posicion reciente del GPS · buscando

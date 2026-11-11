@@ -74,7 +74,7 @@ test('Con mala señal no se deduce el rumbo del desplazamiento',()=>{
 test('Un rumbo imposible del GPS no se usa',()=>{
  const c=rumbos();
  const ref=punto(0,0);
- for(const h of [null,undefined,NaN,-1]){
+ for(const h of [null,undefined,NaN,-1,360,720]){
   assert.equal(c.rumboAndando({heading:h,speed:1.4,accuracy:5},punto(1,0),ref,45).rumbo,45,
     `heading ${h} no vale`);
  }
@@ -125,4 +125,47 @@ test('La página usa estas dos funciones y no una copia suya',()=>{
  const fix=source('function onFix(pos){','function miraPosicionNativa(');
  assert.match(fix,/rumboAndando\(pos\.coords,p,courseFix,lastCourse\)/);
  assert.match(fix,/suavizaRumbo\(rumboSuave,h\)/);
+});
+
+test('Una posición que salta ocho metros en parado no hace girar el mapa',()=>{
+ const c=rumbos();
+ assert.equal(c.rumboAndando({speed:0,accuracy:5},punto(12,0),punto(0,0),180).rumbo,180);
+});
+
+test('La flecha sigue la rama que lleva el progreso en una ruta creada',()=>{
+ const c=rumbos();
+ c.routePoints=[punto(0,0),punto(0,20),punto(20,20),punto(20,0),punto(0,0)];
+ c.routeCumulative=[0,20,40,60,80];c.sentidoRuta=1;
+ vm.runInContext(source('function rumboDeLaRuta(progreso){','function pintaPosicionGps('),c);
+ assert(vuelta(c.rumboDeLaRuta({along:19,distance:3}),0)<1);
+ assert(vuelta(c.rumboDeLaRuta({along:20,distance:3}),90)<1,'gira a la derecha al entrar al siguiente tramo');
+ assert(vuelta(c.rumboDeLaRuta({along:65,distance:2}),270)<1,'respeta la rama posterior cerca de la salida');
+ assert.equal(c.rumboDeLaRuta({along:20,distance:31}),null);
+ c.sentidoRuta=-1;
+ assert(vuelta(c.rumboDeLaRuta({along:20,distance:3}),180)<1);
+});
+
+test('La brújula cruza el norte por el lado corto y muestra cero grados',()=>{
+ const c=rumbos(),caja={classList:{add(){},remove(){}}},aguja={style:{}},rotulo={};
+ c.$=id=>({compass:caja,compassNeedle:aguja,compassText:rotulo})[id];
+ vm.runInContext(source('const RUMBOS=','// Cargar una ruta o consultar'),c);
+ c.pintaBrujula(359.6);
+ assert.equal(rotulo.textContent,'N · 0°');
+ c.pintaBrujula(10);
+ assert.equal(aguja.style.transform,'rotate(370.0deg)');
+});
+
+test('El marcador mantiene la misma flecha al actualizar el rumbo',()=>{
+ const c=rumbos(),path={style:{}},root={style:{},querySelector:()=>path};
+ let creados=0;
+ c.me=null;c.map={};
+ c.L={divIcon:o=>o,marker:()=>{creados++;return {addTo(){return this},setLatLng(){},getElement:()=>({firstElementChild:root})}}};
+ vm.runInContext('let anguloFlecha=null;',c);
+ vm.runInContext(source('function pintaPosicionGps(p,h){','function onFix(pos){'),c);
+ c.pintaPosicionGps(punto(0,0),350);
+ c.pintaPosicionGps(punto(0,10),10);
+ assert.equal(creados,1);
+ assert.equal(root.style.transform,'rotate(370.0deg)');
+ c.pintaPosicionGps(punto(0,10),null);
+ assert.equal(path.style.visibility,'hidden');
 });

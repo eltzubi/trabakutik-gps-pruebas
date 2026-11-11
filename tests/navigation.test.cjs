@@ -420,6 +420,7 @@ function endSessionFlow(){
   lastBrowserRecordTime:1,lastBrowserRecordPoint:point(10,0),pausado:false,
   fuenteNativa:true,ultimoTiempoNativo:1,apagadoHasta:0,position:point(10,0),me:{},
   routePoints:corner(140),lastCourse:1,courseFix:point(0,0),ultimoFix:1,refParado:point(0,0),refParadoT:1,
+  rumboSuave:82,rumboMapa:82,anguloFlecha:82,pintaBrujula:h=>calls.push(['compass',h]),aplicaGiroMapa:b=>calls.push(['map-orientation',b]),
   followGps:false,manualMapUntil:1,routeCumulative:[],ultimoAlong:null,lastNativeSync:0,lastNativeTrackVersion:'',cortesGrabacion:0,reconciliaBotonera(){},
   map:{removeLayer(){calls.push('remove-layer')}},resetJunctionView(){calls.push('reset-turn');c.junctionActive=-1},resetOffRoute(){calls.push('reset-off-route')},
   pintaBotonNavegar(){calls.push('nav-button')},recordingControls:state=>c.controls=state,
@@ -443,6 +444,8 @@ test('Parar finaliza la grabación y la navegación; conserva los puntos pendien
  c.$('recordStop').onclick();
  assert.equal(c.recording,false);assert.equal(c.recordingPendingSave,true);assert.equal(c.recorded.length,2);
  assert.equal(c.controls,'stopped');assert.equal(c.gpsApagadoPorTi,true);
+ assert.equal(c.rumboSuave,null);assert.equal(c.rumboMapa,null);assert.equal(c.anguloFlecha,null);
+ assert(c.calls.some(x=>Array.isArray(x)&&x[0]==='compass'&&x[1]===null));
  assert.equal(c.watch,null);assert.equal(c.position,null);assert.equal(c.me,null);
  assert.equal(c.navegaNativo,false);assert.equal(c.giraNativo,false);assert.equal(c.audio,null);
  assert.equal(c.routePoints,route);assert(c.calls.includes('stop-record'));assert(c.calls.includes('stop-navigation'));
@@ -521,7 +524,7 @@ test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progres
  vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
  vm.runInContext(source('function updateOffRoute(','try{const modoGuardado='),c);
  // La guarda debe cerrar una indicación antigua antes de medir el siguiente cruce.
- vm.runInContext(source('function junctionGuidance(','// Devuelve null a mas de 30 m'),c);
+ vm.runInContext(source('function junctionGuidance(','function rumboDeLaRuta(progreso){'),c);
  assert.equal(c.guiaIniciada(),false);
  c.updateOffRoute(100,5);c.junctionGuidance(point(0,0),5);c.pintaAvance(20);
  assert.equal(c.alerted,false);assert(classes.has('hidden'));assert.deepEqual(calls,['reset-turn']);
