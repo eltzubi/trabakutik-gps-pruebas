@@ -746,11 +746,24 @@ public class MainActivity extends Activity {
   }
  }
  private void confirmSosLocation(LocationManager manager,Location location){
-  String coordinates=String.format(java.util.Locale.ROOT,"%.6f, %.6f",location.getLatitude(),location.getLongitude());
-  String message="Mi ubicación: "+coordinates+" (precisión ±"+(int)Math.ceil(location.getAccuracy())+" m)";
+  // EL MENSAJE DEL SOS, EN TRES LINEAS Y POR ESTE ORDEN. Antes salian solo
+  // las coordenadas y quien lo recibia no sabia si era una emergencia o si
+  // le estabas enseñando donde habias comido. Lo dijo el autor al probarlo.
+  //  1. QUE PASA, en mayusculas y lo primero que se lee.
+  //  2. UN ENLACE que abre el mapa de un toque. Esto es lo que mas cambia:
+  //     con numeros sueltos hay que copiarlos a mano, y con prisa eso no lo
+  //     hace nadie. El enlace de Google Maps abre la aplicacion si la hay y
+  //     el navegador si no, asi que le vale a cualquiera que lo reciba.
+  //  3. LOS NUMEROS, su precision y de cuando son, por si el enlace falla o
+  //     quien lo lee los quiere meter en otro sitio.
+  // Y nada mas: cuanto mas corto, antes se entiende.
+  String grados=String.format(java.util.Locale.ROOT,"%.6f, %.6f",location.getLatitude(),location.getLongitude());
+  String mapa=String.format(java.util.Locale.ROOT,"https://maps.google.com/?q=%.6f,%.6f",
+    location.getLatitude(),location.getLongitude());
+  String message="NECESITO AYUDA\n"+mapa+"\n"+grados+" · ±"+(int)Math.ceil(location.getAccuracy())+" m";
   long age=Math.max(0,(SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos())/1_000_000_000L);
-  sosDialog=new AlertDialog.Builder(this).setTitle("Compartir coordenadas SOS")
-   .setMessage(message+"\nTomada hace "+age+" s. Se enviará con la hora; el envío depende del medio que elijas.")
+  sosDialog=new AlertDialog.Builder(this).setTitle("Pedir ayuda")
+   .setMessage(message+" · tomada hace "+age+" s\n\nEsto es lo que se va a enviar. El envío depende del medio que elijas.")
    .setNegativeButton("Cancelar",null).setPositiveButton("Elegir destinatario",(dialog,which)->{
     // AQUI NO SE VUELVE A EXIGIR QUE LA POSICION SEA RECIENTE, y es a
     // proposito. Antes se repetia la comprobacion de los 10 segundos, pero
