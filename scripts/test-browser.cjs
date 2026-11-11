@@ -395,7 +395,13 @@ async function setup(context) {
     assert.equal(plannerRequests,1);
     await creator.waitForFunction(()=>window.__creator.drawPoints.length>1&&window.__creator.drawPoints.every(p=>Number.isFinite(p[2]))&&!document.querySelector('#saveCreated').disabled);
     assert(await creator.evaluate(()=>window.__creator.drawPoints.length>=4),'conserva la curva del motor');
-    assert(await creator.locator('#elevationSvg').isVisible(),'perfil visible en senderos nuevos');
+    assert(!(await creator.locator('#elevationSvg').isVisible()),'el gráfico arranca plegado al crear');
+    assert(await creator.locator('.elevation-stats').isVisible(),'el resumen queda visible con el gráfico plegado');
+    assert.deepEqual(await creator.locator('.gps-dot').allTextContents(),['1','2']);
+    assert.equal(await creator.locator('.gps-dot.es-destino').textContent(),'2');
+    await creator.click('#toggleProfile');
+    assert(await creator.locator('#elevationSvg').isVisible(),'el perfil de senderos nuevos se puede desplegar');
+    await creator.click('#toggleProfile');
     assert.match(await creator.locator('#profileGain').textContent(),/↑ [1-9]/);
     assert.match(await creator.locator('#profileLoss').textContent(),/↓ [1-9]/);
     assert(!/sin datos|Sin alturas/.test(await creator.locator('#elevationSlope').textContent()),'pendiente al marcar');
