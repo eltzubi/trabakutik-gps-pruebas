@@ -83,3 +83,16 @@ test('Las 70 rutas usan sus alturas alineadas y la distancia publicada, sin modi
  }
  assert.equal(JSON.stringify(c.tracks),original);
 });
+
+test('Crear indica el desnivel parcial con el gráfico plegado',()=>{
+ const c=fixture();c.mode='create';c.drawPoints=[[0,0,100],[0,.001,115],[0,.002,null],[0,.003,95]];
+ c.updateElevation();
+ assert.equal(c.$('elevationSlope').textContent,'Desnivel parcial');
+ assert.equal(c.$('profileGain').textContent,'↑ 15 m');
+ assert.equal(c.$('profileLoss').textContent,'↓ 0 m');
+ c.drawPoints=[[0,0,100],[0,.001,null],[0,.002,115]];
+ c.updateElevation();
+ assert.equal(c.$('elevationSlope').textContent,'Sin alturas suficientes');
+ assert.equal(c.$('profileGain').textContent,'↑ —');
+ assert.equal(c.$('profileLoss').textContent,'↓ —');
+});

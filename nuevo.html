@@ -1496,11 +1496,13 @@ function updateElevation(){
   return;
  }
  const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
+ let desnivelCalculable=false;
  for(let i=0;i<pts.length;i++){
   if(i)travelled+=dist(pts[i-1],pts[i]);
   const elevation=Number.isFinite(pts[i][2])?pts[i][2]:null;
   if(elevation!==null){
    if(lastElev!==null){
+    desnivelCalculable=true;
     const delta=elevation-lastElev;
     // Evitar sumar ruido centimétrico entre puntos interpolados.
     if(delta>0)up+=delta;else down-=delta;
@@ -1526,12 +1528,18 @@ function updateElevation(){
  $('elevationEnd').style.display='';
  $('elevationEnd').setAttribute('cx',coords[coords.length-1][0]);$('elevationEnd').setAttribute('cy',coords[coords.length-1][1]);
  $('profileDistance').textContent=profileDistanceText(travelled,creating);
- $('profileGain').textContent='↑ '+Math.round(up)+' m'+(creating?'':' aprox.');
- $('profileLoss').textContent='↓ '+Math.round(down)+' m'+(creating?'':' aprox.');
+ $('profileGain').textContent=creating&&!desnivelCalculable?'↑ —':'↑ '+Math.round(up)+' m'+(creating?'':' aprox.');
+ $('profileLoss').textContent=creating&&!desnivelCalculable?'↓ —':'↓ '+Math.round(down)+' m'+(creating?'':' aprox.');
  $('profileLow').textContent=(available.length<pts.length?'Alturas incompletas · ':'Mín. ')+Math.round(hMin)+' m';
  $('profileHigh').textContent='Máx. '+Math.round(hMax)+' m';
  if(!creating){
   const info=$('elevationSlope');info.textContent=$('profileDistance').textContent;info.className='';
+  return;
+ }
+ const info=$('elevationSlope');
+ if(collapsed&&available.length<pts.length){
+  info.textContent=desnivelCalculable?'Desnivel parcial':'Sin alturas suficientes';
+  info.className='';
   return;
  }
  // Pendiente media del último tramo marcado, con su distancia real.
@@ -1542,7 +1550,6 @@ function updateElevation(){
   if(i)partDist+=dist(redGps.nodos[part[i-1]],p);
   if(Number.isFinite(p[2])){if(partFirst===null)partFirst=p[2];partLast=p[2]}
  }
- const info=$('elevationSlope');
  if(partDist>=3&&partFirst!==null&&partLast!==null){
   const grade=(partLast-partFirst)/partDist*100;
   const gradeText=Math.abs(grade).toFixed(1).replace('.',',')+'%';
