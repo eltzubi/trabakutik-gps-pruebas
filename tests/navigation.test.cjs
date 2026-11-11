@@ -35,7 +35,10 @@ function corner(deg){
 // geometria corner(130) mide 129,999999999 y corner(45) mide 44,999999999, asi
 // que el umbral exacto cae del lado que NO avisa. Por eso aqui no se usa nunca
 // el valor del umbral: hasta 125 no avisa y desde 135 si; en un cruce, 40 no y
-// 50 si; «vuelta» se mide con 150, no con 145.
+// 50 si; «vuelta» se mide con 170, no con 160.
+// Y «vuelta» empieza en 160, el mismo numero con el que se detectan las
+// horquillas: un cruce de 147 grados es un giro cerrado, no un «da la
+// vuelta». Lo vio el autor en el monte con uno de 147.
 test('La copia simplificada de tres puntos conserva los giros cerrados en ambos sentidos',()=>{
  for(const [angle,direction] of [[140,'izquierda'],[-140,'derecha']]){
   const c=detector(),turns=c.detect(corner(angle));
@@ -50,7 +53,7 @@ test('Sin OSM: solo avisa curvas cerradas, no las esquinas corrientes',()=>{
  for(const angle of [0,15,30,45,60,75,90,110,125])assert.equal(detector().detect(corner(angle)).length,0,`${angle} grados`);
  for(const angle of [135,140,150,170,180]){
   const turns=detector().detect(corner(angle));assert.equal(turns.length,1,`${angle} grados`);
-  assert.equal(turns[0].direction,angle>145?'vuelta':'izquierda',`${angle} grados`);
+  assert.equal(turns[0].direction,angle>=160?'vuelta':'izquierda',`${angle} grados`);
  }
 });
 test('En un cruce identificado anuncia un cambio de camino y lo distingue de una curva',()=>{

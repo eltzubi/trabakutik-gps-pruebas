@@ -840,8 +840,19 @@ async function loadDetailedSelected(i,request){
    routePoints=detailedProfilePoints=detailedLine;
    ultimoAlong=ultimoPuntoAlong=null;alongPrevio=null;alongAcum=0;
    liveProfileAlong=null;liveNativeMetrics=null;
-   computeJunctions();
+   // LOS PUNTOS PRIMERO, LOS GIROS DESPUES. Aqui estaba al reves:
+   // computeJunctions acaba mandando los giros al servicio, asi que durante
+   // unos milisegundos el servicio tenia los giros del trazado FINO contra
+   // la ruta GENERAL, y los indices que caben en la ruta vieja apuntan a
+   // otro sitio. Una posicion que entre justo ahi canta un giro a cientos
+   // de metros de donde toca. Lo avisa por escrito el comentario de
+   // enviaGirosNativos: «los giros van SIEMPRE detras de los puntos».
+   // Se vacia la lista antes de mandar los puntos para que el servicio no
+   // se quede ni un instante con los giros viejos sobre la linea nueva;
+   // computeJunctions le manda enseguida los buenos.
+   junctions=[];
    try{syncNativeRoute()}catch(e){console.warn('Ruta fina no enviada',e)}
+   computeJunctions();
    updateElevation();
    aplicaCruces();   // y los cruces de OSM sobre la linea fina, que es la buena
   }
@@ -2672,7 +2683,16 @@ function computeJunctions(){
   // el camino: la flecha se dibujaba girando a la derecha aunque la curva
   // fuera a la izquierda. Lo vio el autor en una herradura de 173 grados.
   const hacia=cross>0?'izquierda':'derecha';
-  const direction=grados>145?'vuelta':hacia;
+  // «DA LA VUELTA» SOLO CUANDO DE VERDAD TE DAS LA VUELTA. Estaba en 145 y
+  // el autor se encontro un cruce de 147 grados anunciado como «Cruce · da
+  // la vuelta»: lo vio y dijo «no sé qué sea un giro, por muy cerrado que
+  // sea; además me ha indicado que dé la vuelta, no que gire». Y tiene
+  // razon en lo peligroso: oir «da la vuelta» en marcha invita a volver por
+  // donde has venido, que es lo contrario de lo que toca.
+  // Ahora el umbral es el mismo 160 con el que se detectan las horquillas,
+  // asi que las dos cosas dicen lo mismo: por debajo es un giro cerrado, y
+  // de 160 para arriba es una herradura de verdad.
+  const direction=grados>=HORQUILLA?'vuelta':hacia;
   junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce});
  }
  enviaGirosNativos();
@@ -2801,7 +2821,13 @@ function junctionGuidance(p,accuracy,progress){
  if(!turnMarker||turnMarker.options.turnIndex!==j){
   if(turnMarker)map.removeLayer(turnMarker);
   const sign=L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],
-   html:'<div class="map-turn-sign">'+flechaGiro(grados,sentido,24,13)+'</div>'});
+   // LA FLECHA DEL MAPA ERA UN BORRON. Media 24 px dentro de un circulo de 38
+  // y con un trazo de 13: a 147 grados no se distinguia la forma del giro. Lo
+  // dijo el autor: «no sé qué sea un giro, por muy cerrado que sea». La de
+  // abajo, la grande, le parece perfecta, y la diferencia es justo esa: alli
+  // la flecha tiene sitio. Ahora ocupa 30 px con un trazo de 10, que llena el
+  // circulo sin salirse. El circulo no crece: taparia mas mapa.
+  html:'<div class="map-turn-sign">'+flechaGiro(grados,sentido,30,10)+'</div>'});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
  // Un cruce y una curva de herradura no son lo mismo y no se dicen igual:

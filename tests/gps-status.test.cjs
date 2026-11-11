@@ -70,3 +70,21 @@ test('La flecha y la brújula dejan de mostrar un rumbo al caducar la posición'
  assert.deepEqual(headings,[null,['visibility','hidden']]);
  assert.equal(ctx.lastCourse,null);
 });
+
+test('Al cargar el detalle de una ruta, los puntos van antes que los giros',()=>{
+ // computeJunctions acaba mandando los giros al servicio. Si se llama antes
+ // de mandar los puntos finos, el servicio tiene un instante los giros
+ // nuevos contra la ruta vieja y los índices apuntan a otro sitio: una
+ // posición que entre justo ahí canta un giro a cientos de metros.
+ const ini=html.indexOf('function loadDetailedSelected(');
+ assert(ini>=0,'no se encuentra loadDetailedSelected');
+ const cuerpo=html.slice(ini,html.indexOf('\nfunction ',ini+10));
+ const puntos=cuerpo.indexOf('syncNativeRoute()');
+ const giros=cuerpo.indexOf('computeJunctions()');
+ assert(puntos>=0&&giros>=0,'siguen estando las dos llamadas');
+ assert(puntos<giros,
+   'syncNativeRoute (los puntos) tiene que ir ANTES que computeJunctions (los giros)');
+ // Y la lista vieja no puede quedarse colgando sobre la línea nueva.
+ assert(cuerpo.slice(0,puntos).includes('junctions=[]'),
+   'antes de mandar los puntos hay que vaciar los giros de la ruta anterior');
+});

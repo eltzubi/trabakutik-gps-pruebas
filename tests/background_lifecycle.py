@@ -24,14 +24,37 @@ class WebView {
 public class BackgroundLifecycleTest extends Activity {
  WebView web=new WebView(),webRoutes=new WebView();
  boolean showingGps=true; String pendingGpsAction=null;
- int sosStops=0;
+ int sosStops=0,sosStarts=0;
  static class SosDialog { boolean dismissed=false; void dismiss(){dismissed=true;} }
  SosDialog sosDialog;
  void stopSosLocation(){sosStops++;}
+ void startSosLocation(){sosStarts++;}
+ static long reloj=1_000_000L;
+ static class SystemClock { static long elapsedRealtime(){return reloj;} }
  void restoreGpsWeb(){}
 """ + methods + """
  static void check(boolean value){if(!value)throw new AssertionError();}
+ static void check(boolean value,String s){if(!value)throw new AssertionError(s);}
  public static void main(String[] args){
+  // EL SOS QUE SE QUEDO ESPERANDO. En algunos moviles la pantalla del
+  // permiso manda la app a segundo plano y la respuesta llega antes de que
+  // vuelva al frente: ahi se apunta y se retoma al volver. Pero solo si
+  // vuelve pronto, que un SOS saltando media hora despues asusta mas que
+  // ayuda.
+  BackgroundLifecycleTest sos=new BackgroundLifecycleTest();
+  sos.sosPendienteDesde=reloj;
+  sos.onResume();
+  check(sos.sosStarts==1,"al volver al frente se retoma el SOS pendiente");
+  check(sos.sosPendienteDesde==0,"y se borra el apunte");
+  sos.onResume();
+  check(sos.sosStarts==1,"no se repite en la siguiente vuelta");
+  BackgroundLifecycleTest tarde=new BackgroundLifecycleTest();
+  tarde.sosPendienteDesde=reloj;
+  reloj+=61_000L;
+  tarde.onResume();
+  check(tarde.sosStarts==0,"pasado un minuto ya no se retoma");
+  reloj-=61_000L;
+
   BackgroundLifecycleTest idle=new BackgroundLifecycleTest();
   idle.sosDialog=new SosDialog();
   idle.onStop();idle.web.respond("true");

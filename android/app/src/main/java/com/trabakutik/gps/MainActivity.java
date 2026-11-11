@@ -125,10 +125,17 @@ public class MainActivity extends Activity {
  // El numero de ciclo impide que esa respuesta suspenda una pantalla visible.
  boolean appEnSegundoPlano=false;
  int cicloSegundoPlano=0;
+ // SOS pedido que se quedo esperando a que la app vuelva al frente.
+ long sosPendienteDesde=0;
  @Override protected void onResume(){
   super.onResume();
   appEnSegundoPlano=false;
   cicloSegundoPlano++;
+  if(sosPendienteDesde>0){
+   boolean aTiempo=SystemClock.elapsedRealtime()-sosPendienteDesde<=60_000L;
+   sosPendienteDesde=0;
+   if(aTiempo)startSosLocation();
+  }
   // Los temporizadores son globales: reanudar tambien si Android recreo
   // la Activity mientras la anterior estaba suspendida.
   if(web!=null){web.resumeTimers();web.onResume();}
@@ -743,13 +750,22 @@ public class MainActivity extends Activity {
   String message="Mi ubicación: "+coordinates+" (precisión ±"+(int)Math.ceil(location.getAccuracy())+" m)";
   long age=Math.max(0,(SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos())/1_000_000_000L);
   sosDialog=new AlertDialog.Builder(this).setTitle("Compartir coordenadas SOS")
-   .setMessage(message+"\nRecibida hace "+age+" s. El envío depende del medio que elijas.")
+   .setMessage(message+"\nTomada hace "+age+" s. Se enviará con la hora; el envío depende del medio que elijas.")
    .setNegativeButton("Cancelar",null).setPositiveButton("Elegir destinatario",(dialog,which)->{
-    if(!usableSosLocation(location)||!manager.isProviderEnabled(location.getProvider())){
-     Toast.makeText(this,"La posición ya no es reciente. Vuelve a pulsar SOS.",Toast.LENGTH_LONG).show();
-     return;
-    }
-    Intent share=new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,message);
+    // AQUI NO SE VUELVE A EXIGIR QUE LA POSICION SEA RECIENTE, y es a
+    // proposito. Antes se repetia la comprobacion de los 10 segundos, pero
+    // la posicion ya no cambia: solo envejece mientras lees el aviso. O sea
+    // que habia que leer y decidir en seis o siete segundos o te decia «la
+    // posicion ya no es reciente» y, como el dialogo se cierra solo al
+    // pulsar, a empezar otra vez. Con frio, con nervios o con alguien en el
+    // suelo, eso no funciona. Y no hace falta: una coordenada de hace dos
+    // minutos le sigue valiendo a quien te viene a buscar. Lo que se hace
+    // es DECIR la hora dentro del mensaje, que es lo que de verdad necesita
+    // quien lo recibe.
+    long seg=Math.max(0,(SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos())/1_000_000_000L);
+    String cuando=seg<60?"hace "+seg+" s":"hace "+(seg/60)+" min";
+    Intent share=new Intent(Intent.ACTION_SEND).setType("text/plain")
+      .putExtra(Intent.EXTRA_TEXT,message+" · tomada "+cuando);
     try{startActivity(Intent.createChooser(share,"Compartir coordenadas SOS"));}
     catch(ActivityNotFoundException e){
      Toast.makeText(this,"No hay ninguna aplicación para compartir las coordenadas.",Toast.LENGTH_LONG).show();
@@ -761,7 +777,16 @@ public class MainActivity extends Activity {
  @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){
   super.onRequestPermissionsResult(code,permissions,results);
   if(code==SOS_LOCATION_PERMISSION){
-   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)startSosLocation();
+   // En algunos moviles la pantalla del permiso manda la app a segundo
+   // plano, y la respuesta llega ANTES de que vuelva al frente. Ahi
+   // startSosLocation se iba sin hacer nada y sin decirlo: concedias el
+   // permiso y no pasaba absolutamente nada. Si llega asi, se apunta y se
+   // retoma al volver. Pasado un minuto ya no, que un SOS que aparece solo
+   // media hora despues asusta mas que ayuda.
+   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED){
+    if(appEnSegundoPlano)sosPendienteDesde=SystemClock.elapsedRealtime();
+    else startSosLocation();
+   }
    else Toast.makeText(this,"Permite la ubicación precisa para compartir tus coordenadas.",Toast.LENGTH_LONG).show();
    return;
   }

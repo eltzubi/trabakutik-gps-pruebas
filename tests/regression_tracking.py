@@ -4,6 +4,28 @@ import subprocess, tempfile, re
 production=Path('android/app/src/main/java/com/trabakutik/gps')
 src=(production/'TrackingService.java').read_text()
 metrics=(production/'NavigationMetrics.java').read_text()
+actividad=(production/'MainActivity.java').read_text()
+
+# EL SOS, REVISADO SOBRE EL FUENTE. Son flujos de pantalla y no se pueden
+# ejecutar aqui, pero si se puede exigir que no vuelvan los dos fallos que
+# dejaban la funcion de emergencia inservible.
+_boton=actividad[actividad.index('setPositiveButton("Elegir destinatario"'):]
+_boton=_boton[:_boton.index('}).create()')]
+assert 'usableSosLocation' not in _boton, (
+    'el boton de compartir NO puede volver a exigir que la posicion sea reciente: '
+    'la posicion ya no cambia, solo envejece mientras lees el aviso, y te dejaba '
+    'sin poder enviar nada')
+assert 'tomada ' in _boton, 'lo que se envia tiene que decir de cuando es la posicion'
+_permiso=actividad[actividad.index('if(code==SOS_LOCATION_PERMISSION){'):]
+_permiso=_permiso[:_permiso.index('return;')]
+assert 'appEnSegundoPlano' in _permiso, (
+    'al conceder el permiso con la app todavia en segundo plano, el SOS se iba sin '
+    'hacer nada y sin decirlo: hay que apuntarlo y retomarlo al volver')
+assert 'sosPendienteDesde' in actividad and 'startSosLocation()' in actividad[
+    actividad.index('protected void onResume()'):actividad.index('protected void onResume()')+700], (
+    'y al volver al frente hay que retomarlo')
+print('OK: el SOS comparte sin caducar y sobrevive al permiso en segundo plano')
+
 def method(signature, source=src):
  a=source.index(signature);start=source.index('{',a);depth=1;i=start+1
  while depth:
@@ -56,6 +78,24 @@ public class TrackingRegression {
  q.offRoute=true;q.checkTurns(new Location(60));require(q.beeps==0,"Turn sounded off-route");
  q.offRoute=false;q.checkTurns(new Location(60));require(q.beeps>0,"Turn did not resume on return");
  System.out.println("PASS: turns silent off-route and resume on return");
+
+ // LA FUENTE, EN LAS DOS PASADAS. Una ida y vuelta por el mismo camino pasa
+ // dos veces por delante de la misma fuente. addWater guarda un aviso por
+ // pasada a proposito; el apunte de «ya dicho» tiraba la posicion y se
+ // quedaba solo con el nombre, asi que a la vuelta no decia nada.
+ NavigationMetrics agua=new NavigationMetrics();
+ java.util.List<double[]> ida=new java.util.ArrayList<>();
+ for(int m=0;m<=2000;m+=10)ida.add(new double[]{43.2+m/111195.,-2.5,100});
+ for(int m=1990;m>=0;m-=10)ida.add(new double[]{43.2+m/111195.,-2.5,100});
+ // La fuente, al lado del camino a mitad de la ida (1.000 m del inicio).
+ agua.configure(ida,java.util.List.of(new NavigationMetrics.Water("Iturri",43.2+1000/111195.,-2.49995,false)));
+ NavigationMetrics.Notice primera=agua.nextNotice(950,1);
+ require(primera!=null,"a la ida tiene que avisar de la fuente");
+ require(agua.nextNotice(960,1)==null,"pero una sola vez en esa pasada");
+ // La vuelta pasa por el mismo sitio con un «along» mucho mayor.
+ double vuelta=agua.total()-1000;
+ require(agua.nextNotice(vuelta-50,1)!=null,"y al volver a pasar, otra vez: "+vuelta);
+ System.out.println("PASS: la fuente se avisa en la ida y en la vuelta");
  }
 }'''
 with tempfile.TemporaryDirectory() as d:

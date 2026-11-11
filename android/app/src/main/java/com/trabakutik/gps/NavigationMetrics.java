@@ -146,7 +146,14 @@ final class NavigationMetrics {
         for (Event event : events) {
             boolean water = event.direction == 0;
             if (!water && event.direction != dir) continue;
-            Event key = new Event(water ? -1 : event.along, dir, event.notice);
+            // LA FUENTE SE APUNTA POR DONDE PASA, no solo por su nombre. Con
+            // -1 todos los avisos de una misma fuente eran la misma entrada,
+            // asi que se cantaba una vez y ya: en una ida y vuelta, al volver
+            // a pasar por delante no decia nada. Y eso anula lo que hace
+            // addWater, que a proposito guarda un aviso por pasada -«keep
+            // equivalent passes»- y ya descarta los repetidos de la misma
+            // pasada exigiendo 5 m entre uno y otro.
+            Event key = new Event(event.along, dir, event.notice);
             if (announced.contains(key)) continue;
             double ahead = (event.along - along) * dir;
             if (ahead < -.01 || ahead > (water ? WATER_NOTICE : CLIMB_NOTICE)) continue;
