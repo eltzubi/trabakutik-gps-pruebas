@@ -21,6 +21,11 @@ function detector(){
  const calls=[],c={R:Math.PI/180,dist:meters,routePoints:[],crucesOsm:[],junctions:[],junctionWarned:new Set(),junctionZoomOnce:new Set(),routeCumulative:[],resetJunctionView(){},enviaGirosNativos(){calls.push(c.junctions.map(j=>({...j})))},window:{TrabakutikAndroid:{setJunctions(){calls.push([])}}}};
  vm.createContext(c);
  vm.runInContext(source('function compactRoutePoints(','function loadSaved(item){'),c);
+ // decideCruce vive fuera de computeJunctions para poder probarla sola, y
+ // necesita bearingBetween: se cargan las tres del fichero de verdad, que
+ // una copia en el test no prueba nada.
+ vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),c);
+ vm.runInContext(source('const CRUCE_RECTO=25;','function computeJunctions(){'),c);
  vm.runInContext(source('function computeJunctions(){','// Punto de avance sobre la ruta'),c);
  c.detect=(points,cruces=[])=>{c.routePoints=c.compactRoutePoints(points);c.crucesOsm=cruces;c.computeJunctions();return c.junctions};
  return c;
@@ -346,14 +351,14 @@ test('Rutas vacías, de dos puntos y demasiado cortas no inventan indicaciones',
 });
 test('Los índices enviados a Android corresponden a la ruta simplificada',()=>{
  const c=detector(),sent=[];c.window.TrabakutikAndroid.setJunctions=json=>sent.push(JSON.parse(json));
- vm.runInContext(source('function enviaGirosNativos(){','function computeJunctions(){'),c);
+ vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE DE LAS RAMAS'),c);
  c.detect(corner(-140));assert.equal(sent.length,1);
  assert.equal(sent[0][0].i,1);assert.equal(sent[0][0].dir,1);assert.equal(sent[0][0].t,0);
  assert(sent[0][0].i<c.routePoints.length);
  // Un giro en un cruce conocido viaja marcado con t:1; el servicio lo dice de
  // otra manera -«toma el camino de la derecha» y no «gira a la derecha»-.
  const d=detector(),cruces=[];d.window.TrabakutikAndroid.setJunctions=json=>cruces.push(JSON.parse(json));
- vm.runInContext(source('function enviaGirosNativos(){','function computeJunctions(){'),d);
+ vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE DE LAS RAMAS'),d);
  d.detect(corner(60),[point(0,0)]);
  assert.deepEqual(cruces.at(-1),[{i:1,dir:-1,t:1}]);
 });
@@ -580,4 +585,95 @@ test('El número de versión sale solo en la app, y una APK vieja se nota',()=>{
  const c={$:()=>null,window:{TrabakutikAndroid:{getAppVersion:()=>'4.9.3'}}};
  vm.createContext(c);
  vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
+});
+
+// ---------------------------------------------------------------------------
+// LOS CRUCES CON SUS RAMAS. Desde noviembre de 2026 cruces-zona.json trae, de
+// cada cruce, los rumbos de sus ramas agrupados por camino, y el aviso sale de
+// ahi y no del angulo del track. La regla la dicto el autor: «si se continua
+// por el mismo camino no hay perdida, solo si hay que dejarlo para tomar
+// otro; o una curva cerrada tambien se avisa».
+// En estas pruebas los rumbos van en GRADOS de brujula: 90 es hacia el este,
+// que es hacia donde va corner(0), y 270 es por donde se llega.
+function ramas(...grupos){return grupos}
+const cruceCon=(...grupos)=>[...point(0,0),grupos];
+
+test('Un cruce donde sigues por el mismo camino no se avisa, aunque el camino doble',()=>{
+ // La carretera entra por el 270 y se va por el 30: dobla 60 grados pero es
+ // LA MISMA. Ahi no hay perdida posible y el navegador se calla.
+ const turns=detector().detect(corner(60),[cruceCon([30,270],[90])]);
+ assert.equal(turns.length,0);
+});
+test('Avisa cuando hay que dejar el camino para coger otro',()=>{
+ // El mismo cruce de antes, pero ahora el que sigue recto -al 90- es el
+ // camino por el que llegas, y la ruta coge el otro.
+ const turns=detector().detect(corner(60),[cruceCon([90,270],[30])]);
+ assert.equal(turns.length,1);
+ assert.equal(turns[0].cruce,true);
+ assert.equal(turns[0].direction,'izquierda');
+ assert.equal(turns[0].mantente,false);
+ assert(Math.abs(turns[0].angle-60)<=2,`angulo ${turns[0].angle}`);
+});
+test('«Sigue por la derecha»: te desvias poco pero otra rama va mas recta',()=>{
+ // Es lo que le paso en Osma: el ramal arranca casi recto -20 grados- y la
+ // via que sigue de frente es otra. Por el angulo del track no se distingue
+ // de ir recto, y por eso el navegador se callaba.
+ const turns=detector().detect(corner(-20),[cruceCon([270,92],[110])]);
+ assert.equal(turns.length,1);
+ assert.equal(turns[0].mantente,true);
+ assert.equal(turns[0].direction,'derecha');
+ assert(Math.abs(turns[0].angle-20)<=2,`angulo ${turns[0].angle}`);
+});
+test('Yendo recto por el camino mas recto no se avisa aunque cambie de camino',()=>{
+ // Dos caminos distintos pero la ruta coge el que mejor sigue: no hay nada
+ // que elegir. Es lo que pidio: «si hay que ir recto, no se avisa».
+ const turns=detector().detect(corner(-5),[cruceCon([270,180],[95])]);
+ assert.equal(turns.length,0);
+});
+test('Una curva cerrada se avisa aunque sea el mismo camino',()=>{
+ // «o una curva cerrada tambien se avisa». Con 170 grados manda la curva.
+ const turns=detector().detect(corner(170),[cruceCon([280,270],[90])]);
+ assert.equal(turns.length,1);
+ assert.equal(turns[0].direction,'vuelta');
+});
+test('Un cruce sin ramas se decide como siempre, por el angulo del track',()=>{
+ // Un movil con el cruces-zona.json viejo guardado no se queda sin avisos.
+ assert.equal(detector().detect(corner(60),[point(0,0)]).length,1);
+ assert.equal(detector().detect(corner(40),[point(0,0)]).length,0);
+});
+test('Un cruce solo se avisa una vez aunque la ruta deje varios puntos dentro',()=>{
+ const puntos=[];
+ for(let x=-60;x<=60;x+=4)puntos.push(point(x,x>0?x*0.9:0));
+ const turns=detector().detect(puntos,[cruceCon([90,270],[42])]);
+ assert.equal(turns.filter(t=>t.cruce).length,1);
+});
+test('Las ramas se leen del fichero y se agrupan por camino',()=>{
+ const c={atob:(s)=>Buffer.from(s,'base64').toString('binary')};
+ vm.createContext(c);
+ vm.runInContext(source('function descifraRamas(','function descifraZona(j){'),c);
+ // Bytes 1, 94 y 143: rumbo 1 (nueva rama), rumbo 30 con el bit 64 -mismo
+ // camino que la anterior- y rumbo 15 con el bit 128 -ultima del cruce-.
+ // Entre realidades distintas de vm, deepEqual compara prototipos: JSON.
+ assert.equal(JSON.stringify(c.descifraRamas('AV6P',6,1)),JSON.stringify([[[6,180],[90]]]));
+ // Sin el bit de «ultima rama» el fichero esta a medias: mejor sin ramas.
+ assert.equal(c.descifraRamas('AV4P',6,2),null);
+ assert.equal(c.descifraRamas('',6,1),null);
+ assert.equal(c.descifraRamas(undefined,6,1),null);
+});
+test('Un brinco del GPS hacia atras no se canta como horquilla',()=>{
+ // El caso de galdaramiño en el km 2,457: la via va recta y el trazado tiene
+ // un tramo de seis metros hacia atras. Con el cruce al lado -y siguiendo
+ // por el mismo camino- el punto llega al prepaso de horquillas, que leia
+ // 180 grados y soltaba un «da la vuelta» donde no hay ninguno.
+ const recta=[];for(let x=-60;x<=60;x+=6)recta.push(point(x,0));
+ assert.equal(detector().detect(recta,[cruceCon([90,270],[180])]).length,0,
+  'una recta no tiene nada que avisar');
+ const brinco=[];
+ for(let k=0;k<recta.length;k++){
+  brinco.push(recta[k]);
+  if(k===9)brinco.push(point(-60+9*6-6,0));   // seis metros hacia atras
+ }
+ const turns=detector().detect(brinco,[cruceCon([90,270],[180])]);
+ assert.equal(turns.filter(t=>t.direction==='vuelta').length,0,
+  'un pico de seis metros no es una media vuelta');
 });

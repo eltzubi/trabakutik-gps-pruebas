@@ -25,7 +25,7 @@ public class NativeTurnsTest {
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
   checkTurns(l,metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute));
  }
- String fraseGiro(int lado,boolean cruce,String fase,double ahead){return ""+lado;}
+ String fraseGiro(int lado,int tipo,String fase,double ahead){return ""+lado;}
 '''+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}

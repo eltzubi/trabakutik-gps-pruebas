@@ -148,11 +148,19 @@ public class TrackingService extends Service implements LocationListener {
   ToneGenerator t=tonoEnCurso;tonoEnCurso=null;
   if(t!=null)try{t.release();}catch(Exception ignored){}
  }
- String fraseGiro(int lado,boolean esCruce,String fase,double ahead){
+ String fraseGiro(int lado,int tipo,String fase,double ahead){
   // Lo que pidio el autor fue que le avisaran de los CRUCES, asi que la voz
   // dice si es un cruce o una curva. Y «cambio de sentido» en un sendero
   // suena a «date la vuelta», que no es lo que pasa en una herradura.
-  String hacia=lado==0
+  // tipo: 0 curva de herradura, 1 cruce, 2 cruce donde hay que seguir por un
+  // lado sin apenas girar. El 2 lo manda la pagina desde noviembre de 2026,
+  // cuando los cruces pasaron a traer los rumbos de sus ramas: ahi el giro
+  // son pocos grados y decir «cruce a la derecha» enganaria, porque lo que
+  // hay que hacer es no seguir la via que se va por el otro lado.
+  boolean esCruce=tipo!=0;
+  String hacia=tipo==2
+   ?(lado<0?"en el cruce, sigue por la izquierda":"en el cruce, sigue por la derecha")
+   :lado==0
    ?(esCruce?"cruce, da la vuelta":"curva de herradura")
    :esCruce?(lado<0?"cruce a la izquierda":"cruce a la derecha")
            :(lado<0?"curva cerrada a la izquierda":"curva cerrada a la derecha");
@@ -397,9 +405,13 @@ public class TrackingService extends Service implements LocationListener {
     JSONObject p=list.optJSONObject(i);if(p==null)continue;
     int at=p.optInt("i",-1),direction=p.optInt("dir",0);
     // "t": 1 si es un CRUCE de verdad -nodo de OpenStreetMap con tres ramas o
-    // mas-, 0 si es una curva de herradura. No se dicen igual. Un APK viejo
-    // guardaba ficheros sin "t"; por defecto cruce, que es el caso normal.
+    // mas-, 0 si es una curva de herradura y 2 si es un cruce en el que hay
+    // que seguir por un lado sin apenas girar. No se dicen igual. Un APK
+    // viejo guardaba ficheros sin "t"; por defecto cruce, que es el caso
+    // normal. Un valor que no conozcamos se trata como cruce, nunca se tira
+    // el giro: perder el matiz es barato, perder el aviso no.
     int tipo=p.optInt("t",1);
+    if(tipo<0||tipo>2)tipo=1;
     if(at>=0&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo});
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
@@ -491,11 +503,13 @@ public class TrackingService extends Service implements LocationListener {
      double ahead=mejorAhead;
      double[] giro=turns.get(mejor);
      int d=(int)giro[1];
-     boolean esCruce=giro.length<3||giro[2]!=0;
+     int tipo=giro.length<3?1:(int)giro[2];
+     boolean esCruce=tipo!=0;
      // Al reves, lo que se grabo como derecha es izquierda.
      int lado=d*sentido;
      String instruction=lado<0?"Izquierda":lado>0?"Derecha":esCruce?"Da la vuelta":"Herradura";
      if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
+     if(tipo==2&&lado!=0)instruction="Sigue "+(lado<0?"izqda.":"dcha.");
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
      // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a
      // 50 m, 2 a 10 m y 3 en el propio cruce. El numero es el dato, que
@@ -515,7 +529,7 @@ public class TrackingService extends Service implements LocationListener {
        warnedTurns.add(clave);
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
        if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add(mejor+":v")))
-        habla(fraseGiro(lado,esCruce,fase,ahead));
+        habla(fraseGiro(lado,tipo,fase,ahead));
       }
      }
   }

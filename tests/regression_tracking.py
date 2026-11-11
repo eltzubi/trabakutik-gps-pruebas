@@ -39,6 +39,22 @@ assert 'sosPendienteDesde' in actividad and 'startSosLocation()' in actividad[
     'y al volver al frente hay que retomarlo')
 print('OK: el SOS comparte sin caducar y sobrevive al permiso en segundo plano')
 
+# EL TERCER TIPO DE AVISO, «sigue por la derecha». Lo manda la pagina con t:2
+# desde que los cruces traen los rumbos de sus ramas: ahi el giro son pocos
+# grados y «cruce a la derecha» enganaria, porque lo que hay que hacer es no
+# seguir la via que se va por el otro lado. Si el servicio pierde el 2, la
+# pantalla lo dice bien y la voz no, que es lo que se oye con el movil en el
+# bolsillo.
+_frase=src[src.index(' String fraseGiro('):]
+_frase=_frase[:_frase.index('\n }')]
+assert 'tipo==2' in _frase, 'la voz tiene que distinguir el cruce en el que se sigue por un lado'
+assert 'sigue por la izquierda' in _frase and 'sigue por la derecha' in _frase, (
+    'y decirlo con esas palabras, las que pidio el autor')
+_lee=src[src.index('int tipo=p.optInt("t",1);'):]
+assert 'if(tipo<0||tipo>2)tipo=1;' in _lee[:200], (
+    'un tipo desconocido se trata como cruce; nunca se tira el giro')
+print('OK: el servicio entiende el cruce de «sigue por la derecha»')
+
 def method(signature, source=src):
  a=source.index(signature);start=source.index('{',a);depth=1;i=start+1
  while depth:
@@ -66,7 +82,7 @@ public class TrackingRegression {
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
   checkTurns(l,metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute));
  }
- String fraseGiro(int lado,boolean c,String f,double a){return "";}
+ String fraseGiro(int lado,int tipo,String f,double a){return "";}
  static void require(boolean condition,String message){if(!condition)throw new AssertionError(message);}
 '''+br+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+constant+method(' boolean esAntigua(Location l)')+sos+'''
  public static void main(String[] args)throws Exception{

@@ -2456,6 +2456,30 @@ function zonaGuardada(){
   return descifraZona(JSON.parse(t));
  }catch(e){return null}
 }
+// LAS RAMAS DE CADA CRUCE, que es lo que de verdad decide si hay que avisar.
+// Un byte por rama: bits 0-5 el rumbo en pasos de «paso_rama» grados, bit 6
+// «esta rama es del mismo camino que la anterior» y bit 7 «ultima rama de
+// este cruce». Asi no hay que guardar ni cuentas ni identificadores. Lo
+// escribe scripts/make_cruces.py del repo Rutas-Mallabia.
+// Devuelve, por cruce, una lista de CAMINOS, y cada camino la lista de
+// rumbos con los que sale del cruce: [[84,264],[120,300]] es un cruce donde
+// se cruzan dos caminos, cada uno con sus dos sentidos.
+function descifraRamas(texto,paso,cuantos){
+ if(typeof texto!=='string'||!texto)return null;
+ let crudo;
+ try{crudo=atob(texto)}catch(e){return null}
+ const out=[];let grupos=[];
+ for(let i=0;i<crudo.length;i++){
+  const b=crudo.charCodeAt(i),rumbo=(b&63)*paso;
+  if((b&64)&&grupos.length)grupos[grupos.length-1].push(rumbo);
+  else grupos.push([rumbo]);
+  if(b&128){out.push(grupos);grupos=[]}
+ }
+ if(grupos.length)out.push(grupos);
+ // Un fichero a medias desplazaria las ramas de sitio y haria decir
+ // «izquierda» en el cruce de al lado: mejor sin ramas que con las de otro.
+ return out.length===cuantos?out:null;
+}
 function descifraZona(j){
  const esc=j.escala||100000,d=j.dif;
  if(!Array.isArray(d)||d.length<2||d.length%2)throw new Error('cruces-zona.json no valido');
@@ -2468,7 +2492,9 @@ function descifraZona(j){
   if(Number.isFinite(lat)&&Number.isFinite(lon))puntos.push([lat,lon]);
  }
  if(puntos.length<2)throw new Error('cruces-zona.json vacio');
- return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos};
+ const ramas=descifraRamas(j.ramas,j.paso_rama||6,puntos.length);
+ if(ramas)for(let i=0;i<puntos.length;i++)puntos[i].push(ramas[i]);
+ return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas};
 }
 function bajaZona(){
  return fetch(URL_CRUCES,{cache:'default'})
@@ -2482,7 +2508,13 @@ function cargaZonaCruces(){
   if(!zonaRefrescada){
    zonaRefrescada=true;
    bajaZona().then(z=>{
-    if(zonaCruces&&z.puntos.length!==zonaCruces.puntos.length){zonaCruces=z;aplicaCruces()}
+    // Tambien por la FECHA y por las ramas: el dia que el fichero paso a
+    // llevar los rumbos de las ramas, un movil con la copia vieja guardada
+    // se habria quedado sin ellas para siempre si solo se mirara cuantos
+    // cruces hay, porque pueden coincidir.
+    const cambia=zonaCruces&&(z.puntos.length!==zonaCruces.puntos.length
+      ||z.fecha!==zonaCruces.fecha||!!z.ramas!==!!zonaCruces.ramas);
+    if(cambia){zonaCruces=z;aplicaCruces()}
    }).catch(()=>{});
   }
   return Promise.resolve(zonaCruces);
@@ -2534,9 +2566,73 @@ function aplicaCruces(){
 function enviaGirosNativos(){
  if(!window.TrabakutikAndroid?.setJunctions)return;
  try{
+  // «t»: 0 curva de herradura, 1 cruce, 2 cruce en el que hay que seguir por
+  // un lado sin apenas girar -«sigue por la derecha»-. Un APK viejo no
+  // conoce el 2 y lo trata como cruce, que es lo que era antes: se pierde el
+  // matiz, no el aviso.
   window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>(
-   {i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0,t:j.cruce?1:0}))));
+   {i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0,
+    t:j.cruce?(j.mantente?2:1):0}))));
  }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
+}
+// EL AVISO DE UN CRUCE SALE DE LAS RAMAS DEL CRUCE, NO DE LA FORMA DEL TRACK.
+// Lo pidio el autor con estas palabras: «si se continua por el mismo camino
+// no hay perdida, solo si hay que dejarlo para tomar otro; o una curva
+// cerrada tambien se avisa».
+//
+// Por que hizo falta. Se salio de galdaramiño en el km 2,45, en la salida de
+// la BI-633 encima de Osma: el ramal arranca casi recto y la que se va hacia
+// un lado es la CARRETERA, asi que el track se dobla 8, 14 y 19 grados
+// -medido en ventanas de 12, 20, 40 y 60 m- y el navegador, que decidia por
+// el angulo del track, se callaba. No hay umbral que arregle eso: bajarlo a
+// 25 grados sube los avisos un 76% y ESE cruce sigue mudo. Lo que falta no
+// es sensibilidad, es saber que ahi se cambia de camino.
+//
+// Con las ramas la cuenta sale sola. En ese nodo hay dos caminos: la BI-633
+// (84 y 264 grados) y el ramal (120 y 300). Llegas con rumbo 263, o sea por
+// la rama de 84; la ruta coge la de 300, que es del OTRO camino -> aviso, y
+// a la derecha, que es por donde se va respecto a la BI-633.
+//
+// Cuando se calla: cuando la rama que coges es del mismo camino por el que
+// llegas (sigues por donde ibas, no hay perdida), y cuando te desvias menos
+// de CRUCE_RECTO grados y ninguna otra rama va mas recta que la tuya -ahi
+// vas recto de verdad y tampoco hay nada que elegir-.
+//
+// Medido sobre las 72 rutas y 1.600 km: 2.601 avisos, uno cada 615 m, frente
+// a los 1.952 de antes -uno cada 820-. La ruta con mas es hirutxikiak, con
+// 88; el servicio de Android se planta en 400 por ruta.
+const CRUCE_RECTO=25;
+function difRumbo(a,b){let d=(a-b)%360;if(d>=180)d-=360;if(d<-180)d+=360;return d}
+function decideCruce(cruce,centro,antes,despues){
+ const grupos=cruce[2];
+ if(!Array.isArray(grupos)||!grupos.length)return {sinRamas:true};
+ const ramas=[];
+ for(let g=0;g<grupos.length;g++)for(const r of grupos[g])ramas.push({r,g});
+ if(ramas.length<3)return {sinRamas:true};
+ const entra=bearingBetween(antes,centro),sale=bearingBetween(centro,despues);
+ const detras=(entra+180)%360;
+ let atras=ramas[0];
+ for(const x of ramas)if(Math.abs(difRumbo(x.r,detras))<Math.abs(difRumbo(atras.r,detras)))atras=x;
+ const resto=ramas.filter(x=>x!==atras);
+ if(!resto.length)return null;
+ let mia=resto[0];
+ for(const x of resto)if(Math.abs(difRumbo(x.r,sale))<Math.abs(difRumbo(mia.r,sale)))mia=x;
+ if(mia.g===atras.g)return null;          // sigues por el mismo camino
+ const otras=resto.filter(x=>x!==mia),desvio=difRumbo(mia.r,entra);
+ let recta=null;
+ for(const x of otras)if(!recta||Math.abs(difRumbo(x.r,entra))<Math.abs(difRumbo(recta.r,entra)))recta=x;
+ // «Mas recta» con 5 grados de margen: por debajo de eso es el ruido del
+ // rumbo del track y del redondeo de las ramas, no una eleccion.
+ const masRecta=!!recta&&Math.abs(difRumbo(recta.r,entra))<Math.abs(desvio)-5;
+ if(!masRecta&&Math.abs(desvio)<CRUCE_RECTO)return null;
+ const mantente=Math.abs(desvio)<CRUCE_RECTO;
+ // Yendo casi recto, el lado se dice respecto a la rama que SI va recta
+ // -«sigue por la derecha»-, no respecto a por donde venias: son los dos
+ // grados de diferencia los que no se ven, y lo que hay que decir es de que
+ // lado se queda la buena.
+ const lado=mantente?(difRumbo(mia.r,recta.r)<0?'izquierda':'derecha')
+                    :(desvio<0?'izquierda':'derecha');
+ return {grados:Math.round(Math.abs(desvio)),lado,mantente};
 }
 function computeJunctions(){
  resetJunctionView();
@@ -2574,6 +2670,9 @@ function computeJunctions(){
  // grados en 40 m, y una S entra y sale con el mismo rumbo, asi que da 0.
  const HORQUILLA=160,VENTANA_HORQUILLA=40;
  const CERCA_CRUCE=25;
+ // Un aviso por cruce y no uno por punto: la ruta deja varios puntos dentro
+ // de los 25 m de un mismo nodo y el de 35 m de abajo no siempre los junta.
+ const crucesDichos=new Set();
  const CELDA=0.0006,rejCruces=new Map();
  for(const c of crucesOsm){
   const k=Math.floor(c[0]/CELDA)+'/'+Math.floor(c[1]/CELDA);
@@ -2601,17 +2700,21 @@ function computeJunctions(){
   const v1=[(centro[1]-a[1])*kx,centro[0]-a[0]],v2=[(c[1]-centro[1])*kx,c[0]-centro[0]];
   const norma=Math.hypot(...v1)*Math.hypot(...v2);
   if(!norma)return null;
+  // «a» y «c» salen tambien: con ellos se saca POR DONDE LLEGAS y POR DONDE
+  // SALES, que es lo que hay que comparar con las ramas del cruce.
   return {angle:Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/norma)))*180/Math.PI,
-   cross:v1[0]*v2[1]-v1[1]*v2[0]};
+   cross:v1[0]*v2[1]-v1[1]*v2[0],antes:a,despues:c};
  };
- const hayCruce=p=>{
-  if(!crucesOsm.length)return false;
+ // Devuelve EL CRUCE, no un si o un no: hacen falta sus ramas para decidir.
+ const cruceEn=p=>{
+  if(!crucesOsm.length)return null;
   const k0=Math.floor(p[0]/CELDA),k1=Math.floor(p[1]/CELDA);
+  let mejor=null,suya=Infinity;
   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){
    const l=rejCruces.get((k0+a)+'/'+(k1+b));if(!l)continue;
-   for(const c of l)if(dist(p,c)<=CERCA_CRUCE)return true;
+   for(const c of l){const d=dist(p,c);if(d<=CERCA_CRUCE&&d<suya){suya=d;mejor=c}}
   }
-  return false;
+  return mejor;
  };
  // LAS HORQUILLAS SE MIDEN POR EL CAMBIO DE RUMBO, NO POR LA FORMA. Mirar la
  // forma desde 40 m -con geometriaEn- no sirve: en una zeta cuyos ramales se
@@ -2629,13 +2732,48 @@ function computeJunctions(){
  // estar a 150 m y la ventana no se abriria nunca. Lo que se compara es el
  // rumbo con el que LLEGAS a i y el rumbo con el que SALES de la ventana;
  // esas rectas largas no estorban, porque lo que dicen es por donde vas.
+ // UN BRINCO DEL GPS NO ES UNA HORQUILLA. El rumbo de llegada se toma del
+ // ultimo tramo, y galdaramiño tiene en el km 2,457 -en plena salida de la
+ // BI-633- un tramo de seis metros hacia ATRAS: ahi ese rumbo sale 180
+ // grados cambiado y el prepaso cantaba una horquilla donde la via va recta.
+ // Antes no se veia porque ese punto esta encima de un cruce y la rama de los
+ // cruces se lo comia; desde que los cruces se deciden por sus ramas, el
+ // punto llega hasta aqui y soltaba un «da la vuelta» falso.
+ // No se cambia la medida -son los grados que el autor tiene ajustados-: se
+ // descarta el BRINCO. Un tramo de llegada de menos de BRINCO_M metros que
+ // ademas apunta al reves de por donde se viene -mirando 20 m de camino
+ // atras- no es por donde llegas, es un pico del GPS. Una revuelta en zeta
+ // no cae aqui: por corto que sea su ultimo tramo, apunta hacia donde sube
+ // la rama de antes, no al contrario.
+ const BRINCO_M=10,BRINCO_GIRO=120;
+ const atrasDe=(i,metros)=>{
+  let j=i,rec=0;
+  while(j>0){
+   const d=dist(pts[j-1],pts[j]);
+   if(d>0&&rec+d>=metros){
+    const t=(metros-rec)/d;
+    return [pts[j][0]+t*(pts[j-1][0]-pts[j][0]),pts[j][1]+t*(pts[j-1][1]-pts[j][1])];
+   }
+   rec+=d;j--;
+  }
+  return rec>0?pts[0]:null;
+ };
  for(let i=1;i<pts.length-1;i++){
   let j=i;
   while(j+2<pts.length&&routeCumulative[j+1]-routeCumulative[i]<=VENTANA_HORQUILLA)j++;
   if(j<=i)continue;
-  let d=Math.abs(rumboTramo(pts[j],pts[j+1])-rumboTramo(pts[i-1],pts[i]))%360;
+  const llegada=rumboTramo(pts[i-1],pts[i]);
+  let d=Math.abs(rumboTramo(pts[j],pts[j+1])-llegada)%360;
   if(d>180)d=360-d;
   if(d<HORQUILLA)continue;
+  if(dist(pts[i-1],pts[i])<BRINCO_M){
+   const desde=atrasDe(i,VENTANA_HORQUILLA/2);
+   if(desde){
+    let v=Math.abs(llegada-rumboTramo(desde,pts[i]))%360;
+    if(v>180)v=360-v;
+    if(v>BRINCO_GIRO)continue;
+   }
+  }
   horquillas.set(i,Math.round(d));
   i=j;
  }
@@ -2652,10 +2790,26 @@ function computeJunctions(){
   // asi que «otra ruta a menos de 28 m» es cierto casi todo el rato y no
   // significa cruce, significa que van juntas. Por eso los cruces se traen de
   // OSM y no de las propias rutas.
-  const cruce=hayCruce(b);
-  let grados=angle;
-  if(cruce){if(angle<CRUCE_GIRO)continue}
-  else{
+  const elCruce=cruceEn(b);
+  const cruce=!!elCruce;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false;
+  if(cruce){
+   const d=decideCruce(elCruce,b,giro.antes,giro.despues);
+   if(d&&d.sinRamas){
+    // Fichero de cruces antiguo, sin ramas: se decide como siempre, por el
+    // angulo del propio track.
+    porElCruce=angle>=CRUCE_GIRO;
+   }else if(d&&!crucesDichos.has(elCruce)){
+    crucesDichos.add(elCruce);
+    porElCruce=true;
+    grados=d.grados;ladoCruce=d.lado;mantente=d.mantente;
+   }
+  }
+  // Que el cruce no pida aviso NO cierra el punto: encima de un cruce puede
+  // haber una horquilla, y «una curva cerrada tambien se avisa». Sin esto,
+  // una revuelta de 170 grados con un camino saliendo al lado se quedaba
+  // muda por seguir por el mismo camino.
+  if(!porElCruce){
    let vale=angle>=CURVA_SOLA;
    if(vale){
     const confirma=geometriaEn(i,20);
@@ -2682,7 +2836,7 @@ function computeJunctions(){
   // los 145 grados, «direction» se quedaba en «vuelta» y el lado se perdia por
   // el camino: la flecha se dibujaba girando a la derecha aunque la curva
   // fuera a la izquierda. Lo vio el autor en una herradura de 173 grados.
-  const hacia=cross>0?'izquierda':'derecha';
+  const hacia=ladoCruce||(cross>0?'izquierda':'derecha');
   // «DA LA VUELTA» SOLO CUANDO DE VERDAD TE DAS LA VUELTA. Estaba en 145 y
   // el autor se encontro un cruce de 147 grados anunciado como «Cruce · da
   // la vuelta»: lo vio y dijo «no sé qué sea un giro, por muy cerrado que
@@ -2693,7 +2847,7 @@ function computeJunctions(){
   // asi que las dos cosas dicen lo mismo: por debajo es un giro cerrado, y
   // de 160 para arriba es una herradura de verdad.
   const direction=grados>=HORQUILLA?'vuelta':hacia;
-  junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce});
+  junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente});
  }
  enviaGirosNativos();
 }
@@ -2817,7 +2971,12 @@ function junctionGuidance(p,accuracy,progress){
    :turn.direction;
  const sentido=ladoFlecha(turn,alReves)==='izquierda'?-1:1;
  const grados=Number.isFinite(turn.angle)?turn.angle:(turn.direction==='vuelta'?160:85);
- $('turnArrow').innerHTML=flechaGiro(grados,sentido,62,11);
+ // En un «sigue por la derecha» el desvio son pocos grados y la flecha
+ // saldria recta, que es justo lo contrario de lo que hay que entender. Se
+ // dibuja con un codo minimo para que se vea de que lado es; el numero de
+ // grados sigue siendo el de verdad, abajo.
+ const gradosFlecha=turn.mantente?Math.max(grados,22):grados;
+ $('turnArrow').innerHTML=flechaGiro(gradosFlecha,sentido,62,11);
  if(!turnMarker||turnMarker.options.turnIndex!==j){
   if(turnMarker)map.removeLayer(turnMarker);
   const sign=L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],
@@ -2827,7 +2986,7 @@ function junctionGuidance(p,accuracy,progress){
   // abajo, la grande, le parece perfecta, y la diferencia es justo esa: alli
   // la flecha tiene sitio. Ahora ocupa 30 px con un trazo de 10, que llena el
   // circulo sin salirse. El circulo no crece: taparia mas mapa.
-  html:'<div class="map-turn-sign">'+flechaGiro(grados,sentido,30,10)+'</div>'});
+  html:'<div class="map-turn-sign">'+flechaGiro(gradosFlecha,sentido,30,10)+'</div>'});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
  // Un cruce y una curva de herradura no son lo mismo y no se dicen igual:
@@ -2836,8 +2995,10 @@ function junctionGuidance(p,accuracy,progress){
  const esCruce=turn.cruce!==false;
  $('turnDirection').textContent=lado==='vuelta'
    ?(esCruce?'Cruce · da la vuelta':'Curva de herradura')
+   :turn.mantente?'Cruce · sigue por la '+lado
    :(esCruce?'Cruce a la '+lado:'Giro cerrado a la '+lado);
- $('turnAngle').textContent='Giro de '+grados+'\u00b0';
+ $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
+   :'Giro de '+grados+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // Las tres luces se encienden segun te acercas, con los mismos cortes que
  // los pitidos: son lo mismo dicho de otra manera, para cuando no se oiga.
@@ -2885,6 +3046,7 @@ function junctionGuidance(p,accuracy,progress){
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'
     ?(esCruce?'cruce, da la vuelta':'curva de herradura')
+    :turn.mantente?'en el cruce, sigue por la '+lado
     :(esCruce?'cruce a la '+lado:'giro cerrado a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.
   if(fase==='v'||fase==='3'||(fase==='1'&&!junctionWarned.has(j+':v'))){
@@ -2895,7 +3057,8 @@ function junctionGuidance(p,accuracy,progress){
   }
   if(fase!=='v')notice(fase==='3'
         ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
-        :(esCruce?'Cruce':'Giro cerrado')+' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
+        :(turn.mantente?'Cruce · sigue por la '+lado:esCruce?'Cruce':'Giro cerrado')
+         +' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
 }
