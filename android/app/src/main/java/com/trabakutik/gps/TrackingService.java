@@ -13,6 +13,10 @@ import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
  LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ final NavigationMetrics metrics=new NavigationMetrics();
+ List<NavigationMetrics.Water> waterPoints;
+ int metricsRouteKey;
+ long lastImportantAudio=Long.MIN_VALUE/2;
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -205,7 +209,7 @@ public class TrackingService extends Service implements LocationListener {
    }
    return START_NOT_STICKY;
   }
-  if("PAUSE".equals(action)){pausado=true;if(active)updateNotice();return START_NOT_STICKY;}
+  if("PAUSE".equals(action)){pausado=true;metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
   if("RESUME".equals(action)){
    pausado=false;forzarCorte=true;    // que el descanso no salga como una recta
    if(active)updateNotice();return START_NOT_STICKY;
@@ -332,6 +336,9 @@ public class TrackingService extends Service implements LocationListener {
  }
  void loadRoute(){
   route.clear();routeReached=false;offRoute=false;farSince=0;errorRuta="";sinGpsAvisado=false;
+  metrics.configure(route,Collections.emptyList());
+  metricsRouteKey=0;
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("metrics").apply();
   File f=new File(getFilesDir(),"ruta-activa.json");
   if(!f.exists()){loadTurns();return;}
   // Los dos topes de antes -2 MB de fichero y 15.000 puntos- recortaban la
@@ -344,20 +351,39 @@ public class TrackingService extends Service implements LocationListener {
   try {
    byte[] raw=new byte[(int)f.length()];
    try(FileInputStream in=new FileInputStream(f)){int n=0,k;while(n<raw.length&&(k=in.read(raw,n,raw.length-n))>0)n+=k;}
-   JSONArray pts=new JSONArray(new String(raw,java.nio.charset.StandardCharsets.UTF_8));
+   String routeJson=new String(raw,java.nio.charset.StandardCharsets.UTF_8);
+   JSONArray pts=new JSONArray(routeJson);
+   metricsRouteKey=routeJson.hashCode();
    if(pts.length()>15000)throw new IllegalArgumentException("Ruta con mas de 15000 puntos");
    for(int i=0;i<pts.length();i++){
     JSONArray p=pts.optJSONArray(i);if(p==null||p.length()<2)continue;
     double lat=p.optDouble(0,Double.NaN),lon=p.optDouble(1,Double.NaN);
     if(Double.isFinite(lat)&&Double.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180)
-     route.add(new double[]{lat,lon});
+     route.add(new double[]{lat,lon,p.optDouble(2,Double.NaN)});
    }
   }catch(Exception ex){
    route.clear();
    android.util.Log.e("TrabakutikGPS","Ruta ilegible o incompleta",ex);
    errorRuta="No se pudo leer la ruta para navegar";
   }
+  if(route.size()>1)metrics.configure(route,waterPoints());
   loadTurns();
+ }
+ List<NavigationMetrics.Water> waterPoints(){
+  if(waterPoints!=null)return waterPoints;
+  waterPoints=new ArrayList<>();
+  // Catálogo de Trabakutik.com (Rutas-Mallabia, data/fuentes.json).
+  try(InputStream input=getAssets().open("fuentes-gps.json");
+      ByteArrayOutputStream bytes=new ByteArrayOutputStream()){
+   byte[] buffer=new byte[4096];int read;
+   while((read=input.read(buffer))!=-1)bytes.write(buffer,0,read);
+   JSONArray rows=new JSONArray(new String(bytes.toByteArray(),java.nio.charset.StandardCharsets.UTF_8));
+   for(int i=0;i<rows.length();i++){
+    JSONArray point=rows.getJSONArray(i);
+    waterPoints.add(new NavigationMetrics.Water(point.getString(1),point.getDouble(2),point.getDouble(3),point.getBoolean(4)));
+   }
+  }catch(IOException|JSONException e){android.util.Log.w("TrabakutikGPS","No se pudieron cargar las fuentes",e);}
+  return waterPoints;
  }
  void loadTurns(){
   turns.clear();warnedTurns.clear();upcomingTurn="";
@@ -429,32 +455,20 @@ public class TrackingService extends Service implements LocationListener {
  // usa la pagina para esto. Por encima de eso la posicion es basura. Con 40 m
  // de error el «ahora» puede llegar unos metros antes o despues; callarse del
  // todo es peor.
- void checkTurns(Location l){
+ void checkTurns(Location l,NavigationMetrics.Projection position){
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>60)return;
-  double lat=l.getLatitude(),lon=l.getLongitude();
-  double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat));
-  double closest=Double.POSITIVE_INFINITY,along=0,cumulative=0;
-  for(int i=1;i<route.size();i++){
-   double[] a=route.get(i-1),b=route.get(i);
-   double dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*scale;
-   double ax=(a[1]-lon)*lonScale,ay=(a[0]-lat)*scale;
-   double length=Math.hypot(dx,dy);
-   double t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
-   double error=Math.hypot(ax+t*dx,ay+t*dy);
-   if(error<closest){closest=error;along=cumulative+t*length;}
-   cumulative+=length;
+  if(offRoute||position.distance()>25){
+   if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}
+   return;
   }
-  // Fuera de ruta no se anuncian giros: sonaban a la vez el aviso de
-  // «fuera del recorrido» y un pitido de giro. Al volver, siguen.
-  if(offRoute||closest>25){if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}return;}
+  double along=position.along();
   double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
-  double progress=0;String next="";
+  String next="";
   int k=0,mejor=-1;double mejorAhead=0;
   for(int i=1;i<route.size();i++){
-   double[] a=route.get(i-1),b=route.get(i);
-   progress+=Math.hypot((b[1]-a[1])*lonScale,(b[0]-a[0])*scale);
+   double progress=metrics.distance[i];
    while(k<turns.size()&&(int)turns.get(k)[0]==i){
     double ahead=(progress-along)*sentido;
     // El suelo va con la velocidad, como el techo. Con los -7 m fijos de
@@ -500,9 +514,8 @@ public class TrackingService extends Service implements LocationListener {
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
-       // En la fase 1 ya no se repite la distancia: a 25 m, decir «en 25
-       // metros» llega tarde y ademas pisa al aviso bueno, el del cruce.
-       if("v".equals(fase)||"3".equals(fase))habla(fraseGiro(lado,esCruce,fase,ahead));
+       if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add(mejor+":v")))
+        habla(fraseGiro(lado,esCruce,fase,ahead));
       }
      }
   }
@@ -536,6 +549,24 @@ public class TrackingService extends Service implements LocationListener {
  // Si dejan de llegar posiciones -y dejan de llegar en cuanto se para la
  // navegacion y no se graba- se quedaban viejos, y la pagina seguia creyendo
  // que el servicio guia. Se publican en el momento en que cambian.
+ String updateNavigationMetrics(Location location,NavigationMetrics.Projection position,long now){
+  double along=position.along();
+  boolean moving=!pausado&&(!location.hasSpeed()||location.getSpeed()>=.5f);
+  long eta=metrics.eta(along,sentido,location.getLatitude(),location.getLongitude(),
+      location.getElapsedRealtimeNanos()/1_000_000L,moving);
+  if(moving&&farSince==0&&upcomingTurn.isEmpty()&&now-lastImportantAudio>=8000&&!"silencio".equals(modoAudio())){
+   NavigationMetrics.Notice notice=metrics.nextNotice(along,sentido);
+   if(notice!=null){
+    pitidos(notice.beeps(),900);habla(notice.text());lastImportantAudio=now;
+   }
+  }
+  try{
+   JSONObject data=new JSONObject().put("key",metricsRouteKey).put("etaMs",eta);
+   double gain=metrics.gain(along,sentido);
+   if(Double.isFinite(gain))data.put("gain",gain);
+   return data.toString();
+  }catch(JSONException e){return "{}";}
+ }
  void publicaEstado(){
   try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
     .putBoolean("active",active).putBoolean("recording",recording)
@@ -601,8 +632,22 @@ public class TrackingService extends Service implements LocationListener {
   if(esAntigua(l))return;
   if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
-  if(navigating&&route.size()>1){checkDeviation(l);checkTurns(l);}
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
+  String liveMetrics="{}";
+  if(navigating&&route.size()>1){
+   boolean wasOff=offRoute;
+   int previousWarnings=warnedTurns.size();
+   checkDeviation(l);
+   if(l.hasAccuracy()&&l.getAccuracy()<=60){
+    NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
+    checkTurns(l,position);
+    long now=SystemClock.elapsedRealtime();
+    if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;
+    if(!offRoute&&position.distance()<=30&&l.getAccuracy()<=35){
+     liveMetrics=updateNavigationMetrics(l,position,now);
+    }else metrics.pausePace();
+   }else metrics.pausePace();
+  }
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   // Con una posicion por segundo y sin filtro de distancia, parado el GPS
   // deja un nido de puntos de puro ruido. Se guarda si te has movido 1,5 m

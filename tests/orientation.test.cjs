@@ -169,3 +169,23 @@ test('El marcador mantiene la misma flecha al actualizar el rumbo',()=>{
  c.pintaPosicionGps(punto(0,10),null);
  assert.equal(path.style.visibility,'hidden');
 });
+
+test('Sin lectura de rumbo nueva se conserva el dato previo solo como referencia',()=>{
+ const c=rumbos();
+ const result=c.rumboAndando({speed:0,heading:null,accuracy:8},punto(0,0),punto(0,0),270);
+ assert.equal(result.rumbo,270);
+ assert.equal(result.nuevo,null);
+ assert.equal(c.rumboAndando({speed:1,heading:90,accuracy:8},punto(0,0),punto(0,0),270).nuevo,90);
+});
+
+test('El progreso no toma la vuelta antes de llegar al extremo del camino compartido',()=>{
+ const route=Array.from({length:101},(_,i)=>punto(0,Math.min(i,100-i)*10));
+ const c={routePoints:route,routeCumulative:route.map((_,i)=>10*i),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
+ vm.createContext(c);
+ vm.runInContext(source('const dist=(a,b)=>','\n'),c);
+ vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);
+ c.progressOnRoute(punto(0,440));
+ assert(Math.abs(c.progressOnRoute(punto(0,450)).along-450)<.01);
+ for(let m=460;m<=500;m+=10)c.progressOnRoute(punto(0,m));
+ assert(Math.abs(c.progressOnRoute(punto(0,490)).along-510)<.01);
+});

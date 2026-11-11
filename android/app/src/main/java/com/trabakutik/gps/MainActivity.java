@@ -6,6 +6,7 @@ import android.content.*;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
+import android.location.LocationListener;
 import android.os.*;
 import android.view.ViewGroup;
 import android.view.View;
@@ -136,6 +137,8 @@ public class MainActivity extends Activity {
  }
  @Override protected void onStop(){
   super.onStop();
+  stopSosLocation();
+  if(sosDialog!=null)sosDialog.dismiss();
   appEnSegundoPlano=true;
   final int ciclo=++cicloSegundoPlano;
   if(web==null||TrackingService.ACTIVO||pendingGpsAction!=null)return;
@@ -338,6 +341,12 @@ public class MainActivity extends Activity {
    try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("AUDIO").putExtra("modo",modo).putExtra("probar",true));}
    catch(Exception ignored){}
   }
+  @JavascriptInterface public void shareSos(){runOnUiThread(()->{
+   if(!showingGps||web==null||appEnSegundoPlano||isFinishing()||isDestroyed())return;
+   android.net.Uri page=android.net.Uri.parse(web.getUrl()==null?"":web.getUrl());
+   if("https".equals(page.getScheme())&&"eltzubi.github.io".equals(page.getHost())
+      &&"/trabakutik-gps-pruebas/nuevo.html".equals(page.getPath()))startSosLocation();
+  });}
   @JavascriptInterface public String getPosition(){
    try{
     android.content.SharedPreferences pref=getSharedPreferences("tracking_live",MODE_PRIVATE);
@@ -367,6 +376,10 @@ public class MainActivity extends Activity {
     o.put("time",pref.getLong("time",0));
     o.put("bearing",pref.getFloat("bearing",-1f));
     o.put("speed",pref.getFloat("speed",-1f));
+    if(pref.getBoolean("guiando",false)){
+     try{o.put("metrics",new org.json.JSONObject(pref.getString("metrics","{}")));}
+     catch(org.json.JSONException ignored){}
+    }
     return o.toString();
    }catch(Exception e){return "";}
   }
@@ -661,8 +674,97 @@ public class MainActivity extends Activity {
   try{startForegroundService(new Intent(this,TrackingService.class).setAction(action));}
   catch(Exception ex){Toast.makeText(this,"No se pudo activar el GPS. Revisa permisos y ubicación.",Toast.LENGTH_LONG).show();}
  }
+ private static final int SOS_LOCATION_PERMISSION=102;
+ private final Handler sosHandler=new Handler(Looper.getMainLooper());
+ private LocationListener sosListener;
+ private AlertDialog sosDialog;
+ private final Runnable sosTimeout=()->{
+  stopSosLocation();
+  Toast.makeText(this,"SOS: no hay una posición reciente y precisa. Vuelve a intentarlo.",Toast.LENGTH_LONG).show();
+ };
+ private void stopSosLocation(){
+  sosHandler.removeCallbacks(sosTimeout);
+  if(sosListener==null)return;
+  LocationListener listener=sosListener;
+  sosListener=null;
+  LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);
+  if(manager!=null)try{manager.removeUpdates(listener);}catch(SecurityException ignored){}
+ }
+ private static boolean usableSosLocation(Location location){
+  if(location==null||!location.hasAccuracy()||location.getElapsedRealtimeNanos()<=0)return false;
+  long age=SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos();
+  return age>=0&&age<=10_000_000_000L&&location.getAccuracy()>=0&&location.getAccuracy()<=35
+    &&Math.abs(location.getLatitude())<=90&&Math.abs(location.getLongitude())<=180;
+ }
+ private void startSosLocation(){
+  if(appEnSegundoPlano||isFinishing()||isDestroyed()||sosListener!=null||sosDialog!=null)return;
+  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+   requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},SOS_LOCATION_PERMISSION);
+   return;
+  }
+  LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);
+  if(manager==null)return;
+  String[] providers={LocationManager.GPS_PROVIDER,LocationManager.NETWORK_PROVIDER};
+  try{
+   Location latest=null;
+   boolean enabled=false;
+   for(String provider:providers){
+    if(!manager.isProviderEnabled(provider))continue;
+    enabled=true;
+    Location fix=manager.getLastKnownLocation(provider);
+    if(usableSosLocation(fix)&&(latest==null||fix.getElapsedRealtimeNanos()>latest.getElapsedRealtimeNanos()))latest=fix;
+   }
+   if(latest!=null){confirmSosLocation(manager,latest);return;}
+   if(!enabled){
+    Toast.makeText(this,"Activa la ubicación del teléfono para compartir las coordenadas.",Toast.LENGTH_LONG).show();
+    return;
+   }
+   sosListener=new LocationListener(){
+    @Override public void onLocationChanged(Location location){
+     if(sosListener!=this||!usableSosLocation(location))return;
+     stopSosLocation();
+     if(!appEnSegundoPlano&&!isFinishing()&&!isDestroyed())confirmSosLocation(manager,location);
+    }
+    @Override public void onStatusChanged(String provider,int status,Bundle extras){}
+    @Override public void onProviderEnabled(String provider){}
+    @Override public void onProviderDisabled(String provider){}
+   };
+   for(String provider:providers)if(manager.isProviderEnabled(provider))
+    manager.requestLocationUpdates(provider,0,0,sosListener,Looper.getMainLooper());
+   sosHandler.postDelayed(sosTimeout,20_000);
+   Toast.makeText(this,"SOS: buscando una posición precisa…",Toast.LENGTH_SHORT).show();
+  }catch(SecurityException|IllegalArgumentException e){
+   stopSosLocation();
+   Toast.makeText(this,"SOS: revisa la ubicación y sus permisos.",Toast.LENGTH_LONG).show();
+  }
+ }
+ private void confirmSosLocation(LocationManager manager,Location location){
+  String coordinates=String.format(java.util.Locale.ROOT,"%.6f, %.6f",location.getLatitude(),location.getLongitude());
+  String message="Mi ubicación: "+coordinates+" (precisión ±"+(int)Math.ceil(location.getAccuracy())+" m)";
+  long age=Math.max(0,(SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos())/1_000_000_000L);
+  sosDialog=new AlertDialog.Builder(this).setTitle("Compartir coordenadas SOS")
+   .setMessage(message+"\nRecibida hace "+age+" s. El envío depende del medio que elijas.")
+   .setNegativeButton("Cancelar",null).setPositiveButton("Elegir destinatario",(dialog,which)->{
+    if(!usableSosLocation(location)||!manager.isProviderEnabled(location.getProvider())){
+     Toast.makeText(this,"La posición ya no es reciente. Vuelve a pulsar SOS.",Toast.LENGTH_LONG).show();
+     return;
+    }
+    Intent share=new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,message);
+    try{startActivity(Intent.createChooser(share,"Compartir coordenadas SOS"));}
+    catch(ActivityNotFoundException e){
+     Toast.makeText(this,"No hay ninguna aplicación para compartir las coordenadas.",Toast.LENGTH_LONG).show();
+    }
+   }).create();
+  sosDialog.setOnDismissListener(dialog->sosDialog=null);
+  sosDialog.show();
+ }
  @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){
   super.onRequestPermissionsResult(code,permissions,results);
+  if(code==SOS_LOCATION_PERMISSION){
+   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)startSosLocation();
+   else Toast.makeText(this,"Permite la ubicación precisa para compartir tus coordenadas.",Toast.LENGTH_LONG).show();
+   return;
+  }
   if(code!=100&&code!=101)return;
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
    // Hay que mirar si veniamos de una accion ANTES de borrarla: decia

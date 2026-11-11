@@ -1,13 +1,16 @@
 """Ejecuta checkTurns de producción con posiciones simuladas, sin Android."""
 from pathlib import Path
 import subprocess,tempfile,sys
-src=Path('android/app/src/main/java/com/trabakutik/gps/TrackingService.java').read_text()
+production=Path('android/app/src/main/java/com/trabakutik/gps')
+src=(production/'TrackingService.java').read_text()
+metrics=(production/'NavigationMetrics.java').read_text()
 def method(signature):
  a=src.index(signature);start=src.index('{',a);depth=1;i=start+1
  while depth:
   depth += (src[i]=='{')-(src[i]=='}');i+=1
  return src[a:i]
-code='''import java.util.*;
+code='''package com.trabakutik.gps;
+import java.util.*;
 public class NativeTurnsTest {
  boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
@@ -17,12 +20,60 @@ public class NativeTurnsTest {
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
  double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
  void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){spoken.add(Integer.parseInt(s));}
+ NavigationMetrics metrics=new NavigationMetrics();
+ void checkTurns(Location l){
+  if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
+  checkTurns(l,metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute));
+ }
  String fraseGiro(int lado,boolean cruce,String fase,double ahead){return ""+lado;}
-'''+method(' static double coste(double ahead)')+method(' void checkTurns(Location l)')+'''
+'''+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
+ static void metricsChecks(){
+  ArrayList<double[]> line=new ArrayList<>();
+  for(int m=0;m<=500;m+=10)line.add(new double[]{m/111195.,0,100+m*.10});
+  NavigationMetrics metrics=new NavigationMetrics();
+  metrics.configure(line,Collections.emptyList());
+  require(Math.abs(metrics.gain(100,1)-40)<.01,"Remaining gain forwards");
+  require(metrics.gain(100,-1)==0,"Reverse gain");
+  require(metrics.nextNotice(0,1).text().startsWith("Subida"),"10% for 200m qualifies");
+  require(metrics.nextNotice(0,1)==null,"Climb not repeated");
+  long eta=-1;
+  for(int i=0;i<=60;i++)eta=metrics.eta(i*2,1,i*2/111195.,0,100000+i*1000,true);
+  require(Math.abs(eta-190000)<1,"ETA from real movement");
+  metrics.pausePace();
+  eta=metrics.eta(120,1,120/111195.,0,185000,true);
+  require(eta==-1,"Long pause hides ETA");
+  metrics.eta(122,1,122/111195.,0,186000,true);
+  eta=metrics.eta(124,1,124/111195.,0,187000,true);
+  require(Math.abs(eta-188000)<1,"Pause not included in ETA");
+
+  ArrayList<double[]> loop=new ArrayList<>(line);
+  for(int m=490;m>=0;m-=10)loop.add(new double[]{m/111195.,0,100});
+  metrics.configure(loop,Collections.emptyList());
+  metrics.project(440/111195.,0,1,true);
+  require(Math.abs(metrics.project(450/111195.,0,1,true).along()-450)<.01,"Keep outbound leg");
+  for(int m=460;m<=500;m+=10)metrics.project(m/111195.,0,1,true);
+  require(Math.abs(metrics.project(490/111195.,0,1,true).along()-510)<.01,"Take return after turnaround");
+
+  ArrayList<double[]> parallel=new ArrayList<>();
+  for(double[] p:new double[][]{{0,0},{500,0},{500,20},{0,20}})parallel.add(new double[]{p[0]/111195.,p[1]/111195.,100});
+  NavigationMetrics.Water water=new NavigationMetrics.Water("Fuente",100/111195.,20/111195.,true);
+  metrics.configure(parallel,Collections.singletonList(water));
+  require(metrics.nextNotice(0,1)==null,"Source on another nearby branch must stay quiet");
+  require(metrics.nextNotice(800,1).text().contains("aproximada"),"Source on the return can be announced");
+
+  line.get(20)[2]=Double.NaN;
+  metrics.configure(line,Collections.emptyList());
+  require(Double.isNaN(metrics.gain(100,1)),"Altitude gap cannot invent gain");
+  require(Double.isFinite(metrics.gain(300,1)),"Earlier gap does not hide subsequent gain");
+ }
  public static void main(String[] args){
+  metricsChecks();
+  NativeTurnsTest late=setup();late.checkTurns(new Location(72));
+  require(late.spoken.equals(Arrays.asList(-1)),"First fix in phase 1 still speaks");
+  late.checkTurns(new Location(72));require(late.spoken.size()==1,"Late turn voice is deduplicated");
   NativeTurnsTest c=setup();c.checkTurns(new Location(0));require(c.spoken.equals(Arrays.asList(-1)),"Debe anunciar solo la izquierda próxima, no la derecha posterior: "+c.spoken);require(c.upcomingTurn.startsWith("Izquierda"),c.upcomingTurn);
   c.checkTurns(new Location(0));require(c.spoken.size()==1,"No repetir la misma fase");
   c=setup();c.sentido=-1;c.checkTurns(new Location(280));require(c.spoken.equals(Arrays.asList(-1)),"En inverso, la derecha próxima se convierte en izquierda: "+c.spoken);
@@ -50,14 +101,16 @@ public class NativeTurnsTest {
 if '--generate-junit' in sys.argv:
  dest=Path('android/app/src/test/java/com/trabakutik/gps/NativeTurnsTest.java')
  dest.parent.mkdir(parents=True,exist_ok=True)
- code='package com.trabakutik.gps;\n'+code.replace(' public static void main(String[] args){',' @org.junit.Test public void checks(){main(new String[0]);}\n public static void main(String[] args){')
+ code=code.replace(' public static void main(String[] args){',' @org.junit.Test public void checks(){main(new String[0]);}\n public static void main(String[] args){')
  dest.write_text(code)
  print('Generado test JUnit con checkTurns de producción')
  sys.exit(0)
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'NativeTurnsTest.java';p.write_text(code)
- subprocess.run(['javac',str(p)],check=True)
- subprocess.run(['java','-cp',d,'NativeTurnsTest'],check=True)
+ metrics_file=Path(d)/'NavigationMetrics.java'
+ metrics_file.write_text(metrics)
+ subprocess.run(['javac','-d',d,str(p),str(metrics_file)],check=True)
+ subprocess.run(['java','-cp',d,'com.trabakutik.gps.NativeTurnsTest'],check=True)
 # Run regression cases in the existing APK validation step.
 import runpy
 runpy.run_path('tests/regression_tracking.py',run_name='__main__')

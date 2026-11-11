@@ -434,7 +434,7 @@ function endSessionFlow(){
  vm.runInContext(source("$('recordStop').onclick=","$('saveRecording').onclick="),c);
  vm.runInContext(source('window.trabakutikNativeGpxSaved=()=>{',"window.addEventListener('beforeunload'"),c);
  vm.runInContext(source('window.trabakutikSyncNative=()=>{',"document.addEventListener('visibilitychange'"),c);
- vm.runInContext(source('function miraPosicionNativa(){','setInterval(miraPosicionNativa,'),c);
+ vm.runInContext(source('function miraPosicionNativa(){','setInterval(()=>{miraPosicionNativa();'),c);
  vm.runInContext(source('function onFix(pos){','// Recupera los puntos capturados'),c);
  vm.runInContext(source('function startGPS(',"if(!enLaApp)"),c);
  c.calls=calls;return c;

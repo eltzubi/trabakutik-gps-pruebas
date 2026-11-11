@@ -24,12 +24,18 @@ class WebView {
 public class BackgroundLifecycleTest extends Activity {
  WebView web=new WebView(),webRoutes=new WebView();
  boolean showingGps=true; String pendingGpsAction=null;
+ int sosStops=0;
+ static class SosDialog { boolean dismissed=false; void dismiss(){dismissed=true;} }
+ SosDialog sosDialog;
+ void stopSosLocation(){sosStops++;}
  void restoreGpsWeb(){}
 """ + methods + """
  static void check(boolean value){if(!value)throw new AssertionError();}
  public static void main(String[] args){
   BackgroundLifecycleTest idle=new BackgroundLifecycleTest();
+  idle.sosDialog=new SosDialog();
   idle.onStop();idle.web.respond("true");
+  check(idle.sosStops==1&&idle.sosDialog.dismissed);
   check(idle.web.paused==1&&idle.webRoutes.paused==1&&idle.web.timersPaused==1);
   idle.onResume();
   check(idle.web.resumed==1&&idle.webRoutes.resumed==1&&idle.web.timersResumed==1);
@@ -48,7 +54,7 @@ public class BackgroundLifecycleTest extends Activity {
   cycles.web.respond("true");check(cycles.web.timersPaused==1);
   TrackingService.ACTIVO=true;
   BackgroundLifecycleTest active=new BackgroundLifecycleTest();
-  active.onStop();check(active.web.callback==null&&active.web.timersPaused==0);
+  active.onStop();check(active.web.callback==null&&active.web.timersPaused==0&&active.sosStops==1);
   TrackingService.ACTIVO=false;
   BackgroundLifecycleTest race=new BackgroundLifecycleTest();
   race.onStop();TrackingService.ACTIVO=true;race.web.respond("true");

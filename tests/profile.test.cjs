@@ -15,7 +15,7 @@ function fixture(){
  const c={$:node,mode:'nav',routePoints:[[0,0,100],[0,.001,105],[0,.002,110]],drawPoints:[],chosen:-1,tracks:[],datosDeRuta:{},tramosGps:[],redGps:null,
   dist:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])*111195,
   fetch(){calls.push('fetch');return Promise.reject(Error('sin conexión'))},
-  recording:true,navegaNativo:true,watch:1};
+  recording:true,navegaNativo:true,watch:1,guiaIniciada:()=>false};
  vm.createContext(c);vm.runInContext(html.slice(start,end),c);
  c.run=s=>vm.runInContext(s,c);c.calls=calls;return c;
 }
@@ -95,4 +95,21 @@ test('Crear indica el desnivel parcial con el gráfico plegado',()=>{
  assert.equal(c.$('elevationSlope').textContent,'Sin alturas suficientes');
  assert.equal(c.$('profileGain').textContent,'↑ —');
  assert.equal(c.$('profileLoss').textContent,'↓ —');
+});
+
+test('La posición del perfil usa el trazado activo y desaparece al caducar',()=>{
+ const c=fixture();c.mode='nav';c.guiaIniciada=()=>true;c.fixVisualGps={time:Date.now()};
+ c.$('toggleProfile').click();
+ c.run('liveProfileAlong=55.5975');c.paintNavigationMetrics();
+ assert(Math.abs(Number(c.$('elevationEnd').getAttribute('cx'))-200)<.001);
+ assert.equal(c.$('elevationEnd').style.display,'');
+ c.fixVisualGps.time-=10001;c.expireNavigationMetrics();
+ assert.equal(c.$('elevationEnd').style.display,'none');
+});
+
+test('El perfil evita ubicarte sobre una geometría que solo coincide en longitud',()=>{
+ const c=fixture();c.chosen=0;c.guiaIniciada=()=>true;c.tracks=[{href:'ruta.html',points:[[0,0],[0,.001],[0,.002]]}];
+ c.run('profileHeights={ruta:[100,105,110]};navProfileCollapsed=false');
+ c.updateElevation();c.run('liveProfileAlong=55.5975');c.paintNavigationMetrics();
+ assert.equal(c.$('elevationEnd').style.display,'none');
 });
