@@ -14,10 +14,15 @@
  * la copia. Para Leaflet y las teselas, primero la copia, que no cambian.
  *
  * LAS TESELAS DEL MAPA se van guardando segun las miras, hasta TESELAS_MAX.
- * No se precargan: son millones. Si antes de salir abres la ruta y le das un
- * repaso al mapa, esa zona la tendras luego sin cobertura. Si no, saldra el
- * fondo gris, pero la linea de la ruta, tu posicion y los avisos de cruce
- * funcionan igual, que es lo que importa.
+ * Esas no se precargan: son millones.
+ *
+ * Y APARTE ESTA EL MAPA QUE BAJAS A PROPOSITO, en una cache suya -MAPAS-. La
+ * pagina ofrece «guardar el mapa de esta ruta» y mete ahi el pasillo entero
+ * de teselas del IGN a lo largo del track. Van separadas de las otras por dos
+ * razones: no se recortan nunca -lo que bajaste para una salida no se puede
+ * caer por mirar otra zona- y sobreviven a los cambios de version de la
+ * concha, que en el monte volver a bajarlas no es una opcion. Solo las borra
+ * quien las bajo, desde el mismo dialogo.
  */
 // LA CONCHA Y LAS TESELAS VAN POR SEPARADO, A PROPOSITO. Al cambiar lo que
 // se precarga hay que tirar la concha vieja -si no, nuevo-qa.html se quedaba
@@ -29,6 +34,9 @@ const VERSION_TESELAS = 'gps-2';
 const CONCHA = 'concha-' + VERSION_CONCHA;
 const TESELAS = 'teselas-' + VERSION_TESELAS;
 const TESELAS_MAX = 900;
+// El mapa bajado a proposito vive en una cache aparte, «mapas-gps-1», que
+// crea y llena la pagina. Aqui solo hay que saber que empieza por «mapas-»
+// para no borrarla y para servirla: no se recorta y no tiene version.
 
 // Lo imprescindible para que la pagina abra sin red.
 const BASICOS = [
@@ -56,6 +64,8 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (claves) {
       return Promise.all(claves.map(function (k) {
+        // Las de mapas bajados a mano NO se tocan, sea cual sea su version.
+        if (k.indexOf('mapas-') === 0) return;
         if (k !== CONCHA && k !== TESELAS) return caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })
@@ -90,9 +100,19 @@ self.addEventListener('fetch', function (e) {
   var url = peticion.url;
 
   // Teselas del mapa: primero la copia, y se guarda lo nuevo.
-  if (esTesela(url)) {
+  // Solo las que pide el MAPA -un <img> de Leaflet, destination 'image'-. La
+  // descarga del mapa de una ruta las pide con fetch, destination '', y esa
+  // se deja pasar tal cual: la guarda la pagina en su cache de mapas, y si
+  // pasara por aqui se guardaria ademas en la de teselas, que tiene tope de
+  // 900 y se recorta: bajar una ruta entera echaria fuera lo demas.
+  if (esTesela(url) && peticion.destination === 'image') {
     e.respondWith(
-      caches.match(peticion).then(function (r) {
+      // caches.match sin nombre busca en TODAS, asi que encuentra tanto las
+      // que se guardaron solas como el mapa bajado a proposito. ignoreVary
+      // porque Leaflet pide la tesela con un <img> y la descarga la pidio un
+      // fetch con CORS: si el servidor mandara «Vary: Origin», la guardada no
+      // casaria con la del mapa y se bajaria otra vez.
+      caches.match(peticion, { ignoreVary: true }).then(function (r) {
         if (r) return r;
         return fetch(peticion).then(function (red) {
           // Las teselas vienen de otro dominio: la respuesta es opaca y no se

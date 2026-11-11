@@ -469,6 +469,81 @@ async function setup(context) {
     console.log(
       "PASS Chromium: reapertura sin red con parámetro de ruta y mapa montado",
     );
+
+    // EL MAPA GUARDADO PARA EL MONTE, de principio a fin y SIN RED al final:
+    // se baja el pasillo de teselas del IGN con la ruta cargada, se corta la
+    // red y el mapa tiene que seguir pintandose.
+    {
+      const ctx = await browser.newContext({ serviceWorkers: "allow" });
+      await setup(ctx);
+      const p = await ctx.newPage();
+      const pedidas = new Set();
+      const tile = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNIWRAFAALKAV9N6S9TAAAAAElFTkSuQmCC",
+        "base64",
+      );
+      const ign = "https://www.ign.es/wmts/**";
+      await ctx.route(ign, (r) => {
+        pedidas.add(r.request().url());
+        r.fulfill({
+          status: 200,
+          contentType: "image/png",
+          body: tile,
+          headers: { "access-control-allow-origin": "*" },
+        });
+      });
+      await p.goto(base + "nuevo.html");
+      await p.waitForFunction(() => navigator.serviceWorker.controller);
+      // Sin ruta el boton no deja entrar: lo que se guarda es el pasillo.
+      assert(await p.locator("#guardaMapa").isDisabled());
+      const slug = JSON.parse(
+        fs.readFileSync(path.join(root, "data/trailhead.json")),
+      ).tracks[0].href.replace(/\.html$/, "");
+      await p.goto(base + "nuevo.html?ruta=" + slug);
+      await p.waitForFunction(() => !document.querySelector("#mapTitle").disabled);
+      await p.waitForFunction(() => !document.querySelector("#guardaMapa").disabled);
+      // Con OpenStreetMap no se baja nada: su politica lo prohibe.
+      await p.selectOption("#basemap", "osm");
+      await p.click("#guardaMapa");
+      assert.match(await p.locator("#mapaTexto").textContent(), /no se puede guardar/);
+      assert(await p.locator("#mapaBajar").isDisabled());
+      // Con el IGN si, y dice cuantos trozos y cuantos megas.
+      await p.click("#closeMapa");
+      await p.selectOption("#basemap", "ign");
+      await p.click("#guardaMapa");
+      const aviso = await p.locator("#mapaTexto").textContent();
+      assert.match(aviso, /Se guardarán \d+ trozos de mapa IGN/);
+      assert.match(aviso, /\d+ MB/);
+      await p.click("#mapaBajar");
+      await p.waitForFunction(
+        () => /Mapa de la ruta guardado/.test(document.querySelector("#status").textContent),
+        null,
+        { timeout: 120000 },
+      );
+      assert(pedidas.size > 100, `solo se pidieron ${pedidas.size} teselas`);
+      // El recuento sale de leer la cache, que es asincrono: se espera a que
+      // el dialogo lo pinte en vez de leerlo justo detras del aviso.
+      await p.waitForFunction(
+        () => /Ya tienes guardados/.test(document.querySelector("#mapaGuardadoYa").textContent),
+        null,
+        { timeout: 15000 },
+      );
+      assert.match(await p.locator("#mapCredit").textContent(), /guardado en el teléfono/);
+      // Y ahora sin red: la tesela tiene que salir de lo guardado.
+      await ctx.unroute(ign);
+      await ctx.setOffline(true);
+      await p.click("#closeMapa");
+      await p.click("#plus");
+      await p.waitForFunction(
+        () => document.querySelector('img.leaflet-tile-loaded[src*="ign.es"]'),
+        null,
+        { timeout: 30000 },
+      );
+      await ctx.close();
+      console.log(
+        "PASS Chromium: el mapa de la ruta se baja del IGN, se niega con OSM y se pinta sin red",
+      );
+    }
   } finally {
     if (browser) await browser.close();
     await new Promise((r) => server.close(r));

@@ -84,6 +84,21 @@ button{min-width:0}
 .basemap-control span{color:#a2b9c9;font-size:9px}
 .basemap-control select{width:64px;font-size:11px;color:#d9faff;background:transparent;border:0;outline:none;padding:3px 0}
 .basemap-control option{color:#0b2130;background:#e3f1f6}
+.guarda-mapa{flex:none;width:26px;height:26px;padding:0;font-size:15px;line-height:1;color:#d9faff;
+ background:#102b3be8;border:1px solid #446679;border-radius:9px;cursor:pointer}
+.guarda-mapa[disabled]{opacity:.42;cursor:default}
+.guarda-mapa.tiene{border-color:#49d08a;color:#8ff0bd}
+.mapa-cuerpo{padding:12px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.mapa-cuerpo p{margin:0;font-size:13px;line-height:1.45;color:#d7ecf4}
+.mapa-ya{color:#9fc0d0;font-size:12px}
+.mapa-nota{color:#8fa9b8;font-size:11px;line-height:1.4}
+.mapa-barra{height:8px;border-radius:6px;background:#10303f;overflow:hidden}
+.mapa-barra i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2aa7d8,#58e6c8);transition:width .2s}
+.mapa-botones{display:flex;gap:8px;flex-wrap:wrap}
+.mapa-botones button{flex:1 1 auto;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid #3d6478;
+ background:#143c50;color:#e8f8ff;font-size:13px;font-weight:600;cursor:pointer}
+.mapa-botones .mapa-borrar{background:#2a1620;border-color:#6d3346;color:#f0c8d2}
+.mapa-botones button:active{transform:translateY(1px);filter:brightness(.92)}
 #navActions{grid-template-columns:1fr 1fr;display:grid}
 #navActions.hidden{display:none}
 #navActions button{width:100%}
@@ -353,7 +368,7 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
 #audioMode .audio-label{font-size:8px;line-height:1;font-weight:700}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="topo">Topo</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="topo">Topo</option><option value="pnoa">Sat.</option></select></label><button id="guardaMapa" class="guarda-mapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta">⤓</button></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
  <div class="elevation-head"><strong id="elevationTitle">PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -361,7 +376,7 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
 </section>
 <footer class="bottom"><div id="soloApp" class="solo-app hidden"><b>La navegación va solo en la aplicación</b><span>En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="savedRoutes">Mis rutas</button><button id="crearDesdeRuta" type="button">✎ Crear</button><a id="openNativeGps" class="open-native hidden" href="#" title="Grabar y seguir esta ruta con la pantalla bloqueada">↗ Abrir en la aplicación</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Abrir ruta</button><button id="modoTrazo" title="Cómo se une un punto con el siguiente">✎ Caminos</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Empezar<small>graba la ruta y avisa de los giros</small></button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · elige una ruta o pulsa Empezar</div><div class="version hidden" id="appVersion"></div></footer>
-<div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
+<div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="mapaDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mapa sin cobertura</h2><button type="button" class="close" id="closeMapa" aria-label="Cerrar">✕</button></div><div class="mapa-cuerpo"><p id="mapaTexto">—</p><div id="mapaBarra" class="mapa-barra hidden"><i></i></div><p id="mapaGuardadoYa" class="mapa-ya"></p><div class="mapa-botones"><button type="button" id="mapaBajar">Guardar el mapa</button><button type="button" id="mapaParar" class="hidden">Parar</button><button type="button" id="mapaBorrar" class="mapa-borrar">Borrar lo guardado</button></div><p class="mapa-nota">Sólo se puede guardar el mapa del <b>IGN</b> y el de <b>satélite</b>: el Instituto Geográfico Nacional los publica con licencia CC-BY 4.0, que permite guardarlos citando el origen. OpenStreetMap lo prohíbe expresamente en sus teselas y OpenTopoMap no dice nada, así que esos dos no se bajan.</p></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
 </div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Abrir ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
 // Los titulos de verdad de cada ruta. Sin esto la lista enseñaba el nombre
@@ -484,6 +499,7 @@ function dimensionaMapa(){
  try{map.invalidateSize({animate:false})}catch(e){}
 }
 function pintaMandos(){
+ pintaBotonMapa();
  // Azul mientras el mapa te sigue de verdad; apagado si lo has arrastrado y
  // se ha quedado donde tu lo dejaste.
  // Dentro de la app NO hay watch: cuando el servicio toma el mando, la
@@ -513,8 +529,12 @@ const baseMaps={
  ign:L.tileLayer('https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=MTN&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxZoom:19,maxNativeZoom:17,attribution:'© Instituto Geográfico Nacional'}),
  pnoa:L.tileLayer('https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=OI.OrthoimageCoverage&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxZoom:19,attribution:'© IGN · PNOA'})
 };
+// Se declara aqui, con el mapa de fondo y no con el resto del mapa guardado,
+// porque changeBase la lee y se llama unas lineas mas abajo: con un «let»
+// mas tarde esa primera llamada reventaria por la zona muerta temporal.
+let hayMapaGuardado=false;
 let currentBase=null;
-function changeBase(key){if(!baseMaps[key])key='osm';$('basemap').value=key;if(currentBase)map.removeLayer(currentBase);currentBase=baseMaps[key];currentBase.addTo(map);currentBase.bringToBack();$('mapCredit').textContent=(currentBase.options.attribution||'')+(key==='ign'||key==='pnoa'||key==='topo'?' · necesita conexión':'');try{localStorage.setItem('trabakutik-mapa-fondo',key)}catch(e){}}
+function changeBase(key){if(!baseMaps[key])key='osm';$('basemap').value=key;if(currentBase)map.removeLayer(currentBase);currentBase=baseMaps[key];currentBase.addTo(map);currentBase.bringToBack();$('mapCredit').textContent=(currentBase.options.attribution||'')+(hayMapaGuardado&&(key==='ign'||key==='pnoa')?' · guardado en el teléfono':(key==='ign'||key==='pnoa'||key==='topo'?' · necesita conexión':''));try{localStorage.setItem('trabakutik-mapa-fondo',key)}catch(e){}}
 // Un fallo del proveedor Topo no debe dejar al usuario sin mapa.
 baseMaps.topo.on('tileerror',()=>{
  if(currentBase!==baseMaps.topo)return;
@@ -795,6 +815,11 @@ $('eye').onclick=()=>{
  notice(otherTracksVisible?'Rutas de Trabakutik visibles':'Mapa limpio · rutas de Trabakutik ocultas');
 };
 function updateNativeLaunchLink(){
+ // El boton de guardar el mapa depende de que haya ruta, y esta funcion se
+ // llama en los cuatro sitios donde la ruta cambia. pintaMandos lo repasa
+ // ademas en cada posicion, por si alguna vez se carga una ruta por otro
+ // camino -un GPX importado, por ejemplo-.
+ pintaBotonMapa();
  const link=$('openNativeGps');
  if(window.TrabakutikAndroid||!/Android/i.test(navigator.userAgent)||chosen<0||!tracks[chosen]?.href){
   link.classList.add('hidden');link.removeAttribute('href');return;
@@ -837,7 +862,7 @@ async function loadDetailedSelected(i,request){
   // Y ahora sí: la fina manda también para medir. Se rehacen los cruces -que
   // recalculan routeCumulative- y se le manda al servicio.
   if(detailedLine.length<=12000){
-   routePoints=detailedProfilePoints=detailedLine;
+   routePoints=detailedProfilePoints=detailedLine;pintaBotonMapa();
    ultimoAlong=ultimoPuntoAlong=null;alongPrevio=null;alongAcum=0;
    liveProfileAlong=null;liveNativeMetrics=null;
    // LOS PUNTOS PRIMERO, LOS GIROS DESPUES. Aqui estaba al reves:
@@ -873,7 +898,7 @@ function selectRoute(i){
  // Los cruces llegan con la ruta fina, no con la gorda: hasta que llegue, sin
  // cruces, y computeJunctions solo avisa de curvas de herradura.
  crucesOsm=[];
- routePoints=tracks[i].points.map(p=>[p[0],p[1]]);
+ routePoints=tracks[i].points.map(p=>[p[0],p[1]]);pintaBotonMapa();
  updateElevation();
  drawAll();
  $('routeDialog').classList.add('hidden');
@@ -1953,7 +1978,7 @@ function loadSaved(item){
  resetOffRoute();resetJunctionView();
  junctions=[];
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
- routePoints=compactRoutePoints(item.points);
+ routePoints=compactRoutePoints(item.points);pintaBotonMapa();
  chosen=-1;updateNativeLaunchLink();
  if(item.imported){
   otherTracksVisible=false; // cada GPX externo abre el mapa limpio
@@ -3599,5 +3624,188 @@ if('serviceWorker' in navigator){
    .catch(e=>console.warn('Sin copia guardada para usar sin cobertura',e));
  });
 }
+// ====================== EL MAPA, GUARDADO PARA EL MONTE =====================
+// El service worker ya guardaba las teselas QUE MIRAS, hasta 900. Eso sirve si
+// antes de salir te acuerdas de repasar la ruta entera a mano, zoom a zoom; si
+// no, en el km 12 el track va sobre fondo blanco. Esto baja de una vez el
+// pasillo de teselas de toda la ruta.
+//
+// SOLO DEL IGN. No es pereza: la politica de teselas de OpenStreetMap dice
+// literalmente «Offline use is not permitted on tile.openstreetmap.org» y
+// prohibe «pre-emptive fetching of tiles other than those a user is actively
+// viewing»; OpenTopoMap no dice nada del asunto y pide no cargarles el
+// servidor. El IGN, en cambio, publica sus productos Y SUS SERVICIOS con
+// licencia CC-BY 4.0 -Orden FOM/2807/2015-, que permite reproducirlos citando
+// el origen, y ese credito ya sale al pie del mapa.
+//
+// Hasta el zoom 17 y no mas: el mapa-raster del IGN no tiene teselas propias
+// por encima (maxNativeZoom 17), asi que el 18 seria la del 17 ampliada y
+// costaria el doble que todo lo demas junto. Medido en galdaramiño, 36,6 km:
+// z13 26 teselas, z14 43, z15 96, z16 225, z17 488; 878 en total, unos 13 MB.
+const MAPA_Z_MIN=13,MAPA_Z_MAX=17,MAPA_MARGEN=1,MAPA_A_LA_VEZ=4;
+const MAPA_CACHE='mapas-gps-1';
+const CAPAS_GUARDABLES={ign:'IGN',pnoa:'satélite'};
+let bajadaMapa=null;
+
+// El pasillo de teselas de una ruta: las que pisa el track y MAPA_MARGEN
+// alrededor, en cada zoom.
+function teselasDeRuta(puntos,zMin,zMax,margen){
+ const out=[];
+ if(!Array.isArray(puntos)||puntos.length<2)return out;
+ for(let z=zMin;z<=zMax;z++){
+  const n=Math.pow(2,z),vistas=new Set();
+  const mete=(x,y)=>{
+   for(let a=-margen;a<=margen;a++)for(let b=-margen;b<=margen;b++){
+    const X=x+a,Y=y+b;
+    if(X<0||Y<0||X>=n||Y>=n)continue;
+    const k=X+'/'+Y;
+    if(!vistas.has(k)){vistas.add(k);out.push({z,x:X,y:Y})}
+   }
+  };
+  let prev=null;
+  for(const p of puntos){
+   const lat=p[0]*Math.PI/180;
+   const x=Math.floor((p[1]+180)/360*n);
+   const y=Math.floor((1-Math.log(Math.tan(lat)+1/Math.cos(lat))/Math.PI)/2*n);
+   // Dos puntos seguidos del track pueden caer a varias teselas de distancia
+   // -una recta larga de la copia simplificada-: sin rellenar el hueco, el
+   // pasillo saldria con agujeros justo en los zooms altos.
+   if(prev&&(Math.abs(x-prev[0])>1||Math.abs(y-prev[1])>1)){
+    const pasos=Math.max(Math.abs(x-prev[0]),Math.abs(y-prev[1]));
+    for(let k=1;k<pasos;k++)mete(Math.round(prev[0]+(x-prev[0])*k/pasos),
+                                 Math.round(prev[1]+(y-prev[1])*k/pasos));
+   }
+   mete(x,y);prev=[x,y];
+  }
+ }
+ return out;
+}
+// La URL de una tesela sale de la propia capa de Leaflet: repetir aqui las
+// direcciones del IGN seria tener dos sitios donde equivocarse.
+function urlTesela(clave,t){
+ const capa=baseMaps[clave];
+ if(!capa||!capa._url)return null;
+ return L.Util.template(capa._url,{z:t.z,x:t.x,y:t.y,s:'a',r:''});
+}
+function cacheDeMapas(){
+ return caches.keys().then(ks=>caches.open(ks.find(k=>k.indexOf('mapas-')===0)||MAPA_CACHE));
+}
+function mapaGuardadoInfo(){
+ if(!('caches' in window))return Promise.resolve({teselas:0,bytes:0});
+ return cacheDeMapas().then(c=>c.keys().then(ks=>{
+  // El tamaño se estima: pedir cada respuesta para leer su content-length son
+  // casi mil lecturas y esto se pinta al abrir el dialogo. Las del IGN pesan
+  // entre 10 y 23 KB segun el zoom; 16 es la media medida.
+  return {teselas:ks.length,bytes:ks.length*16000};
+ })).catch(()=>({teselas:0,bytes:0}));
+}
+function borraMapaGuardado(){
+ return caches.keys().then(ks=>Promise.all(
+  ks.filter(k=>k.indexOf('mapas-')===0).map(k=>caches.delete(k))));
+}
+function guardaMapaRuta(clave,puntos,alPaso){
+ const lista=teselasDeRuta(puntos,MAPA_Z_MIN,MAPA_Z_MAX,MAPA_MARGEN);
+ const estado={total:lista.length,hechas:0,fallos:0,cancelada:false};
+ bajadaMapa=estado;
+ return cacheDeMapas().then(c=>{
+  let i=0;
+  // Cuatro a la vez y no mas: es lo que piden los servidores de teselas que
+  // publican un limite, y al IGN no hay por que tratarlo peor.
+  const obrero=()=>{
+   if(i>=lista.length||estado.cancelada)return Promise.resolve();
+   const t=lista[i++],url=urlTesela(clave,t);
+   if(!url){estado.fallos++;return obrero()}
+   return c.match(url).then(ya=>{
+    if(ya){estado.hechas++;return}
+    return fetch(url,{cache:'no-store'}).then(r=>{
+     if(r&&r.ok)return c.put(url,r.clone()).then(()=>{estado.hechas++});
+     estado.fallos++;
+    });
+   }).catch(e=>{
+    // Sin sitio en el telefono no es lo mismo que sin cobertura, y el aviso
+    // tiene que decir cual de las dos es: lo que se hace es distinto.
+    if(e&&(e.name==='QuotaExceededError'||/quota/i.test(e.message||'')))estado.sinSitio=true;
+    estado.fallos++;
+   }).then(()=>{alPaso(estado);return obrero()});
+  };
+  const equipo=[];
+  for(let k=0;k<MAPA_A_LA_VEZ;k++)equipo.push(obrero());
+  return Promise.all(equipo);
+ }).then(()=>{bajadaMapa=null;return estado})
+   .catch(e=>{bajadaMapa=null;estado.error=e;return estado});
+}
+function puntosDelMapa(){
+ if(routePoints.length>1)return routePoints;
+ if(drawPoints.length>1)return drawPoints;
+ return null;
+}
+function pintaBotonMapa(){
+ const b=$('guardaMapa');if(!b)return;
+ b.disabled=!puntosDelMapa();
+ b.classList.toggle('tiene',hayMapaGuardado);
+ b.title=b.disabled?'Carga una ruta para poder guardar su mapa'
+   :'Guardar el mapa de esta ruta para andar sin cobertura';
+}
+function pintaDialogoMapa(){
+ const puntos=puntosDelMapa(),clave=$('basemap').value;
+ const guardable=!!CAPAS_GUARDABLES[clave];
+ const lista=puntos?teselasDeRuta(puntos,MAPA_Z_MIN,MAPA_Z_MAX,MAPA_MARGEN):[];
+ $('mapaTexto').innerHTML=!puntos
+  ?'Primero elige una ruta: lo que se guarda es el pasillo de mapa por donde pasa.'
+  :!guardable
+  ?'El mapa <b>'+(($('basemap').selectedOptions[0]||{}).text||'')+'</b> no se puede guardar. '
+   +'Cambia a <b>IGN</b> o a <b>Sat.</b> en el selector de al lado y vuelve a entrar aquí.'
+  :'Se guardarán <b>'+lista.length+'</b> trozos de mapa <b>'+CAPAS_GUARDABLES[clave]
+   +'</b> a lo largo de la ruta, hasta el zoom '+MAPA_Z_MAX+'. '
+   +'Ocupan unos <b>'+Math.max(1,Math.round(lista.length*16/1024))+' MB</b> y se bajan una vez.';
+ $('mapaBajar').disabled=!puntos||!guardable;
+ mapaGuardadoInfo().then(info=>{
+  hayMapaGuardado=info.teselas>0;
+  pintaBotonMapa();
+  $('mapaGuardadoYa').textContent=info.teselas
+   ?'Ya tienes guardados '+info.teselas+' trozos de mapa, unos '
+     +Math.max(1,Math.round(info.bytes/1048576))+' MB.'
+   :'Ahora mismo no hay ningún mapa guardado.';
+  $('mapaBorrar').disabled=!info.teselas;
+ });
+}
+function abreDialogoMapa(){pintaDialogoMapa();$('mapaDialog').classList.remove('hidden')}
+if($('guardaMapa'))$('guardaMapa').onclick=abreDialogoMapa;
+if($('closeMapa'))$('closeMapa').onclick=()=>$('mapaDialog').classList.add('hidden');
+if($('mapaBorrar'))$('mapaBorrar').onclick=()=>{
+ if(!confirm('¿Borrar los mapas guardados en el teléfono?'))return;
+ borraMapaGuardado().then(()=>{hayMapaGuardado=false;pintaDialogoMapa();
+  changeBase($('basemap').value);notice('Mapas guardados borrados')});
+};
+if($('mapaParar'))$('mapaParar').onclick=()=>{if(bajadaMapa)bajadaMapa.cancelada=true};
+if($('mapaBajar'))$('mapaBajar').onclick=()=>{
+ const puntos=puntosDelMapa(),clave=$('basemap').value;
+ if(!puntos||!CAPAS_GUARDABLES[clave])return;
+ const barra=$('mapaBarra'),relleno=barra.querySelector('i');
+ barra.classList.remove('hidden');
+ $('mapaBajar').classList.add('hidden');$('mapaParar').classList.remove('hidden');
+ $('mapaBorrar').disabled=true;
+ const pinta=e=>{
+  const hechas=e.hechas+e.fallos;
+  relleno.style.width=Math.round(hechas*100/Math.max(1,e.total))+'%';
+  $('mapaTexto').innerHTML='Guardando… <b>'+hechas+'</b> de '+e.total;
+ };
+ guardaMapaRuta(clave,puntos,pinta).then(e=>{
+  $('mapaBajar').classList.remove('hidden');$('mapaParar').classList.add('hidden');
+  barra.classList.add('hidden');relleno.style.width='0';
+  hayMapaGuardado=e.hechas>0;
+  if(e.cancelada)notice('Descarga del mapa parada · lo bajado se queda guardado');
+  else if(e.sinSitio)notice('No cabe el mapa entero · libera espacio en el teléfono o borra lo guardado');
+  else if(e.fallos)notice('Mapa guardado con '+e.fallos+' trozos sin bajar · repítelo con mejor cobertura');
+  else notice('Mapa de la ruta guardado · ya funciona sin cobertura');
+  changeBase(clave);
+  pintaDialogoMapa();
+ });
+};
+mapaGuardadoInfo().then(info=>{
+ hayMapaGuardado=info.teselas>0;pintaBotonMapa();
+ if(hayMapaGuardado)changeBase($('basemap').value);
+});
+pintaBotonMapa();
 })();
 </script></body></html>
