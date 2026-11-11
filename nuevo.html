@@ -180,16 +180,11 @@ body.creating-route #createActions #idaVuelta::before{content:'↔';font-size:23
 body.creating-route #createActions button:disabled{opacity:.48}
 body.creating-route #elevationPanel{
  position:absolute;z-index:730;bottom:8px;left:8px;right:8px;
- height:89px;min-height:0;padding:5px 9px 4px;border:1px solid #38677d;
+ min-height:0;border:1px solid #38677d;
  border-radius:12px;background:#081e2bec;box-shadow:0 3px 16px #00152188;pointer-events:auto;
 }
-body.creating-route #elevationPanel.profile-empty{
- height:30px;padding:6px 10px;
-}
-body.creating-route #elevationPanel.profile-empty .elevation-stats,
 body.creating-route #elevationPanel.profile-empty .elevation-foot,
 body.creating-route #elevationPanel.profile-empty #elevationSvg{display:none}
-body.creating-route #elevationSvg{height:46px}
 body.creating-route .bottom{padding:4px 7px 5px}
 body.creating-route .modes{margin:0;gap:5px}
 body.creating-route .modes button{min-height:35px;padding:6px 3px;border-radius:10px;font-size:11px}
@@ -208,15 +203,13 @@ body.creating-route #createActions button:focus-visible{outline:2px solid #a4ecf
 }
 @media(max-height:670px){
  body.creating-route #createActions{top:86px}
- body.creating-route #elevationPanel{height:77px}
- body.creating-route #elevationSvg{height:36px}
 }
 
 /* Sistema cartográfico: mapa como lienzo y mandos flotantes ultracompactos. */
 body.creating-route footer.bottom{display:none}
 body.creating-route #map{flex:1;min-height:0}
 body.creating-route .modes{
- position:absolute;z-index:740;left:50%;bottom:110px;transform:translateX(-50%);
+ position:absolute;z-index:740;left:50%;transform:translateX(-50%);
  display:flex;align-items:center;justify-content:center;gap:3px;
  width:max-content;max-width:calc(100% - 22px);margin:0;padding:4px;
  border:1px solid #5c8a9b88;border-radius:14px;
@@ -231,7 +224,25 @@ body.creating-route .modes button{
 body.creating-route .modes button[aria-pressed=true]{
  color:#041e2a;background:#69e0f2;border-radius:9px;
 }
-body.creating-route #elevationPanel{bottom:9px}
+body.creating-route{
+ --create-summary-height:83px;
+ --create-profile-height:145px;
+}
+body.creating-route #elevationPanel{
+ bottom:9px;height:var(--create-profile-height);padding:6px 10px;
+}
+body.creating-route .modes{bottom:calc(var(--create-profile-height) + 22px)}
+body.creating-route #elevationPanel .elevation-stats{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
+ font-size:clamp(15px,4.5vw,21px);line-height:1.15;font-variant-numeric:tabular-nums;
+}
+body.creating-route #elevationPanel .elevation-stats span::before{
+ display:block;font-size:10px;font-weight:650;line-height:1.2;margin-bottom:3px;color:#acd1df;
+}
+body.creating-route #profileDistance::before{content:'Distancia'}
+body.creating-route #profileGain::before{content:'Subida'}
+body.creating-route #profileLoss::before{content:'Bajada'}
+body.creating-route #elevationSvg{height:52px;margin-top:5px}
 .elevation-head{gap:7px}
 .elevation-head span{flex:1;min-width:0;text-align:right}
 #toggleProfile{
@@ -239,27 +250,22 @@ body.creating-route #elevationPanel{bottom:9px}
  padding:0;border:1px solid #4d7586;border-radius:8px;
  background:#123849;color:#c9ecf5;font-size:18px;line-height:1;flex:none;
 }
-body.creating-route #elevationPanel.collapsed{
- height:36px;min-height:36px;padding:5px 10px;overflow:hidden
-}
-body.creating-route #elevationPanel.collapsed .elevation-stats,
+body.creating-route #elevationPanel.collapsed,
+body.creating-route #elevationPanel.profile-distance-only{height:var(--create-summary-height)}
 body.creating-route #elevationPanel.collapsed #elevationSvg,
 body.creating-route #elevationPanel.collapsed .elevation-foot{display:none}
-body.creating-route:has(#elevationPanel.collapsed) .modes{bottom:55px}
-body.creating-route #elevationPanel.profile-empty:not(.collapsed){height:34px}
+body.creating-route:has(#elevationPanel.collapsed) .modes,
+body.creating-route:has(#elevationPanel.profile-distance-only) .modes{bottom:calc(var(--create-summary-height) + 22px)}
+body.creating-route #elevationPanel.profile-empty:not(.profile-distance-only){height:34px}
+body.creating-route #elevationPanel.profile-empty:not(.profile-distance-only) .elevation-stats{display:none}
 body.creating-route #elevationPanel.profile-empty .elevation-head{min-height:22px}
-body.creating-route:has(#elevationPanel.profile-empty:not(.collapsed)) .modes{bottom:55px}
+body.creating-route:has(#elevationPanel.profile-empty:not(.profile-distance-only)) .modes{bottom:55px}
 body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
 #plannerCredit{display:none}
 body.creating-route #plannerCredit{display:block;position:absolute;bottom:0;right:0;z-index:745;font-size:8px;background:#07131dcc;color:#9fb8c6;padding:0 4px}
 #plannerCredit a{color:inherit}
 #plannerStatus{display:none}
 body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;z-index:725;top:55px;left:57px;right:55px;padding:5px 8px;border-radius:8px;background:#0a1e2dee;color:#c9eaf5;font-size:11px;line-height:1.35;pointer-events:none}
-/* Sin alturas seguimos mostrando la distancia medida del borrador. */
-body.creating-route #elevationPanel.profile-empty.profile-distance-only:not(.collapsed){height:58px}
-body.creating-route #elevationPanel.profile-empty.profile-distance-only:not(.collapsed) .elevation-stats{display:flex}
-body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .modes{bottom:79px}
-
 @media(max-width:365px){body.creating-route .modes button{min-width:63px;padding:4px 6px}}
 
 
@@ -295,10 +301,12 @@ body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .
    puede arrastrar; ahora es un marcador con icono propio. Mide 16 px y con el
    dedo eso no se agarra, asi que el area sensible se estira a 32 con un
    pseudoelemento transparente, sin tocar como se ve. */
-.gps-dot{width:16px;height:16px;border-radius:50%;background:#38bdf8;
- border:2px solid #fff;box-sizing:border-box;cursor:grab}
-.gps-dot.es-primera{background:#0b1e28;border-color:#38bdf8;border-width:3px}
-.gps-dot::after{content:'';position:absolute;inset:-8px;border-radius:50%}
+.gps-dot{width:24px;height:24px;border-radius:50%;background:#103e53;
+ border:2px solid #fff;box-sizing:border-box;cursor:grab;display:grid;place-items:center;
+ color:#fff;font-size:11px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.gps-dot.es-primera{background:#0b1e28;border-color:#69e0f2}
+.gps-dot.es-destino{background:#ffcb86;border-color:#fff;color:#172b38}
+.gps-dot::after{content:'';position:absolute;inset:-6px;border-radius:50%}
 .leaflet-dragging .gps-dot{cursor:grabbing}
 /* Con «Cerrar círculo» e «Ida y vuelta» la fila de crear pasa de tres botones
    a cinco y a 390 px no caben: se deja partir y los dos nuevos ocupan media
@@ -343,7 +351,7 @@ body.creating-route:has(#elevationPanel.profile-distance-only:not(.collapsed)) .
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="topo">Topo</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
- <div class="elevation-head"><strong>PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
+ <div class="elevation-head"><strong id="elevationTitle">PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
  <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
@@ -1418,7 +1426,7 @@ for(const id of ['elevationPanel','createActions','plannerCredit']){
  const el=$(id);el.addEventListener('click',e=>e.stopPropagation());el.addEventListener('dblclick',e=>e.stopPropagation());
 }
 document.querySelector('.modes').addEventListener('click',e=>e.stopPropagation());
-let profileCollapsed=false,navProfileCollapsed=true;
+let profileCollapsed=true,navProfileCollapsed=true;
 let profileHeights=null,profileHeightsRequest=null,profileHeightsError=false;
 // Las alturas de Trabakutik corresponden punto por punto al mapa general.
 // Se usan solo para el perfil: nunca sustituyen la geometría de navegación.
@@ -1460,6 +1468,7 @@ function updateElevation(){
  panel.classList.toggle('navigation-profile',!creating);
  const collapsed=creating?profileCollapsed:navProfileCollapsed;
  panel.classList.toggle('collapsed',collapsed);
+ $('elevationTitle').textContent=creating&&collapsed?'RESUMEN DE RUTA':'PERFIL DE ALTURA';
  const toggle=$('toggleProfile');
  toggle.setAttribute('aria-expanded',String(!collapsed));
  toggle.setAttribute('aria-label',collapsed?'Desplegar perfil':'Plegar perfil');
@@ -1473,8 +1482,9 @@ function updateElevation(){
   $('elevationPath').setAttribute('d','');$('elevationFill').setAttribute('d','');
   $('elevationEnd').style.display='none';
   const total=pts.reduce((sum,p,i)=>sum+(i?dist(pts[i-1],p):0),0);
-  $('profileDistance').textContent=profileDistanceText(total,creating);$('profileGain').textContent=creating?'↑ 0 m':'↑ —';$('profileLoss').textContent=creating?'↓ 0 m':'↓ —';
-  $('elevationSlope').textContent=pts.length?'Marca el siguiente punto':'Marca el inicio';
+  $('profileDistance').textContent=profileDistanceText(total,creating);$('profileGain').textContent='↑ —';$('profileLoss').textContent='↓ —';
+  $('elevationSlope').textContent=pts.length>=2?'Sin alturas suficientes':pts.length?'Marca el siguiente punto':'Marca el inicio';
+  $('elevationSlope').className='';
   $('profileLow').textContent=available.length?'Altura inicial '+Math.round(available[0][2])+' m':'Sin alturas todavía';
   $('profileHigh').textContent=available.length?'':'Perfil disponible cuando haya desnivel';
   if(!creating){
@@ -1558,8 +1568,14 @@ function updateDraw(){
  anclasGps.forEach((id,i)=>{
   if(cerradoGps&&i===anclasGps.length-1)return;
   const p=redGps.nodos[id];
-  const mk=L.marker([p[0],p[1]],{draggable:true,autoPan:true,keyboard:false,
-    icon:L.divIcon({className:'gps-dot'+(i===0?' es-primera':''),iconSize:[16,16],iconAnchor:[8,8]})}).addTo(map);
+  const inicio=i===0, destino=!inicio&&!cerradoGps&&i===anclasGps.length-1;
+  const numero=i+1;
+  const tipo=inicio?(cerradoGps?'Inicio y destino':'Inicio'):destino?'Destino':'Punto';
+  const mk=L.marker([p[0],p[1]],{draggable:true,autoPan:true,keyboard:false,title:tipo+' · '+numero,
+    icon:L.divIcon({
+      className:'gps-dot'+(inicio?' es-primera':'')+(destino?' es-destino':''),
+      html:String(numero),iconSize:[24,24],iconAnchor:[12,12]
+    })}).addTo(map);
   mk.on('dragend',ev=>{const ll=ev.target.getLatLng();mueveAnclaGps(i,ll.lat,ll.lng)});
   drawMarks.push(mk);
  });

@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
-const start=html.indexOf('let profileCollapsed=false,'),end=html.indexOf('function updateDraw(){',start);
+const start=html.indexOf('let profileCollapsed=true,'),end=html.indexOf('function updateDraw(){',start);
 assert(start>=0&&end>start);
 function fixture(){
  const nodes=new Map(),calls=[];
@@ -29,12 +29,15 @@ test('Ruta empieza plegada; abrir y cerrar no cambia el GPS, la grabación ni lo
  assert.equal(c.recording,true);assert.equal(c.navegaNativo,true);assert.equal(c.watch,1);
  assert.equal(JSON.stringify(c.routePoints),points);assert.equal(c.calls.length,0);
 });
-test('Crear conserva su perfil abierto y recuerda el plegado por separado de Ruta',()=>{
+test('Crear arranca con el gráfico plegado y recuerda su estado por separado de Ruta',()=>{
  const c=fixture();c.mode='create';c.drawPoints=c.routePoints;c.updateElevation();
- assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'true');
- c.$('toggleProfile').click();c.mode='nav';c.updateElevation();c.$('toggleProfile').click();
- c.mode='create';c.updateElevation();assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'false');
- c.mode='nav';c.updateElevation();assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'true');
+ assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'false');
+ assert.equal(c.$('elevationTitle').textContent,'RESUMEN DE RUTA');
+ assert.equal(c.$('profileGain').textContent,'↑ 10 m');
+ c.$('toggleProfile').click();c.mode='nav';c.updateElevation();
+ assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'false');
+ c.mode='create';c.updateElevation();assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'true');
+ c.mode='nav';c.updateElevation();assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'false');
 });
 test('Sin ruta se oculta; sin alturas no inventa un perfil ni un desnivel cero',()=>{
  const c=fixture();c.routePoints=[];c.updateElevation();assert(c.$('elevationPanel').classList.contains('hidden'));
