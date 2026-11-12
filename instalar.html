@@ -25,9 +25,17 @@ li:last-child{border-bottom:0}
 li::before{content:counter(p);position:absolute;left:0;top:0;width:27px;height:27px;border-radius:50%;
  background:#15313f;border:1px solid #3b6579;color:#9fe6ff;font-size:13px;font-weight:700;
  display:grid;place-items:center}
-li b{display:block;font-size:14px;margin-bottom:3px}
-li span{display:block;font-size:12.5px;line-height:1.55;color:#a9c6d5}
+li>b{display:block;font-size:14px;margin-bottom:3px}
+li>span{display:block;font-size:12.5px;line-height:1.55;color:#a9c6d5}
 li em{color:#cdeaf6;font-style:normal;font-weight:650}
+.clave{background:#2b1a10;border:1px solid #9a5a2b;border-radius:12px;padding:12px 13px;margin:10px 0 2px}
+.clave p{margin:0 0 7px;font-size:12.5px;line-height:1.55;color:#f0d9c3}
+.clave p:last-child{margin-bottom:0}
+.no{color:#ff9d8c;font-weight:800}
+.si{color:#9cf2b4;font-weight:800}
+figure{margin:12px 0 2px;text-align:center}
+figure img{width:100%;max-width:212px;height:auto;border-radius:13px;border:1px solid #3b6579;background:#0a1b27}
+figcaption{font-size:11px;line-height:1.45;color:#8fb0c0;margin-top:6px}
 .aviso{background:#15313fdb;border:1px solid #3b6579;border-radius:12px;padding:12px 14px;margin-top:24px}
 .aviso b{display:block;font-size:12.5px;color:#bfefff;margin-bottom:4px}
 .aviso span{display:block;font-size:11.5px;line-height:1.5;color:#9fc0d0}
@@ -46,6 +54,9 @@ footer a{color:#9ed9e7}
 <p class="nota">El enlace lleva siempre a la última versión. Para ver la que tienes
 instalada, el número sale abajo en la propia aplicación.</p>
 
+<p class="nota">Android pone <b>dos avisos</b> por el camino, porque la aplicación no está en
+Google Play. Los dos se pasan, y abajo está cómo. El segundo es el que para a casi todo el mundo.</p>
+
 <h2>Instalación, paso a paso</h2>
 <ol>
  <li><b>Toca el archivo descargado</b>
@@ -54,6 +65,27 @@ instalada, el número sale abajo en la propia aplicación.</p>
  <li><b>Permite instalarla</b>
   <span>Android avisará de que viene de fuera de su tienda. Toca <em>Ajustes</em> y activa
   <em>Permitir desde esta fuente</em>. Es normal: la aplicación no está en Google Play.</span></li>
+
+ <li><b>&laquo;Aplicaci&oacute;n bloqueada para proteger tu dispositivo&raquo;</b>
+  <span>Aqu&iacute; es donde se queda casi todo el mundo, y no hace falta.</span>
+  <div class="clave">
+   <p><span class="no">No toques &laquo;Entendido&raquo;.</span> Ese bot&oacute;n cancela la
+   instalaci&oacute;n y te devuelve a donde estabas, sin decirte que te has quedado a medias.</p>
+   <p>Toca <span class="si">&laquo;M&aacute;s detalles&raquo;</span>, el texto peque&ntilde;o de
+   encima, y despu&eacute;s <span class="si">&laquo;Instalar de todos modos&raquo;</span>.</p>
+   <p>Lo que dice el aviso es verdad y no es una alarma: Play Protect <em>no conoce</em> a quien
+   la ha hecho, porque la aplicaci&oacute;n no est&aacute; en Google Play. No ha encontrado nada
+   malo en ella; lo que dice es que no la ha visto antes.</p>
+   <p>Si no te sale &laquo;Instalar de todos modos&raquo;: abre <em>Play Store</em> &rarr; tu foto
+   &rarr; <em>Play Protect</em> &rarr; el engranaje, y apaga <em>Analizar apps con Play
+   Protect</em>. Instala, y <em>vu&eacute;lvelo a encender</em> en cuanto acabe.</p>
+  </div>
+  <figure>
+   <img src="img/play-protect.webp" width="520" height="904" loading="lazy" decoding="async"
+    alt="El aviso de Google Play Protect: «Aplicación bloqueada para proteger tu dispositivo», con «Más detalles» debajo del texto y el botón azul «Entendido»">
+   <figcaption>Este es el aviso. El bot&oacute;n azul <b>no</b> es el que instala:
+   lo que buscas es <b>M&aacute;s detalles</b>.</figcaption>
+  </figure></li>
 
  <li><b>Concede los dos permisos</b>
   <span>Al abrirla por primera vez pide <em>Ubicación precisa</em> y <em>Notificaciones</em>.
@@ -66,6 +98,13 @@ instalada, el número sale abajo en la propia aplicación.</p>
   <em>Sin restricciones</em>. Si no, el sistema duerme la aplicación en el bolsillo y se quedan
   sin sonar los avisos de giro.</span></li>
 </ol>
+
+<div class="aviso">
+ <b>&iquest;Te has quedado a medias?</b>
+ <span>Si tocaste &laquo;Entendido&raquo; y la aplicaci&oacute;n no aparece en el m&oacute;vil, no
+ hay que volver a descargar nada: abre la carpeta <em>Descargas</em>, toca otra vez
+ <em>TrabakutikGPS.apk</em> y esta vez ve por &laquo;M&aacute;s detalles&raquo;.</span>
+</div>
 
 <div class="aviso">
  <b>Por qué hace falta la aplicación</b>
