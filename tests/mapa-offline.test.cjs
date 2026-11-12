@@ -54,8 +54,9 @@ test('Los zooms y el margen son los medidos: una ruta de 37 km cabe en unos 13 M
 });
 test('Solo se pueden guardar las capas del IGN',()=>{
  const c=contexto();
- // OpenStreetMap lo prohibe en su politica de teselas y OpenTopoMap no dice
- // nada: solo entran las dos del IGN, que van con licencia CC-BY 4.0.
+ // OpenStreetMap lo prohibe en su politica de teselas: solo entran las dos
+ // del IGN, que van con licencia CC-BY 4.0. OpenTopoMap no decia nada del
+ // asunto y por eso, entre otras, salio del navegador.
  const capas=c.val('Object.keys(CAPAS_GUARDABLES).sort().join(" ")');
  assert.equal(capas,'ign pnoa');
 });

@@ -77,6 +77,8 @@ function esTesela(url) {
   if (parsed.origin === 'https://www.ign.es' &&
       /^\/wmts\/(mapa-raster|pnoa-ma)$/.test(parsed.pathname) &&
       parsed.searchParams.get('REQUEST') === 'GetTile') return true;
+  // OpenTopoMap salio del navegador en noviembre de 2026; si alguien tiene
+  // teselas suyas guardadas, se le siguen sirviendo hasta que se recorten.
   return /^https?:\/\/[a-d]?\.?tile\.openstreetmap\.org\//.test(url) ||
          /^https?:\/\/(server|services)\.arcgisonline\.com\//.test(url) ||
          /\/\{?z\}?\/.*\.png$/.test(url);
