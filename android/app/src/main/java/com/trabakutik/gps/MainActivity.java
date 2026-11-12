@@ -148,16 +148,37 @@ public class MainActivity extends Activity {
   if(sosDialog!=null)sosDialog.dismiss();
   appEnSegundoPlano=true;
   final int ciclo=++cicloSegundoPlano;
-  if(web==null||TrackingService.ACTIVO||pendingGpsAction!=null)return;
-  // Consultar tambien la pagina: puede estar creando o arrancando una salida
-  // antes de que el servicio nativo haya pasado a ACTIVO. Si no responde,
-  // se conserva su funcionamiento; nunca se adivina que esta inactiva.
+  if(web==null||pendingGpsAction!=null)return;
+  // Consultar a la pagina en que anda. Si no responde, se conserva su
+  // funcionamiento; nunca se adivina que esta inactiva.
+  //   0 · no se toca (creando, o la pagina lleva ella la salida)
+  //   1 · parada: ni grabando ni guiada
+  //   2 · salida en marcha, pero LA LLEVA EL SERVICIO
+  //
+  // EL 2 ES NUEVO Y ES DONDE ESTABA EL GASTO. Con una salida en marcha la
+  // pagina no se dormia nunca, asi que con la pantalla apagada el mapa
+  // seguia moviendose y BAJANDO TESELAS PARA NADIE. Medido por el autor en
+  // coche: 10 %/h con la pantalla apagada, cruzando 44 km de mapa cada hora.
+  // Cuando la salida la lleva el servicio -el GPS, los avisos de voz y el
+  // GPX son suyos- la pagina solo pinta, y con la pantalla apagada no hay
+  // nada que pintar. No se pierde ni un punto: al volver, la pagina relee el
+  // trazado entero del servicio (restoreGpsWeb -> trabakutikSyncNative).
   web.evaluateJavascript(
-    "(function(){return typeof mode!=='undefined'&&typeof recording!=='undefined'"+
-    "&&typeof navegaNativo!=='undefined'&&mode!=='create'&&!recording&&!navegaNativo;})()",
-    libre->{
+    "(function(){if(typeof mode==='undefined'||typeof recording==='undefined'"+
+    "||typeof navegaNativo==='undefined'||typeof fuenteNativa==='undefined')return 0;"+
+    "if(mode==='create')return 0;"+
+    "if(!recording&&!navegaNativo)return 1;"+
+    "return fuenteNativa?2:0;})()",
+    estado->{
      if(!appEnSegundoPlano||ciclo!=cicloSegundoPlano||isFinishing()||isDestroyed()
-       ||TrackingService.ACTIVO||pendingGpsAction!=null||!"true".equals(libre))return;
+       ||pendingGpsAction!=null)return;
+     boolean parada="1".equals(estado),delServicio="2".equals(estado);
+     // Si mientras se preguntaba ha arrancado una salida, la respuesta
+     // «parada» ya no vale; y si el servicio se ha parado, tampoco vale la
+     // otra.
+     if(parada&&TrackingService.ACTIVO)return;
+     if(delServicio&&!TrackingService.ACTIVO)return;
+     if(!parada&&!delServicio)return;
      web.onPause();
      if(webRoutes!=null)webRoutes.onPause();
      // pauseTimers afecta a las dos WebView. Se llama solo estando inactiva.

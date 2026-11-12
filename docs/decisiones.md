@@ -49,8 +49,24 @@ Tres reglas del resumen, para que no mienta:
   falso es peor que ninguno.
 - **Si el teléfono no da el nivel, se dice**; no se inventa un 0 %.
 
-Lo que **todavía no se ha tocado** es el gasto en sí. La idea pendiente es
-pedir posiciones más despacio cuando el siguiente cruce está lejos, pero eso
-se decide **con el número de una salida real delante**, no antes: tocar la
-frecuencia del GPS a ciegas es arriesgar la grabación para ahorrar algo que
-no se ha medido.
+**La primera medida, en coche** (12 de noviembre de 2026): 24 min, 17,7 km,
+4 % de batería, **10,0 % por hora**, 60 posiciones/min, pantalla apagada y voz
+en marcha. Ojo con el margen: a 24 minutos, un punto de batería son 2,5 %/h,
+así que el gasto real está entre 7,5 y 12,5. Y el coche es el peor caso, que a
+44 km/h de media se cruzan 44 km de mapa cada hora.
+
+**Y ahí se encontró lo primero, que no era el GPS.** Con una salida en marcha
+`MainActivity.onStop()` **no dormía la página**: volvía sin tocar nada si el
+servicio estaba activo. Con la pantalla apagada, el mapa seguía moviéndose y
+**bajando teselas para nadie**. Ahora la pregunta que se le hace a la página
+distingue tres estados —0 no se toca, 1 parada, 2 la salida la lleva el
+servicio— y en el 2 **también se duerme**: el GPS, los avisos de voz y el GPX
+son del servicio, y la página sólo pinta. No se pierde ni un punto, porque al
+volver relee el trazado entero del servicio.
+
+Lo que **todavía no se ha tocado** es el GPS. La idea pendiente es pedir
+posiciones más despacio cuando el siguiente cruce está lejos, pero eso se
+decide **con dos salidas reales delante** —una andando o en bici, y otra con
+el mapa ya guardado, para separar lo que gasta la radio de lo que gasta el
+GPS—: tocar la frecuencia a ciegas es arriesgar la grabación para ahorrar algo
+que no se ha medido.

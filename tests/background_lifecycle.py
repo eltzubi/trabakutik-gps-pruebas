@@ -57,37 +57,59 @@ public class BackgroundLifecycleTest extends Activity {
 
   BackgroundLifecycleTest idle=new BackgroundLifecycleTest();
   idle.sosDialog=new SosDialog();
-  idle.onStop();idle.web.respond("true");
+  idle.onStop();idle.web.respond("1");
   check(idle.sosStops==1&&idle.sosDialog.dismissed);
   check(idle.web.paused==1&&idle.webRoutes.paused==1&&idle.web.timersPaused==1);
   idle.onResume();
   check(idle.web.resumed==1&&idle.webRoutes.resumed==1&&idle.web.timersResumed==1);
   idle.onResume();check(idle.web.timersResumed==2);
-  for(String result:new String[]{"false","null"}){
+  for(String result:new String[]{"0","null"}){
    BackgroundLifecycleTest busy=new BackgroundLifecycleTest();
    busy.onStop();busy.web.respond(result);check(busy.web.timersPaused==0);
   }
   BackgroundLifecycleTest visible=new BackgroundLifecycleTest();
-  visible.onStop();visible.onResume();visible.web.respond("true");
+  visible.onStop();visible.onResume();visible.web.respond("1");
   check(visible.web.timersPaused==0);
   BackgroundLifecycleTest cycles=new BackgroundLifecycleTest();
   cycles.onStop();Consumer<String> old=cycles.web.callback;
-  cycles.onResume();cycles.onStop();old.accept("true");
+  cycles.onResume();cycles.onStop();old.accept("1");
   check(cycles.web.timersPaused==0);
-  cycles.web.respond("true");check(cycles.web.timersPaused==1);
+  cycles.web.respond("1");check(cycles.web.timersPaused==1);
+  // CON LA SALIDA EN MARCHA Y LA PANTALLA APAGADA, LA PAGINA SE DUERME.
+  // Antes no se preguntaba siquiera: con el servicio activo se volvia sin
+  // tocar nada, y el mapa seguia moviendose y bajando teselas para nadie con
+  // la pantalla apagada. Ahora se duerme SI la salida la lleva el servicio
+  // (respuesta 2); el GPS, la voz y el GPX son suyos.
   TrackingService.ACTIVO=true;
   BackgroundLifecycleTest active=new BackgroundLifecycleTest();
-  active.onStop();check(active.web.callback==null&&active.web.timersPaused==0&&active.sosStops==1);
+  active.onStop();check(active.web.callback!=null,"con el servicio activo tambien se pregunta");
+  active.web.respond("2");
+  check(active.web.timersPaused==1&&active.web.paused==1&&active.webRoutes.paused==1,
+        "la salida la lleva el servicio: la pagina se duerme");
+  check(active.sosStops==1);
+  // Pero si la pagina dice que la salida la lleva ella, no se la toca.
+  BackgroundLifecycleTest suya=new BackgroundLifecycleTest();
+  suya.onStop();suya.web.respond("0");
+  check(suya.web.timersPaused==0,"si la salida la lleva la pagina, no se duerme");
+  // Y «parada» con el servicio ya activo tampoco vale: algo arranco entre
+  // la pregunta y la respuesta.
+  BackgroundLifecycleTest tarde2=new BackgroundLifecycleTest();
+  tarde2.onStop();tarde2.web.respond("1");
+  check(tarde2.web.timersPaused==0,"respuesta vieja con el servicio en marcha");
   TrackingService.ACTIVO=false;
+  // Al reves: dice «la lleva el servicio» pero el servicio ya ha parado.
+  BackgroundLifecycleTest muerto=new BackgroundLifecycleTest();
+  muerto.onStop();muerto.web.respond("2");
+  check(muerto.web.timersPaused==0,"sin servicio no se duerme por el 2");
   BackgroundLifecycleTest race=new BackgroundLifecycleTest();
-  race.onStop();TrackingService.ACTIVO=true;race.web.respond("true");
+  race.onStop();TrackingService.ACTIVO=true;race.web.respond("1");
   check(race.web.timersPaused==0);TrackingService.ACTIVO=false;
   BackgroundLifecycleTest pending=new BackgroundLifecycleTest();
   pending.pendingGpsAction="START";pending.onStop();check(pending.web.callback==null);
   BackgroundLifecycleTest permissionRace=new BackgroundLifecycleTest();
   permissionRace.onStop();permissionRace.pendingGpsAction="NAVIGATE";
-  permissionRace.web.respond("true");check(permissionRace.web.timersPaused==0);
-  System.out.println("OK: reposo, reanudacion, salida activa, permisos y respuestas tardias");
+  permissionRace.web.respond("1");check(permissionRace.web.timersPaused==0);
+  System.out.println("OK: reposo, reanudacion, salida del servicio dormida, permisos y respuestas tardias");
  }
 }
 """
