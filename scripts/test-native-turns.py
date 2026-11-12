@@ -37,8 +37,52 @@ public class NativeTurnsTest {
   metrics.configure(line,Collections.emptyList());
   require(Math.abs(metrics.gain(100,1)-40)<.01,"Remaining gain forwards");
   require(metrics.gain(100,-1)==0,"Reverse gain");
-  require(metrics.nextNotice(0,1).text().startsWith("Subida"),"10% for 200m qualifies");
-  require(metrics.nextNotice(0,1)==null,"Climb not repeated");
+  // UNA SUBIDA ENTERA, UN AVISO. El autor: «no me gusta que cada 200 m esté
+  // indicándome el desnivel y metros». La ventana de 200 m vuelve a cumplir
+  // el 10% muchas veces en una cuesta larga y desigual, y antes cada vez que
+  // volvia a cumplir soltaba un aviso.
+  // Esta de prueba sube 2 km al 12% con un replano de 15 m en medio: eso no
+  // parte la subida, porque se pierde menos de CLIMB_DROP.
+  ArrayList<double[]> puerto=new ArrayList<>();
+  for(int m=0;m<=2000;m+=10){
+   double h=100+m*.12;
+   if(m>900&&m<1100)h=100+900*.12-15;   // el replano
+   puerto.add(new double[]{m/111195.,0,h});
+  }
+  NavigationMetrics mp=new NavigationMetrics();
+  mp.configure(puerto,Collections.emptyList());
+  ArrayList<String> dichos=new ArrayList<>();
+  for(int m=0;m<=2000;m+=50){
+   NavigationMetrics.Notice av=mp.nextNotice(m,1);
+   if(av!=null)dichos.add(av.text());
+  }
+  require(dichos.size()==1,"una subida, un aviso (salieron "+dichos.size()+")");
+  require(dichos.get(0).startsWith("Empieza una subida de"),dichos.get(0));
+  require(dichos.get(0).contains("kil"),"de mas de un km se dice en kilometros: "+dichos.get(0));
+  // Y el desnivel que dice es el de la subida entera, no el de 200 m.
+  String txt=dichos.get(0);
+  String num=txt.substring(txt.lastIndexOf(" y ")+3,txt.indexOf(" metros de desnivel"));
+  require(Integer.parseInt(num)>=200,"el desnivel tiene que ser el de la subida entera: "+txt);
+  // Un bajon de 40 m SI la parte en dos: ya no es la misma cuesta.
+  ArrayList<double[]> dos=new ArrayList<>();
+  for(int m=0;m<=2000;m+=10){
+   double h=100+m*.12;
+   if(m>900&&m<1100)h=100+900*.12-40;
+   dos.add(new double[]{m/111195.,0,h});
+  }
+  NavigationMetrics md=new NavigationMetrics();
+  md.configure(dos,Collections.emptyList());
+  int cuantos=0;
+  for(int m=0;m<=2000;m+=50)if(md.nextNotice(m,1)!=null)cuantos++;
+  require(cuantos==2,"un bajon de 40 m parte la subida (salieron "+cuantos+")");
+  // Un repecho pequeno no se canta: 300 m y 36 m de desnivel.
+  ArrayList<double[]> repecho=new ArrayList<>();
+  for(int m=0;m<=300;m+=10)repecho.add(new double[]{m/111195.,0,100+m*.12});
+  NavigationMetrics mr=new NavigationMetrics();
+  mr.configure(repecho,Collections.emptyList());
+  int chicos=0;
+  for(int m=0;m<=300;m+=50)if(mr.nextNotice(m,1)!=null)chicos++;
+  require(chicos==0,"un repecho de 36 m no es una subida");
   long eta=-1;
   for(int i=0;i<=60;i++)eta=metrics.eta(i*2,1,i*2/111195.,0,100000+i*1000,true);
   require(Math.abs(eta-190000)<1,"ETA from real movement");

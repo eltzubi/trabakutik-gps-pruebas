@@ -8,6 +8,23 @@ import java.util.List;
 /** Route geometry shared by the native turn announcements and navigation metrics. */
 final class NavigationMetrics {
     private static final double CLIMB_LENGTH = 200, CLIMB_GRADE = .10, CLIMB_NOTICE = 100;
+    // UNA SUBIDA ES UNA SUBIDA ENTERA, NO CADA VENTANA DE 200 METROS. La
+    // deteccion mira si en los proximos 200 m se sube el 10%, y antes soltaba
+    // un aviso cada vez que esa ventana VOLVIA a cumplirlo. En una subida
+    // larga y desigual -un replano, una curva mas tendida- eso son muchos
+    // avisos seguidos: en egoarbitza, 41 en 33 km, y amontonados justo en las
+    // cuestas. El autor: «no me gusta que cada 200 m esté indicándome el
+    // desnivel y metros, es cansino y gastaremos la batería; con marcar toda
+    // una subida, como de Trabakua a Zengotitagane, sería suficiente».
+    // Ahora, cuando la ventana cumple, la subida se sigue hasta la CIMA -se
+    // da por acabada al perder CLIMB_DROP metros desde el punto mas alto, que
+    // un bajadita de 20 m en medio de un puerto no lo parte- y se suelta UN
+    // aviso con lo que mide y lo que sube. Medido sobre las 72 rutas y 1.600
+    // km: de 794 avisos a 238, y egoarbitza de 41 a 8.
+    // Y no se cuenta cualquier repecho: hace falta subir CLIMB_MIN_GAIN
+    // metros o medir CLIMB_MIN_LENGTH. Si algun dia sobran o faltan avisos,
+    // esos dos numeros son el dial.
+    private static final double CLIMB_DROP = 25, CLIMB_MIN_GAIN = 60, CLIMB_MIN_LENGTH = 600;
     private static final double WATER_NOTICE = 150, WATER_OFFSET = 30;
     private static final long MAX_GAP_MS = 10_000;
     record Water(String name, double lat, double lon, boolean approximate) {}
@@ -50,20 +67,41 @@ final class NavigationMetrics {
         }
         if (total() <= 0) return;
         for (int dir : new int[]{1, -1}) {
-            boolean climbing = false;
-            for (int i = dir > 0 ? 0 : n - 1; i >= 0 && i < n; i += dir) {
+            int i = dir > 0 ? 0 : n - 1;
+            while (i >= 0 && i < n) {
                 double from = distance[i], to = from + dir * CLIMB_LENGTH;
                 double grade = to < 0 || to > total() || !hasHeights(from, to)
                         ? Double.NaN : (height(to) - height(from)) / CLIMB_LENGTH;
-                boolean qualifies = grade + 1e-9 >= CLIMB_GRADE;
-                if (qualifies && !climbing) {
-                    events.add(new Event(from, dir, new Notice(
-                            "Subida dura próxima, " + Math.round(grade * 100) + " por ciento durante 200 metros", 1)));
+                if (!(grade + 1e-9 >= CLIMB_GRADE)) { i += dir; continue; }
+                // Hasta la cima: se acaba al perder CLIMB_DROP desde lo mas alto.
+                int top = i;
+                double highest = heightAt(i);
+                for (int j = i; j >= 0 && j < n; j += dir) {
+                    double h = heightAt(j);
+                    if (!Double.isFinite(h)) continue;
+                    if (!Double.isFinite(highest) || h > highest) { highest = h; top = j; }
+                    else if (highest - h > CLIMB_DROP) break;
                 }
-                climbing = qualifies;
+                double length = Math.abs(distance[top] - distance[i]);
+                // Yendo al reves, lo que aqui se sube es lo que de ida se baja.
+                double gain = dir > 0 ? ascent[top] - ascent[i] : descent[i] - descent[top];
+                if (gain >= CLIMB_MIN_GAIN || length >= CLIMB_MIN_LENGTH) {
+                    events.add(new Event(from, dir, new Notice(textoSubida(length, gain), 1)));
+                }
+                i = top == i ? i + dir : top;
             }
         }
         for (Water source : sources) addWater(source);
+    }
+
+    // «Empieza una subida de 5,5 kilometros y 344 metros». Lo que hace falta
+    // saber antes de meterse: cuanto dura y cuanto sube. Ni el porcentaje ni
+    // los 200 metros de la ventana, que no son la subida.
+    private static String textoSubida(double length, double gain) {
+        String largo = length >= 1000
+                ? String.format(java.util.Locale.ROOT, "%.1f", length / 1000).replace('.', ',') + " kilómetros"
+                : Math.round(length / 10) * 10 + " metros";
+        return "Empieza una subida de " + largo + " y " + Math.round(gain) + " metros de desnivel";
     }
 
     double total() { return distance.length == 0 ? 0 : distance[distance.length - 1]; }
