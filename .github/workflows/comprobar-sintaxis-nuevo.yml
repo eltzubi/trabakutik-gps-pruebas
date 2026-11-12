@@ -47,6 +47,10 @@ jobs:
           for archivo in /tmp/trabakutik-inline-*.js; do
             node --check "$archivo"
           done
+      - name: Revisar los nombres del JavaScript
+        # Dos segundos y caza lo que mas se rompe al tocar un fichero de 3.700
+        # lineas en un solo ambito: llamar a algo que no existe ahi.
+        run: node scripts/revisa-tipos.cjs
       - name: Comprobar rutas propias y avisos de giro
         run: node --test tests/*.test.cjs
 

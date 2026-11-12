@@ -17,6 +17,9 @@ on:
       - 'tests/background_lifecycle.py'
       - 'tests/sin_senal_gps.py'
       - 'tests/silencio.py'
+      - 'tests/regression_tracking.py'
+      - 'scripts/test-gasto-bateria.py'
+      - 'scripts/test-nombre-descarga.py'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 # CUIDADO AL ESCRIBIR LOS MENSAJES DE LOS COMMITS. GitHub busca ciertas
@@ -124,6 +127,15 @@ jobs:
       - name: Comprobar que Silencio calla en el acto
         working-directory: ${{ github.workspace }}
         run: python3 tests/silencio.py
+      - name: Comprobar los giros, la ruta y el GPX guardado
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/regression_tracking.py
+      - name: Comprobar el resumen de bateria
+        working-directory: ${{ github.workspace }}
+        run: python3 scripts/test-gasto-bateria.py
+      - name: Comprobar el nombre de las descargas
+        working-directory: ${{ github.workspace }}
+        run: python3 scripts/test-nombre-descarga.py
       - name: Compilar APK de prueba
         run: gradle :app:assembleDebug --no-daemon
       - name: Comprobar que existe el APK
