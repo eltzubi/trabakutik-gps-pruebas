@@ -31,3 +31,26 @@ sube 60 m o mide 600. Esos dos últimos números son el dial, en
 `NavigationMetrics.java`. Mover el listón apenas cambia la cuenta: con 40/400
 son 265 avisos en las 72 rutas y con 100/1200, 193. Lo que quitó el ruido fue
 **juntar la subida entera**, de 794 avisos a 238.
+
+## La batería: primero medir, luego bajarla (12 de noviembre de 2026)
+
+El autor preguntó cuánto gasta la aplicación. No se contesta a ojo, así que
+la aplicación **se mide a sí misma**: mientras graba, el servicio apunta una
+línea cada cinco minutos en `bateria.tsv` —minutos, nivel de batería, metros
+y posiciones recibidas— y al parar deja el resumen de la salida:
+**«6 h 12 min · 42,3 km · 34 % de batería · 5,5 % por hora · 58
+posiciones/min»**. Sale en el mismo aviso de «Salida finalizada».
+
+Tres reglas del resumen, para que no mienta:
+
+- **Con menos de 15 minutos no hay «% por hora».** A diez minutos, un solo
+  punto de batería daría 6 %/h o 0 %/h según cuándo lo marque el teléfono.
+- **Si iba cargando, o el nivel subió, se dice y no se da número.** Un gasto
+  falso es peor que ninguno.
+- **Si el teléfono no da el nivel, se dice**; no se inventa un 0 %.
+
+Lo que **todavía no se ha tocado** es el gasto en sí. La idea pendiente es
+pedir posiciones más despacio cuando el siguiente cruce está lejos, pero eso
+se decide **con el número de una salida real delante**, no antes: tocar la
+frecuencia del GPS a ciegas es arriesgar la grabación para ahorrar algo que
+no se ha medido.

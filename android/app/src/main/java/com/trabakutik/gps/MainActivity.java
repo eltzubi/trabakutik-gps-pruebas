@@ -390,6 +390,13 @@ public class MainActivity extends Activity {
     return o.toString();
    }catch(Exception e){return "";}
   }
+  /** El gasto de bateria de la ultima grabacion, medido por el servicio.
+   *  Cadena vacia mientras no haya ninguna cerrada: beginRecording() la
+   *  borra, para que al parar no se lea el resumen de la salida anterior. */
+  @JavascriptInterface public String gastoBateria(){
+   try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getString("gasto","");}
+   catch(Exception e){return "";}
+  }
   @JavascriptInterface public String getTrackingSnapshot(){return trackingSnapshot("");}
   @JavascriptInterface public String getTrackingSnapshotIfChanged(String knownVersion){return trackingSnapshot(knownVersion);}
   private String trackingSnapshot(String knownVersion){

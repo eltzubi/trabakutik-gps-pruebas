@@ -60,7 +60,8 @@ def method(signature, source=src):
  while depth:
   depth+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
-br=method(' void beginRecording()').replace('try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}','').replace('recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();','recording=true;')
+br=method(' void beginRecording()').replace('try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}','')
+br=re.sub(r'recording=true;getSharedPreferences.*?updateNotice\(\);','recording=true;',br,flags=re.S)
 activity=(production/'MainActivity.java').read_text()
 sos=method(' private static boolean usableSosLocation(Location location)',activity)
 constant=re.search(r' static final long MAX_EDAD_FIX_NS=[^;]+;',src).group(0)

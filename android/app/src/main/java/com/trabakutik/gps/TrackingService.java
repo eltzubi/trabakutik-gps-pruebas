@@ -61,6 +61,7 @@ public class TrackingService extends Service implements LocationListener {
    if(!active)return;
    String estado=estadoGps();if(!estado.equals(ultimoEstadoAviso))updateNotice();
    avisaSinGps();
+   if(recording&&!pausado)apuntaBateria(false);
    avisoHandler.postDelayed(this,5000);
   }
  };
@@ -148,6 +149,78 @@ public class TrackingService extends Service implements LocationListener {
   ToneGenerator t=tonoEnCurso;tonoEnCurso=null;
   if(t!=null)try{t.release();}catch(Exception ignored){}
  }
+ // --- LO QUE GASTA LA BATERIA, MEDIDO ---
+ // El autor pregunto cuanto gasta la aplicacion. A ojo no se contesta: se
+ // apunta. Mientras graba, una linea cada cinco minutos en bateria.tsv
+ // -minutos, nivel, metros, posiciones, si estaba cargando- y al parar, el
+ // resumen de la salida. Primero medir; bajar el gasto pidiendo posiciones
+ // mas despacio, despues, y con el numero delante.
+ static final long BATERIA_CADA_MS=300000;
+ static final long BATERIA_TOPE_FICHERO=100000;
+ static final int GASTO_SIN_LEER=999;
+ long bateriaDesde=0,bateriaApunte=0;
+ int bateriaInicio=-1,bateriaFixes=0,bateriaNivel=-1;
+ double bateriaMetros=0;
+ boolean bateriaCargando=false;
+ String gastoUltimo="";
+ int nivelBateria(){
+  try{
+   BatteryManager bm=(BatteryManager)getSystemService(BATTERY_SERVICE);
+   if(bm!=null){int n=bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);if(n>=0&&n<=100)return n;}
+  }catch(Exception e){android.util.Log.w("TrabakutikGPS","Sin lectura de bateria",e);}
+  return -1;
+ }
+ boolean cargando(){
+  try{BatteryManager bm=(BatteryManager)getSystemService(BATTERY_SERVICE);return bm!=null&&bm.isCharging();}
+  catch(Exception e){return false;}
+ }
+ void arrancaBateria(){
+  bateriaDesde=SystemClock.elapsedRealtime();bateriaApunte=0;bateriaFixes=0;bateriaMetros=0;
+  bateriaInicio=nivelBateria();bateriaNivel=bateriaInicio;bateriaCargando=cargando();gastoUltimo="";
+  File f=new File(getFilesDir(),"bateria.tsv");
+  // El fichero es un cuaderno, no un registro eterno: si se pasa de 100 kB
+  // se tira lo viejo. Son unas 5.000 lineas, muchas salidas.
+  if(f.length()>BATERIA_TOPE_FICHERO)f.delete();
+  escribeBateria("# "+new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date())
+    +" empieza con "+bateriaInicio+" %");
+  apuntaBateria(true);
+ }
+ void escribeBateria(String linea){
+  try(FileWriter w=new FileWriter(new File(getFilesDir(),"bateria.tsv"),true)){w.write(linea+"\n");}
+  catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo apuntar la bateria",e);}
+ }
+ /** Una linea del cuaderno. Con «ya» no espera a que toquen los cinco minutos. */
+ void apuntaBateria(boolean ya){
+  if(bateriaDesde==0)return;
+  long ahora=SystemClock.elapsedRealtime();
+  if(!ya&&bateriaApunte>0&&ahora-bateriaApunte<BATERIA_CADA_MS)return;
+  bateriaApunte=ahora;
+  int nivel=nivelBateria();
+  if(nivel>=0)bateriaNivel=nivel;
+  if(cargando())bateriaCargando=true;
+  escribeBateria((ahora-bateriaDesde)/60000+"\t"+nivel+"\t"+Math.round(bateriaMetros)
+    +"\t"+bateriaFixes+"\t"+(bateriaCargando?1:0));
+ }
+ /** El resumen que lee el autor al parar. Sin Android, para poder probarlo. */
+ static String textoGasto(long ms,int gastado,double metros,int fixes,boolean cargando){
+  long min=Math.max(0,Math.round(ms/60000.0));
+  StringBuilder t=new StringBuilder(min>=60?(min/60)+" h "+(min%60)+" min":min+" min");
+  if(metros>=1000)t.append(" · ").append(unDecimal(metros/1000)).append(" km");
+  else if(metros>0)t.append(" · ").append(Math.round(metros/10)*10).append(" m");
+  if(gastado==GASTO_SIN_LEER)t.append(" · no se pudo leer la batería");
+  // Si el nivel ha subido, o el telefono iba al cargador, el numero no mide
+  // lo que gasta la aplicacion. Mejor decirlo que dar un gasto falso.
+  else if(cargando||gastado<0)t.append(" · ibas cargando, el gasto no vale");
+  else {
+   t.append(" · ").append(gastado).append(" % de batería");
+   // Con poco rato, el % por hora es un invento: a 10 minutos, un solo
+   // punto de bateria son 6 %/h o 0 %/h segun cuando lo marque el telefono.
+   if(min>=15)t.append(" · ").append(unDecimal(gastado*60.0/min)).append(" % por hora");
+  }
+  if(fixes>0&&min>0)t.append(" · ").append(Math.round(fixes/(double)min)).append(" posiciones/min");
+  return t.toString();
+ }
+ static String unDecimal(double v){return String.format(Locale.ROOT,"%.1f",v).replace('.',',');}
  String fraseGiro(int lado,int tipo,String fase,double ahead){
   // Lo que pidio el autor fue que le avisaran de los CRUCES, asi que la voz
   // dice si es un cruce o una curva. Y «cambio de sentido» en un sendero
@@ -340,7 +413,9 @@ public class TrackingService extends Service implements LocationListener {
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
-  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).apply();updateNotice();
+  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).remove("gasto").apply();
+  arrancaBateria();
+  updateNotice();
  }
  void loadRoute(){
   route.clear();routeReached=false;offRoute=false;farSince=0;errorRuta="";sinGpsAvisado=false;
@@ -646,6 +721,7 @@ public class TrackingService extends Service implements LocationListener {
   if(esAntigua(l))return;
   if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
+  if(recording&&!pausado)bateriaFixes++;
   String liveMetrics="{}";
   if(navigating&&route.size()>1){
    boolean wasOff=offRoute;
@@ -681,6 +757,7 @@ public class TrackingService extends Service implements LocationListener {
    // tramo nuevo y el trazado de la pantalla no, asi que si parabas y seguias
    // en menos de 20 s y 100 m la linea roja unia el descanso con una recta.
    try(FileWriter pointsFile=new FileWriter(new File(getFilesDir(),"trazado-vivo.tsv"),true)){if(corta&&lastRecordedTime>0)pointsFile.write("\n");pointsFile.write(l.getLatitude()+"\t"+l.getLongitude()+"\n");}
+   if(!corta&&lastRecordedTime>0&&Double.isFinite(lastRecordedLat))bateriaMetros+=l.distanceTo(makePreviousLocation());
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
    forzarCorte=false;
    points++;if(points%10==0)updateNotice();
@@ -698,8 +775,13 @@ public class TrackingService extends Service implements LocationListener {
   if(!recording)return;
   try(FileWriter w=new FileWriter(file,true)){w.write("</trkseg></trk></gpx>\n");}
   catch(Exception e){android.util.Log.e("TrabakutikGPS","No se pudo cerrar GPX",e);}
+  apuntaBateria(true);
+  int gastado=bateriaInicio>=0&&bateriaNivel>=0?bateriaInicio-bateriaNivel:GASTO_SIN_LEER;
+  gastoUltimo=textoGasto(SystemClock.elapsedRealtime()-bateriaDesde,gastado,bateriaMetros,bateriaFixes,bateriaCargando);
+  escribeBateria("# termina · "+gastoUltimo);
+  bateriaDesde=0;
   recording=false;
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).apply();
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).putString("gasto",gastoUltimo).apply();
  }
  void finish(){navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);callaYa();if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
