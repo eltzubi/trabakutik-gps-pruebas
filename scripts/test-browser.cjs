@@ -585,6 +585,65 @@ async function setup(context) {
         console.log('PASS Chromium: sin Valhalla, el creador traza con los caminos guardados');
       }
     }
+
+    // EL GPX Y EL KML DE LAS FICHAS, DENTRO DE LA APLICACION. La pestana Web
+    // es un WebView, y un WebView no se baja nada por su cuenta: el toque no
+    // hacia nada. Ahora el clic lo recoge este JavaScript, que la aplicacion
+    // inyecta en trabakutik.com, y se lo pasa al puente CON EL NOMBRE BUENO
+    // que lleva el atributo download -eso es lo que un WebView tira-. Aqui se
+    // ejecuta el mismo texto que esta en MainActivity.java, no una copia.
+    {
+      const java = fs.readFileSync(path.join(root,
+        'android/app/src/main/java/com/trabakutik/gps/MainActivity.java'), 'utf8');
+      const marca = 'view.evaluateJavascript("';
+      const a = java.indexOf(marca) + marca.length;
+      const b = java.indexOf('"', a);
+      assert(a > marca.length - 1 && b > a, 'no encuentro el JavaScript inyectado');
+      const guion = java.slice(a, b);
+      assert(!guion.includes('\\'), 'el literal lleva escapes: habria que deshacerlos');
+      const ctxWeb = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const pag = await ctxWeb.newPage();
+      const fallos = [];
+      pag.on('pageerror', e => fallos.push(e.message));
+      await pag.setContent(`<!doctype html><meta charset="utf-8"><body>
+        <a id="nav" href="https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?ruta=garaiurdaixa">Navegar</a>
+        <a id="gpx" href="https://trabakutik.com/src/garaiurdaixa.gpx"
+           download="Garai, los canales de Arrierreka y la ermita de Urdaixa.gpx"><b id="dentro">GPX</b></a>
+        <a id="otro" href="https://trabakutik.com/garaikanala.html">Otra ficha</a>`);
+      await pag.evaluate(() => {
+        window.llamadas = [];
+        window.TrabakutikRoutes = {
+          openNavigator: u => window.llamadas.push(['navegar', u]),
+          descarga: (u, n) => window.llamadas.push(['descarga', u, n]),
+        };
+        window.pordefecto = [];
+        document.addEventListener('click', e => {
+          window.pordefecto.push(e.defaultPrevented);
+          e.preventDefault();          // que no navegue el navegador de pruebas
+        });
+      });
+      await pag.evaluate(guion);
+      await pag.click('#dentro');      // dentro del enlace: tiene que valer igual
+      await pag.click('#nav');
+      await pag.click('#otro');
+      const { llamadas, pordefecto } = await pag.evaluate(
+        () => ({ llamadas: window.llamadas, pordefecto: window.pordefecto }));
+      assert.deepEqual(llamadas, [
+        ['descarga', 'https://trabakutik.com/src/garaiurdaixa.gpx',
+         'Garai, los canales de Arrierreka y la ermita de Urdaixa.gpx'],
+        ['navegar', 'https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html?ruta=garaiurdaixa'],
+      ], 'el puente no recibe lo que debe');
+      // Solo se anota el tercero: los dos primeros los para el manejador con
+      // stopPropagation y no llegan hasta aqui. Que este llegue y llegue SIN
+      // parar es lo que hace falta: un enlace normal de la web tiene que
+      // seguir abriendo su pagina.
+      assert.deepEqual(pordefecto, [false],
+        'un enlace normal de la web no se puede quedar sin abrir');
+      assert.deepEqual(fallos, [], 'errores JS');
+      await ctxWeb.close();
+      console.log('PASS Chromium: en la aplicación, el GPX y el KML llegan al puente con su nombre');
+    }
+
   } finally {
     if (browser) await browser.close();
     await new Promise((r) => server.close(r));

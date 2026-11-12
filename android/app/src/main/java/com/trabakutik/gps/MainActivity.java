@@ -241,6 +241,15 @@ public class MainActivity extends Activity {
   }
   if(navigator)w.addJavascriptInterface(new Bridge(),"TrabakutikAndroid");
   else w.addJavascriptInterface(new RouteBridge(),"TrabakutikRoutes");
+  // EL GPX Y EL KML DE LAS FICHAS. Un WebView no se baja nada por su cuenta:
+  // el servidor manda el GPX como application/gpx+xml, que no sabe pintar, y
+  // sin oyente de descargas el toque no hacia absolutamente nada -ni error ni
+  // aviso-. Lo encontro el autor: «no deja descargar las rutas ni el gpx ni
+  // kml». Las fichas ademas ponen el nombre bueno en el atributo «download»
+  // del enlace -«Garai, los canales de Arrierreka y la ermita de Urdaixa.gpx»-
+  // y eso un WebView lo tira: por eso los enlaces de trabakutik.com pasan por
+  // el puente, que si lo conserva, y esto queda de red para todo lo demas.
+  if(!navigator)w.setDownloadListener((url,agente,disposicion,tipo,bytes)->bajaFichero(url,disposicion,tipo,null));
   w.setWebChromeClient(new WebChromeClient(){
    @Override public boolean onShowFileChooser(WebView view,ValueCallback<android.net.Uri[]> callback,FileChooserParams params){
     if(pendingFileChooser!=null){pendingFileChooser.onReceiveValue(null);pendingFileChooser=null;}
@@ -287,7 +296,7 @@ public class MainActivity extends Activity {
     if(!navigator&&url!=null&&url.startsWith("https://trabakutik.com/")){
       lastWebUrl=url;
       lastWebLoadAt=System.currentTimeMillis();
-      view.evaluateJavascript("(function(){if(window.__routeLinkFixed)return;window.__routeLinkFixed=1;document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(a&&a.href.indexOf('https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html')===0){e.preventDefault();e.stopPropagation();TrabakutikRoutes.openNavigator(a.href);}},true)})()",null);
+      view.evaluateJavascript("(function(){if(window.__routeLinkFixed)return;window.__routeLinkFixed=1;document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(!a)return;if(a.href.indexOf('https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html')===0){e.preventDefault();e.stopPropagation();TrabakutikRoutes.openNavigator(a.href);return;}if(a.hasAttribute('download')&&a.protocol&&a.protocol.indexOf('http')===0){e.preventDefault();e.stopPropagation();TrabakutikRoutes.descarga(a.href,a.getAttribute('download'));}},true)})()",null);
     }
    }
    @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){
@@ -306,10 +315,63 @@ public class MainActivity extends Activity {
   });
  }
  public class RouteBridge{
+  /** Un GPX, un KML o el zip de todas las rutas, con el nombre que le pone la
+   *  ficha. Llega del clic que intercepta el JavaScript de onPageFinished. */
+  @JavascriptInterface public void descarga(String url,String nombre){
+   runOnUiThread(()->bajaFichero(url,null,null,nombre));
+  }
   @JavascriptInterface public void openNavigator(String url){
    if(url!=null&&url.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"))
     runOnUiThread(()->openRouteUrl(url));
   }
+ }
+ /** Baja un fichero de la web a la carpeta de Descargas del telefono.
+  *  «nombre» es el del atributo download de la ficha, si lo hubo; si no, se
+  *  adivina de la direccion y del tipo que mando el servidor. */
+ void bajaFichero(String url,String disposicion,String tipo,String nombre){
+  if(url==null)return;
+  android.net.Uri uri;
+  try{uri=android.net.Uri.parse(url);}catch(Exception e){return;}
+  String esquema=uri.getScheme()==null?"":uri.getScheme().toLowerCase(java.util.Locale.ROOT);
+  if(!esquema.equals("http")&&!esquema.equals("https")){
+   // blob: y data: no los sabe bajar el gestor de descargas de Android.
+   try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}
+   return;
+  }
+  String fichero=limpiaNombre(nombre);
+  if(fichero==null)fichero=limpiaNombre(android.webkit.URLUtil.guessFileName(url,disposicion,tipo));
+  if(fichero==null)fichero="trabakutik.gpx";
+  android.app.DownloadManager gestor=(android.app.DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+  if(gestor==null){Toast.makeText(this,"Este teléfono no tiene gestor de descargas",Toast.LENGTH_LONG).show();return;}
+  // Primero la carpeta de Descargas de siempre, que es donde se busca luego
+  // con el explorador o con otra aplicacion de mapas. En Android 8 y 9 eso
+  // pide permiso de escritura, asi que si el sistema lo rechaza se guarda en
+  // la carpeta de la aplicacion antes que dejarle sin fichero.
+  for(boolean publica:new boolean[]{true,false}){
+   try{
+    android.app.DownloadManager.Request pide=new android.app.DownloadManager.Request(uri);
+    pide.setTitle(fichero);
+    if(tipo!=null&&!tipo.isEmpty())pide.setMimeType(tipo);
+    pide.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+    if(publica)pide.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,fichero);
+    else pide.setDestinationInExternalFilesDir(this,Environment.DIRECTORY_DOWNLOADS,fichero);
+    gestor.enqueue(pide);
+    Toast.makeText(this,"Descargando "+fichero,Toast.LENGTH_SHORT).show();
+    return;
+   }catch(Exception e){
+    android.util.Log.w("TrabakutikGPS","No se pudo encolar la descarga"+(publica?" en Descargas":""),e);
+   }
+  }
+  Toast.makeText(this,"No se pudo descargar "+fichero,Toast.LENGTH_LONG).show();
+ }
+ /** Deja el nombre en algo que pueda ser un fichero: sin carpetas ni saltos
+  *  de linea. Las tildes, los espacios y las comas se quedan, que el nombre
+  *  bueno de una ruta los lleva. */
+ static String limpiaNombre(String nombre){
+  if(nombre==null)return null;
+  String n=nombre.replaceAll("[\\\\/\\u0000-\\u001f]"," ").replaceAll("\\s+"," ").trim();
+  if(n.isEmpty()||n.equals(".")||n.equals(".."))return null;
+  return n.length()>120?n.substring(0,120):n;
  }
  void openRouteUrl(String url){
   if(url==null||!url.startsWith("https://eltzubi.github.io/trabakutik-gps-pruebas/nuevo.html"))return;
