@@ -69,8 +69,21 @@ function invierteTramoGps(tr){
 // en una recta ni en una ruta por el grafo de tracks de Trabakutik.
 let seguirMapaGps=true,calculoMapaGps=0,peticionMapaGps=null,calculandoMapaGps=false;
 let permisoMapaGps=false,ultimaPeticionMapaGps=0;
-function estadoMapaGps(texto){
+function estadoMapaGps(texto,ofreceRecta){
  const el=$('plannerStatus');el.textContent=texto;el.classList.toggle('hidden',!texto);
+ // LA SALIDA CUANDO NO HAY CAMINO. El mapa del IGN dibuja sendas que
+ // OpenStreetMap no tiene, y ahi el lapiz no puede calcular nada. Antes el
+ // unico camino era rendirse. El boton solo aparece cuando hace falta -no
+ // ocupa sitio el resto del tiempo- y lo que mete va en linea recta y
+ // marcado como tal: a rayas en el mapa y contado aparte.
+ if(ofreceRecta){
+  const b=document.createElement('button');
+  b.type='button';b.id='uneRecta';b.className='une-recta';
+  b.textContent='Unir en recta';
+  b.title='Traza este tramo a mano, en línea recta, porque no hay camino en el mapa';
+  b.onclick=uneEnRectaMapa;
+  el.append(b);
+ }
 }
 function cancelaMapaGps(){
  calculoMapaGps++;if(peticionMapaGps)peticionMapaGps.abort();

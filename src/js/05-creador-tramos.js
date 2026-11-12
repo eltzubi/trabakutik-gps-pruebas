@@ -195,7 +195,27 @@ function anadeTramoMapa(result){
 // Un solo tramo: del ultimo punto puesto al que acabas de tocar. Se esperan
 // tambien las alturas antes de pintarlo, que asi se añade una sola vez y no
 // hay que repintar el tramo a medias.
+let manoLayers=[];
+// EL TRAMO QUE NO SE PUDO CALCULAR, a la espera de que el autor decida si
+// lo une en recta. Se borra en cuanto se vuelve a calcular algo.
+let tramoSinCamino=null;
+function uneEnRectaMapa(){
+ if(!tramoSinCamino)return;
+ const [desde,hasta]=tramoSinCamino;tramoSinCamino=null;
+ if(!anclasGps.length){
+  const ini=nodoManualGps(desde[0],desde[1]);
+  anclasGps.push(ini);tramosGps.push([ini]);
+ }
+ const ini=anclasGps[anclasGps.length-1];
+ const fin=nodoManualGps(hasta[0],hasta[1]);
+ const tr=[ini,fin];tr.aMano=true;
+ anclasGps.push(fin);tramosGps.push(tr);
+ updateDraw();
+ estadoMapaGps('');
+ notice('Tramo trazado a mano, en recta · '+Math.round(metros(desde,hasta))+' m · no va por ningún camino del mapa');
+}
 async function planificaTramoMapa(desde,hasta){
+ tramoSinCamino=null;
  if(!coordenadaMapaGps(desde)||!coordenadaMapaGps(hasta))return;
  if(!permisoMapaGps){
   permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap). ¿Continuar?');
@@ -219,7 +239,16 @@ async function planificaTramoMapa(desde,hasta){
   // da Valhalla y es justo lo que no hay.
   const local=planLocalMapa([desde,hasta]);
   if(local){anadeTramoMapa(local);estadoMapaGps('Sin conexión · tramo por los caminos guardados, sin desnivel.')}
-  else estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':porQueNoHayCamino(e));
+  else if(controller.signal.aborted)estadoMapaGps('No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.');
+  else {
+   // Ni el planificador ni los caminos guardados. Si es que por ahi no hay
+   // camino en el mapa, se le ofrece trazarlo a mano.
+   // Solo se ofrece trazarlo a mano cuando SABEMOS que no hay camino: con
+   // los caminos de la zona ya bajados. Si todavia no estan, lo que toca es
+   // esperar unos segundos, no ponerse a dibujar rectas.
+   tramoSinCamino=e&&e.sinCamino&&redOsm?[desde,hasta]:null;
+   estadoMapaGps(porQueNoHayCamino(e),!!tramoSinCamino);
+  }
  }finally{
   clearTimeout(timer);
   if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}
@@ -573,6 +602,14 @@ function updateDraw(){
   const p=redGps.nodos[tramosGps[k][j]];drawPoints.push(p.slice(0,3));
  }
  if(drawPoints.length)drawLayer=L.polyline(drawPoints.map(p=>p.slice(0,2)),{color:'#38bdf8',weight:6,opacity:1,interactive:false}).addTo(map);
+ // Los tramos trazados a mano, a rayas y por encima: lo que no va por un
+ // camino tiene que verse que no va por un camino.
+ manoLayers.forEach(l=>map.removeLayer(l));manoLayers=[];
+ for(const tr of tramosGps){
+  if(!tr.aMano||tr.length<2)continue;
+  const pts=tr.map(id=>redGps.nodos[id].slice(0,2));
+  manoLayers.push(L.polyline(pts,{color:'#fbbf24',weight:6,opacity:1,dashArray:'2 10',interactive:false}).addTo(map));
+ }
  // Con el trazado cerrado el ultimo punto es el mismo nodo que el primero:
  // se dibuja una sola bola, o quedarian dos superpuestas y no se sabria cual
  // estas arrastrando.

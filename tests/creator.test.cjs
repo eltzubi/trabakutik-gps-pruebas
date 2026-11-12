@@ -25,11 +25,16 @@ function elements() {
       hidden: false,
       classList: { add() {}, remove() {}, toggle() {} },
       setAttribute() {},
+      // El aviso del planificador puede llevar un boton dentro -«Unir en
+      // recta»-, asi que el doble tiene que saber recibirlo.
+      hijos: [],
+      append(x) { this.hijos.push(x); },
     });
 }
 function creatorContext() {
   const ctx = run(section('const CELDA_M=', '// Perfil de altura del creador:'), {
-    $: elements(), notice() {}, drawPoints:[], AbortController, setTimeout, clearTimeout, confirm:()=>true, R:Math.PI/180, dist:(a,b)=>Math.hypot((a[0]-b[0])*111320,(a[1]-b[1])*81000),
+    $: elements(), notice() {}, drawPoints:[], AbortController, setTimeout, clearTimeout, confirm:()=>true, R:Math.PI/180,
+    document: { createElement: () => ({ classList:{add(){},remove(){},toggle(){}}, style:{}, append(){} }) }, dist:(a,b)=>Math.hypot((a[0]-b[0])*111320,(a[1]-b[1])*81000),
   });
   vm.runInContext(`redGps=construyeRed([{points:[[43,-2,100],[43.001,-2,120]]}],null);
     seguirMapaGps=false;
@@ -326,4 +331,43 @@ test('el primer punto de un recorrido en Caminos recibe altura, y la prestada no
  red.draft([nodo],[[nodo]]);
  red.anadeTramoMapa(tramo(43,-2,500));
  assert.equal(red.state().red.nodos[nodo][2],null,'la red compartida no se toca');
+});
+
+// CUANDO NO HAY CAMINO, SE PUEDE TRAZAR A MANO. El mapa del IGN dibuja sendas
+// que OpenStreetMap no tiene, y ahi el lapiz no calcula nada. El autor se
+// quedo tirado a mitad de un sendero que veia pintado: «estoy marcando en
+// sendero y de pronto no quiere seguir por el». Ahora, SOLO en ese caso, el
+// aviso trae un boton para unir ese tramo en recta, y lo que mete va marcado
+// como trazado a mano.
+test('sin camino se ofrece unir en recta, y solo entonces',async()=>{
+ const c=creatorContext();
+ c.fetch=async()=>({ok:false,status:400,json:async()=>({error_code:171,error:'No suitable edges near location'})});
+ await c.planificaTramoMapa([43,-2],[43.002,-2]);
+ assert.equal(c.state().anchors.length,0,'un fallo no mete nada por su cuenta');
+ assert.equal(c.$('plannerStatus').hijos.length,1,'se ofrece la salida');
+ c.uneEnRectaMapa();
+ const s=c.state();
+ assert.equal(s.anchors.length,2,'el tramo a mano sí mete sus dos puntos');
+ assert.equal(s.segments[1].aMano,true,'y queda marcado como trazado a mano');
+ assert.equal(s.segments[1].length,2,'es una recta: dos puntos, sin forma inventada');
+ c.uneEnRectaMapa();
+ assert.equal(c.state().anchors.length,2,'no se puede unir dos veces el mismo tramo');
+});
+test('si falla el servicio NO se ofrece trazar a mano',async()=>{
+ // Un servidor caido no significa que no haya camino. Ofrecer la recta ahi
+ // seria empujar a dibujar a mano un sendero que existe.
+ const c=creatorContext();
+ c.fetch=async()=>({ok:false,status:500,json:async()=>({error:'Internal error'})});
+ await c.planificaTramoMapa([43,-2],[43.002,-2]);
+ assert.equal(c.$('plannerStatus').hijos.length,0,'nada de botones si el fallo es del servicio');
+ c.uneEnRectaMapa();
+ assert.equal(c.state().anchors.length,0,'y aunque se llame a mano, no mete nada');
+});
+test('sin los caminos de la zona bajados tampoco se ofrece',async()=>{
+ const c=creatorContext();
+ vm.runInContext('redOsm=null',c);
+ c.fetch=async()=>({ok:false,status:400,json:async()=>({error_code:171,error:'No suitable edges near location'})});
+ await c.planificaTramoMapa([43,-2],[43.002,-2]);
+ assert.match(c.$('plannerStatus').textContent,/todavía se están bajando/);
+ assert.equal(c.$('plannerStatus').hijos.length,0,'primero esperar, no dibujar rectas');
 });
