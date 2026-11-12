@@ -392,7 +392,11 @@ async function setup(context) {
     await creator.screenshot({path:path.join(root,'.test-artifacts/planificador-con-desnivel.png')});
     failPlanner=true;
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
-    await creator.waitForFunction(()=>document.querySelector('#plannerStatus').textContent.includes('No hay conexión'));
+    // Aqui no hay red, asi que los caminos de la zona tampoco se han podido
+    // bajar: el aviso que toca es ese, y no «no hay conexion a pie», que
+    // mandaria a mover el punto buscando un paso que a lo mejor si existe.
+    await creator.waitForFunction(()=>/todavía se están bajando|No hay conexión/
+      .test(document.querySelector('#plannerStatus').textContent));
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2,'un error no añade rectas');
     failPlanner=false;
     await creator.click('#saveCreated');await creator.click('#saveToMine');

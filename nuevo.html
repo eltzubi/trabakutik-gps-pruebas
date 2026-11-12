@@ -1329,6 +1329,23 @@ function limpiaRuta(pts){
 }
 // El mismo {anchors, parts} que devuelve Valhalla, para que lo de abajo no
 // tenga que saber de donde vino el recorrido.
+// Un error de «por ahi no se puede pasar», marcado para distinguirlo de uno
+// de «el servicio no contesta»: el aviso que se le da al autor no es el mismo.
+const noHayPaso=t=>{const e=Error(t);e.sinCamino=true;return e};
+// POR QUE NO HA SALIDO EL TRAMO. Decir «no hay conexion a pie en
+// OpenStreetMap» cuando lo que pasa es que los caminos de la zona todavia se
+// estan bajando manda a buscar el fallo donde no esta: el autor se encontro
+// con ese mensaje sobre un sendero que veia dibujado. Y cuando de verdad no
+// hay camino, lo que hace falta saber es que el lapiz solo conoce lo que
+// esta en OpenStreetMap -mas los tramos de las rutas de Trabakutik-, y que
+// el mapa del IGN dibuja sendas que OpenStreetMap no tiene.
+function porQueNoHayCamino(e){
+ if(!redOsm)return 'Los caminos de la zona todavía se están bajando. Espera unos segundos y vuelve a tocar.';
+ // Un fallo del servicio NO es «no hay camino»: si se lo decimos, el autor
+ // se pone a mover el punto en el monte buscando un paso que si existe.
+ if(!e||!e.sinCamino)return (e&&e.message)||'No se pudo calcular.';
+ return e.message+' El lápiz solo conoce los caminos de OpenStreetMap y los de las rutas de Trabakutik: el mapa del IGN dibuja sendas que OpenStreetMap no tiene.';
+}
 function planLocalMapa(coords){
  if(!redOsm||coords.length<2)return null;
  const anclas=coords.map(p=>enganchaOsm(redOsm,p[0],p[1]));
@@ -1355,10 +1372,10 @@ function respuestaMapaGps(data,solicitados){
  const sinCamino='No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.';
  const parts=tramos.map((tramo,i)=>{
   const pts=descodificaValhalla(tramo&&tramo.shape);
-  if(pts.length<2)throw Error(sinCamino);
+  if(pts.length<2)throw noHayPaso(sinCamino);
   for(const p of pts)if(!coordenadaMapaGps(p))throw Error('El recorrido contiene coordenadas inválidas.');
   let largo=0;for(let k=1;k<pts.length;k++)largo+=dist(pts[k-1],pts[k]);
-  if(largo>Math.max(400,dist(solicitados[i],solicitados[i+1])*RODEO_MAXIMO))throw Error(sinCamino);
+  if(largo>Math.max(400,dist(solicitados[i],solicitados[i+1])*RODEO_MAXIMO))throw noHayPaso(sinCamino);
   return pts;
  });
  if(!parts.length)throw Error('La respuesta del planificador está incompleta.');
@@ -1366,7 +1383,7 @@ function respuestaMapaGps(data,solicitados){
  // ha pegado al camino: las anclas de verdad son los extremos del trazado.
  const anchors=[parts[0][0],...parts.map(p=>p[p.length-1])];
  anchors.forEach((p,i)=>{
-  if(dist(p,solicitados[i])>40)throw Error('No hay un camino suficientemente cerca del punto marcado.');
+  if(dist(p,solicitados[i])>40)throw noHayPaso('No hay un camino suficientemente cerca del punto marcado.');
  });
  for(let i=1;i<parts.length;i++)
   if(dist(parts[i-1][parts[i-1].length-1],parts[i][0])>1)throw Error('El recorrido contiene un corte.');
@@ -1391,7 +1408,7 @@ async function solicitaMapaGps(coords,signal){
   // Valhalla contesta 400 con un numero cuando no encuentra camino cerca.
   let codigo=0;try{codigo=(await r.json()).error_code|0}catch(e){}
   if([154,170,171,172,442,443,444].includes(codigo))
-   throw Error('No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.');
+   throw noHayPaso('No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.');
   throw Error('No se pudo conectar con el planificador. Conservamos el trazado anterior.');
  }
  return respuestaMapaGps(await r.json(),coords);
@@ -1536,7 +1553,7 @@ async function planificaTramoMapa(desde,hasta){
   // da Valhalla y es justo lo que no hay.
   const local=planLocalMapa([desde,hasta]);
   if(local){anadeTramoMapa(local);estadoMapaGps('Sin conexión · tramo por los caminos guardados, sin desnivel.')}
-  else estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':e.message);
+  else estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':porQueNoHayCamino(e));
  }finally{
   clearTimeout(timer);
   if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}
@@ -1570,7 +1587,7 @@ async function planificaMapaGps(coords){
   if(version!==calculoMapaGps)return;
   const local=planLocalMapa(coords);
   if(local){aplicaMapaGps(local);estadoMapaGps('Sin conexión · recorrido por los caminos guardados, sin desnivel.')}
-  else estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':e.message||'No se pudo calcular.');
+  else estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':porQueNoHayCamino(e));
  }finally{
   clearTimeout(timer);
   if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}

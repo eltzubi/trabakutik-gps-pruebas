@@ -29,10 +29,13 @@ function elements() {
 }
 function creatorContext() {
   const ctx = run(section('const CELDA_M=', '// Perfil de altura del creador:'), {
-    $: elements(), notice() {}, drawPoints:[], AbortController, setTimeout, clearTimeout, confirm:()=>true, dist:(a,b)=>Math.hypot((a[0]-b[0])*111320,(a[1]-b[1])*81000),
+    $: elements(), notice() {}, drawPoints:[], AbortController, setTimeout, clearTimeout, confirm:()=>true, R:Math.PI/180, dist:(a,b)=>Math.hypot((a[0]-b[0])*111320,(a[1]-b[1])*81000),
   });
   vm.runInContext(`redGps=construyeRed([{points:[[43,-2,100],[43.001,-2,120]]}],null);
     seguirMapaGps=false;
+    // Los caminos de la zona, ya bajados: aqui se prueban los mensajes del
+    // planificador, no la espera de la descarga -eso va en su propia prueba-.
+    redOsm={cestas:new Map()};
     globalThis.state=()=>({red:redGps,anchors:anclasGps,segments:tramosGps});
     globalThis.draft=(a,t)=>{anclasGps=a;tramosGps=t};
     globalThis.updateDraw=()=>{};`,ctx);
@@ -132,7 +135,12 @@ test('si no hay camino o servicio conserva el borrador sin dibujar una recta',as
  c.fetch=async()=>({ok:false,status:400,json:async()=>({error_code:171,error:'No suitable edges near location'})});
  await c.planificaMapaGps([[43,-2],[43.001,-2]]);
  assert.equal(c.state().anchors.length,0);assert.equal(c.state().red,before.red);
- assert.match(c.$('plannerStatus').textContent,/No hay conexión/);
+ const aviso=c.$('plannerStatus').textContent;
+ assert.match(aviso,/No hay conexión/);
+ // Y se le dice POR QUE: el lapiz solo conoce OpenStreetMap y las rutas de
+ // la web, y el mapa del IGN dibuja sendas que OSM no tiene. Sin esto, el
+ // autor se encontro con «no hay camino» sobre un sendero que veia pintado.
+ assert.match(aviso,/IGN/,'falta la explicación de por qué no hay camino');
  assert.throws(()=>c.respuestaMapaGps(mapReply([[43,-2],[43.001,-2]]),[[44,-2],[44.001,-2]]),/cerca/);
 });
 test('un fallo del servidor no se cuenta como que no hay camino',async()=>{
