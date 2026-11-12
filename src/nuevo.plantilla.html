@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#07131d"><title>Trabakutik · Navegador nuevo</title><link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#e6f4ff;background:#07131d}*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.4;cursor:default}#app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(7px + env(safe-area-inset-top)) 12px 8px;background:#0a1b27;border-bottom:1px solid #284456;min-height:62px}.top strong{font-size:13px;font-weight:760;letter-spacing:.05em}.top small{font-size:10px;color:#91b4c4;display:block}.top .sub{font-size:11px;color:#a6eefe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}.top a{color:#9ed9e7;font-size:11px;text-decoration:none}#map{position:relative;flex:1;min-height:0;background:#172d33}#map{overflow:hidden}#mapRot{position:absolute;left:50%;top:50%;width:var(--lado,780px);height:var(--lado,780px);margin-left:calc(var(--lado,780px)/-2);margin-top:calc(var(--lado,780px)/-2);transform-origin:50% 50%;transition:transform .4s linear;will-change:transform}#mapRot.sin-giro{transition:none}/* PANTALLA DESPEJADA. Lo pidio el autor con la pantalla delante: «mucho cajon
+   abajo, puedes hacer que desaparezca todo una vez que este grabando, que
+   aparezca con otro boton». En marcha lo que importa es el mapa: se esconde
+   el pie entero -modos, botones y leyenda- y del recuadro de arriba, la fila
+   del titulo y el selector de mapa, que en marcha no se tocan. El aviso de
+   «al reves» se queda pero pequeño; ademas iba repetido en el recuadro y en
+   el pie, y asi queda uno solo. */
+#despeja{position:absolute;z-index:742;left:50%;bottom:10px;transform:translateX(-50%);
+ padding:7px 14px;border-radius:12px;background:#0d2339ed;color:#d4f7ff;
+ border:1px solid #5a889b7a;font-size:11px;font-weight:700;box-shadow:0 2px 14px #0006}
+#despeja.hidden{display:none!important}
+body.despejado .bottom{display:none}
+body.despejado .info .info-top{display:none}
+body.despejado #reverseWarn{font-size:10px;padding:3px 8px;line-height:1.25}
+#mapCredit{position:absolute;z-index:620;right:0;bottom:var(--turn-alto,0px);font-size:9px;line-height:1.6;color:#9fb8c6;background:#07131db8;padding:0 5px;border-radius:5px 0 0 0;pointer-events:none}.solo-app{display:block;background:#15313fdb;border:1px solid #3b6579;border-radius:12px;padding:9px 11px;margin-bottom:8px}.solo-app b{display:block;font-size:12px;color:#bfefff;margin-bottom:3px}.solo-app span{display:block;font-size:10px;line-height:1.45;color:#9fc0d0}.solo-app-baja{display:block;text-align:center;margin-top:8px;background:#92fca8;color:#06271b;font-weight:800;font-size:12px;text-decoration:none;border-radius:10px;padding:9px}#orient[aria-pressed=true]{background:#66e5ff!important;color:#051824!important;border-color:#66e5ff!important}#audioMode[data-modo="voz"]{border-color:#66e5ff!important;color:#66e5ff!important}#audioMode[data-modo="pitidos"]{border-color:#ffa94d!important;color:#ffa94d!important}#audioMode[data-modo="silencio"]{color:#819ba8!important}.routeitem .btn-sub{padding:6px 7px;font-size:11px;border-radius:8px;background:#173747;border:1px solid #4a7186;color:#d4f7ff;white-space:nowrap}#eye[aria-pressed=true]{background:#ffa94d!important;color:#2b1603!important;border-color:#ffa94d!important}#locate.siguiendo{background:#187cff!important;color:#fff!important;border-color:#187cff!important}.leaflet-container{background:#172d33}.leaflet-control-attribution{font-size:9px!important}.tools{position:absolute;z-index:700;right:10px;top:12px;display:grid;gap:7px}.tools button{width:42px;height:42px;border:1px solid #5a889b7a;border-radius:13px;background:#0d2339ed;color:#d4f7ff;font-size:21px;box-shadow:0 2px 14px #0006}.info{position:absolute;z-index:700;left:10px;top:12px;max-width:calc(100% - 80px);background:#0a1f2edb;border:1px solid #31576a;border-radius:13px;padding:9px 12px;backdrop-filter:blur(12px);pointer-events:none}.info b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info span{display:block;font-size:10px;color:#a5bece;margin-top:4px}.bottom{background:#091925;border-top:1px solid #315265;padding:8px 9px calc(9px + env(safe-area-inset-bottom));flex:none}.modes{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:8px}.modes button{border:0;border-radius:15px;background:linear-gradient(180deg,#16384a,#0e2433);color:#a9cdda;padding:9px 4px;font-size:12px;font-weight:650;box-shadow:inset 0 1px 0 #ffffff12,0 3px 10px #00000055;transition:transform .08s ease,filter .08s ease}.modes button:active{transform:translateY(1px);filter:brightness(.92)}.modes button[aria-pressed=true]{color:#04202c;background:linear-gradient(180deg,#8bf0ff,#45d2f2);box-shadow:inset 0 1px 0 #ffffffaa,0 5px 18px #4ed7f54d}.actions{display:flex;gap:6px;align-items:center;justify-content:center;min-height:44px}.actions button{min-height:43px;flex:1;padding:9px 8px;border:0;border-radius:15px;background:linear-gradient(180deg,#1d4057,#122b3c);color:#eaf8ff;font-size:12px;font-weight:700;letter-spacing:.2px;box-shadow:inset 0 1px 0 #ffffff1a,inset 0 -1px 0 #00000055,0 3px 10px #00000066;transition:transform .08s ease,filter .08s ease}.actions button:active{transform:translateY(1px);filter:brightness(.92)}.actions button:disabled{box-shadow:none}.actions .go{background:linear-gradient(180deg,#a9ffbd,#62e283);color:#042616;box-shadow:inset 0 1px 0 #ffffff99,inset 0 -1px 0 #00000033,0 5px 18px #4ddc7a4d}.actions .red{background:linear-gradient(180deg,#f4697b,#d83a50);color:#fff;box-shadow:inset 0 1px 0 #ffffff5c,inset 0 -1px 0 #00000038,0 5px 18px #e951644d}.actions .blue{background:linear-gradient(180deg,#4a9cf2,#2176d7);color:#fff;box-shadow:inset 0 1px 0 #ffffff5c,inset 0 -1px 0 #00000038,0 5px 18px #338be94d}.actions .amber{background:linear-gradient(180deg,#ffd089,#f4a63c);color:#2d1804;box-shadow:inset 0 1px 0 #ffffff8a,inset 0 -1px 0 #00000030,0 5px 18px #ffbd694d}#recordStart{font-size:15px;line-height:1.15;padding:8px}#recordStart small{display:block;font-weight:600;font-size:10px;opacity:.72;margin-top:2px}.actions .light{background:#123046}@media (prefers-reduced-motion:reduce){.actions button,.modes button{transition:none}.actions button:active,.modes button:active{transform:none}}.hidden{display:none!important}.status{font-size:10px;color:#a7bfcb;margin-top:6px;text-align:center;min-height:13px}.version{font-size:9px;color:#6d8a98;text-align:center;margin-top:4px}.legend{font-size:10px;color:#9cb8c7;display:flex;justify-content:center;gap:12px;margin-top:6px}.dot{width:15px;height:3px;display:inline-block;vertical-align:middle;margin-right:3px}.popup{position:absolute;z-index:900;inset:0;background:#07131dba;display:grid;place-items:end center}.sheet{width:100%;max-height:77%;overflow:auto;background:#102938;border:1px solid #365467;border-radius:19px 19px 0 0;padding:16px 14px 24px}.sheet h2{font-size:16px;margin:0 0 9px}.sheet input{width:100%;border-radius:10px;background:#173747;border:1px solid #638092;color:white;padding:12px;margin-bottom:9px}.sheet button{background:#163a4c;color:white;border:1px solid #4d7385;border-radius:10px;padding:10px}.routeitem{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;text-align:left;margin:5px 0;font-size:12px}.routeitem span{font-size:10px;color:#a4c3d2}
+.routeitem .ri-txt{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12px;color:inherit}
+.routeitem .ri-name{font-size:12px;color:inherit}
+.routeitem .ri-km{font-size:10px;color:#8fb3c4;font-variant-numeric:tabular-nums}.sheet .close{float:right}.on-map{position:absolute;bottom:10px;left:10px;z-index:700;border-radius:99px;padding:7px 11px;font-size:11px;background:#0b293bdd;color:#a5e3f3;border:1px solid #3d7485;pointer-events:none}@media(min-width:800px){#app{max-width:900px;margin:auto;border-left:1px solid #1e4453;border-right:1px solid #1e4453}.top{padding-top:12px}}
+
+.android-app .top{display:none}
+.android-app #app{height:100vh;height:100dvh}
+.android-app .bottom{padding-bottom:max(9px,env(safe-area-inset-bottom))}
+.is-recording .info{border-color:#fc4e64}
+.is-recording .info b::before{content:'● ';color:#ff405c}
+/* Vista Android compacta: el mapa conserva prioridad sobre el panel. */
+html{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#app{height:100vh;height:100vh;height:100dvh}
+button{min-width:0}
+.top{gap:8px}
+.top>div{min-width:0;flex:1}
+.top a{flex:none;white-space:nowrap}
+.bottom{box-shadow:0 -4px 18px #04101990}
+.legend{flex-wrap:wrap}
+.is-recording #recordStop{background:#c52640;border-color:#ff5a6e;color:#fff}
+.is-recording .status{color:#ffb2bd;font-weight:700}
+.recorded-red{filter:drop-shadow(0 0 2px #500e20)}
+.sheet{max-height:78vh;max-height:min(78dvh,640px);overscroll-behavior:contain}
+.sheet button{min-height:42px}
+@media(max-width:390px){
+ .top{padding-inline:9px}
+ .top a{font-size:10px}
+ .modes button{font-size:11px;padding:10px 2px}
+ .actions button{font-size:11px;padding:8px 4px}
+ .bottom{padding-inline:7px}
+ .legend{gap:8px}
+ .info{padding:7px 9px;max-width:calc(100% - 66px)}
+ .tools{right:7px}
+ .tools button{width:39px;height:39px}
+}
+@media(max-height:650px){
+ .top{min-height:47px;padding-block:6px}
+ .modes{margin-bottom:4px}
+ .bottom{padding-top:5px}
+ .status{margin-top:4px}
+ .legend{margin-top:4px}
+}
+
+.elevation-panel{background:#0b202e;border-top:1px solid #376077;padding:7px 11px 6px;flex:none;min-height:141px}
+.elevation-head,.elevation-stats,.elevation-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.elevation-head strong{font-size:10px;letter-spacing:.1em;color:#a9cfdf}
+.elevation-head span{font-size:11px;font-weight:750;color:#a2f6b0;text-align:right}
+.elevation-head .up{color:#ffbe74}.elevation-head .down{color:#81e4ff}
+.elevation-stats{justify-content:flex-start;gap:17px;font-size:12px;font-weight:750;margin-top:3px}
+.elevation-stats span:nth-child(2){color:#ffbd75}.elevation-stats span:nth-child(3){color:#85dffd}
+#elevationSvg{display:block;width:100%;height:86px;margin-top:1px;overflow:visible}
+.elevation-foot{font-size:10px;color:#95b5c5;margin-top:-2px}
+@media(max-height:650px){.elevation-panel{min-height:113px;padding-top:4px}#elevationSvg{height:62px}}
+
+.clear-active{border:1px solid #506b79;background:#173544;color:#e5f4fa;border-radius:8px;width:25px;height:26px;display:grid;place-items:center;font-size:20px;line-height:1;flex:none;padding:0}
+.clear-active.hidden{display:none}
+.info-top .basemap-control{flex-shrink:0}
+.info:has(.clear-active:not(.hidden)) .basemap-control{max-width:92px}
+#createActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#createActions button{min-width:0}
+@media(max-height:650px){#createActions button{min-height:36px;padding:6px 5px}}
+/* Selector cartográfico compacto; mantiene el trazado sobre las teselas. */
+.info{max-width:calc(100% - 79px);width:min(315px,calc(100% - 79px));pointer-events:auto}
+.info-top{display:flex;align-items:center;justify-content:space-between;gap:5px}
+.info-top b{min-width:0;flex:1}
+.basemap-control{display:flex;align-items:center;gap:4px;padding:2px 5px;border:1px solid #446679;border-radius:9px;background:#102b3be8;flex:none}
+.basemap-control span{color:#a2b9c9;font-size:9px}
+.basemap-control select{width:64px;font-size:11px;color:#d9faff;background:transparent;border:0;outline:none;padding:3px 0}
+.basemap-control option{color:#0b2130;background:#e3f1f6}
+/* El boton de guardar el mapa es uno mas de la columna de mandos. Estuvo
+   unas horas al lado del selector de mapa, que es el unico sitio donde no
+   hay ningun otro mando: ahi no lo encuentra nadie. */
+#guardaMapa[disabled]{opacity:.42}
+/* La flecha sola no decia de que. Encima lleva la palabra. */
+#guardaMapa{display:grid;place-items:center;line-height:1;padding:0}
+#guardaMapa small{font-size:8.5px;font-weight:700;letter-spacing:.2px;opacity:.82}
+#guardaMapa b{display:block;font-size:17px;font-weight:400;line-height:1;margin-top:1px}
+#guardaMapa.tiene{border-color:#49d08a!important;color:#8ff0bd!important}
+.mapa-cuerpo{padding:12px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.mapa-cuerpo p{margin:0;font-size:13px;line-height:1.45;color:#d7ecf4}
+.mapa-ya{color:#9fc0d0;font-size:12px}
+.mapa-nota{color:#8fa9b8;font-size:11px;line-height:1.4}
+.mapa-barra{height:8px;border-radius:6px;background:#10303f;overflow:hidden}
+.mapa-barra i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2aa7d8,#58e6c8);transition:width .2s}
+.mapa-botones{display:flex;gap:8px;flex-wrap:wrap}
+.mapa-botones button{flex:1 1 auto;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid #3d6478;
+ background:#143c50;color:#e8f8ff;font-size:13px;font-weight:600;cursor:pointer}
+.mapa-botones .mapa-borrar{background:#2a1620;border-color:#6d3346;color:#f0c8d2}
+.mapa-botones button:active{transform:translateY(1px);filter:brightness(.92)}
+#navActions{grid-template-columns:1fr 1fr;display:grid}
+#navActions.hidden{display:none}
+#navActions button{width:100%}
+@media(max-width:390px){.info{max-width:calc(100% - 65px);width:min(315px,calc(100% - 65px))}.basemap-control span{display:none}.basemap-control select{width:58px}}
+
+.map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
+.turn-hint{position:absolute;z-index:1100;left:10px;right:10px;bottom:12px;padding:13px 15px;border-radius:20px;background:linear-gradient(160deg,#0b2b3bf2,#071d29f7);border:1px solid #3d8ea4;box-shadow:0 0 0 1px #4de1ff22,0 10px 34px #000b,inset 0 1px 0 #ffffff14;color:#f0fcff;pointer-events:none}
+#map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
+/* Por id y no por clase: «.info span» y «.info b» ponen display:block y
+   ganan por especificidad a una clase, asi que la brujula y los kilometros
+   se apilaban en cuatro lineas en vez de ir en fila. */
+#compass{display:flex;align-items:center;gap:8px;margin-top:5px}
+#compass b{display:inline;font-size:14px;font-weight:800;color:#a6f3ff;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;margin:0}
+#compass svg{flex:0 0 auto}
+#routeProgress{display:block;font-size:11px;color:#cdeefb;margin-top:4px;font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+#routeProgress b{display:inline;font-size:11px;color:#8ef0ff;font-weight:800;white-space:nowrap;overflow:visible;margin:0}
+.reverse-warn{display:block;margin-top:5px;padding:3px 7px;border-radius:7px;background:#4a2f07e6;border:1px solid #c98a2b;color:#ffd99a;font-size:10px;font-weight:700;letter-spacing:.03em;line-height:1.25}
+.turn-fila{display:flex;align-items:center;gap:13px}
+.turn-arrow{flex:0 0 auto;width:78px;height:78px;border-radius:18px;background:radial-gradient(70% 70% at 50% 35%,#10536399,#07222ecc);border:1px solid #4ba7bc;display:grid;place-items:center;box-shadow:inset 0 0 22px #4de1ff26,0 0 18px #4de1ff1f}
+.turn-copy{display:flex;flex-direction:column;min-width:0;flex:1}
+.turn-copy b{font-size:18px;font-weight:700;line-height:1.15}
+.turn-copy small{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#79c6da;margin-top:3px}
+.turn-dist{display:flex;align-items:baseline;gap:5px;margin-top:5px}
+.turn-dist em{font-style:normal;font-size:42px;font-weight:800;line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#a6f3ff;text-shadow:0 0 20px #4de1ff5c}
+.turn-dist i{font-style:normal;font-size:15px;font-weight:600;color:#8fd3e4}
+.turn-fases{display:flex;gap:6px;margin-top:12px}
+.turn-fases i{flex:1;height:5px;border-radius:3px;background:#17404f}
+.turn-fases i.on{background:linear-gradient(90deg,#4de1ff,#a6f3ff);box-shadow:0 0 10px #4de1ff80}
+.turn-rot{display:flex;gap:6px;margin-top:5px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#5d8fa2;font-variant-numeric:tabular-nums}
+.turn-rot span{flex:1}
+.turn-rot span.on{color:#4de1ff}
+@media(max-width:390px){.turn-hint{left:7px;right:7px;bottom:8px;padding:11px 12px;border-radius:17px}.turn-arrow{width:66px;height:66px;border-radius:15px}.turn-copy b{font-size:16px}.turn-dist em{font-size:36px}}
+
+/* Creador compacto: el mapa tiene prioridad. */
+.elevation-panel{padding:5px 10px 4px;min-height:0;height:102px;overflow:hidden}
+#elevationSvg{height:53px;margin-top:0}
+.elevation-head strong{font-size:10px}
+.elevation-head span{font-size:10px}
+.elevation-stats{font-size:11px;margin-top:1px;gap:12px}
+.elevation-foot{font-size:9px;line-height:12px;margin-top:0}
+.elevation-panel.profile-empty{height:48px}
+.elevation-panel.profile-empty #elevationSvg,.elevation-panel.profile-empty .elevation-foot{display:none}
+#createActions{display:flex;flex-wrap:nowrap;gap:5px;min-height:36px}
+#createActions button{min-height:36px;padding:6px 3px;font-size:11px;flex:1;white-space:nowrap}
+#createActions #clearCreated{background:#552937;border-color:#8a4653}
+#createActions #saveCreated{flex:1.25}
+#createActions #navCreated:not(.hidden){flex:0.8}
+body:not(:has(#modeCreate[aria-pressed="true"])) .modes{display:none}body:has(#modeCreate[aria-pressed="true"]) .bottom{padding:6px 7px 5px}
+body:has(#modeCreate[aria-pressed="true"]) .modes{margin-bottom:5px}
+body:has(#modeCreate[aria-pressed="true"]) .modes button{padding:6px 2px;font-size:11px}
+
+body:has(#modeCreate[aria-pressed="true"]) .status{margin-top:3px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+@media(max-height:650px){.elevation-panel{height:86px}#elevationSvg{height:39px}.elevation-panel.profile-empty{height:45px}}
+
+/* Creador cartográfico: herramientas en el borde y mapa casi completo. */
+#app{position:relative}
+/* CADA BOTON CON SU NOMBRE DEBAJO. Eran cuadrados de 42 px con solo un
+   simbolo y el autor lo dijo claro: «mucho boton pero sin saber para que
+   sirve cada uno, ¿cerrar circulo?, por ejemplo». El rotulo va en un ::after
+   de 8 px porque el boton lleva font-size:0 -su texto de verdad es el que se
+   ve fuera del creador-. La columna pasa de 42 a 58 px de ancho; en una
+   pantalla de 390 sigue sobrando mapa de sobra. */
+body.creating-route #createActions{
+ position:absolute;z-index:735;left:8px;top:118px;
+ display:flex;flex-direction:column;gap:6px;
+ background:transparent;min-height:0;width:58px;max-width:58px;
+}
+body.creating-route #createActions button{
+ min-width:58px;width:58px;height:48px;min-height:48px;max-height:48px;
+ padding:0;border-radius:11px;font-size:0;flex:none;box-shadow:0 2px 10px #03172380;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+}
+body.creating-route #createActions button::before{line-height:1}
+body.creating-route #createActions button::after{
+ font-size:8px;line-height:1.05;letter-spacing:.01em;font-weight:700;opacity:.9;
+ max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+body.creating-route #createActions #undo::after{content:'Deshacer'}
+body.creating-route #createActions #clearCreated::after{content:'Borrar'}
+body.creating-route #createActions #saveCreated::after{content:'Guardar'}
+body.creating-route #createActions #navCreated::after{content:'Abrir ruta'}
+body.creating-route #createActions #cerrarCirculo::after{content:'Círculo'}
+body.creating-route #createActions #idaVuelta::after{content:'Ida y vta.'}
+body.creating-route #createActions #undo::before{content:'↶';font-size:23px}
+body.creating-route #createActions #clearCreated::before{content:'×';font-size:25px}
+body.creating-route #createActions #saveCreated::before{content:'✓';font-size:22px}
+body.creating-route #createActions #navCreated::before{content:'➤';font-size:20px}
+/* En el creador la botonera es una columna de iconos de 42 px con font-size:0,
+   asi que cada boton necesita su glifo aqui o sale un cuadrado vacio. */
+body.creating-route #createActions #cerrarCirculo::before{content:'⟳';font-size:23px}
+body.creating-route #createActions #idaVuelta::before{content:'↔';font-size:23px}
+body.creating-route #createActions button:disabled{opacity:.48}
+body.creating-route #elevationPanel{
+ position:absolute;z-index:730;bottom:8px;left:8px;right:8px;
+ min-height:0;border:1px solid #38677d;
+ border-radius:12px;background:#081e2bec;box-shadow:0 3px 16px #00152188;pointer-events:auto;
+}
+body.creating-route #elevationPanel.profile-empty .elevation-foot,
+body.creating-route #elevationPanel.profile-empty #elevationSvg{display:none}
+body.creating-route .bottom{padding:4px 7px 5px}
+body.creating-route .modes{margin:0;gap:5px}
+body.creating-route .modes button{min-height:35px;padding:6px 3px;border-radius:10px;font-size:11px}
+body.creating-route .bottom .status,body.creating-route .bottom .legend{display:none}
+body.creating-route .info{padding:5px 9px}
+body.creating-route .info #distance{display:none}
+body.creating-route .info .info-top b{font-size:11px}
+body.creating-route #drawTip{display:none}
+body.creating-route .tools{top:8px;gap:6px}
+body.creating-route .tools button{width:38px;height:38px;font-size:19px;border-radius:11px}
+body.creating-route #createActions button:focus-visible{outline:2px solid #a4ecff;outline-offset:2px}
+/* La senal sobre el mapa: cuadradito pequeno con la flecha dibujada. */
+.map-turn-sign{
+ width:34px;height:34px;border-radius:10px;border:1px solid #85d5e5;
+ background:#10394bdf;display:grid;place-items:center;box-shadow:0 2px 9px #00151e80
+}
+@media(max-height:670px){
+ body.creating-route #createActions{top:86px}
+}
+
+/* Sistema cartográfico: mapa como lienzo y mandos flotantes ultracompactos. */
+body.creating-route footer.bottom{display:none}
+body.creating-route #map{flex:1;min-height:0}
+body.creating-route .modes{
+ position:absolute;z-index:740;left:50%;transform:translateX(-50%);
+ display:flex;align-items:center;justify-content:center;gap:3px;
+ width:max-content;max-width:calc(100% - 22px);margin:0;padding:4px;
+ border:1px solid #5c8a9b88;border-radius:14px;
+ background:#0a1e2dee;box-shadow:0 4px 20px #00131e99;
+ backdrop-filter:blur(13px);
+}
+body.creating-route .modes button{
+ flex:none;min-width:70px;min-height:36px;height:36px;
+ padding:5px 9px;border-radius:10px;border:0;
+ background:transparent;color:#a8c4d2;font-size:11px;font-weight:650;
+}
+body.creating-route .modes button[aria-pressed=true]{
+ color:#041e2a;background:#69e0f2;border-radius:9px;
+}
+body.creating-route{
+ --create-summary-height:83px;
+ --create-profile-height:145px;
+}
+body.creating-route #elevationPanel{
+ bottom:9px;height:var(--create-profile-height);padding:6px 10px;
+}
+body.creating-route .modes{bottom:calc(var(--create-profile-height) + 22px)}
+body.creating-route #elevationPanel .elevation-stats{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
+ font-size:clamp(15px,4.5vw,21px);line-height:1.15;font-variant-numeric:tabular-nums;
+}
+body.creating-route #elevationPanel .elevation-stats span::before{
+ display:block;font-size:10px;font-weight:650;line-height:1.2;margin-bottom:3px;color:#acd1df;
+}
+body.creating-route #profileDistance::before{content:'Distancia'}
+body.creating-route #profileGain::before{content:'Subida'}
+body.creating-route #profileLoss::before{content:'Bajada'}
+body.creating-route #elevationSvg{height:52px;margin-top:5px}
+.elevation-head{gap:7px}
+.elevation-head span{flex:1;min-width:0;text-align:right}
+#toggleProfile{
+ display:grid;place-items:center;width:25px;height:22px;min-height:22px;
+ padding:0;border:1px solid #4d7586;border-radius:8px;
+ background:#123849;color:#c9ecf5;font-size:18px;line-height:1;flex:none;
+}
+body.creating-route #elevationPanel.collapsed,
+body.creating-route #elevationPanel.profile-distance-only{height:var(--create-summary-height)}
+body.creating-route #elevationPanel.collapsed #elevationSvg,
+body.creating-route #elevationPanel.collapsed .elevation-foot{display:none}
+body.creating-route:has(#elevationPanel.collapsed) .modes,
+body.creating-route:has(#elevationPanel.profile-distance-only) .modes{bottom:calc(var(--create-summary-height) + 22px)}
+body.creating-route #elevationPanel.profile-empty:not(.profile-distance-only){height:34px}
+body.creating-route #elevationPanel.profile-empty:not(.profile-distance-only) .elevation-stats{display:none}
+body.creating-route #elevationPanel.profile-empty .elevation-head{min-height:22px}
+body.creating-route:has(#elevationPanel.profile-empty:not(.profile-distance-only)) .modes{bottom:55px}
+body.creating-route #elevationPanel.profile-empty #toggleProfile{display:none}
+#plannerCredit{display:none}
+body.creating-route #plannerCredit{display:block;position:absolute;bottom:0;right:0;z-index:745;font-size:8px;background:#07131dcc;color:#9fb8c6;padding:0 4px}
+#plannerCredit a{color:inherit}
+#plannerStatus{display:none}
+body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;z-index:725;top:55px;left:57px;right:55px;padding:5px 8px;border-radius:8px;background:#0a1e2dee;color:#c9eaf5;font-size:11px;line-height:1.35;pointer-events:none}
+@media(max-width:365px){body.creating-route .modes button{min-width:63px;padding:4px 6px}}
+
+
+
+
+#navActions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+#navActions.hidden{display:none!important}
+#navActions button{min-width:0;font-size:11px;padding:8px 3px;white-space:nowrap}
+ .route-list-scope{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0 12px}.route-list-scope button{font-size:11px;min-height:38px;padding:7px 2px;border:1px solid #47677a;border-radius:10px;color:#c1dbe6;background:#193646}.route-list-scope button[aria-pressed='true']{background:#48cce7;color:#092331;font-weight:750;border-color:#48cce7}
+
+.info-top .route-title-link{
+ display:block;min-width:0;flex:1;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+ background:transparent;border:0;padding:2px 1px;color:#e6f4ff;
+ text-align:left;font:inherit;font-size:12px;font-weight:750;
+ white-space:nowrap;cursor:pointer;
+}
+.info-top .route-title-link:not(:disabled){color:#c9f5ff;text-decoration:underline;text-decoration-color:#58b7cc70;text-underline-offset:3px}
+.info-top .route-title-link:not(:disabled)::after{content:' ↗';font-size:12px;color:#89dfe9}
+.info-top .route-title-link:disabled{opacity:1;cursor:default}
+.info-top .route-title-link:focus-visible{outline:2px solid #69e2f3;border-radius:3px}
+.tools button{background:#0d2339ed!important;color:#d4f7ff!important;border:1px solid #5a889b7a!important}
+.tools button svg{display:block;margin:auto}
+.tools #sos{font-size:12px;font-weight:800}
+.tools #sos[hidden]{display:none}
+.tools #eye[aria-pressed="true"]{border-color:#8bcbd9!important}
+.import-gpx{display:flex;margin:8px 0 14px}.import-gpx button{background:#12374b;color:#d4f7ff;border:1px solid #5689a0;border-radius:11px;padding:11px 14px;font-size:13px;font-weight:650;width:100%;text-align:center}/* Paneles por encima de controles y atribución de Leaflet, con cierre fijo visible. */
+.popup{z-index:2000}
+.sheet{position:relative;isolation:isolate}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-16px;margin:-16px -14px 10px;padding:14px 14px 10px;background:#102938;z-index:2;border-radius:19px 19px 0 0}
+.sheet-header h2{margin:0;min-width:0;flex:1}
+.sheet .sheet-header .close{float:none;position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;min-height:44px;padding:0;font-size:22px;line-height:1;z-index:3}
+#navActions:has(.open-native:not(.hidden)){flex-wrap:wrap}
+#navActions .open-native{flex:1 0 100%;display:block;text-align:center;text-decoration:none;padding:11px 8px;min-height:42px;border-radius:12px;background:#124a4a;color:#d9fff6;border:1px solid #3e9291;font-size:12px;font-weight:700}
+/* La bola de un punto del trazado. Era un circleMarker, que en Leaflet no se
+   puede arrastrar; ahora es un marcador con icono propio. Mide 16 px y con el
+   dedo eso no se agarra, asi que el area sensible se estira a 32 con un
+   pseudoelemento transparente, sin tocar como se ve. */
+.gps-dot{width:24px;height:24px;border-radius:50%;background:#103e53;
+ border:2px solid #fff;box-sizing:border-box;cursor:grab;display:grid;place-items:center;
+ color:#fff;font-size:11px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.gps-dot.es-primera{background:#0b1e28;border-color:#69e0f2}
+.gps-course{width:54px;height:54px;display:grid;place-items:center;transition:transform .4s linear}
+#compassNeedle{transform-origin:20px 20px;transition:transform .4s linear}
+.gps-dot.es-destino{background:#ffcb86;border-color:#fff;color:#172b38}
+.gps-dot::after{content:'';position:absolute;inset:-6px;border-radius:50%}
+.leaflet-dragging .gps-dot{cursor:grabbing}
+/* Con «Cerrar círculo» e «Ida y vuelta» la fila de crear pasa de tres botones
+   a cinco y a 390 px no caben: se deja partir y los dos nuevos ocupan media
+   fila cada uno, o sea que caen juntos en su propio renglón. */
+#createActions{flex-wrap:wrap}
+#createActions #cerrarCirculo,#createActions #idaVuelta{flex:1 0 calc(50% - 3px)}
+.save-choices{display:grid;gap:7px;margin-top:12px}.save-choices button{width:100%;text-align:left}.save-summary{font-size:12px;line-height:1.45;color:#b6d0dc;margin:8px 0}.save-status{font-size:11px;line-height:1.4;color:#a5c5d3;margin:10px 0 0}
+/* Perfil de la ruta elegida: barra plegable, sin cubrir los mandos del mapa. */
+#elevationPanel.navigation-profile{height:132px;min-height:0;padding:4px 10px 6px}
+#elevationPanel.navigation-profile .elevation-head{min-height:36px;cursor:pointer}
+#elevationPanel.navigation-profile .elevation-head strong{font-size:10px;letter-spacing:.06em}
+#elevationPanel.navigation-profile #toggleProfile{width:44px;height:36px;min-height:36px;font-size:20px}
+#toggleProfile:focus-visible{outline:2px solid #a4ecff;outline-offset:2px}
+#elevationPanel.navigation-profile #elevationSvg{height:57px}
+#elevationPanel.navigation-profile .elevation-stats{font-size:11px;margin-top:0}
+#elevationPanel.navigation-profile .elevation-foot{font-size:10px;margin-top:1px}
+#elevationPanel.navigation-profile.collapsed{height:44px;padding:3px 10px}
+#elevationPanel.navigation-profile.collapsed .elevation-stats,
+#elevationPanel.navigation-profile.collapsed #elevationSvg,
+#elevationPanel.navigation-profile.collapsed .elevation-foot{display:none}
+#elevationPanel.navigation-profile.profile-empty:not(.collapsed){height:92px}
+#elevationPanel.navigation-profile.profile-empty .elevation-stats{display:none}
+#elevationPanel.navigation-profile.profile-empty:not(.collapsed) .elevation-foot{display:flex;line-height:1.4}
+@media(max-height:650px){
+ #elevationPanel.navigation-profile:not(.collapsed):not(.profile-empty){height:112px}
+ #elevationPanel.navigation-profile #elevationSvg{height:37px}
+}
+/* Zonas táctiles amplias sin agrandar los iconos. */
+.tools button,body.creating-route .tools button{width:48px;height:48px}
+.tools{max-height:calc(100% - 24px);overflow-y:auto;overscroll-behavior:contain}
+.sheet .sheet-header .close{flex-basis:48px;width:48px;height:48px;min-height:48px}
+.sheet button,.actions button,.modes button{min-height:48px}
+/* Estado visible también con los mandos ocultos; no añade una cabecera. */
+#gpsState{display:flex;align-items:center;gap:6px;margin-top:5px;color:#b2c7d2;font-size:10px;line-height:1.4;font-variant-numeric:tabular-nums}
+#gpsState::before{content:'';width:7px;height:7px;border-radius:50%;background:#819ba8;flex:none}
+#gpsState[data-estado="recibiendo"]::before{background:#92fca8}
+#gpsState[data-estado="buscando"]::before,#gpsState[data-estado="impreciso"]::before{background:#ffd089}
+#gpsState[data-estado="sin-senal"]::before,#gpsState[data-estado="apagada"]::before,#gpsState[data-estado="permiso"]::before{background:#ff7b8e}
+#audioMode{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#audioMode .audio-label{font-size:8px;line-height:1;font-weight:700}
+</style></head><body><div id="app">
+<header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
+ <div class="elevation-head"><strong id="elevationTitle">PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
+ <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
+ <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
+ <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
+</section>
+<footer class="bottom"><div id="soloApp" class="solo-app hidden"><b id="soloAppTitulo">La navegación va solo en la aplicación</b><span id="soloAppTexto">En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a id="soloAppBaja" class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="savedRoutes">Mis rutas</button><button id="crearDesdeRuta" type="button">✎ Crear</button><a id="openNativeGps" class="open-native hidden" href="#" title="Grabar y seguir esta ruta con la pantalla bloqueada">↗ Abrir en la aplicación</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Abrir ruta</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Empezar<small>graba la ruta y avisa de los giros</small></button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · elige una ruta o pulsa Empezar</div><div class="version hidden" id="appVersion"></div></footer>
+<div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="mapaDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mapa sin cobertura</h2><button type="button" class="close" id="closeMapa" aria-label="Cerrar">✕</button></div><div class="mapa-cuerpo"><p id="mapaTexto">—</p><div id="mapaBarra" class="mapa-barra hidden"><i></i></div><p id="mapaGuardadoYa" class="mapa-ya"></p><div class="mapa-botones"><button type="button" id="mapaBajar">Guardar el mapa</button><button type="button" id="mapaParar" class="hidden">Parar</button><button type="button" id="mapaBorrar" class="mapa-borrar">Borrar lo guardado</button></div><p class="mapa-nota">Sólo se puede guardar el mapa del <b>IGN</b> y el de <b>satélite</b>: el Instituto Geográfico Nacional los publica con licencia CC-BY 4.0, que permite guardarlos citando el origen. OpenStreetMap lo prohíbe expresamente en sus teselas y OpenTopoMap no dice nada, así que esos dos no se bajan.</p></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
+</div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Abrir ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
+@@JS@@
+</script></body></html>

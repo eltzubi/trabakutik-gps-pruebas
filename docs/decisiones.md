@@ -70,3 +70,32 @@ decide **con dos salidas reales delante** —una andando o en bici, y otra con
 el mapa ya guardado, para separar lo que gasta la radio de lo que gasta el
 GPS—: tocar la frecuencia a ciegas es arriesgar la grabación para ahorrar algo
 que no se ha medido.
+
+## El navegador se monta por piezas (12 de noviembre de 2026)
+
+`nuevo.html` ya no se toca a mano: lo monta `node scripts/construye.cjs` con
+las diez piezas de **`src/js/`**, en el orden que dicen sus nombres. La
+comprobación de integración falla si los dos no cuadran byte a byte.
+
+**Por qué, con números.** Eran 3.698 líneas de JavaScript en un solo ámbito,
+154 funciones y 73 variables compartidas; y las pruebas cogían el código
+**recortándolo por marcadores de texto** —76 rodajas en los `.cjs` y 14 en
+los `.py`—. Mover una línea rompía una prueba que no tenía nada que ver.
+
+**El orden importa y por eso van numeradas.** Las 73 variables se declaran en
+un sitio y se usan en otro: juntar las piezas en otro orden cambiaría cuándo
+existe cada cosa. Ya pasó una vez, con `hayMapaGuardado` declarada después de
+usarse.
+
+**El primer corte no cambió ni un byte**, y está comprobado: el sha256 de
+`nuevo.html` antes y después del reparto es el mismo,
+`1a3a852a30f6e592d63dc358928000d90b1b0851d4453281a590f4d2b4494b10`. Lo que
+venga detrás —darle a cada pieza su propio estado y que sus pruebas pidan el
+fichero en vez de recortar texto— se hace pieza a pieza, no de golpe.
+
+**Lo que NO se hace: empezar de cero.** El autor lo ofreció. Se revisó todo
+el JavaScript con un corrector y no hay un solo defecto vivo; lo que falta
+son barandillas para editarlo. Y en esos comentarios están las decisiones
+medidas de meses —por qué Valhalla y no OSRM, por qué el IGN y no OSM para
+guardar mapa, la regla de los cruces—, que una reescritura tira y hay que
+volver a aprender a base de fallos en el monte.

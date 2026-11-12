@@ -47,6 +47,12 @@ jobs:
           for archivo in /tmp/trabakutik-inline-*.js; do
             node --check "$archivo"
           done
+      - name: Comprobar que nuevo.html cuadra con src/
+        # nuevo.html se monta con scripts/construye.cjs a partir de src/js.
+        # Si alguien lo edita a mano, aqui se ve: los dos tienen que ser
+        # byte a byte lo mismo.
+        run: node scripts/construye.cjs --comprueba
+
       - name: Revisar los nombres del JavaScript
         # Dos segundos y caza lo que mas se rompe al tocar un fichero de 3.700
         # lineas en un solo ambito: llamar a algo que no existe ahi.
