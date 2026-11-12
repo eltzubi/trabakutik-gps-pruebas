@@ -31,9 +31,13 @@ li em{color:#cdeaf6;font-style:normal;font-weight:650}
 .clave{background:#2b1a10;border:1px solid #9a5a2b;border-radius:12px;padding:12px 13px;margin:10px 0 2px}
 .clave p{margin:0 0 7px;font-size:12.5px;line-height:1.55;color:#f0d9c3}
 .clave p:last-child{margin-bottom:0}
+.clave .fino{font-size:11.5px;color:#cfae95}
 .no{color:#ff9d8c;font-weight:800}
 .si{color:#9cf2b4;font-weight:800}
 figure{margin:12px 0 2px;text-align:center}
+.fotos{display:flex;gap:9px;align-items:flex-start;margin-top:12px}
+.fotos figure{flex:1;min-width:0;margin:0}
+.fotos img{max-width:100%}
 figure img{width:100%;max-width:212px;height:auto;border-radius:13px;border:1px solid #3b6579;background:#0a1b27}
 figcaption{font-size:11px;line-height:1.45;color:#8fb0c0;margin-top:6px}
 .aviso{background:#15313fdb;border:1px solid #3b6579;border-radius:12px;padding:12px 14px;margin-top:24px}
@@ -54,8 +58,8 @@ footer a{color:#9ed9e7}
 <p class="nota">El enlace lleva siempre a la última versión. Para ver la que tienes
 instalada, el número sale abajo en la propia aplicación.</p>
 
-<p class="nota">Android pone <b>dos avisos</b> por el camino, porque la aplicación no está en
-Google Play. Los dos se pasan, y abajo está cómo. El segundo es el que para a casi todo el mundo.</p>
+<p class="nota">Android pone <b>dos avisos</b> por el camino, porque no está en Google Play.
+Los dos se pasan; abajo está cómo.</p>
 
 <h2>Instalación, paso a paso</h2>
 <ol>
@@ -67,33 +71,28 @@ Google Play. Los dos se pasan, y abajo está cómo. El segundo es el que para a 
   <em>Permitir desde esta fuente</em>. Es normal: la aplicación no está en Google Play.</span></li>
 
  <li><b>&laquo;Aplicaci&oacute;n bloqueada para proteger tu dispositivo&raquo;</b>
-  <span>Aqu&iacute; es donde se queda casi todo el mundo, y no hace falta.</span>
+  <span>Aqu&iacute; se queda casi todo el mundo.</span>
   <div class="clave">
-   <p><span class="no">No toques &laquo;Entendido&raquo;.</span> Ese bot&oacute;n cancela la
-   instalaci&oacute;n y te devuelve a donde estabas, sin decirte que te has quedado a medias.</p>
-   <p>Toca <span class="si">&laquo;M&aacute;s detalles&raquo;</span>, el texto peque&ntilde;o de
-   encima del bot&oacute;n. El aviso crece y aparece, <b>en gris y encima del bot&oacute;n
-   azul</b>, <span class="si">&laquo;Instalar de todas formas&raquo;</span>. No parece un
-   bot&oacute;n, pero lo es: eso es lo que instala.</p>
-   <p>Lo que dice el aviso es verdad y no es una alarma: Play Protect <em>no conoce</em> a quien
-   la ha hecho, porque la aplicaci&oacute;n no est&aacute; en Google Play. No ha encontrado nada
-   malo en ella; lo que dice es que no la ha visto antes.</p>
-   <p>Si en tu m&oacute;vil no aparece &laquo;Instalar de todas formas&raquo;: abre <em>Play Store</em> &rarr; tu foto
-   &rarr; <em>Play Protect</em> &rarr; el engranaje, y apaga <em>Analizar apps con Play
-   Protect</em>. Instala, y <em>vu&eacute;lvelo a encender</em> en cuanto acabe.</p>
+   <p><span class="no">No toques &laquo;Entendido&raquo;</span>: cancela la instalaci&oacute;n.</p>
+   <p>Toca <span class="si">&laquo;M&aacute;s detalles&raquo;</span> y luego
+   <span class="si">&laquo;Instalar de todas formas&raquo;</span>, en gris, encima del
+   bot&oacute;n azul.</p>
+   <p class="fino">Sale porque no est&aacute; en Google Play, no porque haya encontrado nada
+   malo. Si no aparece, apaga un momento el an&aacute;lisis en <em>Play Store &rarr; tu foto
+   &rarr; Play Protect &rarr; engranaje</em>.</p>
   </div>
+  <div class="fotos">
   <figure>
-   <img src="img/play-protect.webp" width="520" height="904" loading="lazy" decoding="async"
-    alt="El aviso de Google Play Protect: «Aplicación bloqueada para proteger tu dispositivo», con «Más detalles» debajo del texto y el botón azul «Entendido»">
-   <figcaption>1 &middot; Esto es lo que sale. El bot&oacute;n azul <b>no</b> es el que
-   instala: lo que buscas es <b>M&aacute;s detalles</b>.</figcaption>
-  </figure>
-  <figure>
-   <img src="img/play-protect-2.webp" width="520" height="698" loading="lazy" decoding="async"
-    alt="El mismo aviso despu&eacute;s de tocar Más detalles: debajo del texto aparece «Instalar de todas formas», en gris, encima del botón azul «Entendido»">
-   <figcaption>2 &middot; Al tocar &laquo;M&aacute;s detalles&raquo;. Ah&iacute; est&aacute;:
-   <b>Instalar de todas formas</b>, encima del bot&oacute;n azul.</figcaption>
-  </figure></li>
+    <img src="img/play-protect.webp" width="520" height="904" loading="lazy" decoding="async"
+     alt="El aviso de Google Play Protect: «Aplicación bloqueada para proteger tu dispositivo», con «Más detalles» debajo del texto y el botón azul «Entendido»">
+    <figcaption>1 &middot; Lo que sale.</figcaption>
+   </figure>
+   <figure>
+    <img src="img/play-protect-2.webp" width="520" height="698" loading="lazy" decoding="async"
+     alt="El mismo aviso despu&eacute;s de tocar Más detalles: debajo del texto aparece «Instalar de todas formas», en gris, encima del botón azul «Entendido»">
+    <figcaption>2 &middot; Tras <b>M&aacute;s detalles</b>.</figcaption>
+   </figure>
+  </div></li>
 
  <li><b>Concede los dos permisos</b>
   <span>Al abrirla por primera vez pide <em>Ubicación precisa</em> y <em>Notificaciones</em>.
@@ -109,9 +108,8 @@ Google Play. Los dos se pasan, y abajo está cómo. El segundo es el que para a 
 
 <div class="aviso">
  <b>&iquest;Te has quedado a medias?</b>
- <span>Si tocaste &laquo;Entendido&raquo; y la aplicaci&oacute;n no aparece en el m&oacute;vil, no
- hay que volver a descargar nada: abre la carpeta <em>Descargas</em>, toca otra vez
- <em>TrabakutikGPS.apk</em> y esta vez ve por &laquo;M&aacute;s detalles&raquo;.</span>
+ <span>Si tocaste &laquo;Entendido&raquo;, no hace falta descargar nada otra vez: toca
+ <em>TrabakutikGPS.apk</em> en <em>Descargas</em> y ve por &laquo;M&aacute;s detalles&raquo;.</span>
 </div>
 
 <div class="aviso">
