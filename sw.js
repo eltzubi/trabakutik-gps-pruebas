@@ -138,6 +138,32 @@ self.addEventListener('fetch', function (e) {
   // de la ultima vez. Asi una ruta que ya hayas abierto en casa conserva su
   // trazado fino en el monte, que es el que mide bien y con el que se calculan
   // los cruces.
+  // LOS DOS FICHEROS GORDOS DE LA ZONA VAN AL REVES: PRIMERO LA COPIA. Son
+  // los cruces (300 KB) y la red de caminos (1,6 MB), y con «primero la red»
+  // se bajaban enteros cada vez que abres la app o el creador con cobertura.
+  // No cambian casi nunca -se rehacen a mano desde OpenStreetMap-, asi que se
+  // sirve lo guardado al instante y se vuelven a pedir por detras: la
+  // siguiente vez ya esta lo nuevo. Es lo mismo que se hizo en la web con las
+  // fotos. El trazado fino de cada ruta sigue yendo primero a la red, que ese
+  // si se corrige.
+  if (/\/(caminos|cruces)-zona\.json$/i.test(new URL(url).pathname)) {
+    e.respondWith(
+      caches.match(peticion, { ignoreVary: true }).then(function (r) {
+        var red = fetch(peticion).then(function (resp) {
+          if (resp && resp.ok) {
+            var copia = resp.clone();
+            caches.open(CONCHA).then(function (c) { c.put(peticion, copia); })
+              .catch(function () {});
+          }
+          return resp;
+        });
+        if (r) { e.waitUntil(red.catch(function () {})); return r; }
+        return red;
+      })
+    );
+    return;
+  }
+
   if (/^https:\/\/raw\.githubusercontent\.com\/eltzubi\/Rutas-Mallabia\//i.test(url)) {
     e.respondWith(
       fetch(peticion).then(function (red) {

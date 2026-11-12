@@ -544,6 +544,63 @@ async function setup(context) {
         "PASS Chromium: el mapa de la ruta se baja del IGN, se niega con OSM y se pinta sin red",
       );
     }
+
+    // EL CREADOR SIN COBERTURA. Valhalla cae -que es lo que pasa en el
+    // monte- y el tramo lo calcula la red de caminos guardada en el
+    // telefono. Antes esto se quedaba en «revisa la conexion».
+    {
+      const caminos = path.join(root, '..', 'rutas-mallabia', 'data', 'caminos-zona.json');
+      let hayRed = true;
+      try { fs.accessSync(caminos); } catch (e) { hayRed = false; }
+      if (!hayRed) {
+        console.log('SALTADO: falta ../rutas-mallabia/data/caminos-zona.json');
+      } else {
+        const sin = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+        await setup(sin);
+        // El mismo puente que el creador de arriba: solo esta respuesta de
+        // prueba expone el estado; la pagina entregada no lo lleva.
+        await sin.route('**/nuevo.html', async route => {
+          const fuente = fs.readFileSync(path.join(root, 'nuevo.html'), 'utf8');
+          const fin = '\n})();\n</script>';
+          assert(fuente.includes(fin));
+          const puente = 'window.__sinRed={map,get redOsm(){return redOsm},' +
+                         'get anclasGps(){return anclasGps}};';
+          await route.fulfill({ contentType: 'text/html',
+            body: fuente.replace(fin, '\n' + puente + fin) });
+        });
+        await sin.route('**/caminos-zona.json', r => r.fulfill({
+          status: 200, contentType: 'application/json',
+          headers: { 'access-control-allow-origin': '*' },
+          body: fs.readFileSync(caminos) }));
+        await sin.route('**://valhalla1.openstreetmap.de/**', r => r.abort());
+        const q = await sin.newPage();
+        const fallos = [];
+        q.on('pageerror', e => fallos.push(e.message));
+        await q.goto(base + 'nuevo.html');
+        await q.evaluate(() => { window.confirm = () => true; });
+        // Se entra por «Crear» de la fila de abajo: el selector de modos
+        // esta escondido fuera del creador desde que la botonera son tres
+        // filas.
+        await q.click('#crearDesdeRuta');
+        await q.waitForFunction(() => window.__sinRed && window.__sinRed.redOsm,
+          null, { timeout: 60000 });
+        // Dos toques en Durango, donde no pasa ninguna ruta de la web: con la
+        // red vieja del creador esto no tenia ni camino ni planificador.
+        await q.evaluate(() => window.__sinRed.map.fire('click',
+          { latlng: L.latLng(43.17579, -2.63351) }));
+        await q.waitForFunction(
+          () => /caminos guardados/.test(document.querySelector('#plannerStatus').textContent) ||
+                window.__sinRed.anclasGps.length > 0, null, { timeout: 60000 });
+        await q.evaluate(() => window.__sinRed.map.fire('click',
+          { latlng: L.latLng(43.16049, -2.62573) }));
+        await q.waitForFunction(
+          () => /caminos guardados/.test(document.querySelector('#plannerStatus').textContent),
+          null, { timeout: 60000 });
+        assert.deepEqual(fallos, [], 'errores JS');
+        await sin.close();
+        console.log('PASS Chromium: sin Valhalla, el creador traza con los caminos guardados');
+      }
+    }
   } finally {
     if (browser) await browser.close();
     await new Promise((r) => server.close(r));
