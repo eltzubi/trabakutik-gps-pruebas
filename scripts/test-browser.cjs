@@ -644,6 +644,47 @@ async function setup(context) {
       console.log('PASS Chromium: en la aplicación, el GPX y el KML llegan al puente con su nombre');
     }
 
+
+    // EL IPHONE NO SE VA A UN CALLEJON SIN SALIDA. Fuera de la aplicacion, la
+    // pagina ofrecia «Descargar la aplicacion», y lo que hay detras es un APK
+    // de Android: un iPhone no lo puede instalar y nadie se lo decia. Aqui se
+    // comprueba con el navegador de un iPhone de verdad -su user agent- que
+    // se le cuenta lo que si puede hacer, y que a los demas no les cambia.
+    {
+      const casos = [
+        { nombre: 'iPhone', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) ' +
+            'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1',
+          apple: true },
+        { nombre: 'Android', ua: 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 ' +
+            '(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36', apple: false },
+      ];
+      for (const caso of casos) {
+        const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: caso.ua });
+        const q = await ctx.newPage();
+        const fallos = [];
+        q.on('pageerror', e => fallos.push(e.message));
+        await q.goto(base + 'nuevo.html');
+        await q.waitForSelector('#soloApp:not(.hidden)', { timeout: 30000 });
+        const visto = await q.evaluate(() => ({
+          titulo: document.querySelector('#soloAppTitulo').textContent,
+          texto: document.querySelector('#soloAppTexto').textContent,
+          baja: !document.querySelector('#soloAppBaja').classList.contains('hidden'),
+        }));
+        if (caso.apple) {
+          assert.match(visto.titulo, /En iPhone no hay aplicación/, 'el iPhone tiene que saber que no la hay');
+          assert.match(visto.texto, /App Store/);
+          assert.match(visto.texto, /pantalla de inicio/, 'y que puede añadirla a la pantalla de inicio');
+          assert.equal(visto.baja, false, 'a un iPhone no se le ofrece un APK de Android');
+        } else {
+          assert.match(visto.titulo, /solo en la aplicación/);
+          assert.equal(visto.baja, true, 'en Android se sigue ofreciendo la descarga');
+        }
+        assert.deepEqual(fallos, [], 'errores JS');
+        await ctx.close();
+      }
+      console.log('PASS Chromium: a un iPhone se le dice lo que puede hacer, no que se baje un APK');
+    }
+
   } finally {
     if (browser) await browser.close();
     await new Promise((r) => server.close(r));
