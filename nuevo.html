@@ -3147,7 +3147,24 @@ function computeJunctions(){
  const CERCA_CRUCE=25;
  // Un aviso por cruce y no uno por punto: la ruta deja varios puntos dentro
  // de los 25 m de un mismo nodo y el de 35 m de abajo no siempre los junta.
- const crucesDichos=new Set();
+ // POR PASO, NO POR RUTA. Era un Set de toda la ruta, y si la ruta volvia a
+ // pasar por el mismo cruce y alli cambiaba de camino, el segundo paso se
+ // quedaba mudo, tambien en el servicio con la pantalla apagada. Medido sobre
+ // las 72 rutas publicadas: 114 avisos de mas en 42 rutas al dejar avisar
+ // otra vez (santaeufemia 35->47, intxorta 73->82). Ahora se guarda en que
+ // punto de la ruta se aviso, y vale otra vez solo si DESDE ENTONCES la ruta
+ // se ha alejado del nodo mas de SALIDA_CRUCE_M: eso es salir y volver a
+ // entrar, un paso nuevo. No vale medirlo en metros recorridos -se probo con
+ // 60 m-: una herradura alrededor del propio cruce recorre mas que eso sin
+ // salir de sus 25 m y lo habria avisado dos veces.
+ // Y se apunta SOLO si el aviso se queda en la lista. Antes se apuntaba al
+ // decidir, y si despues el filtro de 35 m lo tiraba, el cruce quedaba
+ // «dicho» sin aviso ninguno.
+ const crucesDichos=new Map(),SALIDA_CRUCE_M=40;
+ const haSalido=(cruce,desde,hasta)=>{
+  for(let k=desde+1;k<hasta;k++)if(dist(pts[k],cruce)>SALIDA_CRUCE_M)return true;
+  return false;
+ };
  const CELDA=0.0006,rejCruces=new Map();
  for(const c of crucesOsm){
   const k=Math.floor(c[0]/CELDA)+'/'+Math.floor(c[1]/CELDA);
@@ -3267,15 +3284,15 @@ function computeJunctions(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null;
   if(cruce){
    const d=decideCruce(elCruce,b,giro.antes,giro.despues);
    if(d&&d.sinRamas){
     // Fichero de cruces antiguo, sin ramas: se decide como siempre, por el
     // angulo del propio track.
     porElCruce=angle>=CRUCE_GIRO;
-   }else if(d&&!crucesDichos.has(elCruce)){
-    crucesDichos.add(elCruce);
+   }else if(d&&!(crucesDichos.has(elCruce)&&!haSalido(elCruce,crucesDichos.get(elCruce),i))){
+    cruceAvisado=elCruce;
     porElCruce=true;
     grados=d.grados;ladoCruce=d.lado;mantente=d.mantente;
    }
@@ -3323,6 +3340,7 @@ function computeJunctions(){
   // de 160 para arriba es una herradura de verdad.
   const direction=grados>=HORQUILLA?'vuelta':hacia;
   junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente});
+  if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
  enviaGirosNativos();
 }

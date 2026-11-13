@@ -645,6 +645,36 @@ test('Avisa de una APK nueva comparando con la versión publicada en instalar.ht
 // En estas pruebas los rumbos van en GRADOS de brujula: 90 es hacia el este,
 // que es hacia donde va corner(0), y 270 es por donde se llega.
 function ramas(...grupos){return grupos}
+test('Un cruce por el que la ruta pasa dos veces se avisa las dos veces',()=>{
+ // Era un Set de toda la ruta: el segundo paso, aunque alli hubiera que
+ // cambiar de camino, se quedaba mudo -tambien en el servicio-. Medido en las
+ // 72 rutas: 114 avisos perdidos en 42 rutas.
+ const linea=(a,b)=>{const n=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/5),o=[];for(let k=1;k<=n;k++)o.push(point(a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n));return o};
+ const fin=[50*Math.cos(Math.PI/3),50*Math.sin(Math.PI/3)];
+ const ruta=[...corner(60),...linea(fin,[300,300]),...linea([300,300],[-300,300]),
+  ...linea([-300,300],[-300,0]),...linea([-300,0],[-55,0]),...corner(60)];
+ const turns=detector().detect(ruta,[[...point(0,0),[[90,270],[30]]]]);
+ const enElCruce=turns.filter(t=>meters(t.point,point(0,0))<2);
+ assert.equal(enElCruce.length,2,'los dos pasos por el cruce');
+ assert(enElCruce.every(t=>t.cruce&&t.direction==='izquierda'));
+});
+test('Una herradura alrededor del propio cruce no lo avisa dos veces',()=>{
+ // Con la regla de «60 m de recorrido» si: una vuelta dentro de los 25 m del
+ // nodo recorre mas de eso sin salir. Lo que cuenta es salir y volver.
+ // Vuelta de 22 m de radio: todos sus puntos caen dentro de los 25 m del
+ // nodo, pero los de lados opuestos estan a 44 m, mas que el filtro de 35 m
+ // que junta avisos pegados, y la vuelta recorre ~138 m.
+ const pts=[];for(let x=-80;x<=-22;x+=4)pts.push(point(x,0));
+ for(let a=180;a>=-180;a-=6)pts.push(point(22*Math.cos(a*Math.PI/180),22*Math.sin(a*Math.PI/180)));
+ for(let x=-26;x>=-80;x-=4)pts.push(point(x,-8));
+ const turns=detector().detect(pts,[[...point(0,0),[[90,270],[0,180]]]]);
+ const enElCruce=turns.filter(t=>t.cruce);
+ assert(enElCruce.length<=1,'como mucho un aviso de cruce: '+enElCruce.length);
+});
+test('Varios puntos de un mismo paso por el cruce siguen dando un solo aviso',()=>{
+ const turns=detector().detect(corner(60),[cruceCon([90,270],[30])]);
+ assert.equal(turns.length,1);
+});
 const cruceCon=(...grupos)=>[...point(0,0),grupos];
 
 test('Un cruce donde sigues por el mismo camino no se avisa, aunque el camino doble',()=>{
