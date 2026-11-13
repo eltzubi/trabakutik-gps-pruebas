@@ -803,7 +803,8 @@ public class TrackingService extends Service implements LocationListener {
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
    fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
    String time=fmt.format(new Date(l.getTime()));
-   boolean corta=forzarCorte||(lastRecordedTime>0&&(l.getTime()-lastRecordedTime>20000||(Double.isFinite(lastRecordedLat)&&l.distanceTo(makePreviousLocation())>100)));
+   boolean corta=cortaTrack(forzarCorte,lastRecordedTime>0,l.getTime()-lastRecordedTime,
+     Double.isFinite(lastRecordedLat)?l.distanceTo(makePreviousLocation()):0);
    if(corta&&lastRecordedTime>0)w.write("</trkseg><trkseg>\n");
    w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\n");
    // El MISMO corte que el GPX, «corta», y no una copia de la condicion sin
@@ -823,6 +824,29 @@ public class TrackingService extends Service implements LocationListener {
     updateNotice();
    }
   }
+ }
+ // CORTAR EL TRACK SOLO CUANDO EL HUECO NO SE PUEDE HABER RECORRIDO. El
+ // corte dice «aqui falta trozo» y pone el aviso de «el track tiene cortes»;
+ // si salta por nada, el aviso deja de valer.
+ //
+ // Los 100 m fijos cortaban en coche. En el GPX del autor del 13 de
+ // noviembre de 2026 -22 min, 20,4 km- salen DOS cortes y solo uno es de
+ // verdad: el bueno son 78 s y 1.911 m sin posicion, un tunel; el falso son
+ // 8 s y 177 m, que a 80 km/h es el coche yendo normal. 100 m a 80 km/h se
+ // hacen en cuatro segundos y medio, asi que cualquier tropiezo del GPS en
+ // carretera partia el track.
+ //
+ // La regla pasa a ser la de siempre en esta casa: por tiempo, no por
+ // metros. Se corta si el hueco pasa de 20 s, o si el salto no cabe en el
+ // tiempo que ha pasado. 40 m/s son 144 km/h, mas que cualquier carretera de
+ // aqui; y el suelo de 100 m deja fuera los teletransportes del GPS parado o
+ // andando, donde un salto asi nunca es un paseo.
+ static final double VEL_IMPOSIBLE=40;
+ static boolean cortaTrack(boolean forzar,boolean hayAnterior,long huecoMs,double salto){
+  if(forzar)return true;
+  if(!hayAnterior)return false;
+  if(huecoMs>20000)return true;
+  return salto>100&&salto>VEL_IMPOSIBLE*(huecoMs/1000.0);
  }
  Location makePreviousLocation(){Location p=new Location(LocationManager.GPS_PROVIDER);p.setLatitude(lastRecordedLat);p.setLongitude(lastRecordedLon);return p;}
  void endRecording(){

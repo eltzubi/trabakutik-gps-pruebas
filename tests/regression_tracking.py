@@ -85,7 +85,7 @@ public class TrackingRegression {
  }
  String fraseGiro(int lado,int tipo,String f,double a){return "";}
  static void require(boolean condition,String message){if(!condition)throw new AssertionError(message);}
-'''+br+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+constant+method(' boolean esAntigua(Location l)')+sos+'''
+'''+br+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+constant+method(' boolean esAntigua(Location l)')+sos+method(' static boolean cortaTrack(boolean forzar,boolean hayAnterior,long huecoMs,double salto)')+re.search(r' static final double VEL_IMPOSIBLE=[^;]+;',src).group(0)+'''
  public static void main(String[] args)throws Exception{
  TrackingRegression p=new TrackingRegression();p.dirBase=new File(args[0]);
  long bucket=System.currentTimeMillis()/1000;
@@ -126,6 +126,19 @@ public class TrackingRegression {
  double vuelta=agua.total()-1000;
  require(agua.nextNotice(vuelta-50,1)!=null,"y al volver a pasar, otra vez: "+vuelta);
  System.out.println("PASS: la fuente se avisa en la ida y en la vuelta");
+
+ // EL TRACK SE CORTA CUANDO FALTA TROZO, NO CUANDO VAS DEPRISA. Los dos
+ // huecos del GPX del autor del 13 de noviembre de 2026, medidos: el tunel
+ // -78 s y 1.911 m- tiene que cortar, y los 8 s con 177 m a 80 km/h no,
+ // que es el coche yendo normal y con los 100 m fijos salia un corte falso.
+ require(cortaTrack(false,true,78000,1911),"el tunel parte el track");
+ require(!cortaTrack(false,true,8000,177),"8 s y 177 m a 80 km/h no es un corte");
+ require(!cortaTrack(false,true,1000,25),"un segundo a 90 km/h tampoco");
+ require(cortaTrack(false,true,1000,150),"150 m en un segundo son 540 km/h: eso es un salto del GPS");
+ require(cortaTrack(false,true,25000,3),"parado 25 s sin posicion tambien es un hueco");
+ require(cortaTrack(true,true,1000,1),"la pausa siempre corta");
+ require(!cortaTrack(false,false,999999,99999),"el primer punto no corta nada");
+ System.out.println("PASS: el track se corta por el hueco, no por la velocidad");
  }
 }'''
 with tempfile.TemporaryDirectory() as d:

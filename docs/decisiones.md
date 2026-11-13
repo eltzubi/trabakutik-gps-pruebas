@@ -139,3 +139,33 @@ volver. Pegado a la ruta sigue siendo inmediato.
 compila `decideSentido`, `checkDeviation` y `checkTurns` del servicio y hace
 la ruta al revés sin mandar ningún sentido. Con la contraprueba al lado: sin
 decidir el sentido, los dos giros salen al lado de enfrente.
+
+## El track se corta por el hueco, no por la velocidad (13 de noviembre de 2026)
+
+El resumen de una salida en coche decía «ATENCIÓN: el track tiene 2 cortes
+por pérdida de señal» y el autor mandó el GPX. Medido sobre él (22 min,
+20,41 km, tres tramos):
+
+| hueco | tiempo | salto | velocidad en recta |
+|---|---|---|---|
+| 1 | 8 s | 177 m | 80 km/h |
+| 2 | 78 s | 1.911 m | 88 km/h |
+
+El segundo es el túnel y es un corte de verdad: faltan 1,9 km de recorrido,
+y por eso la salida sale como 20,4 km cuando de punta a punta fueron 22,3.
+**El primero es falso**: 177 m en 8 s a 80 km/h es el coche yendo normal.
+Cortaba porque la regla eran 100 m fijos, y 100 m a 80 km/h se hacen en
+cuatro segundos y medio.
+
+**La regla pasa a ser por tiempo, como todo lo demás aquí**: se corta si el
+hueco pasa de 20 s, o si el salto no cabe en el tiempo que ha pasado
+(40 m/s, 144 km/h, más que cualquier carretera de aquí), con suelo de 100 m
+para que un teletransporte del GPS parado o andando siga cortando. Pasado el
+GPX entero por la regla nueva: **1 corte**, el túnel.
+
+Por qué importa que no grite por nada: el aviso dice «este track no es el
+recorrido entero». Si salta por ir deprisa, deja de creérselo nadie.
+
+**Lo que NO se hace: unir los extremos del túnel con una recta.** El GPX
+abre `<trkseg>` nuevo y la distancia no cuenta el hueco. Un kilómetro y
+medio de línea recta por dentro de la montaña sería inventarse el recorrido.
