@@ -55,6 +55,7 @@ python3 tests/regression_tracking.py
 python3 tests/sin_senal_gps.py
 python3 tests/silencio.py
 python3 tests/background_lifecycle.py
+python3 tests/giros_limite.py
 python3 scripts/test-gasto-bateria.py
 python3 scripts/test-nombre-descarga.py
 ```

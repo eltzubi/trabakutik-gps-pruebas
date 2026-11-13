@@ -130,6 +130,9 @@ jobs:
       - name: Comprobar los giros, la ruta y el GPX guardado
         working-directory: ${{ github.workspace }}
         run: python3 tests/regression_tracking.py
+      - name: Comprobar el tope de giros y el giro en el punto 0
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/giros_limite.py
       - name: Comprobar el resumen de bateria
         working-directory: ${{ github.workspace }}
         run: python3 scripts/test-gasto-bateria.py

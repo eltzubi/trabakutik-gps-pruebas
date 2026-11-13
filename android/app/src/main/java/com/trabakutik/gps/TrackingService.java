@@ -466,15 +466,22 @@ public class TrackingService extends Service implements LocationListener {
   }catch(IOException|JSONException e){android.util.Log.w("TrabakutikGPS","No se pudieron cargar las fuentes",e);}
   return waterPoints;
  }
+ /** Tope de giros por ruta. Lo usa tambien el puente (setJunctions). */
+ static final int GIROS_MAX=2000,GIROS_MAX_BYTES=200000;
+ /** Lo que el puente escribe en giros-activos.json: la lista tal cual si
+  *  cabe, y si no una vacia. Nunca «nada», que dejaba la de la ruta anterior. */
+ static String girosQueCaben(String json,int cuantos){
+  return cuantos<=GIROS_MAX&&json.length()<=GIROS_MAX_BYTES?json:"[]";
+ }
  void loadTurns(){
   turns.clear();warnedTurns.clear();upcomingTurn="";
   File f=new File(getFilesDir(),"giros-activos.json");
   if(!f.exists())return;
   try{
-   byte[] raw=new byte[(int)Math.min(f.length(),40000)];
+   byte[] raw=new byte[(int)Math.min(f.length(),GIROS_MAX_BYTES)];
    try(FileInputStream in=new FileInputStream(f)){int n=0,k;while(n<raw.length&&(k=in.read(raw,n,raw.length-n))>0)n+=k;}
    JSONArray list=new JSONArray(new String(raw,java.nio.charset.StandardCharsets.UTF_8));
-   for(int i=0;i<list.length()&&i<400;i++){
+   for(int i=0;i<list.length()&&i<GIROS_MAX;i++){
     JSONObject p=list.optJSONObject(i);if(p==null)continue;
     int at=p.optInt("i",-1),direction=p.optInt("dir",0);
     // "t": 1 si es un CRUCE de verdad -nodo de OpenStreetMap con tres ramas o
@@ -485,7 +492,12 @@ public class TrackingService extends Service implements LocationListener {
     // el giro: perder el matiz es barato, perder el aviso no.
     int tipo=p.optInt("t",1);
     if(tipo<0||tipo>2)tipo=1;
-    if(at>=0&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo});
+    // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
+    // la lista cuando el giro cae en ese punto, asi que un giro en el 0 no se
+    // pasaria nunca y bloquearia TODOS los de detras. La pagina no genera
+    // ninguno ahi (un giro necesita un punto antes), pero un fichero raro no
+    // puede dejar la ruta muda.
+    if(at>=1&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo});
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
    // avisos va de i=1 hacia arriba y solo avanza mientras el giro que toca

@@ -252,7 +252,7 @@ function enviaGirosNativos(){
 //
 // Medido sobre las 72 rutas y 1.600 km: 2.601 avisos, uno cada 615 m, frente
 // a los 1.952 de antes -uno cada 820-. La ruta con mas es hirutxikiak, con
-// 88; el servicio de Android se planta en 400 por ruta.
+// 88; el servicio de Android admite hasta 2000 por ruta (GIROS_MAX).
 const CRUCE_RECTO=25;
 function difRumbo(a,b){let d=(a-b)%360;if(d>=180)d-=360;if(d<-180)d+=360;return d}
 function decideCruce(cruce,centro,antes,despues){

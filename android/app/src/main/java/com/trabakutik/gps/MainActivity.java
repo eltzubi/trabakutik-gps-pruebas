@@ -581,9 +581,17 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void setJunctions(String json){
    try{
     org.json.JSONArray turns=new org.json.JSONArray(json);
-    if(turns.length()>400||json.length()>40000)return;
+    // Antes, con mas de 400 giros se hacia «return» sin escribir nada, y eso
+    // NO dejaba al servicio callado: se quedaba con la lista ANTERIOR, que es
+    // la de la ruta de antes -la pagina manda los puntos de la ruta nueva y
+    // luego sus giros-. Con la pantalla apagada avisaba cruces de otra ruta.
+    // Ahora el tope es de 2000 (la ruta con mas de la web tiene 88) y, si aun
+    // asi se pasa, se escribe una lista vacia: mejor sin giros que con giros
+    // de otro sitio. La pagina sigue avisando con la pantalla encendida.
+    String guardar=TrackingService.girosQueCaben(json,turns.length());
+    if(!guardar.equals(json))android.util.Log.w("TrabakutikGPS","Giros de mas ("+turns.length()+"): se vacia la lista");
     File f=new File(getFilesDir(),"giros-activos.json");
-    try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    try(FileOutputStream out=new FileOutputStream(f)){out.write(guardar.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
     // Antes esto se quedaba aqui: «se leen al iniciar NAVIGATE». Pero si ya
     // se estaba navegando, el servicio no se enteraba nunca y se quedaba sin
     // giros -o con los de la ruta anterior-, mientras la pagina se callaba

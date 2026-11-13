@@ -200,7 +200,7 @@ confirmación, que no suena a alarma, que es justo lo que hay que decir.
 
 Las dos pruebas llevan su contraprueba: quitando el sonido, fallan.
 
-## Pendiente para la próxima APK: más de 400 avisos de giro (13 de noviembre de 2026)
+## Más de 400 avisos de giro (13 de noviembre de 2026) — ARREGLADO en la APK siguiente a la 4.9.22
 
 El puente `setJunctions` (`MainActivity.java`) **tira la lista entera** si
 trae más de 400 avisos o pasa de 40.000 caracteres: no escribe nada y no
@@ -243,3 +243,20 @@ un APK que se instalara encima del suyo:
 
 El cambio de llave obliga a desinstalar **una última vez**: la primera versión
 con la llave fija no entra encima de la 4.9.21. De ahí en adelante, sí.
+
+**Cómo quedó (13 de noviembre de 2026).** Al repasar el navegador con un
+segundo modelo salió que era peor de lo apuntado: la lista no se quedaba
+vacía, se quedaba **la de la ruta anterior**. `loadSaved` y `selectRoute`
+mandan los puntos nuevos con los giros que aún tenía la página (los de la
+ruta de antes) y luego los nuevos; si estos se rechazaban, el servicio, y el
+fichero que leería el siguiente «Empezar», avisaban cruces de otra ruta.
+
+En vez de mandar «los 400 primeros», que deja sin avisos el final (o el
+principio, yendo al revés):
+- el tope sube a **2000 giros y 200.000 bytes** en el puente y en el servicio
+  (`TrackingService.GIROS_MAX`); la ruta con más de la web tiene 88;
+- si aun así se pasa, el puente escribe una **lista vacía**, nunca «nada»;
+- y el servicio ignora un giro en el punto 0, que en `checkTurns` dejaba
+  mudos todos los de detrás (la página no genera ninguno ahí).
+
+Lo prueba `tests/giros_limite.py`.
