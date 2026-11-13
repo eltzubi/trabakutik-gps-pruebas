@@ -219,3 +219,27 @@ dentro de Mallabia, unos 250 km.
 Arreglo propuesto: mandar los **400 primeros** en vez de ninguno. Necesita
 APK nueva, y por lo raro que es **el autor decidió no hacer una APK solo
 para esto**: va con la próxima vez que haya que tocar `android/`.
+
+## El APK se firma siempre con la misma llave (13 de noviembre de 2026)
+
+El autor: «cuando hay una actualización no dejan nunca nunca nunca instalar
+por encima; hay que borrar siempre la anterior». Medido: la 4.9.19, la 4.9.20
+y la 4.9.21 llevaban **tres certificados distintos**. El flujo compilaba con
+la llave de depuración que se inventa cada máquina nueva de GitHub, y Android
+no deja instalar encima una app firmada con otra llave. Desinstalar, además,
+borra las grabaciones que la app guarda dentro.
+
+Se eligió la llave **protegida por contraseña** (opción A) y no dejarla a la
+vista en el repositorio público (B), que habría permitido a cualquiera firmar
+un APK que se instalara encima del suyo:
+
+- La contraseña es el secreto **`FIRMA_CLAVE`** de GitHub. Solo la sabe el autor.
+- La llave, `android/firma/trabakutik.p12`, la crea el flujo la primera vez y
+  la guarda en el repositorio; sin la contraseña no sirve de nada.
+- **No borrar ese fichero ni cambiar el secreto**: cualquiera de las dos cosas
+  es una llave nueva, y con ella otra desinstalación obligada.
+- `scripts/firma-apk.py` tumba la publicación si el APK no sale con esa llave,
+  para que una llave al azar no vuelva a colarse sin que nadie lo vea.
+
+El cambio de llave obliga a desinstalar **una última vez**: la primera versión
+con la llave fija no entra encima de la 4.9.21. De ahí en adelante, sí.

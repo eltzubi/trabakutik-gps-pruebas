@@ -136,8 +136,48 @@ jobs:
       - name: Comprobar el nombre de las descargas
         working-directory: ${{ github.workspace }}
         run: python3 scripts/test-nombre-descarga.py
+      # LA LLAVE DE FIRMA, SIEMPRE LA MISMA. Ver android/app/build.gradle.kts y
+      # scripts/firma-apk.py. La primera vez no existe: se crea con el secreto
+      # FIRMA_CLAVE y se guarda en el repositorio en el acto, antes de compilar,
+      # para que ninguna version salga con una llave que luego se pierda. Si ya
+      # existe, se comprueba que el secreto la abre: con otra contraseña Gradle
+      # fallaria mas abajo con un error mucho menos claro.
+      - name: Preparar la llave de firma
+        if: github.event_name != 'pull_request'
+        env:
+          FIRMA_CLAVE: ${{ secrets.FIRMA_CLAVE }}
+        run: |
+          if [ -z "$FIRMA_CLAVE" ]; then
+            echo "::error::Falta el secreto FIRMA_CLAVE (Settings > Secrets and variables > Actions). Sin el, el APK no se podria instalar encima del anterior."
+            exit 1
+          fi
+          LLAVE=firma/trabakutik.p12
+          if [ ! -f "$LLAVE" ]; then
+            mkdir -p firma
+            keytool -genkeypair -keystore "$LLAVE" -storetype PKCS12 \
+              -storepass "$FIRMA_CLAVE" -keypass "$FIRMA_CLAVE" -alias trabakutik \
+              -keyalg RSA -keysize 2048 -validity 20000 -dname "CN=Trabakutik GPS"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$LLAVE"
+            git commit -m "Publicar TrabakutikGPS.apk: llave de firma fija"
+            # --autostash: el paso de la version ya ha tocado build.gradle.kts
+            # sin guardarlo, y sin esto el pull se niega.
+            git pull --rebase --autostash origin main
+            git push origin HEAD:main
+          fi
+          keytool -list -keystore "$LLAVE" -storetype PKCS12 -storepass "$FIRMA_CLAVE" -alias trabakutik >/dev/null \
+            || { echo "::error::FIRMA_CLAVE no abre android/firma/trabakutik.p12"; exit 1; }
+          keytool -exportcert -keystore "$LLAVE" -storetype PKCS12 -storepass "$FIRMA_CLAVE" \
+            -alias trabakutik -file "$RUNNER_TEMP/llave.der"
       - name: Compilar APK de prueba
+        env:
+          FIRMA_CLAVE: ${{ github.event_name != 'pull_request' && secrets.FIRMA_CLAVE || '' }}
         run: gradle :app:assembleDebug --no-daemon
+      - name: Comprobar que el APK lleva la llave fija
+        if: github.event_name != 'pull_request'
+        working-directory: ${{ github.workspace }}
+        run: python3 scripts/firma-apk.py android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/llave.der"
       - name: Comprobar que existe el APK
         run: |
           echo "Archivos generados:"
