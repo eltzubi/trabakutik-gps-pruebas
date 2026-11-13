@@ -73,6 +73,15 @@ public class SinSenalGpsTest {
   c.avisaSinGps();
   require(c.dicho.equals(Arrays.asList("Atención, la ubicación del teléfono está apagada")),c.dicho.toString());
 
+  // 7. Se enciende la ubicacion pero aun no ha entrado ninguna posicion: NO
+  //    es «señal recuperada». Se dice cuando llega la primera.
+  c.ubicacion=true;
+  c.avisaSinGps();c.avisaSinGps();
+  require(c.dicho.size()==1,"Encender la ubicacion no es recuperar la señal: "+c.dicho);
+  c.ultimoFixGpsElapsed=ahora;
+  c.avisaSinGps();
+  require(c.dicho.size()==2&&c.dicho.get(1).equals("Señal GPS recuperada"),"Con la primera posicion si: "+c.dicho);
+
   System.out.println("OK: sin señal se avisa en alto, una sola vez, y la vuelta tambien; al arrancar se calla");
  }
 }'''

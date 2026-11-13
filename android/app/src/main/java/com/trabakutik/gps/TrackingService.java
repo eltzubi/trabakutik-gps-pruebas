@@ -78,7 +78,11 @@ public class TrackingService extends Service implements LocationListener {
  // esperando.
  void avisaSinGps(){
   boolean apagada=!ubicacionActivada();
-  boolean sinGps=apagada||(ultimoFixGpsElapsed>0&&!gpsReciente());
+  // Encender la ubicacion no es recuperar la señal: hasta que entra la
+  // primera posicion no hay nada recuperado. Sin esto, con la ubicacion
+  // apagada al empezar, al encenderla se decia «Señal GPS recuperada» con el
+  // GPS todavia buscando satelites, y ya no se volvia a decir al llegar.
+  boolean sinGps=apagada||(ultimoFixGpsElapsed>0?!gpsReciente():sinGpsAvisado);
   if(sinGps==sinGpsAvisado)return;
   sinGpsAvisado=sinGps;
   if(!sinGps){tonoBien();habla("Señal GPS recuperada");return;}
