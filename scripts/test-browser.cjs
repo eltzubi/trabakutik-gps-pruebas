@@ -303,6 +303,47 @@ async function setup(context) {
     console.log(
       "PASS Chromium: apertura, 4 anchos, IGN, importar/reabrir GPX, inicio único de navegación/grabación, Parar y exportar completo",
     );
+    // PARAR DESDE LA NOTIFICACION. El servicio hace finish() solo y la pagina
+    // se entera por los sondeos: tiene que acabar con Guardar a la vista, sin
+    // GPS propio encendido y diciendo que la salida ha terminado. Antes se
+    // quedaba en «Localizando…» con el GPS apagado.
+    {
+      const aviso = await browser.newContext({viewport:{width:390,height:844}});
+      await setup(aviso);
+      await aviso.addInitScript(()=>{
+        let vivos=0;
+        // setup() ya dejo un geolocation de mentira; se le cuentan los relojes.
+        const g=navigator.geolocation;
+        g.watchPosition=()=>{vivos++;return 1};g.clearWatch=()=>{vivos--};
+        window.__watchVivos=()=>vivos;
+      });
+      const pagina = await aviso.newPage(), fallos = [];
+      pagina.on("pageerror", (e) => fallos.push(e.message));
+      pagina.on("dialog", (dialog) => dialog.accept());
+      await pagina.goto(base + "nuevo.html");
+      await pagina.click("#recordStart");
+      await pagina.waitForFunction(() => window.__native.recording);
+      await pagina.evaluate(() => {
+        window.__native.points = [[43.2,-2.5],[43.2001,-2.5001],[43.2002,-2.5002]];
+      });
+      await pagina.waitForTimeout(5000);
+      await pagina.evaluate(() => {
+        window.__native.active = false;
+        window.__native.recording = false;
+        window.__native.navigating = false;
+      });
+      await pagina.waitForFunction(
+        () => !document.getElementById("saveRecording").classList.contains("hidden"),
+        null, { timeout: 15000 });
+      await pagina.waitForTimeout(1500);
+      assert.match(await pagina.locator("#status").textContent(), /^Salida finalizada/,
+        "al parar desde la notificacion la pagina dice que la salida ha terminado");
+      assert.equal(await pagina.evaluate(() => window.__watchVivos()), 0,
+        "y no deja encendido el GPS de la pagina");
+      assert.deepEqual(fallos, [], "errores JS");
+      await aviso.close();
+      console.log("PASS Chromium: Parar desde la notificacion deja Guardar, GPS apagado y «Salida finalizada»");
+    }
     // Coordenadas ficticias, lejos de las rutas: crear no necesita publicar
     // ni recuperar un trazado privado del servidor.
     // SIN SERVICE WORKER EN ESTE CONTEXTO. El puente window.__creator se

@@ -3523,6 +3523,10 @@ window.trabakutikSyncNative=()=>{
    const puntos=Array.isArray(data.points)?data.points.length:recorded.length;
    recordingPendingSave=puntos>1;
    recordingControls(puntos>1?'stopped':'ready');
+   // Y decirlo. Entre que el servicio se para y llega este sondeo, el de
+   // posicion ya ha visto el servicio parado y ha puesto «Localizando…»; sin
+   // esto ese texto se quedaba con el GPS apagado y la salida terminada.
+   notice((puntos>1?'Salida finalizada · Guardar GPX o Descartar':'Salida finalizada')+avisoDeCortes());
   }else reconciliaBotonera();
   if(Array.isArray(data.points)){
    const segments=[[]],valid=[];
