@@ -390,6 +390,10 @@ function clearDraft(){
  drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
  junctionMarks.forEach(m=>map.removeLayer(m));junctionMarks=[];
  if(drawLayer){map.removeLayer(drawLayer);drawLayer=null}
+ // Y las rayas amarillas de los tramos trazados a mano («Unir en recta»).
+ // Solo las quitaba updateDraw, asi que al borrar el trazado o abrir otra
+ // ruta se quedaban pintadas en el mapa, sin trazado debajo.
+ manoLayers.forEach(l=>map.removeLayer(l));manoLayers=[];
  $('undo').disabled=true;$('clearCreated').disabled=true;
  $('saveCreated').disabled=true;$('navCreated').disabled=true;
  $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2);

@@ -436,3 +436,16 @@ test('con el planificador, arrastrar un punto solo recalcula sus tramos y deja l
  assert.equal(s.segments[2].aMano,true,'la recta llega hasta la posición nueva');
  assert.equal(s.segments[2][0],s.anchors[1]);
 });
+
+test('Borrar el trazado quita tambien las rayas de los tramos hechos a mano',()=>{
+ // Solo updateDraw las quitaba: tras «Borrar» o abrir otra ruta se quedaban
+ // pintadas en el mapa sin trazado debajo.
+ const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
+ const a=html.indexOf('function clearDraft(){'),b=html.indexOf("$('clearCreated').onclick",a);
+ const quitadas=[],nodo={disabled:false,classList:{add(){},remove(){},toggle(){}}};
+ const raya={id:'raya'},c={map:{removeLayer:l=>quitadas.push(l)},manoLayers:[raya],drawMarks:[],junctionMarks:[],drawLayer:null,
+  redGps:null,nodosManualesGps:new Set(),routePoints:[],$:()=>nodo,cancelaMapaGps(){},estadoMapaGps(){},updateElevation(){}};
+ vm.createContext(c);vm.runInContext(html.slice(a,b)+';clearDraft();',c);
+ assert(quitadas.includes(raya),'la raya amarilla se quita del mapa');
+ assert.equal(c.manoLayers.length,0);
+});
