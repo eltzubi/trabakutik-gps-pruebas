@@ -199,3 +199,23 @@ distingue conduciendo. Las vueltas usan `TONE_PROP_ACK`, el «ti-ti» de
 confirmación, que no suena a alarma, que es justo lo que hay que decir.
 
 Las dos pruebas llevan su contraprueba: quitando el sonido, fallan.
+
+## Pendiente para la próxima APK: más de 400 avisos de giro (13 de noviembre de 2026)
+
+El puente `setJunctions` (`MainActivity.java`) **tira la lista entera** si
+trae más de 400 avisos o pasa de 40.000 caracteres: no escribe nada y no
+avisa al servicio. El comentario de `08-cruces.js` dice que el servicio «se
+planta en 400», como si recortara, y no es así.
+
+Lo que pasa entonces: al cargar la ruta la página ya había dejado la lista
+del servicio vacía, así que el servicio arranca con **cero giros** y con la
+pantalla apagada no se oye ninguno. Mirando el móvil sí, porque avisa la
+página.
+
+Cuándo: nunca con las rutas de la web (la que más tiene, hirutxikiak, 88).
+Solo con una ruta creada o un GPX importado enorme: a un aviso cada 615 m
+dentro de Mallabia, unos 250 km.
+
+Arreglo propuesto: mandar los **400 primeros** en vez de ninguno. Necesita
+APK nueva, y por lo raro que es **el autor decidió no hacer una APK solo
+para esto**: va con la próxima vez que haya que tocar `android/`.
