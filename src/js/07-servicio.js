@@ -25,6 +25,8 @@ function pintaVersion(){
 // El enlace es la direccion entera a proposito: dentro de la app solo
 // nuevo.html se abre en el WebView, y lo demas va al navegador del movil, que
 // es quien sabe bajar e instalar un APK.
+// La primera APK firmada con la llave fija (docs/decisiones.md).
+const FIRMA_FIJA_DESDE='4.9.22';
 function versionMayor(a,b){
  const x=String(a||'0').split('.').map(Number),y=String(b||'0').split('.').map(Number);
  for(let i=0;i<Math.max(x.length,y.length);i++){
@@ -41,7 +43,15 @@ function miraActualizacion(instalada){
   const caja=$('appUpdate');if(!caja)return;
   // Quien lo cierra no lo vuelve a ver hasta la siguiente version.
   try{if(localStorage.getItem('actualizacionCerrada')===m[1])return}catch(e){}
-  $('appUpdateTexto').textContent='Hay una versión nueva de la app: '+m[1]+(instalada?' (tienes la '+instalada+')':'')+' · Toca para instalarla';
+  // DESINSTALAR, SOLO SI HACE FALTA. Hasta la 4.9.21 cada APK iba firmado
+  // con una llave distinta y Android no deja instalar encima: hay que quitar
+  // la anterior. Lo pidio el autor: «en caso de que no se instale, que se
+  // desinstale la anterior». Desde la 4.9.22 la llave es fija y se instala
+  // encima, asi que a esos NO se les dice: desinstalar borra las grabaciones
+  // que guarda la app, y un consejo de mas acabaria costandolas.
+  const nota=versionMayor(FIRMA_FIJA_DESDE,instalada)
+   ?'\nSi el móvil no deja instalarla, desinstala antes la que tienes (solo esta vez, por el cambio de firma). Guarda antes tus grabaciones: al desinstalar se borran.':'';
+  $('appUpdateTexto').textContent='Hay una versión nueva de la app: '+m[1]+(instalada?' (tienes la '+instalada+')':'')+' · Toca para instalarla'+nota;
   $('appUpdateCerrar').onclick=()=>{caja.classList.add('hidden');try{localStorage.setItem('actualizacionCerrada',m[1])}catch(e){}};
   caja.classList.remove('hidden');
  }).catch(()=>{});

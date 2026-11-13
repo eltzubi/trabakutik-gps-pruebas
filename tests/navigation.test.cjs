@@ -616,6 +616,10 @@ test('Avisa de una APK nueva comparando con la versión publicada en instalar.ht
  assert.equal((await caso('4.9.21','4.9.22',{ok:false})).visible,false,'si la web falla: nada');
  assert.equal((await caso('4.9.21','4.9.22',{cerrada:'4.9.22'})).visible,false,'cerrado para esa version: no vuelve');
  assert.equal((await caso('4.9.21','4.9.23',{cerrada:'4.9.22'})).visible,true,'pero si sale otra, si');
+ // Desinstalar solo se aconseja a quien viene de una APK con la llave vieja.
+ assert.match((await caso('4.9.21','4.9.22')).texto,/desinstala antes la que tienes/,'4.9.21: llave vieja, hay que desinstalar');
+ assert.match((await caso('','4.9.22')).texto,/desinstala antes/,'una APK muy vieja tambien');
+ assert.doesNotMatch((await caso('4.9.22','4.9.23')).texto,/desinstala/,'desde la 4.9.22 se instala encima: no se aconseja borrar nada');
  r=await caso('4.9.21','4.9.22');
  r.cerrar();
  assert.equal(r.guardado.get('actualizacionCerrada'),'4.9.22','cerrar se recuerda por version');
