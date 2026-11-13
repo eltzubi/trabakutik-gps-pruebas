@@ -1,6 +1,6 @@
 """Ejecuta checkTurns de producción con posiciones simuladas, sin Android."""
 from pathlib import Path
-import subprocess,tempfile,sys
+import subprocess,tempfile,sys,re
 production=Path('android/app/src/main/java/com/trabakutik/gps')
 src=(production/'TrackingService.java').read_text()
 metrics=(production/'NavigationMetrics.java').read_text()
@@ -12,21 +12,45 @@ def method(signature):
 code='''package com.trabakutik.gps;
 import java.util.*;
 public class NativeTurnsTest {
- boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
+ boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
+ double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
- static class SystemClock {static long elapsedRealtime(){return 1000;}}
+'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+'''
+ static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
- static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
+ static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
  double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
- void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){spoken.add(Integer.parseInt(s));}
+ void updateNotice(){}void pitidos(int n,int ms){beeps++;}
+ ArrayList<String> dicho=new ArrayList<>();
+ void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s));}catch(NumberFormatException e){}}
+ // Lo mismo que hace onLocationChanged con cada posicion, en el mismo orden.
+ void posicion(Location l){posicion(l,true);}
+ void posicion(Location l,boolean decide){
+  if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
+  checkDeviation(l);
+  NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
+  if(decide&&!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along());
+  checkTurns(l,position);
+ }
+ // Los lados anunciados, sin las repeticiones de las fases de un mismo giro.
+ ArrayList<Integer> lados(){
+  ArrayList<Integer> r=new ArrayList<>();
+  for(int v:spoken)if(r.isEmpty()||r.get(r.size()-1)!=v)r.add(v);
+  return r;
+ }
  NavigationMetrics metrics=new NavigationMetrics();
  void checkTurns(Location l){
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
   checkTurns(l,metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute));
  }
  String fraseGiro(int lado,int tipo,String fase,double ahead){return ""+lado;}
-'''+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+'''
+'''+''.join(method(m) for m in (
+ ' static double coste(double ahead)',
+ ' void checkTurns(Location l,NavigationMetrics.Projection position)',
+ ' void decideSentido(double along)',' void ponSentido(int s)',
+ ' void olvidaSentido()',' void vuelveALaRuta()',
+ ' void checkDeviation(Location l)',' double closest(double lat,double lon)'))+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
@@ -139,7 +163,44 @@ public class NativeTurnsTest {
   // Pero una posicion de 70 m de error es basura y no vale para decidir.
   c=setup();c.checkTurns(new Location(0,70));
   require(c.spoken.isEmpty(),"con 70 m no se avisa: "+c.spoken);
-  System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras, cruce recien pasado y avisos con mala señal");
+
+  // LA RUTA AL REVES, CON LA PAGINA DORMIDA. Lo que le paso al autor el 13 de
+  // noviembre de 2026: hizo al reves una ruta de ayer y le canto todos los
+  // giros al lado contrario. La pagina, dormida con la pantalla apagada, no
+  // mandaba el sentido; aqui NO se manda ninguno a proposito: el servicio
+  // tiene que darse cuenta solo. La ruta sube 300 m al norte con una
+  // izquierda grabada en el metro 100 y una derecha en el 180, asi que
+  // volviendo hay que oir primero izquierda (la derecha del 180) y luego
+  // derecha (la izquierda del 100).
+  c=setup();
+  for(int m=300;m>=0;m-=10)c.posicion(new Location(m,6));
+  require(c.sentido==-1,"el servicio tiene que ver que vas al reves sin que se lo diga la pagina");
+  require(c.lados().equals(Arrays.asList(-1,1)),"al reves, los lados van cambiados: "+c.lados()+" "+c.dicho);
+  require(c.dicho.contains("Vas en sentido inverso, los giros van corregidos"),"y hay que decirlo: "+c.dicho);
+  // Y ESTO ES EL FALLO QUE TENIA, para que la prueba de arriba tenga dientes:
+  // sin decidir el sentido, los dos giros salen al lado de enfrente.
+  NativeTurnsTest viejo=setup();
+  for(int m=300;m>=0;m-=10)viejo.posicion(new Location(m,6),false);
+  require(viejo.lados().equals(Arrays.asList(1,-1)),"el fallo de la 4.9.17 era este: "+viejo.lados());
+
+  // VOLVER A LA RUTA. El autor: «al volver no me ha indicado que entra en
+  // ruta, solo al salir». Sale a 40 m, vuelve a 13 y se queda ahi.
+  c=setup();SystemClock.reloj=1000;
+  c.posicion(new Location(100,0,5));
+  require(c.routeReached,"llegar a la ruta");
+  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(100,40,5));}
+  require(c.offRoute&&c.dicho.contains("Atención, fuera del recorrido"),"tiene que avisar al salir: "+c.dicho);
+  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(100,13,5));}
+  require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"y al volver, aunque te quedes a 13 m: "+c.dicho);
+  // Pegado a la ruta, sin esperar los cuatro segundos.
+  c=setup();SystemClock.reloj=1000;c.posicion(new Location(100,0,5));
+  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(100,40,5));}
+  require(c.offRoute,"fuera");
+  SystemClock.reloj+=1500;c.posicion(new Location(100,4,5));
+  require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"a 4 m se dice ya: "+c.dicho);
+  SystemClock.reloj=1000;
+
+  System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras, cruce recien pasado, avisos con mala señal, ruta al reves sin la pagina y vuelta a la ruta");
  }
 }'''
 if '--generate-junit' in sys.argv:

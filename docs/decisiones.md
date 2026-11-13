@@ -99,3 +99,43 @@ son barandillas para editarlo. Y en esos comentarios están las decisiones
 medidas de meses —por qué Valhalla y no OSRM, por qué el IGN y no OSM para
 guardar mapa, la regla de los cruces—, que una reescritura tira y hay que
 volver a aprender a base de fallos en el monte.
+
+## El sentido de la marcha lo decide el servicio (13 de noviembre de 2026)
+
+El autor hizo al revés una ruta del día anterior y la aplicación le cantó
+**todos los giros al lado contrario**: «cuando era derecha me decía
+izquierda». Los avisos caían en el sitio justo; el lado, no. Y al salirse de
+la ruta le avisó, pero **al volver no le dijo nada**.
+
+**La causa del lado, medida, y es nuestra.** El sentido (+1 como está
+grabada, −1 al revés) lo decidía la página y se lo mandaba al servicio con
+`setSentido`. En la 4.9.17 dormimos la página con la pantalla apagada para
+que no se comiera la batería (10,0 %/h medidos en coche), y una página
+dormida no decide nada: el servicio se quedaba con el +1 de salida y
+anunciaba los giros tal como estaban grabados. Peor que un lado al revés:
+con el sentido equivocado los giros que vienen quedan *detrás* en el cálculo,
+así que lo que se oye es el cruce que ya tienes a treinta metros anunciado
+como «ahora» y por el lado de enfrente.
+
+**La regla que queda.** Nada que se oiga con la pantalla apagada puede
+depender de que la página esté despierta. El servicio ya tiene el avance
+sobre la ruta —el mismo número con el que elige los giros—, así que la cuenta
+es suya: los mismos 30 m netos de avance que usa la página (no se comparan
+rumbos; en una lazada el tramo más cercano puede ser el de vuelta, y en 3 km
+eso daba ocho cambios falsos). Lo que manda la página se sigue aceptando como
+una opinión: cuando estás mirando el móvil decide con la primera posición,
+sin esperar los 30 m, y las dos cuentas son la misma.
+
+**La franja muerta del «de nuevo en la ruta».** El aviso de salir pedía pasar
+de `precisión+7` metros y el de volver pedía bajar de `precisión+4`, y entre
+los dos no pasaba nada: si vuelves y te quedas ahí —lo normal cuando el track
+se grabó por el otro lado del camino o del carril— te quedabas «fuera de
+ruta» para siempre, sin que te lo dijeran y, lo gordo, **sin avisos de giro**,
+porque fuera de ruta se callan. Ahora la franja también devuelve, con los
+mismos 4 s que saca: cuatro segundos fuera para avisar, cuatro dentro para
+volver. Pegado a la ruta sigue siendo inmediato.
+
+**Lo prueba el código de producción**, no una copia: `test-native-turns.py`
+compila `decideSentido`, `checkDeviation` y `checkTurns` del servicio y hace
+la ruta al revés sin mandar ningún sentido. Con la contraprueba al lado: sin
+decidir el sentido, los dos giros salen al lado de enfrente.

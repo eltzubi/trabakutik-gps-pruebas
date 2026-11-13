@@ -12,7 +12,7 @@ import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double alongPrevio=Double.NaN,alongAcum=0;long cercaDesde=0;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final NavigationMetrics metrics=new NavigationMetrics();
  List<NavigationMetrics.Water> waterPoints;
  int metricsRouteKey;
@@ -272,7 +272,7 @@ public class TrackingService extends Service implements LocationListener {
   if(action==null){finish();return START_NOT_STICKY;}
   if("STOP".equals(action)){finish();return START_NOT_STICKY;}
   if("STOP_NAVIGATION".equals(action)){
-   navigating=false;routeReached=false;offRoute=false;farSince=0;sentido=1;sinGpsAvisado=false;
+   navigating=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;olvidaSentido();sinGpsAvisado=false;
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
    publicaEstado();
    if(!recording){finish();return START_NOT_STICKY;}
@@ -302,20 +302,14 @@ public class TrackingService extends Service implements LocationListener {
    updateNotice();return START_NOT_STICKY;
   }
   if("TURNS".equals(action)){loadTurns();publicaEstado();if(active)updateNotice();return START_NOT_STICKY;}
-  // +1 si vas como la ruta esta grabada, -1 si la haces al reves. Lo decide
-  // la pagina comparando tu rumbo con el del tramo; aqui solo se guarda.
+  // +1 si vas como la ruta esta grabada, -1 si la haces al reves. AHORA LO
+  // DECIDE EL SERVICIO, en decideSentido; esto es solo lo que opina la
+  // pagina, que viene bien cuando estas mirando el movil -decide con la
+  // primera posicion, sin esperar los 30 m- y no estorba cuando no: las dos
+  // cuentas son la misma y salen igual. Ponerlo por aqui no reinicia el
+  // avance a proposito: si la pagina se equivoca, el servicio la corrige.
   if("SENTIDO".equals(action)){
-   int s=i.getIntExtra("sentido",1);
-   int antes=sentido;
-   sentido=s<0?-1:1;
-   // Solo cuando el sentido cambia DE VERDAD. La pagina manda SENTIDO
-   // repetidamente, y limpiando warnedTurns en cada mensaje los giros ya
-   // avisados volvian a avisarse una y otra vez.
-   if(sentido!=antes){
-    warnedTurns.clear();upcomingTurn="";
-    habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
-      :"Vuelves al sentido de la ruta");
-   }
+   ponSentido(i.getIntExtra("sentido",1)<0?-1:1);
    if(active)updateNotice();
    return START_NOT_STICKY;
   }
@@ -323,7 +317,7 @@ public class TrackingService extends Service implements LocationListener {
    // Ruta nueva: el sentido de la anterior no vale. Sin esto, el servicio se
    // quedaba con el «al reves» de la ruta de antes y cantaba izquierda por
    // derecha en la nueva. Solo se reiniciaba al PARAR la navegacion.
-   sentido=1;
+   olvidaSentido();
    loadRoute();loadTurns();
    if(route.size()<2)navigating=false;
    publicaEstado();
@@ -418,7 +412,7 @@ public class TrackingService extends Service implements LocationListener {
   updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;errorRuta="";sinGpsAvisado=false;
+  route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";sinGpsAvisado=false;
   metrics.configure(route,Collections.emptyList());
   metricsRouteKey=0;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("metrics").apply();
@@ -678,8 +672,47 @@ public class TrackingService extends Service implements LocationListener {
   }
   return best;
  }
+// EL SENTIDO LO DECIDE EL SERVICIO, NO LA PAGINA. Lo conto el autor el 13 de
+ // noviembre de 2026: hizo al reves una ruta de ayer y le canto TODOS los
+ // giros al lado contrario -«cuando era derecha me decia izquierda»-, con los
+ // avisos cayendo en el sitio justo. El fallo lo metimos en la 4.9.17, al
+ // dormir la pagina con la pantalla apagada para que no se comiera la
+ // bateria: el sentido lo decidia la pagina y se lo mandaba por setSentido,
+ // y una pagina dormida no decide nada, asi que el servicio se quedaba con
+ // el +1 de salida y cantaba los giros tal como estaban grabados.
+ //
+ // Lo que no se puede volver a hacer: que algo que se oye con la pantalla
+ // apagada dependa de que la pagina este despierta. El servicio ya tiene el
+ // avance sobre la ruta -el mismo numero con el que elige los giros-, asi
+ // que la cuenta es suya. Es la misma regla que la pagina, medida y escrita
+ // en 07-servicio.js: NO se comparan rumbos, porque en una lazada el tramo
+ // mas cercano puede ser el de vuelta y en 3 km daba ocho cambios falsos;
+ // se miran los 30 m netos de avance, que el baile del GPS no los da.
+ static final double AVANCE_DECIDE_M=30;
+ void decideSentido(double along){
+  if(!Double.isFinite(along))return;
+  if(!Double.isFinite(alongPrevio)){alongPrevio=along;return;}
+  double paso=along-alongPrevio;alongPrevio=along;
+  if(Math.abs(paso)>200)return;            // salto raro: no cuenta
+  alongAcum=sentido>0?Math.min(0,alongAcum+paso):Math.max(0,alongAcum+paso);
+  if(Math.abs(alongAcum)<AVANCE_DECIDE_M)return;
+  int nuevo=alongAcum>0?1:-1;alongAcum=0;
+  ponSentido(nuevo);
+ }
+ // Solo cuando cambia DE VERDAD: limpiando warnedTurns en cada posicion, los
+ // giros ya avisados volvian a avisarse una y otra vez.
+ void ponSentido(int s){
+  if(s==sentido)return;
+  sentido=s;warnedTurns.clear();upcomingTurn="";
+  habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
+    :"Vuelves al sentido de la ruta");
+ }
+ // Al cambiar de ruta, callando: «vuelves al sentido de la ruta» en una ruta
+ // que acabas de cargar no quiere decir nada.
+ void olvidaSentido(){sentido=1;alongPrevio=Double.NaN;alongAcum=0;}
+ void vuelveALaRuta(){offRoute=false;cercaDesde=0;updateNotice();habla("De nuevo en la ruta");}
  void checkDeviation(Location l){
-  if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;return;}
+  if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;return;}
   // El corte estaba en 22 m Y ADEMAS borraba farSince, que es el cronometro
   // de los 800 ms. Bajo arbolado 25-35 m de precision es lo normal, asi que
   // cada lectura mala reiniciaba la cuenta y el aviso no llegaba nunca. Lo
@@ -694,10 +727,29 @@ public class TrackingService extends Service implements LocationListener {
   if(l.getAccuracy()>60)return;
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
   if(d<=Math.max(11,acc+4)){
-   routeReached=true;farSince=0;if(offRoute){offRoute=false;updateNotice();habla("De nuevo en la ruta");}return;
+   routeReached=true;farSince=0;
+   if(offRoute)vuelveALaRuta();
+   return;
   }
   if(!routeReached)return;
-  if(d<=Math.max(15,acc+7)){farSince=0;return;}
+  // LA FRANJA MUERTA. El aviso de salir pide pasar de acc+7 y el de volver
+  // pedia bajar de acc+4, y entre los dos no pasaba nada: volviendo a la
+  // ruta y quedandote ahi -lo normal cuando el track se grabo por el otro
+  // lado del camino, o del carril- te quedabas «fuera de ruta» para siempre,
+  // sin que te lo dijera y, peor, sin avisos de giro, que checkTurns se
+  // calla estando fuera. Lo conto el autor: «al volver no me ha indicado que
+  // entra en ruta, solo al salir». Ahora la franja tambien devuelve, con los
+  // mismos 4 s que saca: cuatro segundos fuera para avisar, cuatro dentro
+  // para volver, y asi el baile del GPS en el borde no enciende y apaga.
+  if(d<=Math.max(15,acc+7)){
+   farSince=0;
+   if(offRoute){
+    if(cercaDesde==0)cercaDesde=SystemClock.elapsedRealtime();
+    else if(SystemClock.elapsedRealtime()-cercaDesde>=4000)vuelveALaRuta();
+   }
+   return;
+  }
+  cercaDesde=0;
   if(farSince==0){farSince=SystemClock.elapsedRealtime();return;}
   // 800 ms a 1,5 s por lectura significa DOS lecturas: basta un par de
   // saltos del GPS para dar la alarma. En el bolsillo, con el cuerpo
@@ -729,6 +781,8 @@ public class TrackingService extends Service implements LocationListener {
    checkDeviation(l);
    if(l.hasAccuracy()&&l.getAccuracy()<=60){
     NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
+    // Antes de los giros, que el lado de este mismo aviso ya salga bien.
+    if(!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along());
     checkTurns(l,position);
     long now=SystemClock.elapsedRealtime();
     if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;

@@ -69,6 +69,10 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
   defecto y el número sale siempre igual. Se compara **la lista de símbolos
   que faltan** antes y después (`-Xmaxerrs 10000 … | grep "symbol:"`): si
   aparece uno nuevo que no sea de Android, es un fallo de verdad.
+- **Nada que se oiga con la pantalla apagada puede depender de la página**:
+  ahí se duerme (`pauseTimers`), así que sus `setInterval` no corren. Costó
+  los giros al revés de la 4.9.17: el sentido de la marcha lo decidía la
+  página. Lo que se oye lo decide el servicio.
 - **`const` y `let` dentro de un `vm` no son propiedades del contexto**: se
   leen evaluando su nombre (`vm.runInContext('redOsm', ctx)`).
 - **`deepStrictEqual` falla entre realms**: compara `JSON.stringify`.
