@@ -368,6 +368,10 @@ function loadSaved(item){
  $('distance').textContent='Ruta propia'+elevationText(item.points);
  // Preparar ruta y giros antes de permitir que arranque la grabación.
  // Primero se envían los puntos; los índices de giro pertenecen a esa copia.
+ // Y la lista se vacia ANTES: syncNativeRoute manda tambien los giros que
+ // tenga la pagina, que aqui todavia son los de la ruta anterior. Si los
+ // nuevos no llegaban al servicio, se quedaba con los de otra ruta.
+ junctions=[];
  syncNativeRoute();
  computeJunctions();
  aplicaCruces();

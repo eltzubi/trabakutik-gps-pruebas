@@ -262,6 +262,9 @@ function selectRoute(i){
   if(chosen!==i||selectedRouteRequest!==request)return;
   // Los puntos primero, siempre. syncNativeRoute manda tambien los giros que
   // haya, y computeJunctions los recalcula y los vuelve a mandar detras.
+  // Vaciados antes, como en loadDetailedSelected: los que hay aqui son los de
+  // la ruta anterior y no pueden llegar al servicio ni un instante.
+  junctions=[];
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
   aplicaCruces();

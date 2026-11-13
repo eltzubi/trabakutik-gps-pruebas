@@ -390,6 +390,17 @@ test('Abrir una ruta guardada prepara puntos y giros sin iniciar GPS ni navegaci
  assert.equal(c.$('saveDialog').classList.contains('hidden'),true);
  assert.deepEqual(c.calls[0],['route',3]);assert(!c.calls.some(call=>['gps','navigate','record'].includes(call[0])));
 });
+test('Abrir una ruta guardada no manda al servicio los giros de la ruta anterior',()=>{
+ // syncNativeRoute manda los puntos y los giros que tenga la pagina. Aqui aun
+ // eran los de la ruta de antes: si los nuevos no llegaban, el servicio avisaba
+ // cruces de otra ruta con la pantalla apagada.
+ const c=savedFlow();c.save();
+ c.junctions=[{i:7,direction:'derecha'},{i:9,direction:'izquierda'}];
+ const giros=[];c.syncNativeRoute=()=>giros.push(c.junctions.length);
+ c.$('navigateSavedFromDialog').onclick();
+ assert.deepEqual(giros,[0],'con los puntos nuevos no viaja ningun giro viejo');
+ assert.equal(c.junctions.length,1,'y despues entran los de la ruta nueva');
+});
 test('Guardar, cerrar, volver a Ruta y grabar activa primero la ruta recién guardada',()=>{
  const c=savedFlow();c.save();c.closeSaveDialog();c.mode='nav';c.$('recordStart').onclick();
  assert.equal(c.recording,true);assert.equal(c.routePoints.length,3);assert.equal(c.junctions.length,1);
