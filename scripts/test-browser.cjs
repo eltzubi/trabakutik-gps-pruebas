@@ -578,11 +578,16 @@ async function setup(context) {
     // monte- y el tramo lo calcula la red de caminos guardada en el
     // telefono. Antes esto se quedaba en «revisa la conexion».
     {
-      const caminos = path.join(root, '..', 'rutas-mallabia', 'data', 'caminos-zona.json');
-      let hayRed = true;
-      try { fs.accessSync(caminos); } catch (e) { hayRed = false; }
+      // El repositorio de la web se llama «Rutas-Mallabia», con mayusculas, y
+      // en Linux no es lo mismo que «rutas-mallabia»: buscandolo solo en
+      // minusculas esta prueba se saltaba siempre, y por eso nadie vio que el
+      // enganche fallaba al norte de la zona. Se mira con los dos nombres.
+      const caminos = ['Rutas-Mallabia', 'rutas-mallabia']
+        .map(n => path.join(root, '..', n, 'data', 'caminos-zona.json'))
+        .find(f => { try { fs.accessSync(f); return true; } catch (e) { return false; } });
+      const hayRed = !!caminos;
       if (!hayRed) {
-        console.log('SALTADO: falta ../rutas-mallabia/data/caminos-zona.json');
+        console.log('SALTADO: falta ../Rutas-Mallabia/data/caminos-zona.json');
       } else {
         const sin = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
         await setup(sin);

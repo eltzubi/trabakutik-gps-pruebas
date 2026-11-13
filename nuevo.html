@@ -1038,15 +1038,17 @@ const nodosManualesGps=new Set();
 // creador ya se baja-, asi que se coge la del punto de tus rutas mas cercano
 // si esta a 60 m o menos. Mas lejos no se inventa nada: se queda sin altura,
 // que es la verdad -ahi no hay ninguna ruta tuya de la que copiarla-.
-const ALTURA_PRESTADA_M=60;
-function alturaCerca(lat,lon){
- if(!redGps)return null;
- const n=nodoCerca(redGps,lat,lon);
- if(n<0)return null;
- const q=redGps.nodos[n];
- if(!Number.isFinite(q&&q[2]))return null;
- return metros(q,[lat,lon])<=ALTURA_PRESTADA_M?q[2]:null;
-}
+const alturaCerca=(()=>{
+ const ALTURA_PRESTADA_M=60;
+ return function alturaCerca(lat,lon){
+  if(!redGps)return null;
+  const n=nodoCerca(redGps,lat,lon);
+  if(n<0)return null;
+  const q=redGps.nodos[n];
+  if(!Number.isFinite(q&&q[2]))return null;
+  return metros(q,[lat,lon])<=ALTURA_PRESTADA_M?q[2]:null;
+ };
+})();
 function nodoManualGps(lat,lon,elevation=null){
  const n=redGps.nodos.length;
  const h=Number.isFinite(elevation)?elevation:alturaCerca(lat,lon);
@@ -1158,12 +1160,26 @@ function descodificaValhalla(texto){
 // tramo; con 6.656 km, guardar punto a punto serian 1,3 millones de nodos y
 // en un movil no caben. Y el toque se pega al punto mas cercano DEL CAMINO,
 // no al cruce mas cercano: entre cruce y cruce hay 127 m de media.
+// La red se cierra sobre si misma: fuera solo se ven redOsm -que leen el
+// creador y las pruebas-, la descarga, el enganche y el calculo. Lo demas
+// (costes, rejilla, Dijkstra) no lo toca nadie mas.
+let redOsm=null;
+const {cargaCaminosOsm,enganchaOsm,rutaOsm,descifraCaminos}=(()=>{
 const URL_CAMINOS='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/caminos-zona.json';
 // Lo que cuesta un metro de cada clase: 0 sendero, 1 pista, 2 calle,
 // 3 carretera, 4 bidegorri, 5 nacional, 6 privado, 7 grabado por el autor.
 const COSTE_VIA=[1,1,1.05,1.35,1,3,5,1];
 const ENGANCHE_OSM=120,CELDA_OSM=100,PASO_CESTA_OSM=40;
-let redOsm=null,pideRedOsm=null;
+// LA REJILLA VA CON UNA SOLA ESCALA, LA MISMA AL GUARDAR QUE AL BUSCAR. Antes
+// se guardaba con el coseno de la latitud del PRIMER cruce del fichero (43,12)
+// y se buscaba con el del punto tocado. Como la longitud entra entera -unos
+// 200 km a 2,5 grados-, medio grado de diferencia en el coseno movia la celda
+// varias casillas: al norte de 43,23 el toque buscaba donde no estaba el
+// camino. Medido con la red de verdad, 541 toques encima de un camino: 207
+// sin enganchar, y de Markina para arriba casi todos. La escala de la rejilla
+// es solo un casillero; las distancias de verdad siguen con su coseno.
+const KX_CELDA_OSM=Math.cos(43.2*Math.PI/180)*111195;
+let pideRedOsm=null;
 
 function descifraCaminos(j){
  if(!j||!Array.isArray(j.nodos)||!Array.isArray(j.tramos))throw Error('caminos-zona.json no valido');
@@ -1195,7 +1211,6 @@ function descifraCaminos(j){
  const red={lat,lon,n,m,ini:Int32Array.from(ini),fin:Int32Array.from(fin),
   clase:Uint8Array.from(cls),largo:Float32Array.from(lar),geo,
   arranque,vecino,porTramo,cestas:new Map()};
- const kx=Math.cos(lat[0]*R)*111195;
  for(k=0;k<m;k++){
   const pts=puntosTramoOsm(red,k);let visto='';
   for(i=1;i<pts.length;i++){
@@ -1203,7 +1218,7 @@ function descifraCaminos(j){
    for(let s=0;s<=pasos;s++){
     const f=s/pasos;
     const cx=Math.round((p[0]+(q[0]-p[0])*f)*111195/CELDA_OSM);
-    const cy=Math.round((p[1]+(q[1]-p[1])*f)*kx/CELDA_OSM);
+    const cy=Math.round((p[1]+(q[1]-p[1])*f)*KX_CELDA_OSM/CELDA_OSM);
     const key=cx+':'+cy;
     if(key===visto)continue;
     visto=key;
@@ -1232,7 +1247,7 @@ function cargaCaminosOsm(){
 }
 function enganchaOsm(red,lat,lon){
  const kx=Math.cos(lat*R)*111195,ky=111195;
- const cx=Math.round(lat*111195/CELDA_OSM),cy=Math.round(lon*kx/CELDA_OSM);
+ const cx=Math.round(lat*111195/CELDA_OSM),cy=Math.round(lon*KX_CELDA_OSM/CELDA_OSM);
  let mejor=null,mejorD=ENGANCHE_OSM;
  const mirados=new Set();
  for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++){
@@ -1341,11 +1356,15 @@ function limpiaRuta(pts){
  }
  return out.length>1?out:null;
 }
+ return {cargaCaminosOsm,enganchaOsm,rutaOsm,descifraCaminos};
+})();
 // El mismo {anchors, parts} que devuelve Valhalla, para que lo de abajo no
 // tenga que saber de donde vino el recorrido.
 // Un error de «por ahi no se puede pasar», marcado para distinguirlo de uno
 // de «el servicio no contesta»: el aviso que se le da al autor no es el mismo.
 const noHayPaso=t=>{const e=Error(t);e.sinCamino=true;return e};
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada.
+if(typeof module==='object'&&module&&module.exports)module.exports={descifraCaminos,enganchaOsm,rutaOsm,cargaCaminosOsm,descodificaValhalla,noHayPaso,RODEO_MAXIMO};
 // POR QUE NO HA SALIDO EL TRAMO. Decir «no hay conexion a pie en
 // OpenStreetMap» cuando lo que pasa es que los caminos de la zona todavia se
 // estan bajando manda a buscar el fallo donde no esta: el autor se encontro
@@ -1533,12 +1552,24 @@ function anadeTramoMapa(result){
  // Solo si es un punto puesto a mano: a un nodo de la red de caminos no se le
  // escribe encima, que lo comparten todas las rutas.
  if(nodosManualesGps.has(ini)&&redGps.nodos[ini]&&!Number.isFinite(redGps.nodos[ini][2])&&Number.isFinite(a[2]))redGps.nodos[ini][2]=a[2];
- const fin=nodoManualGps(b[0],b[1],b[2]);
+ const fin=cierraEnElInicio(b)??nodoManualGps(b[0],b[1],b[2]);
  const pts=result.parts[0]||[];
  const tr=[ini,...pts.slice(1,-1).map(q=>nodoManualGps(q[0],q[1],q[2])),fin];
  tr.mapa=true;
  anclasGps.push(fin);tramosGps.push(tr);
  updateDraw();
+}
+// VOLVER AL PUNTO DE PARTIDA CIERRA EL CIRCULO. Si el tramo que se añade
+// acaba encima del primer punto, su final ES el primer punto -el mismo
+// nodo-, que es lo que el resto del creador entiende por «cerrado»: una sola
+// bola en el mapa y mover la salida mueve tambien la llegada. Lo usa «Cerrar
+// el circulo», que ya solo calcula ese ultimo tramo, y vale igual si el autor
+// toca a mano encima de la salida. 5 m: lo que puede mover el planificador un
+// punto que ya estaba pegado al camino.
+function cierraEnElInicio(p){
+ if(anclasGps.length<2||!p)return null;
+ const ini=redGps.nodos[anclasGps[0]];
+ return ini&&dist(ini,p)<5?anclasGps[0]:null;
 }
 // Un solo tramo: del ultimo punto puesto al que acabas de tocar. Se esperan
 // tambien las alturas antes de pintarlo, que asi se añade una sola vez y no
@@ -1555,7 +1586,7 @@ function uneEnRectaMapa(){
   anclasGps.push(ini);tramosGps.push([ini]);
  }
  const ini=anclasGps[anclasGps.length-1];
- const fin=nodoManualGps(hasta[0],hasta[1]);
+ const fin=cierraEnElInicio(hasta)??nodoManualGps(hasta[0],hasta[1]);
  const tr=[ini,fin];tr.aMano=true;
  anclasGps.push(fin);tramosGps.push(tr);
  updateDraw();
@@ -2047,7 +2078,17 @@ map.on('click',e=>{
 // sigue cumpliendo que tramosGps[k] va de anclasGps[k-1] a anclasGps[k].
 function cierraCirculoGps(){
  if(anclasGps.length<2){notice('Marca al menos dos puntos antes.');return}
- if(seguirMapaGps){const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));if(dist(pts[0],pts[pts.length-1])<1){estadoMapaGps('El recorrido ya está cerrado.');return}planificaMapaGps([...pts,pts[0]]);return}
+ // CON EL PLANIFICADOR SE CALCULA SOLO EL TRAMO DE VUELTA, no la ruta
+ // entera. Antes se le volvia a mandar todo y, si en medio habia un tramo
+ // unido en recta -porque por ahi no hay camino-, el planificador fallaba en
+ // ese tramo y el circulo no se cerraba nunca. Es lo mismo que ya se hizo
+ // para añadir tramos: lo de antes no se toca.
+ if(seguirMapaGps){
+  if(calculandoMapaGps)return;
+  const ini=anclasGps[0],fin=anclasGps[anclasGps.length-1];
+  const a=redGps.nodos[fin].slice(0,2),b=redGps.nodos[ini].slice(0,2);
+  if(ini===fin||dist(a,b)<1){estadoMapaGps('El recorrido ya está cerrado.');return}
+  planificaTramoMapa(a,b);return}
  const ini=anclasGps[0],fin=anclasGps[anclasGps.length-1];
  if(ini===fin){notice('El trazado ya vuelve al punto de partida.');return}
  const tr=tramoGps(fin,ini);
@@ -2069,7 +2110,7 @@ function idaYVueltaGps(){
 // habia que deshacer los seis de despues. Solo se recalculan los dos tramos
 // que tocan al punto movido, y si alguno no sale no se toca nada.
 function mueveAnclaGps(i,lat,lon){
- if(seguirMapaGps){const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));const last=pts.length-1,closed=last>1&&anclasGps[0]===anclasGps[last];pts[i]=[lat,lon];if(closed&&(i===0||i===last)){pts[0]=[lat,lon];pts[last]=[lat,lon]}updateDraw();planificaMapaGps(pts);return}
+ if(seguirMapaGps){updateDraw();mueveAnclaMapa(i,lat,lon);return}
  const n=(trazadoManual||nodosManualesGps.has(anclasGps[i]))?nodoManualGps(lat,lon):nodoCerca(redGps,lat,lon);
  if(n<0){notice('Ahí no pasa ningún camino. Suéltalo más cerca de uno.');updateDraw();return}
  const ult=anclasGps.length-1;
@@ -2089,6 +2130,72 @@ function mueveAnclaGps(i,lat,lon){
  if(idx===0)nt[0]=[n];
  anclasGps=na;tramosGps=nt;updateDraw();
  notice('Punto movido · '+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km');
+}
+// ARRASTRAR CON EL PLANIFICADOR: SOLO LOS DOS TRAMOS DEL PUNTO. Antes se
+// recalculaba la ruta entera, y un tramo unido en recta -donde no hay camino-
+// la hacia fallar entera: el punto volvia a su sitio y no habia manera de
+// moverlo. Ahora se piden solo los tramos que tocan al punto; los unidos en
+// recta se quedan en recta, hasta la posicion nueva. Si alguno no sale no se
+// cambia nada, como en el modo antiguo.
+async function mueveAnclaMapa(i,lat,lon){
+ const ult=anclasGps.length-1,cerrado=ult>1&&anclasGps[0]===anclasGps[ult];
+ const idx=(cerrado&&i===ult)?0:i,p=[lat,lon];
+ const llegaAlPunto=j=>j===idx||(cerrado&&idx===0&&j===ult);
+ const coord=k=>(k===idx||(cerrado&&idx===0&&k===ult))?p:redGps.nodos[anclasGps[k]].slice(0,2);
+ const tocar=[];
+ if(idx>0)tocar.push(idx);
+ if(idx+1<=ult)tocar.push(idx+1);
+ if(cerrado&&idx===0&&tocar.indexOf(ult)<0)tocar.push(ult);
+ if(!tocar.length){const n=nodoManualGps(lat,lon);anclasGps=[n];tramosGps=[[n]];updateDraw();return}
+ if(tocar.some(j=>!tramosGps[j].aMano)&&!permisoMapaGps){
+  permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap). ¿Continuar?');
+  if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
+ }
+ cancelaMapaGps();const version=calculoMapaGps;
+ const controller=new AbortController();peticionMapaGps=controller;calculandoMapaGps=true;
+ $('saveCreated').disabled=true;estadoMapaGps('Calculando tramo…');
+ const timer=setTimeout(()=>controller.abort(),30000);
+ try{
+  const nuevos=[];let sinRed=false;
+  for(const j of tocar){
+   const a=coord(j-1),b=coord(j);
+   if(tramosGps[j].aMano){nuevos.push({j,recta:true});continue}
+   let r;
+   try{
+    r=await solicitaMapaGps([a,b],controller.signal);
+    if(version!==calculoMapaGps)return;
+    try{await alturasTerrenoGps(r,controller.signal)}catch(e){}
+   }catch(e){
+    if(version!==calculoMapaGps)return;
+    r=planLocalMapa([a,b]);
+    if(!r){estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':porQueNoHayCamino(e));return}
+    sinRed=true;
+   }
+   if(version!==calculoMapaGps)return;
+   nuevos.push({j,pts:r.parts[0]});
+  }
+  // El punto queda donde lo ha pegado el planificador al camino, no donde se
+  // solto el dedo; si los dos tramos son rectas, donde se solto.
+  let q=p;
+  const ref=nuevos.find(x=>!x.recta);
+  if(ref)q=llegaAlPunto(ref.j)?ref.pts[ref.pts.length-1]:ref.pts[0];
+  const n=nodoManualGps(q[0],q[1],Number.isFinite(q[2])?q[2]:null);
+  const na=anclasGps.slice(),nt=tramosGps.slice();
+  na[idx]=n;if(cerrado&&idx===0)na[ult]=n;
+  for(const x of nuevos){
+   const medio=x.recta?[]:x.pts.slice(1,-1).map(r=>nodoManualGps(r[0],r[1],r[2]));
+   const tr=[na[x.j-1],...medio,na[x.j]];
+   if(x.recta)tr.aMano=true;else tr.mapa=true;
+   nt[x.j]=tr;
+  }
+  if(idx===0)nt[0]=[n];
+  anclasGps=na;tramosGps=nt;updateDraw();
+  estadoMapaGps(sinRed?'Sin conexión · tramo por los caminos guardados, sin desnivel.':'');
+  notice('Punto movido · '+(drawPoints.reduce((v,q,k)=>k?v+metros(drawPoints[k-1],q):0,0)/1000).toFixed(2)+' km');
+ }finally{
+  clearTimeout(timer);
+  if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}
+ }
 }
 $('cerrarCirculo').onclick=cierraCirculoGps;
 $('idaVuelta').onclick=idaYVueltaGps;

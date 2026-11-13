@@ -41,7 +41,17 @@
 // sigue cumpliendo que tramosGps[k] va de anclasGps[k-1] a anclasGps[k].
 function cierraCirculoGps(){
  if(anclasGps.length<2){notice('Marca al menos dos puntos antes.');return}
- if(seguirMapaGps){const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));if(dist(pts[0],pts[pts.length-1])<1){estadoMapaGps('El recorrido ya está cerrado.');return}planificaMapaGps([...pts,pts[0]]);return}
+ // CON EL PLANIFICADOR SE CALCULA SOLO EL TRAMO DE VUELTA, no la ruta
+ // entera. Antes se le volvia a mandar todo y, si en medio habia un tramo
+ // unido en recta -porque por ahi no hay camino-, el planificador fallaba en
+ // ese tramo y el circulo no se cerraba nunca. Es lo mismo que ya se hizo
+ // para añadir tramos: lo de antes no se toca.
+ if(seguirMapaGps){
+  if(calculandoMapaGps)return;
+  const ini=anclasGps[0],fin=anclasGps[anclasGps.length-1];
+  const a=redGps.nodos[fin].slice(0,2),b=redGps.nodos[ini].slice(0,2);
+  if(ini===fin||dist(a,b)<1){estadoMapaGps('El recorrido ya está cerrado.');return}
+  planificaTramoMapa(a,b);return}
  const ini=anclasGps[0],fin=anclasGps[anclasGps.length-1];
  if(ini===fin){notice('El trazado ya vuelve al punto de partida.');return}
  const tr=tramoGps(fin,ini);
@@ -63,7 +73,7 @@ function idaYVueltaGps(){
 // habia que deshacer los seis de despues. Solo se recalculan los dos tramos
 // que tocan al punto movido, y si alguno no sale no se toca nada.
 function mueveAnclaGps(i,lat,lon){
- if(seguirMapaGps){const pts=anclasGps.map(id=>redGps.nodos[id].slice(0,2));const last=pts.length-1,closed=last>1&&anclasGps[0]===anclasGps[last];pts[i]=[lat,lon];if(closed&&(i===0||i===last)){pts[0]=[lat,lon];pts[last]=[lat,lon]}updateDraw();planificaMapaGps(pts);return}
+ if(seguirMapaGps){updateDraw();mueveAnclaMapa(i,lat,lon);return}
  const n=(trazadoManual||nodosManualesGps.has(anclasGps[i]))?nodoManualGps(lat,lon):nodoCerca(redGps,lat,lon);
  if(n<0){notice('Ahí no pasa ningún camino. Suéltalo más cerca de uno.');updateDraw();return}
  const ult=anclasGps.length-1;
@@ -83,6 +93,72 @@ function mueveAnclaGps(i,lat,lon){
  if(idx===0)nt[0]=[n];
  anclasGps=na;tramosGps=nt;updateDraw();
  notice('Punto movido · '+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km');
+}
+// ARRASTRAR CON EL PLANIFICADOR: SOLO LOS DOS TRAMOS DEL PUNTO. Antes se
+// recalculaba la ruta entera, y un tramo unido en recta -donde no hay camino-
+// la hacia fallar entera: el punto volvia a su sitio y no habia manera de
+// moverlo. Ahora se piden solo los tramos que tocan al punto; los unidos en
+// recta se quedan en recta, hasta la posicion nueva. Si alguno no sale no se
+// cambia nada, como en el modo antiguo.
+async function mueveAnclaMapa(i,lat,lon){
+ const ult=anclasGps.length-1,cerrado=ult>1&&anclasGps[0]===anclasGps[ult];
+ const idx=(cerrado&&i===ult)?0:i,p=[lat,lon];
+ const llegaAlPunto=j=>j===idx||(cerrado&&idx===0&&j===ult);
+ const coord=k=>(k===idx||(cerrado&&idx===0&&k===ult))?p:redGps.nodos[anclasGps[k]].slice(0,2);
+ const tocar=[];
+ if(idx>0)tocar.push(idx);
+ if(idx+1<=ult)tocar.push(idx+1);
+ if(cerrado&&idx===0&&tocar.indexOf(ult)<0)tocar.push(ult);
+ if(!tocar.length){const n=nodoManualGps(lat,lon);anclasGps=[n];tramosGps=[[n]];updateDraw();return}
+ if(tocar.some(j=>!tramosGps[j].aMano)&&!permisoMapaGps){
+  permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap). ¿Continuar?');
+  if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
+ }
+ cancelaMapaGps();const version=calculoMapaGps;
+ const controller=new AbortController();peticionMapaGps=controller;calculandoMapaGps=true;
+ $('saveCreated').disabled=true;estadoMapaGps('Calculando tramo…');
+ const timer=setTimeout(()=>controller.abort(),30000);
+ try{
+  const nuevos=[];let sinRed=false;
+  for(const j of tocar){
+   const a=coord(j-1),b=coord(j);
+   if(tramosGps[j].aMano){nuevos.push({j,recta:true});continue}
+   let r;
+   try{
+    r=await solicitaMapaGps([a,b],controller.signal);
+    if(version!==calculoMapaGps)return;
+    try{await alturasTerrenoGps(r,controller.signal)}catch(e){}
+   }catch(e){
+    if(version!==calculoMapaGps)return;
+    r=planLocalMapa([a,b]);
+    if(!r){estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':porQueNoHayCamino(e));return}
+    sinRed=true;
+   }
+   if(version!==calculoMapaGps)return;
+   nuevos.push({j,pts:r.parts[0]});
+  }
+  // El punto queda donde lo ha pegado el planificador al camino, no donde se
+  // solto el dedo; si los dos tramos son rectas, donde se solto.
+  let q=p;
+  const ref=nuevos.find(x=>!x.recta);
+  if(ref)q=llegaAlPunto(ref.j)?ref.pts[ref.pts.length-1]:ref.pts[0];
+  const n=nodoManualGps(q[0],q[1],Number.isFinite(q[2])?q[2]:null);
+  const na=anclasGps.slice(),nt=tramosGps.slice();
+  na[idx]=n;if(cerrado&&idx===0)na[ult]=n;
+  for(const x of nuevos){
+   const medio=x.recta?[]:x.pts.slice(1,-1).map(r=>nodoManualGps(r[0],r[1],r[2]));
+   const tr=[na[x.j-1],...medio,na[x.j]];
+   if(x.recta)tr.aMano=true;else tr.mapa=true;
+   nt[x.j]=tr;
+  }
+  if(idx===0)nt[0]=[n];
+  anclasGps=na;tramosGps=nt;updateDraw();
+  estadoMapaGps(sinRed?'Sin conexión · tramo por los caminos guardados, sin desnivel.':'');
+  notice('Punto movido · '+(drawPoints.reduce((v,q,k)=>k?v+metros(drawPoints[k-1],q):0,0)/1000).toFixed(2)+' km');
+ }finally{
+  clearTimeout(timer);
+  if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}
+ }
 }
 $('cerrarCirculo').onclick=cierraCirculoGps;
 $('idaVuelta').onclick=idaYVueltaGps;
