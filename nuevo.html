@@ -1038,15 +1038,17 @@ const nodosManualesGps=new Set();
 // creador ya se baja-, asi que se coge la del punto de tus rutas mas cercano
 // si esta a 60 m o menos. Mas lejos no se inventa nada: se queda sin altura,
 // que es la verdad -ahi no hay ninguna ruta tuya de la que copiarla-.
-const ALTURA_PRESTADA_M=60;
-function alturaCerca(lat,lon){
- if(!redGps)return null;
- const n=nodoCerca(redGps,lat,lon);
- if(n<0)return null;
- const q=redGps.nodos[n];
- if(!Number.isFinite(q&&q[2]))return null;
- return metros(q,[lat,lon])<=ALTURA_PRESTADA_M?q[2]:null;
-}
+const alturaCerca=(()=>{
+ const ALTURA_PRESTADA_M=60;
+ return function alturaCerca(lat,lon){
+  if(!redGps)return null;
+  const n=nodoCerca(redGps,lat,lon);
+  if(n<0)return null;
+  const q=redGps.nodos[n];
+  if(!Number.isFinite(q&&q[2]))return null;
+  return metros(q,[lat,lon])<=ALTURA_PRESTADA_M?q[2]:null;
+ };
+})();
 function nodoManualGps(lat,lon,elevation=null){
  const n=redGps.nodos.length;
  const h=Number.isFinite(elevation)?elevation:alturaCerca(lat,lon);
@@ -1158,12 +1160,26 @@ function descodificaValhalla(texto){
 // tramo; con 6.656 km, guardar punto a punto serian 1,3 millones de nodos y
 // en un movil no caben. Y el toque se pega al punto mas cercano DEL CAMINO,
 // no al cruce mas cercano: entre cruce y cruce hay 127 m de media.
+// La red se cierra sobre si misma: fuera solo se ven redOsm -que leen el
+// creador y las pruebas-, la descarga, el enganche y el calculo. Lo demas
+// (costes, rejilla, Dijkstra) no lo toca nadie mas.
+let redOsm=null;
+const {cargaCaminosOsm,enganchaOsm,rutaOsm,descifraCaminos}=(()=>{
 const URL_CAMINOS='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/caminos-zona.json';
 // Lo que cuesta un metro de cada clase: 0 sendero, 1 pista, 2 calle,
 // 3 carretera, 4 bidegorri, 5 nacional, 6 privado, 7 grabado por el autor.
 const COSTE_VIA=[1,1,1.05,1.35,1,3,5,1];
 const ENGANCHE_OSM=120,CELDA_OSM=100,PASO_CESTA_OSM=40;
-let redOsm=null,pideRedOsm=null;
+// LA REJILLA VA CON UNA SOLA ESCALA, LA MISMA AL GUARDAR QUE AL BUSCAR. Antes
+// se guardaba con el coseno de la latitud del PRIMER cruce del fichero (43,12)
+// y se buscaba con el del punto tocado. Como la longitud entra entera -unos
+// 200 km a 2,5 grados-, medio grado de diferencia en el coseno movia la celda
+// varias casillas: al norte de 43,23 el toque buscaba donde no estaba el
+// camino. Medido con la red de verdad, 541 toques encima de un camino: 207
+// sin enganchar, y de Markina para arriba casi todos. La escala de la rejilla
+// es solo un casillero; las distancias de verdad siguen con su coseno.
+const KX_CELDA_OSM=Math.cos(43.2*Math.PI/180)*111195;
+let pideRedOsm=null;
 
 function descifraCaminos(j){
  if(!j||!Array.isArray(j.nodos)||!Array.isArray(j.tramos))throw Error('caminos-zona.json no valido');
@@ -1195,7 +1211,6 @@ function descifraCaminos(j){
  const red={lat,lon,n,m,ini:Int32Array.from(ini),fin:Int32Array.from(fin),
   clase:Uint8Array.from(cls),largo:Float32Array.from(lar),geo,
   arranque,vecino,porTramo,cestas:new Map()};
- const kx=Math.cos(lat[0]*R)*111195;
  for(k=0;k<m;k++){
   const pts=puntosTramoOsm(red,k);let visto='';
   for(i=1;i<pts.length;i++){
@@ -1203,7 +1218,7 @@ function descifraCaminos(j){
    for(let s=0;s<=pasos;s++){
     const f=s/pasos;
     const cx=Math.round((p[0]+(q[0]-p[0])*f)*111195/CELDA_OSM);
-    const cy=Math.round((p[1]+(q[1]-p[1])*f)*kx/CELDA_OSM);
+    const cy=Math.round((p[1]+(q[1]-p[1])*f)*KX_CELDA_OSM/CELDA_OSM);
     const key=cx+':'+cy;
     if(key===visto)continue;
     visto=key;
@@ -1232,7 +1247,7 @@ function cargaCaminosOsm(){
 }
 function enganchaOsm(red,lat,lon){
  const kx=Math.cos(lat*R)*111195,ky=111195;
- const cx=Math.round(lat*111195/CELDA_OSM),cy=Math.round(lon*kx/CELDA_OSM);
+ const cx=Math.round(lat*111195/CELDA_OSM),cy=Math.round(lon*KX_CELDA_OSM/CELDA_OSM);
  let mejor=null,mejorD=ENGANCHE_OSM;
  const mirados=new Set();
  for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++){
@@ -1341,11 +1356,15 @@ function limpiaRuta(pts){
  }
  return out.length>1?out:null;
 }
+ return {cargaCaminosOsm,enganchaOsm,rutaOsm,descifraCaminos};
+})();
 // El mismo {anchors, parts} que devuelve Valhalla, para que lo de abajo no
 // tenga que saber de donde vino el recorrido.
 // Un error de «por ahi no se puede pasar», marcado para distinguirlo de uno
 // de «el servicio no contesta»: el aviso que se le da al autor no es el mismo.
 const noHayPaso=t=>{const e=Error(t);e.sinCamino=true;return e};
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada.
+if(typeof module==='object'&&module&&module.exports)module.exports={descifraCaminos,enganchaOsm,rutaOsm,cargaCaminosOsm,descodificaValhalla,noHayPaso,RODEO_MAXIMO};
 // POR QUE NO HA SALIDO EL TRAMO. Decir «no hay conexion a pie en
 // OpenStreetMap» cuando lo que pasa es que los caminos de la zona todavia se
 // estan bajando manda a buscar el fallo donde no esta: el autor se encontro
