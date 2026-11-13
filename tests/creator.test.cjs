@@ -449,3 +449,17 @@ test('Borrar el trazado quita tambien las rayas de los tramos hechos a mano',()=
  assert(quitadas.includes(raya),'la raya amarilla se quita del mapa');
  assert.equal(c.manoLayers.length,0);
 });
+test('Descargar un GPX de Mis rutas conserva el nombre de verdad dentro del fichero',()=>{
+ // Se pasaba el nombre ya convertido en nombre de fichero, y el GPX llevaba
+ // dentro «mi-ruta-13-11-2026» en vez de «Mi ruta 13/11/2026».
+ const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
+ const a=html.indexOf('function showSaved(){'),b=html.indexOf("$('savedRoutes').onclick",a);
+ const botones=[],descargas=[];
+ const el=()=>{const e={append(...h){},replaceChildren(){},style:{},set onclick(f){this._c=f},get onclick(){return this._c}};botones.push(e);return e};
+ const c={document:{createElement:el},$:()=>({replaceChildren(){},append(){}}),
+  savedList:()=>[{name:'Mi ruta 13/11/2026',points:[[43,-2],[43.001,-2]],created:1}],
+  elevationText:()=>'',canShareGpx:()=>false,download:(pts,nombre)=>descargas.push(nombre)};
+ vm.createContext(c);vm.runInContext(html.slice(a,b)+';showSaved();',c);
+ botones.find(b=>b.textContent==='↓ GPX').onclick();
+ assert.deepEqual(descargas,['Mi ruta 13/11/2026']);
+});

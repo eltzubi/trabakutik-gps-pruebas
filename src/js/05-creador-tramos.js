@@ -556,6 +556,21 @@ function updateElevation(){
   }else{lastElev=null}
   samples.push({d:travelled,h:elevation});
  }
+ // EL DESNIVEL, CONTADO IGUAL EN TODA LA PANTALLA. En navegacion se sumaba
+ // cada metro de un punto al siguiente -ruido del GPS incluido- mientras que
+ // «Ruta propia» (elevationText) usa un umbral de 5 m: dos cifras distintas
+ // para la misma ruta, una encima de otra. Ahora navegacion cuenta igual que
+ // elevationText: umbral de 5 m y un hueco sin altura reinicia la cuenta. El
+ // creador sigue con la suma exacta: sus alturas son del modelo del terreno.
+ if(!creating){
+  up=0;down=0;let ref=null;
+  for(const p of pts){
+   const h=Number.isFinite(p[2])?p[2]:null;
+   if(h===null){ref=null;continue}
+   if(ref===null){ref=h;continue}
+   if(h>=ref+5){up+=h-ref;ref=h}else if(h<=ref-5){down+=ref-h;ref=h}
+  }
+ }
  const known=samples.filter(p=>p.h!==null);
  const hMin=Math.min(...known.map(p=>p.h)),hMax=Math.max(...known.map(p=>p.h));
  const total=Math.max(1,travelled), width=800,top=8,bottom=108,drawH=bottom-top;

@@ -113,3 +113,13 @@ test('El perfil evita ubicarte sobre una geometría que solo coincide en longitu
  c.updateElevation();c.run('liveProfileAlong=55.5975');c.paintNavigationMetrics();
  assert.equal(c.$('elevationEnd').style.display,'none');
 });
+test('El desnivel del perfil de navegación cuenta igual que «Ruta propia»: sin el ruido del GPS',()=>{
+ // Sumaba cada metro de un punto al siguiente y «Ruta propia» usa un umbral de
+ // 5 m: dos cifras distintas para la misma ruta. Con 2 m de baile y una subida
+ // de 10, son 10 m y no 14.
+ const c=fixture();
+ c.routePoints=[[0,0,100],[0,.001,102],[0,.002,100],[0,.003,102],[0,.004,100],[0,.005,110]];
+ c.updateElevation();
+ assert.equal(c.$('profileGain').textContent,'↑ 10 m aprox.');
+ assert.equal(c.$('profileLoss').textContent,'↓ 0 m aprox.');
+});

@@ -12,9 +12,11 @@
 //   1. Sobre la ruta el rumbo NO sale del GPS, sale de la geometria del
 //      camino corregida por el sentido en que lo haces (la misma h que
 //      mueve la flecha azul). Eso no puede dar vueltas.
-//   2. Fuera de la ruta solo se hace caso al rumbo del GPS por encima de
-//      7 km/h, el mismo umbral que usa Komoot. Por debajo se MANTIENE el
-//      ultimo rumbo bueno, asi que parado el mapa se queda quieto.
+//   2. Fuera de la ruta solo se hace caso al rumbo del GPS si te mueves:
+//      por encima de 0,5 m/s (1,8 km/h, rumboAndando). Por debajo se
+//      MANTIENE el ultimo rumbo bueno, asi que parado el mapa se queda
+//      quieto. (Este comentario decia 7 km/h, el umbral de Komoot, pero el
+//      codigo nunca lo uso: andando a 4 km/h el mapa no habria girado nunca.)
 // Komoot por debajo de 7 km/h gira con el magnetometro; desde la pagina
 // eso no es fiable, asi que ahi se mantiene el rumbo en vez de girar.
 //

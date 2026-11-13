@@ -438,9 +438,11 @@ const $=id=>document.getElementById(id),R=Math.PI/180,toName=t=>nombresDeRuta[t.
 //   1. Sobre la ruta el rumbo NO sale del GPS, sale de la geometria del
 //      camino corregida por el sentido en que lo haces (la misma h que
 //      mueve la flecha azul). Eso no puede dar vueltas.
-//   2. Fuera de la ruta solo se hace caso al rumbo del GPS por encima de
-//      7 km/h, el mismo umbral que usa Komoot. Por debajo se MANTIENE el
-//      ultimo rumbo bueno, asi que parado el mapa se queda quieto.
+//   2. Fuera de la ruta solo se hace caso al rumbo del GPS si te mueves:
+//      por encima de 0,5 m/s (1,8 km/h, rumboAndando). Por debajo se
+//      MANTIENE el ultimo rumbo bueno, asi que parado el mapa se queda
+//      quieto. (Este comentario decia 7 km/h, el umbral de Komoot, pero el
+//      codigo nunca lo uso: andando a 4 km/h el mapa no habria girado nunca.)
 // Komoot por debajo de 7 km/h gira con el magnetometro; desde la pagina
 // eso no es fiable, asi que ahi se mantiene el rumbo en vez de girar.
 //
@@ -1926,6 +1928,21 @@ function updateElevation(){
   }else{lastElev=null}
   samples.push({d:travelled,h:elevation});
  }
+ // EL DESNIVEL, CONTADO IGUAL EN TODA LA PANTALLA. En navegacion se sumaba
+ // cada metro de un punto al siguiente -ruido del GPS incluido- mientras que
+ // «Ruta propia» (elevationText) usa un umbral de 5 m: dos cifras distintas
+ // para la misma ruta, una encima de otra. Ahora navegacion cuenta igual que
+ // elevationText: umbral de 5 m y un hueco sin altura reinicia la cuenta. El
+ // creador sigue con la suma exacta: sus alturas son del modelo del terreno.
+ if(!creating){
+  up=0;down=0;let ref=null;
+  for(const p of pts){
+   const h=Number.isFinite(p[2])?p[2]:null;
+   if(h===null){ref=null;continue}
+   if(ref===null){ref=h;continue}
+   if(h>=ref+5){up+=h-ref;ref=h}else if(h<=ref-5){down+=ref-h;ref=h}
+  }
+ }
  const known=samples.filter(p=>p.h!==null);
  const hMin=Math.min(...known.map(p=>p.h)),hMax=Math.max(...known.map(p=>p.h));
  const total=Math.max(1,travelled), width=800,top=8,bottom=108,drawH=bottom-top;
@@ -2538,7 +2555,7 @@ function showSaved(){
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
   const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
-  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name.toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-')||'ruta');
+  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name);
   const share=document.createElement('button');share.className='btn-sub';share.textContent='Compartir';share.title='Compartir archivo GPX';share.hidden=!canShareGpx(item.points,item.name);share.onclick=()=>{void shareGpx(item.points,item.name)};
   const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
   row.append(open,dl,share,del);target.append(row);
