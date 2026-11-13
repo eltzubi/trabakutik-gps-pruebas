@@ -4,3 +4,10 @@ android/app/build/
 android/build/
 
 .test-artifacts/
+
+# Duelos con el crítico de OpenAI (.claude/skills/duel): no se suben.
+.duel/
+
+# Cache de Python
+__pycache__/
+*.pyc
