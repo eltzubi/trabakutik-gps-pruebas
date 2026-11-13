@@ -84,6 +84,67 @@ function esTesela(url) {
          /\/\{?z\}?\/.*\.png$/.test(url);
 }
 
+// PRIMERO LA RED, PERO NO A CUALQUIER PRECIO. Dos fallos que salieron en el
+// repaso completo del navegador (13 de noviembre de 2026):
+//  - fetch no falla con un 404 o un 503: devuelve la respuesta. Asi que si
+//    GitHub daba un error momentaneo, la pagina recibia ESE error aunque
+//    tuviera una copia buena guardada, y el modo sin cobertura no servia.
+//  - Sin plazo, con cobertura mala pero no nula -una raya en el monte- abrir
+//    la app esperaba lo que tardara en caducar la peticion, minutos.
+// Ahora: si la red contesta bien, manda la red. Si contesta con error o no
+// contesta, la copia. Y si a los PLAZO_RED_MS no ha contestado y hay copia,
+// la copia, mientras la red sigue por detras y refresca la cache para la
+// proxima vez. Sin copia se espera a la red, que no hay otra cosa.
+const PLAZO_RED_MS = 4000;
+function primeroLaRed(e, peticion, sinCopia) {
+  var red = fetch(peticion);
+  // «Buena» es un 200, no cualquier 2xx: un 204 sin cuerpo guardado encima
+  // de la copia la estropearia, y entregado dejaria la pagina sin datos.
+  function buena(r) { return !!r && r.status === 200; }
+  e.waitUntil(red.then(function (r) {
+    if (!buena(r)) return;
+    var copia = r.clone();
+    return caches.open(CONCHA).then(function (c) { return c.put(peticion, copia); });
+  }).catch(function () {}));
+  function copiaGuardada() {
+    return caches.match(peticion).then(function (r) {
+      return r || (sinCopia ? sinCopia() : null);
+    });
+  }
+  return new Promise(function (resolve) {
+    var plazo = setTimeout(function () {
+      copiaGuardada().then(function (c) { if (c) resolve(c); });
+    }, PLAZO_RED_MS);
+    red.then(function (r) {
+      if (buena(r)) {
+        // El plazo cubre tambien el CUERPO: fetch se resuelve con las
+        // cabeceras, y un 200 que se atasca a mitad de bajar dejaria la
+        // pagina esperando aunque hubiera copia. Se baja entero aqui y, si
+        // llega dentro del plazo, se entrega; si no, manda el plazo.
+        // Se lee la original, no otro clon: la copia para la cache ya se
+        // saco arriba, y un clon de mas sin leer obliga a guardar el cuerpo
+        // dos veces en memoria.
+        return r.blob().then(function (cuerpo) {
+          clearTimeout(plazo);
+          var entera;
+          // Si aun asi no se pudiera rehacer, la copia, y si no hay, un error.
+          try { entera = new Response(cuerpo, { status: r.status, statusText: r.statusText, headers: r.headers }); }
+          catch (err) { return copiaGuardada().then(function (c) { resolve(c || Response.error()); }); }
+          resolve(entera);
+        }, function () {
+          clearTimeout(plazo);
+          return copiaGuardada().then(function (c) { resolve(c || Response.error()); });
+        });
+      }
+      clearTimeout(plazo);
+      return copiaGuardada().then(function (c) { resolve(c || r); });
+    }, function () {
+      clearTimeout(plazo);
+      return copiaGuardada().then(function (c) { resolve(c || Response.error()); });
+    }).catch(function () { resolve(Response.error()); });
+  });
+}
+
 function recorta(nombre, maximo) {
   return caches.open(nombre).then(function (c) {
     return c.keys().then(function (ks) {
@@ -116,11 +177,23 @@ self.addEventListener('fetch', function (e) {
       // casaria con la del mapa y se bajaria otra vez.
       caches.match(peticion, { ignoreVary: true }).then(function (r) {
         if (r) return r;
-        return fetch(peticion).then(function (red) {
-          // Las teselas vienen de otro dominio: la respuesta es opaca y no se
-          // puede mirar su estado. Se guarda igual, que es lo unico que hay.
+        // SOLO LAS BUENAS. Leaflet pide las teselas sin CORS y la respuesta
+        // llega opaca: con ella no se sabe si es la imagen o un 503, y antes
+        // se guardaban todas, de modo que una que fallo una vez se servia
+        // rota, primero la copia, hasta que la desplazaran otras 900. Ahora
+        // la pide el propio worker en CORS -IGN, PNOA y OSM lo sirven, con
+        // «access-control-allow-origin: *»-, ve el estado de verdad y solo
+        // guarda las buenas. A una peticion sin CORS se le puede contestar
+        // con una respuesta CORS. Si un servidor no diera CORS, se pide como
+        // antes y esa no se guarda.
+        // NO se pone crossOrigin en las capas: las teselas ya guardadas son
+        // opacas y una peticion CORS no las acepta; se perderia de golpe todo
+        // el mapa visto que hubiera en el movil.
+        return fetch(new Request(url, { mode: 'cors', credentials: 'omit' }))
+          .catch(function () { return fetch(peticion); })
+          .then(function (red) {
           var copia = red.clone();
-          if (red.ok || red.type === 'opaque') e.waitUntil(
+          if (red.ok) e.waitUntil(
             caches.open(TESELAS).then(function (c) {
               return c.put(peticion, copia).then(function () {
                 return recorta(TESELAS, TESELAS_MAX);
@@ -154,8 +227,10 @@ self.addEventListener('fetch', function (e) {
         var red = fetch(peticion).then(function (resp) {
           if (resp && resp.ok) {
             var copia = resp.clone();
-            caches.open(CONCHA).then(function (c) { c.put(peticion, copia); })
-              .catch(function () {});
+            // Se devuelve la escritura para que waitUntil la espere: suelta,
+            // el navegador podia parar el worker antes de terminar de guardar.
+            return caches.open(CONCHA).then(function (c) { return c.put(peticion, copia); })
+              .catch(function () {}).then(function () { return resp; });
           }
           return resp;
         });
@@ -167,18 +242,7 @@ self.addEventListener('fetch', function (e) {
   }
 
   if (/^https:\/\/raw\.githubusercontent\.com\/eltzubi\/Rutas-Mallabia\//i.test(url)) {
-    e.respondWith(
-      fetch(peticion).then(function (red) {
-        if (red && red.ok) {
-          var copia = red.clone();
-          caches.open(CONCHA).then(function (c) { c.put(peticion, copia); })
-            .catch(function () {});
-        }
-        return red;
-      }).catch(function () {
-        return caches.match(peticion).then(function (r) { return r || Response.error(); });
-      })
-    );
+    e.respondWith(primeroLaRed(e, peticion));
     return;
   }
 
@@ -189,23 +253,10 @@ self.addEventListener('fetch', function (e) {
   var esDato = /\.(html|json)$/.test(new URL(url).pathname) ||
                peticion.mode === 'navigate';
   if (esDato) {
-    e.respondWith(
-      fetch(peticion).then(function (red) {
-        if (red && red.ok) {
-          var copia = red.clone();
-          caches.open(CONCHA).then(function (c) { c.put(peticion, copia); });
-        }
-        return red;
-      }).catch(function () {
-        return caches.match(peticion).then(function (r) {
-          if (r) return r;
-          // Una navegacion sin copia exacta -por ejemplo con ?ruta=algo-:
-          // vale la pagina guardada, que lee el parametro ella sola.
-          if (peticion.mode === 'navigate') return caches.match('nuevo.html');
-          return Response.error();
-        });
-      })
-    );
+    // Una navegacion sin copia exacta -por ejemplo con ?ruta=algo-: vale la
+    // pagina guardada, que lee el parametro ella sola.
+    e.respondWith(primeroLaRed(e, peticion, peticion.mode === 'navigate'
+      ? function () { return caches.match('nuevo.html'); } : null));
     return;
   }
 
@@ -214,7 +265,8 @@ self.addEventListener('fetch', function (e) {
       return r || fetch(peticion).then(function (red) {
         if (red && red.ok) {
           var copia = red.clone();
-          caches.open(CONCHA).then(function (c) { c.put(peticion, copia); });
+          e.waitUntil(caches.open(CONCHA).then(function (c) { return c.put(peticion, copia); })
+            .catch(function () {}));
         }
         return red;
       });
