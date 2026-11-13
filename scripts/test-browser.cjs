@@ -303,6 +303,40 @@ async function setup(context) {
     console.log(
       "PASS Chromium: apertura, 4 anchos, IGN, importar/reabrir GPX, inicio único de navegación/grabación, Parar y exportar completo",
     );
+    // HAY VERSION NUEVA DE LA APP. El puente dice 4.9.3 y instalar.html, el
+    // de verdad que sirve este mismo servidor, la ultima publicada: tiene que
+    // salir el aviso, caber a 320 px, cerrarse y no volver al recargar. Y en
+    // un navegador, sin app, no sale nunca.
+    {
+      const ctxV = await browser.newContext({viewport:{width:320,height:700},serviceWorkers:'block'});
+      await setup(ctxV);
+      const pv = await ctxV.newPage(), fallosV = [];
+      pv.on("pageerror", (e) => fallosV.push(e.message));
+      await pv.goto(base + "nuevo.html");
+      await pv.waitForSelector("#appUpdate:not(.hidden)", { timeout: 10000 });
+      const publicada = fs.readFileSync(path.join(root, "instalar.html"), "utf8").match(/<!--VER-->([\d.]+)<!--\/VER-->/)[1];
+      assert.match(await pv.locator("#appUpdateTexto").textContent(), new RegExp(publicada.replace(/\./g, "\\.") + ".*tienes la 4\\.9\\.3"));
+      assert.equal(await pv.locator("#appUpdateTexto").getAttribute("href"), "https://eltzubi.github.io/trabakutik-gps-pruebas/instalar.html");
+      assert(await pv.locator("#appUpdate").isVisible(), "el aviso se ve al entrar");
+      assert(await pv.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "el aviso no desborda a 320 px");
+      const cierre = await pv.locator("#appUpdateCerrar").boundingBox();
+      assert(cierre.width >= 44 && cierre.height >= 44, "la equis se puede tocar con el dedo");
+      await pv.screenshot({ path: path.join(root, ".test-artifacts/aviso-version-320.png") });
+      await pv.click("#appUpdateCerrar");
+      assert(!(await pv.locator("#appUpdate").isVisible()), "la equis lo cierra");
+      await pv.reload();
+      await pv.waitForTimeout(1500);
+      assert(!(await pv.locator("#appUpdate").isVisible()), "cerrado no vuelve hasta la siguiente version");
+      assert.deepEqual(fallosV, [], "errores JS");
+      await ctxV.close();
+      const web = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+      const pw = await web.newPage();
+      await pw.goto(base + "nuevo.html");
+      await pw.waitForTimeout(1500);
+      assert(!(await pw.locator("#appUpdate").isVisible()), "en un navegador, sin app, no hay APK que actualizar");
+      await web.close();
+      console.log("PASS Chromium: aviso de APK nueva al entrar, a 320 px, se cierra y no sale en la web");
+    }
     // PARAR DESDE LA NOTIFICACION. El servicio hace finish() solo y la pagina
     // se entera por los sondeos: tiene que acabar con Guardar a la vista, sin
     // GPS propio encendido y diciendo que la salida ha terminado. Antes se

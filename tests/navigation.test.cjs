@@ -587,6 +587,40 @@ test('El número de versión sale solo en la app, y una APK vieja se nota',()=>{
  vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
 });
 
+test('Avisa de una APK nueva comparando con la versión publicada en instalar.html',async()=>{
+ // Lo pregunto el autor: «cuando entre en el navegador, ¿le avisara?». Antes
+ // no avisaba nadie y los arreglos del servicio no llegaban a quien no
+ // reinstalara.
+ const caso=async(instalada,publicada,{cerrada=null,ok=true,falla=false}={})=>{
+  const clases=new Set(['hidden']),nodo=()=>({textContent:'',onclick:null,classList:{add:k=>clases.add(k),remove:k=>clases.delete(k)}});
+  const nodos={appVersion:{textContent:'',classList:{add(){},remove(){}}},appUpdate:{classList:{add:k=>clases.add(k),remove:k=>clases.delete(k)}},appUpdateTexto:nodo(),appUpdateCerrar:nodo()};
+  const guardado=new Map(cerrada?[['actualizacionCerrada',cerrada]]:[]);
+  let pedido=null;
+  const c={$:id=>nodos[id]||null,window:{TrabakutikAndroid:{getAppVersion:()=>instalada}},
+   localStorage:{getItem:k=>guardado.get(k)??null,setItem:(k,v)=>guardado.set(k,v)},
+   fetch:(url,op)=>{pedido={url,op};return falla?Promise.reject(Error('sin red')):Promise.resolve({ok,text:()=>Promise.resolve('<small>versión <!--VER-->'+publicada+'<!--/VER--></small>')})}};
+  vm.createContext(c);
+  vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
+  await new Promise(r=>setTimeout(r,0));await new Promise(r=>setTimeout(r,0));
+  return {visible:!clases.has('hidden'),texto:nodos.appUpdateTexto.textContent,pedido,cerrar:nodos.appUpdateCerrar.onclick,guardado,c};
+ };
+ let r=await caso('4.9.21','4.9.22');
+ assert.equal(r.visible,true,'4.9.21 frente a 4.9.22: avisa');
+ assert.match(r.texto,/4\.9\.22/);assert.match(r.texto,/tienes la 4\.9\.21/);
+ assert.equal(r.pedido.url,'instalar.html');assert.equal(r.pedido.op.cache,'no-store');
+ assert.equal((await caso('4.9.22','4.9.22')).visible,false,'al dia: callado');
+ assert.equal((await caso('4.9.23','4.9.22')).visible,false,'mas nueva que la web: callado');
+ assert.equal((await caso('4.9.9','4.9.10')).visible,true,'se compara por numeros, no por texto');
+ assert.equal((await caso('','4.9.22')).visible,true,'una APK que no sabe su version es la mas vieja');
+ assert.equal((await caso('4.9.21','4.9.22',{falla:true})).visible,false,'sin red: nada');
+ assert.equal((await caso('4.9.21','4.9.22',{ok:false})).visible,false,'si la web falla: nada');
+ assert.equal((await caso('4.9.21','4.9.22',{cerrada:'4.9.22'})).visible,false,'cerrado para esa version: no vuelve');
+ assert.equal((await caso('4.9.21','4.9.23',{cerrada:'4.9.22'})).visible,true,'pero si sale otra, si');
+ r=await caso('4.9.21','4.9.22');
+ r.cerrar();
+ assert.equal(r.guardado.get('actualizacionCerrada'),'4.9.22','cerrar se recuerda por version');
+});
+
 // ---------------------------------------------------------------------------
 // LOS CRUCES CON SUS RAMAS. Desde noviembre de 2026 cruces-zona.json trae, de
 // cada cruce, los rumbos de sus ramas agrupados por camino, y el aviso sale de

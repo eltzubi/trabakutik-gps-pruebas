@@ -11,6 +11,40 @@ function pintaVersion(){
  try{v=window.TrabakutikAndroid.getAppVersion?window.TrabakutikAndroid.getAppVersion():''}catch(e){}
  b.textContent=v?'Trabakutik GPS '+v:'Trabakutik GPS · versión anterior a la 4.9.3';
  b.classList.remove('hidden');
+ miraActualizacion(v);
+}
+// HAY UNA VERSION NUEVA DE LA APP. Lo pregunto el autor: «cuando entre en el
+// navegador, ¿le avisara de una actualizacion?». No avisaba nadie: la pagina
+// se actualiza sola, pero el APK solo cambia si uno reinstala, y cada arreglo
+// del servicio -la voz, los giros, la grabacion con la pantalla apagada- se
+// quedaba sin llegar a quien no se enterara por otro lado.
+// La version publicada sale de instalar.html, que el flujo del APK pone al
+// dia en cada publicacion (la marca <!--VER-->): no hay otro numero que
+// mantener. Sin cobertura no sale nada, y una APK anterior a la 4.9.3, que no
+// sabe decir su version, cuenta como la mas vieja de todas.
+// El enlace es la direccion entera a proposito: dentro de la app solo
+// nuevo.html se abre en el WebView, y lo demas va al navegador del movil, que
+// es quien sabe bajar e instalar un APK.
+function versionMayor(a,b){
+ const x=String(a||'0').split('.').map(Number),y=String(b||'0').split('.').map(Number);
+ for(let i=0;i<Math.max(x.length,y.length);i++){
+  const d=(x[i]||0)-(y[i]||0);
+  if(d)return d>0;
+ }
+ return false;
+}
+function miraActualizacion(instalada){
+ if(typeof fetch!=='function')return;
+ fetch('instalar.html',{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{
+  const m=/<!--VER-->([\d.]+)<!--\/VER-->/.exec(t||'');
+  if(!m||!versionMayor(m[1],instalada))return;
+  const caja=$('appUpdate');if(!caja)return;
+  // Quien lo cierra no lo vuelve a ver hasta la siguiente version.
+  try{if(localStorage.getItem('actualizacionCerrada')===m[1])return}catch(e){}
+  $('appUpdateTexto').textContent='Hay una versión nueva de la app: '+m[1]+(instalada?' (tienes la '+instalada+')':'')+' · Toca para instalarla';
+  $('appUpdateCerrar').onclick=()=>{caja.classList.add('hidden');try{localStorage.setItem('actualizacionCerrada',m[1])}catch(e){}};
+  caja.classList.remove('hidden');
+ }).catch(()=>{});
 }
 pintaVersion();
 $('despeja').onclick=()=>{
