@@ -26,6 +26,7 @@ final class NavigationMetrics {
     // esos dos numeros son el dial.
     private static final double CLIMB_DROP = 25, CLIMB_MIN_GAIN = 60, CLIMB_MIN_LENGTH = 600;
     private static final double WATER_NOTICE = 150, WATER_OFFSET = 30;
+    private static final double CLIMB_LATE = 60;
     private static final long MAX_GAP_MS = 10_000;
     record Water(String name, double lat, double lon, boolean approximate) {}
     record Projection(double along, double distance) {}
@@ -194,7 +195,14 @@ final class NavigationMetrics {
             Event key = new Event(event.along, dir, event.notice);
             if (announced.contains(key)) continue;
             double ahead = (event.along - along) * dir;
-            if (ahead < -.01 || ahead > (water ? WATER_NOTICE : CLIMB_NOTICE)) continue;
+            // Una subida tambien vale con el arranque recien pasado, hasta
+            // CLIMB_LATE. El servicio no pide avisos mientras canta un giro
+            // (upcomingTurn), y si la subida empezaba junto a un cruce sus
+            // 100 m de antes caian todos dentro de la ventana del giro: pasado
+            // el arranque ya no se volvia a ofrecer y no se decia nunca. Asi
+            // se dice en cuanto el giro queda atras. El agua no: decir «a -20
+            // metros» no tiene sentido y la fuente se avisa a 150.
+            if (ahead < (water ? -.01 : -CLIMB_LATE) || ahead > (water ? WATER_NOTICE : CLIMB_NOTICE)) continue;
             if (!water) {
                 announced.add(key);
                 return event.notice;

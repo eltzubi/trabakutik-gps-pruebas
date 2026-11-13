@@ -18,6 +18,7 @@ import java.util.Locale;
 /** Guarda solo diagnósticos técnicos locales; nunca envía datos del usuario. */
 public final class CrashReport {
  private CrashReport(){}
+ static final long NOTAS_TOPE=20000;
  private static File reportFile(Context context){return new File(context.getFilesDir(),"ultimo-fallo.txt");}
  public static void install(Context context){
   final Context app=context.getApplicationContext();
@@ -43,7 +44,14 @@ public final class CrashReport {
   try{
    String line="WebView: "+message+" · "+
        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.ROOT).format(new Date())+"\n";
-   try(FileOutputStream out=new FileOutputStream(reportFile(context),false)){
+   // SE AÑADE, NO SE PISA. Con «false» una recarga del mapa por falta de
+   // memoria borraba el informe de un cierre de verdad de antes, que es justo
+   // el que hace falta para saber que paso. Y si el fichero ya esta lleno, lo
+   // que se pierde es la NOTA, nunca el informe: una traza larga de un cierre
+   // puede pasar sola del tope. El siguiente cierre de verdad lo pisa entero.
+   File f=reportFile(context);
+   if(f.length()>=NOTAS_TOPE)return;
+   try(FileOutputStream out=new FileOutputStream(f,true)){
     out.write(line.getBytes(StandardCharsets.UTF_8));
    }
   }catch(Exception ignored){}

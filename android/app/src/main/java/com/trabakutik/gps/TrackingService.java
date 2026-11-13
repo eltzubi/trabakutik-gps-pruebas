@@ -76,16 +76,33 @@ public class TrackingService extends Service implements LocationListener {
  // hace falta haber tenido al menos un punto (ultimoFixGpsElapsed>0). La
  // ubicacion apagada si se dice desde el primer momento: eso no se arregla
  // esperando.
+ // Tres casos que salieron en el repaso completo (13 de noviembre de 2026):
+ //  - Si ya se habia avisado «sin señal» y DESPUES se apagaba la ubicacion,
+ //    no se decia nada: el aviso era un solo si/no. Ahora se recuerda si lo
+ //    avisado fue la ubicacion apagada, y pasar a ella se dice.
+ //  - Si el GPS no llegaba NUNCA a dar la primera posicion, no se decia en
+ //    alto: el aviso pedia haber tenido una. Ahora, pasado SIN_PRIMER_FIX_MS
+ //    desde que arranca el GPS, tambien se avisa; y al llegar, «recuperada».
+ //  - loadRoute y STOP_NAVIGATION ponian el aviso a cero, asi que si llegaba
+ //    el trazado fino estando sin señal se volvia a gritar «sin señal». El
+ //    estado de la señal no depende de la ruta: ya no se toca alli.
+ static final long SIN_PRIMER_FIX_MS=60000;
+ long gpsArrancadoElapsed=0;
+ boolean avisadaApagada=false;
  void avisaSinGps(){
   boolean apagada=!ubicacionActivada();
   // Encender la ubicacion no es recuperar la señal: hasta que entra la
   // primera posicion no hay nada recuperado. Sin esto, con la ubicacion
   // apagada al empezar, al encenderla se decia «Señal GPS recuperada» con el
   // GPS todavia buscando satelites, y ya no se volvia a decir al llegar.
-  boolean sinGps=apagada||(ultimoFixGpsElapsed>0?!gpsReciente():sinGpsAvisado);
-  if(sinGps==sinGpsAvisado)return;
+  boolean nuncaLlega=gpsArrancadoElapsed>0
+    &&SystemClock.elapsedRealtime()-gpsArrancadoElapsed>=SIN_PRIMER_FIX_MS;
+  boolean sinGps=apagada||(ultimoFixGpsElapsed>0?!gpsReciente():(sinGpsAvisado||nuncaLlega));
+  boolean pasaAApagada=sinGps&&sinGpsAvisado&&apagada&&!avisadaApagada;
+  if(sinGps==sinGpsAvisado&&!pasaAApagada)return;
   sinGpsAvisado=sinGps;
-  if(!sinGps){tonoBien();habla("Señal GPS recuperada");return;}
+  if(!sinGps){avisadaApagada=false;tonoBien();habla("Señal GPS recuperada");return;}
+  avisadaApagada=apagada;
   // Dos pitidos lentos: los giros van de uno a tres seguidos y el de fuera
   // de ruta son cuatro rapidos, asi que este no se confunde con ninguno.
   pitidos(2,700);
@@ -276,7 +293,7 @@ public class TrackingService extends Service implements LocationListener {
   if(action==null){finish();return START_NOT_STICKY;}
   if("STOP".equals(action)){finish();return START_NOT_STICKY;}
   if("STOP_NAVIGATION".equals(action)){
-   navigating=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;olvidaSentido();sinGpsAvisado=false;
+   navigating=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;olvidaSentido();
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
    publicaEstado();
    if(!recording){finish();return START_NOT_STICKY;}
@@ -358,6 +375,7 @@ public class TrackingService extends Service implements LocationListener {
   // cada segundo?». Ahora una por segundo y sin filtro de distancia; lo que
   // se GUARDA se filtra mas abajo, al escribir.
   manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,this,Looper.getMainLooper());
+  gpsArrancadoElapsed=SystemClock.elapsedRealtime();
    pideRed();
   }catch(Exception ex){finish();}
  }
@@ -416,7 +434,7 @@ public class TrackingService extends Service implements LocationListener {
   updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";sinGpsAvisado=false;
+  route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";
   metrics.configure(route,Collections.emptyList());
   metricsRouteKey=0;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("metrics").apply();
@@ -671,7 +689,13 @@ public class TrackingService extends Service implements LocationListener {
   if(moving&&farSince==0&&upcomingTurn.isEmpty()&&now-lastImportantAudio>=8000&&!"silencio".equals(modoAudio())){
    NavigationMetrics.Notice notice=metrics.nextNotice(along,sentido);
    if(notice!=null){
-    pitidos(notice.beeps(),900);habla(notice.text());lastImportantAudio=now;
+    // OTRO TONO PARA LO QUE SOLO INFORMA. La subida era 1 pitido, igual que
+    // «giro a 50 m», y la fuente 2 pitidos lentos, casi igual que «sin señal
+    // GPS» (900 ms contra 700): en «solo pitidos» no se distinguian. Ahora
+    // suben y fuentes suenan con TONE_PROP_PROMPT, un tono suave que no se
+    // parece a los pitidos de giro ni al «ti-ti» de que todo va bien; siguen
+    // siendo 1 (subida) y 2 (fuente) para distinguirlas entre si.
+    pitidos(notice.beeps(),400,ToneGenerator.TONE_PROP_PROMPT);habla(notice.text());lastImportantAudio=now;
    }
   }
   try{

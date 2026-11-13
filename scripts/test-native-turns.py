@@ -4,6 +4,14 @@ import subprocess,tempfile,sys,re
 production=Path('android/app/src/main/java/com/trabakutik/gps')
 src=(production/'TrackingService.java').read_text()
 metrics=(production/'NavigationMetrics.java').read_text()
+# Las subidas y las fuentes suenan con un tono propio, no con el pitido de
+# los giros: con el mismo, en «solo pitidos» una subida sonaba igual que
+# «giro a 50 m» y una fuente casi igual que «sin señal GPS».
+avisos=src[src.index(' String updateNavigationMetrics('):]
+avisos=avisos[:avisos.index('\n }\n')]
+assert 'TONE_PROP_PROMPT' in avisos and 'pitidos(notice.beeps(),900)' not in avisos, \
+    'los avisos de subida y de agua tienen que sonar con su propio tono'
+print('PASS: subidas y fuentes con tono propio, distinto del de los giros')
 def method(signature):
  a=src.index(signature);start=src.index('{',a);depth=1;i=start+1
  while depth:
@@ -108,6 +116,16 @@ public class NativeTurnsTest {
   int chicos=0;
   for(int m=0;m<=300;m+=50)if(mr.nextNotice(m,1)!=null)chicos++;
   require(chicos==0,"un repecho de 36 m no es una subida");
+  // UNA SUBIDA QUE EMPIEZA JUNTO A UN CRUCE. Mientras se canta un giro no se
+  // piden avisos, y si los 100 m de antes de la subida caian todos en la
+  // ventana del giro, pasado el arranque ya no se ofrecia y no se decia nunca.
+  // Ahora vale hasta 60 m despues del arranque; mas alla, no.
+  NavigationMetrics mt=new NavigationMetrics();
+  mt.configure(puerto,Collections.emptyList());
+  require(mt.nextNotice(40,1)!=null,"recien empezada la subida todavia se avisa");
+  NavigationMetrics mt2=new NavigationMetrics();
+  mt2.configure(puerto,Collections.emptyList());
+  require(mt2.nextNotice(80,1)==null,"pasados 60 m del arranque ya no");
   long eta=-1;
   for(int i=0;i<=60;i++)eta=metrics.eta(i*2,1,i*2/111195.,0,100000+i*1000,true);
   require(Math.abs(eta-190000)<1,"ETA from real movement");

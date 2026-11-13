@@ -28,6 +28,7 @@ public class SinSenalGpsTest {
  static long ahora=600000;
  static class SystemClock {static long elapsedRealtime(){return ahora;}}
  boolean ubicacion=true;long ultimoFixGpsElapsed=0;boolean sinGpsAvisado=false;
+ static final long SIN_PRIMER_FIX_MS=60000;long gpsArrancadoElapsed=0;boolean avisadaApagada=false;
  ArrayList<String> dicho=new ArrayList<>();int tonos=0;
  void habla(String s){dicho.add(s);}
  static class ToneGenerator{static final int TONE_PROP_ACK=2;}
@@ -81,6 +82,30 @@ public class SinSenalGpsTest {
   c.ultimoFixGpsElapsed=ahora;
   c.avisaSinGps();
   require(c.dicho.size()==2&&c.dicho.get(1).equals("Señal GPS recuperada"),"Con la primera posicion si: "+c.dicho);
+
+  // 8. Se pierde la señal y DESPUES se apaga la ubicacion: tambien se dice.
+  //    Antes, con «sin señal» ya avisado, apagar la ubicacion no decia nada.
+  c=new SinSenalGpsTest();c.ultimoFixGpsElapsed=ahora-30000;
+  c.avisaSinGps();
+  c.ubicacion=false;c.avisaSinGps();c.avisaSinGps();
+  require(c.dicho.equals(Arrays.asList("Atención, sin señal GPS","Atención, la ubicación del teléfono está apagada")),
+    "apagar la ubicacion tras perder la señal se dice, una vez: "+c.dicho);
+  //    Y al encenderla, con la posicion aun vieja, no es «recuperada».
+  c.ubicacion=true;c.avisaSinGps();
+  require(c.dicho.size()==2,"encender la ubicacion no es recuperar la señal: "+c.dicho);
+  c.ultimoFixGpsElapsed=ahora;c.avisaSinGps();
+  require(c.dicho.get(c.dicho.size()-1).equals("Señal GPS recuperada"),c.dicho.toString());
+
+  // 9. El GPS no da NUNCA la primera posicion: antes de un minuto, callado;
+  //    pasado el minuto, se dice; y con la primera posicion, «recuperada».
+  c=new SinSenalGpsTest();c.gpsArrancadoElapsed=ahora-30000;
+  c.avisaSinGps();
+  require(c.dicho.isEmpty(),"a los 30 s todavia no: "+c.dicho);
+  c.gpsArrancadoElapsed=ahora-61000;
+  c.avisaSinGps();c.avisaSinGps();
+  require(c.dicho.equals(Arrays.asList("Atención, sin señal GPS")),"al minuto sin primera posicion se dice, una vez: "+c.dicho);
+  c.ultimoFixGpsElapsed=ahora;c.avisaSinGps();
+  require(c.dicho.get(1).equals("Señal GPS recuperada"),c.dicho.toString());
 
   System.out.println("OK: sin señal se avisa en alto, una sola vez, y la vuelta tambien; al arrancar se calla");
  }

@@ -133,6 +133,9 @@ jobs:
       - name: Comprobar el tope de giros y el giro en el punto 0
         working-directory: ${{ github.workspace }}
         run: python3 tests/giros_limite.py
+      - name: Comprobar que una nota del mapa no borra el informe de fallo
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/informe_fallo.py
       - name: Comprobar el resumen de bateria
         working-directory: ${{ github.workspace }}
         run: python3 scripts/test-gasto-bateria.py
