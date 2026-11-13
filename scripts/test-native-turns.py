@@ -21,7 +21,8 @@ public class NativeTurnsTest {
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
  double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
- void updateNotice(){}void pitidos(int n,int ms){beeps++;}
+ static class ToneGenerator{static final int TONE_PROP_ACK=2;}
+ void updateNotice(){}void pitidos(int n,int ms){beeps++;}void pitidos(int n,int ms,int t){beeps++;}
  ArrayList<String> dicho=new ArrayList<>();
  void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s));}catch(NumberFormatException e){}}
  // Lo mismo que hace onLocationChanged con cada posicion, en el mismo orden.
@@ -49,7 +50,7 @@ public class NativeTurnsTest {
  ' static double coste(double ahead)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
  ' void decideSentido(double along)',' void ponSentido(int s)',
- ' void olvidaSentido()',' void vuelveALaRuta()',
+ ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' void checkDeviation(Location l)',' double closest(double lat,double lon)'))+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
@@ -185,18 +186,24 @@ public class NativeTurnsTest {
 
   // VOLVER A LA RUTA. El autor: «al volver no me ha indicado que entra en
   // ruta, solo al salir». Sale a 40 m, vuelve a 13 y se queda ahi.
+  // Lejos de los dos giros (100 y 180 m), para que lo que suene sea la
+  // vuelta y no un cruce.
   c=setup();SystemClock.reloj=1000;
-  c.posicion(new Location(100,0,5));
+  c.posicion(new Location(250,0,5));
   require(c.routeReached,"llegar a la ruta");
-  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(100,40,5));}
+  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,40,5));}
   require(c.offRoute&&c.dicho.contains("Atención, fuera del recorrido"),"tiene que avisar al salir: "+c.dicho);
-  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(100,13,5));}
+  int antesBeeps=c.beeps;
+  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,13,5));}
   require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"y al volver, aunque te quedes a 13 m: "+c.dicho);
+  // Y SUENA. Iba muda mientras que salirse lleva cuatro pitidos; en el coche
+  // una frase sola se pierde, y el autor no la oyo.
+  require(c.beeps>antesBeeps,"la vuelta a la ruta tambien tiene que sonar");
   // Pegado a la ruta, sin esperar los cuatro segundos.
-  c=setup();SystemClock.reloj=1000;c.posicion(new Location(100,0,5));
-  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(100,40,5));}
+  c=setup();SystemClock.reloj=1000;c.posicion(new Location(250,0,5));
+  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,40,5));}
   require(c.offRoute,"fuera");
-  SystemClock.reloj+=1500;c.posicion(new Location(100,4,5));
+  SystemClock.reloj+=1500;c.posicion(new Location(250,4,5));
   require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"a 4 m se dice ya: "+c.dicho);
   SystemClock.reloj=1000;
 

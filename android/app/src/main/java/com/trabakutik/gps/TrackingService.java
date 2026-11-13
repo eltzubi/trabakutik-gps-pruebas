@@ -81,7 +81,7 @@ public class TrackingService extends Service implements LocationListener {
   boolean sinGps=apagada||(ultimoFixGpsElapsed>0&&!gpsReciente());
   if(sinGps==sinGpsAvisado)return;
   sinGpsAvisado=sinGps;
-  if(!sinGps){habla("Señal GPS recuperada");return;}
+  if(!sinGps){tonoBien();habla("Señal GPS recuperada");return;}
   // Dos pitidos lentos: los giros van de uno a tres seguidos y el de fuera
   // de ruta son cuatro rapidos, asi que este no se confunde con ninguno.
   pitidos(2,700);
@@ -612,7 +612,22 @@ public class TrackingService extends Service implements LocationListener {
   try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getString("audioModo",audioModo);}
   catch(Exception e){return audioModo;}
  }
- void pitidos(int n,int sep){
+ void pitidos(int n,int sep){pitidos(n,sep,ToneGenerator.TONE_PROP_BEEP);}
+ // EL «TODO BIEN» TAMBIEN TIENE QUE SONAR. Lo conto el autor el 13 de
+ // noviembre de 2026, saliendo de un tunel: «la perdida aviso, la recuperada
+ // no creo, igual que no dijo cuando recupero ruta». La frase SI se decia
+ // -lo prueba sin_senal_gps.py desde entonces-, pero iba sin pitidos
+ // mientras que el aviso de perder la señal lleva dos y el de salirse de la
+ // ruta lleva cuatro. En el coche, una frase corta sin nada que te haga
+ // levantar la oreja se pierde entre el ruido: lo que te hace escuchar es el
+ // pitido, y los avisos de vuelta eran lo unico mudo de la aplicacion.
+ //
+ // Suena distinto a proposito, y no con otro ritmo: las tandas de 1, 2, 3 y
+ // 4 pitidos ya estan cogidas (giros y fuera de ruta) y una quinta no se
+ // distingue conduciendo. TONE_PROP_ACK es el «ti-ti» de confirmacion, que
+ // no se parece a una alarma, que es justo lo que hay que decir.
+ void tonoBien(){pitidos(2,140,ToneGenerator.TONE_PROP_ACK);}
+ void pitidos(int n,int sep,int tono){
   // Se relee del fichero, no del campo: el campo solo se cargaba al nacer
   // el servicio, asi que un cambio posterior no le llegaba y seguia
   // pitando con «Silencio» puesto. Lo dijo el autor.
@@ -623,7 +638,7 @@ public class TrackingService extends Service implements LocationListener {
    tonoEnCurso=tone;
    for(int i=0;i<n;i++){
     final int delay=i*sep;
-    pitidoHandler.postDelayed(()->{try{tone.startTone(ToneGenerator.TONE_PROP_BEEP,160);}catch(Exception ignored){}},delay);
+    pitidoHandler.postDelayed(()->{try{tone.startTone(tono,160);}catch(Exception ignored){}},delay);
    }
    pitidoHandler.postDelayed(this::sueltaTono,n*sep+500);
   }catch(Exception ignored){}
@@ -710,7 +725,7 @@ public class TrackingService extends Service implements LocationListener {
  // Al cambiar de ruta, callando: «vuelves al sentido de la ruta» en una ruta
  // que acabas de cargar no quiere decir nada.
  void olvidaSentido(){sentido=1;alongPrevio=Double.NaN;alongAcum=0;}
- void vuelveALaRuta(){offRoute=false;cercaDesde=0;updateNotice();habla("De nuevo en la ruta");}
+ void vuelveALaRuta(){offRoute=false;cercaDesde=0;updateNotice();tonoBien();habla("De nuevo en la ruta");}
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;return;}
   // El corte estaba en 22 m Y ADEMAS borraba farSince, que es el cronometro

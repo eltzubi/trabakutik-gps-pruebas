@@ -26,7 +26,7 @@ def metodo(firma):
 code = '''import java.util.*;
 public class SilencioTest {
  static class ToneGenerator {
-  static final int TONE_PROP_BEEP=1; static int vivos=0,soltados=0;
+  static final int TONE_PROP_BEEP=1,TONE_PROP_ACK=2; static int vivos=0,soltados=0;
   ToneGenerator(int a,int b){vivos++;}
   void startTone(int t,int ms){} void release(){vivos--;soltados++;}
  }
@@ -40,7 +40,7 @@ public class SilencioTest {
  }
  Voz voz=new Voz(); final Handler pitidoHandler=new Handler(); ToneGenerator tonoEnCurso=null;
  String modo="voz"; String modoAudio(){return modo;}
-''' + metodo(' void callaYa()') + metodo(' void sueltaTono()') + metodo(' void pitidos(int n,int sep)') + '''
+''' + metodo(' void callaYa()') + metodo(' void sueltaTono()') + metodo(' void pitidos(int n,int sep)')+metodo(' void pitidos(int n,int sep,int tono)')+metodo(' void tonoBien()') + '''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  public static void main(String[] args){
   SilencioTest c=new SilencioTest();

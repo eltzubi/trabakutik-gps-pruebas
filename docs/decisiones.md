@@ -169,3 +169,33 @@ recorrido entero». Si salta por ir deprisa, deja de creérselo nadie.
 **Lo que NO se hace: unir los extremos del túnel con una recta.** El GPX
 abre `<trkseg>` nuevo y la distancia no cuenta el hueco. Un kilómetro y
 medio de línea recta por dentro de la montaña sería inventarse el recorrido.
+
+## Los avisos de «ya está bien» también suenan (13 de noviembre de 2026)
+
+El autor, saliendo de un túnel: «la pérdida avisó, la recuperada no creo,
+igual que no dijo cuando recuperó ruta después de unos kilómetros». Vio el
+patrón antes que nosotros: **fallaban los avisos de vuelta, no los de
+alarma**.
+
+**La frase sí se decía.** `sin_senal_gps.py` ya comprobaba desde hace
+semanas que «Señal GPS recuperada» se dice al volver la señal, y se sigue
+comprobando. Lo que pasaba es otra cosa, y se ve contando los sonidos:
+
+| suceso | sonido | voz |
+|---|---|---|
+| sin señal GPS | 2 pitidos lentos | sí |
+| fuera del recorrido | 4 pitidos rápidos | sí |
+| señal recuperada | **nada** | sí |
+| de nuevo en la ruta | **nada** | sí |
+
+Las alarmas te hacen levantar la oreja; las vueltas eran lo único mudo de la
+aplicación. En el coche, a 80 km/h y con ruido, una frase corta de tres
+palabras sin nada que la anuncie se pierde. No es que no se dijera: es que
+no había forma de oírla.
+
+**Suena distinto a propósito, y no con otro ritmo.** Las tandas de 1, 2, 3 y
+4 pitidos ya están cogidas —los giros y el fuera de ruta—, y una quinta no se
+distingue conduciendo. Las vueltas usan `TONE_PROP_ACK`, el «ti-ti» de
+confirmación, que no suena a alarma, que es justo lo que hay que decir.
+
+Las dos pruebas llevan su contraprueba: quitando el sonido, fallan.

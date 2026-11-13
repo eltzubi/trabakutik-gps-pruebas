@@ -30,9 +30,11 @@ public class SinSenalGpsTest {
  boolean ubicacion=true;long ultimoFixGpsElapsed=0;boolean sinGpsAvisado=false;
  ArrayList<String> dicho=new ArrayList<>();int tonos=0;
  void habla(String s){dicho.add(s);}
+ static class ToneGenerator{static final int TONE_PROP_ACK=2;}
  void pitidos(int n,int sep){tonos+=n;}
+ void pitidos(int n,int sep,int tono){tonos+=n;}
  boolean ubicacionActivada(){return ubicacion;}
-''' + metodo(' boolean gpsReciente()') + metodo(' void avisaSinGps()') + '''
+''' + metodo(' boolean gpsReciente()') + metodo(' void tonoBien()')+metodo(' void avisaSinGps()') + '''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  public static void main(String[] args){
   // 1. Al encender no hay posicion todavia. Eso NO es perder la señal.
@@ -50,6 +52,7 @@ public class SinSenalGpsTest {
   c.avisaSinGps();
   require(c.dicho.equals(Arrays.asList("Atención, sin señal GPS")),"Tiene que avisar: "+c.dicho);
   require(c.tonos>0,"Y sonar, para el modo de solo pitidos");
+  int antes=c.tonos;
 
   // 4. Mientras siga sin señal, no se repite cada cinco segundos.
   c.avisaSinGps();c.avisaSinGps();
@@ -59,6 +62,8 @@ public class SinSenalGpsTest {
   c.ultimoFixGpsElapsed=ahora;
   c.avisaSinGps();
   require(c.dicho.size()==2&&c.dicho.get(1).equals("Señal GPS recuperada"),c.dicho.toString());
+  // Y LA VUELTA SUENA. Iba muda, y en el coche una frase sola se pierde.
+  require(c.tonos>antes,"la señal recuperada tambien tiene que sonar: "+c.tonos);
   c.avisaSinGps();
   require(c.dicho.size()==2,"La vuelta tampoco se repite: "+c.dicho);
 
