@@ -371,3 +371,68 @@ test('sin los caminos de la zona bajados tampoco se ofrece',async()=>{
  assert.match(c.$('plannerStatus').textContent,/todavía se están bajando/);
  assert.equal(c.$('plannerStatus').hijos.length,0,'primero esperar, no dibujar rectas');
 });
+// CERRAR Y ARRASTRAR CON EL PLANIFICADOR, QUE ES EL MODO DE LA APLICACION.
+// Las pruebas de arriba van por el modo antiguo (seguirMapaGps=false). En el
+// de verdad, cerrar el circulo y arrastrar un punto le mandaban la ruta
+// ENTERA al planificador, y un tramo unido en recta -donde no hay camino- la
+// hacia fallar: el circulo no se cerraba y el punto volvia a su sitio.
+function codificaValhalla(pts){
+ let o='',pl=0,pn=0;
+ const e=v=>{v=v<0?~(v<<1):(v<<1);let s='';while(v>=0x20){s+=String.fromCharCode((0x20|(v&0x1f))+63);v>>=5}return s+String.fromCharCode(v+63)};
+ for(const [a,b] of pts){const la=Math.round(a*1e6),lo=Math.round(b*1e6);o+=e(la-pl)+e(lo-pn);pl=la;pn=lo}
+ return o;
+}
+function planificadorConUnHueco(c,A,B,C){
+ const pedidos=[];
+ c.fetch=async(url,opt)=>{
+  const body=JSON.parse(opt.body);pedidos.push(body.locations.length);
+  const es=(x,P)=>Math.abs(x.lat-P[0])<1e-6&&Math.abs(x.lon-P[1])<1e-6;
+  const legs=[];
+  for(let k=1;k<body.locations.length;k++){
+   const p=body.locations[k-1],q=body.locations[k];
+   // Entre B y C no hay camino: Valhalla contesta con un rodeo enorme.
+   const hueco=(es(p,B)&&es(q,C))||(es(p,C)&&es(q,B));
+   legs.push({shape:codificaValhalla(hueco?[[p.lat,p.lon],[p.lat+0.05,p.lon],[q.lat,q.lon]]:[[p.lat,p.lon],[q.lat,q.lon]])});
+  }
+  return {ok:true,status:200,json:async()=>({trip:{legs}})};
+ };
+ vm.runInContext('seguirMapaGps=true;permisoMapaGps=true;ultimaPeticionMapaGps=0;alturasTerrenoGps=async r=>r;',c);
+ return pedidos;
+}
+// Espera a que acabe el calculo en curso, mirandolo desde fuera del vm.
+async function esperaCalculo(c){
+ for(let k=0;k<400&&vm.runInContext('calculandoMapaGps',c);k++)await new Promise(r=>setTimeout(r,10));
+}
+async function trazadoConRecta(c,A,B,C){
+ await c.planificaMapaGps([A]);
+ await c.planificaTramoMapa(A,B);
+ await c.planificaTramoMapa(B,C);
+ assert.equal(c.$('uneRecta').onclick===undefined,true);
+ c.uneEnRectaMapa();
+ vm.runInContext('ultimaPeticionMapaGps=0',c);
+}
+test('con el planificador, cerrar el círculo solo pide el tramo de vuelta y respeta la recta',async()=>{
+ const c=creatorContext(),A=[43.2,-2.5],B=[43.203,-2.5],C=[43.203,-2.496];
+ const pedidos=planificadorConUnHueco(c,A,B,C);
+ await trazadoConRecta(c,A,B,C);
+ pedidos.length=0;
+ c.cierraCirculoGps();
+ await esperaCalculo(c);
+ const s=c.state();
+ assert.deepEqual(pedidos,[2],'solo el tramo de vuelta');
+ assert.equal(s.anchors.at(-1),s.anchors[0],'el círculo queda cerrado');
+ assert.equal(s.segments.filter(t=>t.aMano).length,1,'la recta sigue siendo recta');
+});
+test('con el planificador, arrastrar un punto solo recalcula sus tramos y deja la recta',async()=>{
+ const c=creatorContext(),A=[43.2,-2.5],B=[43.203,-2.5],C=[43.203,-2.496];
+ const pedidos=planificadorConUnHueco(c,A,B,C);
+ await trazadoConRecta(c,A,B,C);
+ pedidos.length=0;
+ c.mueveAnclaGps(1,43.2032,-2.5001);
+ await esperaCalculo(c);
+ const s=c.state();
+ assert.deepEqual(pedidos,[2],'solo el tramo con camino, el de la recta no se pide');
+ assert.deepEqual(Array.from(s.red.nodos[s.anchors[1]].slice(0,2)),[43.2032,-2.5001],'el punto se mueve');
+ assert.equal(s.segments[2].aMano,true,'la recta llega hasta la posición nueva');
+ assert.equal(s.segments[2][0],s.anchors[1]);
+});

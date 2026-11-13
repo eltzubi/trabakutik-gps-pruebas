@@ -185,12 +185,24 @@ function anadeTramoMapa(result){
  // Solo si es un punto puesto a mano: a un nodo de la red de caminos no se le
  // escribe encima, que lo comparten todas las rutas.
  if(nodosManualesGps.has(ini)&&redGps.nodos[ini]&&!Number.isFinite(redGps.nodos[ini][2])&&Number.isFinite(a[2]))redGps.nodos[ini][2]=a[2];
- const fin=nodoManualGps(b[0],b[1],b[2]);
+ const fin=cierraEnElInicio(b)??nodoManualGps(b[0],b[1],b[2]);
  const pts=result.parts[0]||[];
  const tr=[ini,...pts.slice(1,-1).map(q=>nodoManualGps(q[0],q[1],q[2])),fin];
  tr.mapa=true;
  anclasGps.push(fin);tramosGps.push(tr);
  updateDraw();
+}
+// VOLVER AL PUNTO DE PARTIDA CIERRA EL CIRCULO. Si el tramo que se añade
+// acaba encima del primer punto, su final ES el primer punto -el mismo
+// nodo-, que es lo que el resto del creador entiende por «cerrado»: una sola
+// bola en el mapa y mover la salida mueve tambien la llegada. Lo usa «Cerrar
+// el circulo», que ya solo calcula ese ultimo tramo, y vale igual si el autor
+// toca a mano encima de la salida. 5 m: lo que puede mover el planificador un
+// punto que ya estaba pegado al camino.
+function cierraEnElInicio(p){
+ if(anclasGps.length<2||!p)return null;
+ const ini=redGps.nodos[anclasGps[0]];
+ return ini&&dist(ini,p)<5?anclasGps[0]:null;
 }
 // Un solo tramo: del ultimo punto puesto al que acabas de tocar. Se esperan
 // tambien las alturas antes de pintarlo, que asi se añade una sola vez y no
@@ -207,7 +219,7 @@ function uneEnRectaMapa(){
   anclasGps.push(ini);tramosGps.push([ini]);
  }
  const ini=anclasGps[anclasGps.length-1];
- const fin=nodoManualGps(hasta[0],hasta[1]);
+ const fin=cierraEnElInicio(hasta)??nodoManualGps(hasta[0],hasta[1]);
  const tr=[ini,fin];tr.aMano=true;
  anclasGps.push(fin);tramosGps.push(tr);
  updateDraw();
