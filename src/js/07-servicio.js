@@ -149,7 +149,11 @@ function marcaAlReves(si){
 function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
-refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;marcaAlReves(false);const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
+refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;marcaAlReves(false);
+ // Y se repinta: borrar el dato sin repintar dejaba en pantalla el ultimo
+ // «Quedan 1611 m aprox.» con la salida ya terminada y el GPS apagado.
+ if(typeof paintNavigationMetrics==='function')paintNavigationMetrics();
+ const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
 function updateOffRoute(d,accuracy){
  if(!guiaIniciada())return;
  if(!Number.isFinite(d)||!Number.isFinite(accuracy))return;

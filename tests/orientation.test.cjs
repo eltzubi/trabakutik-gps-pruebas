@@ -189,3 +189,23 @@ test('El progreso no toma la vuelta antes de llegar al extremo del camino compar
  for(let m=460;m<=500;m+=10)c.progressOnRoute(punto(0,m));
  assert(Math.abs(c.progressOnRoute(punto(0,490)).along-510)<.01);
 });
+
+test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se vuelve al km 0',()=>{
+ // Lo vio el autor al llegar al coche el 14 de noviembre de 2026: su ruta
+ // acababa 89 m antes de la salida, el coche estaba en la salida, y el tramo
+ // mas cercano era el del km 0: todo se puso a empezar otra vez -«quedan 1611
+ // m de subida»-. Aqui: cuadrado de 250 m que acaba 90 m antes de la salida.
+ const lado=250,route=[];
+ for(let s=0;s<=4*lado-90;s+=10){const t=s%lado,l=Math.floor(s/lado);
+  route.push(l===0?punto(t,0):l===1?punto(lado,t):l===2?punto(lado-t,lado):punto(0,lado-t))}
+ const cum=route.map((_,i)=>10*i),total=cum[cum.length-1];
+ const nuevo=()=>{const c={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
+  vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
+  vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);return c};
+ const c=nuevo();
+ for(let k=route.length-20;k<route.length;k++)c.progressOnRoute(route[k]);
+ const llegada=c.progressOnRoute(punto(0,0));
+ assert(llegada.along>total-5,'en la salida, al final del circuito, es el final: '+Math.round(llegada.along)+' de '+total);
+ // Y al empezar, la salida sigue siendo el km 0.
+ assert(nuevo().progressOnRoute(punto(0,0)).along<5,'al empezar, la salida es el km 0');
+});

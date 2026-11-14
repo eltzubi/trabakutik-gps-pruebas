@@ -828,3 +828,13 @@ test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dic
  const voz=source("const giroTxt=lado==='vuelta'","// Si la primera lectura entra en fase 1");
  assert(!/da la vuelta/.test(voz)&&/curva de herradura a la/.test(voz),'y la voz de la pagina tambien');
 });
+test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último «Quedan … m»',()=>{
+ // El autor termino la salida y el perfil siguio diciendo «Quedan 1611 m
+ // aprox.» con el GPS apagado: se borraba el dato sin repintar.
+ let pintado=0;
+ const c={window:{},$:()=>null,marcaAlReves(){},paintNavigationMetrics:()=>{pintado++},liveNativeMetrics:{gain:1611},liveProfileAlong:500};
+ vm.createContext(c);vm.runInContext(source('function resetOffRoute(){','function updateOffRoute('),c);
+ c.resetOffRoute();
+ assert.equal(vm.runInContext('liveNativeMetrics',c),null);
+ assert.equal(pintado,1,'y se vuelve a pintar el texto');
+});

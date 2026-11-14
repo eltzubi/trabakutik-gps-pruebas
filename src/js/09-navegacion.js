@@ -45,6 +45,17 @@ function progressOnRoute(p,reliable=true){
   if(score<bestScore){bestScore=score;cerca=meters;alongCerca=candidate}
  }
  if(Number.isFinite(cerca)&&cerca<=best+12){best=cerca;along=alongCerca}
+ // EL FINAL DE UN CIRCUITO NO ES SU PRINCIPIO. Si la ruta acaba donde empezo
+ // y ya ibas por los ultimos CIERRE_M, volver a la salida es TERMINAR: sin
+ // esto el tramo mas cercano era el del km 0 y todo se ponia a empezar otra
+ // vez -«faltan 38 km», «quedan 1611 m de subida»-. Lo vio el autor al
+ // llegar al coche el 14 de noviembre de 2026. Igual al reves, hacia el 0.
+ const totalRuta=routeCumulative[routeCumulative.length-1]||0,CIERRE_M=300;
+ if(ref!==null&&totalRuta>2*CIERRE_M&&routePoints.length>2
+    &&dist(routePoints[0],routePoints[routePoints.length-1])<150){
+  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M)along=totalRuta;
+  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M)along=0;
+ }
  if(reliable&&best<=30){ultimoAlong=along;ultimoPuntoAlong=p}
  return {along,distance:best};
 }
