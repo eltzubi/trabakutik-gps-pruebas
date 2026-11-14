@@ -3557,18 +3557,24 @@ function progressOnRoute(p,reliable=true){
  const totalRuta=routeCumulative[routeCumulative.length-1]||0,CIERRE_M=300;
  if(ref!==null&&totalRuta>2*CIERRE_M&&routePoints.length>2
     &&dist(routePoints[0],routePoints[routePoints.length-1])<150){
-  // Solo es llegar si lo que faltaba cabe en lo que te has movido (mas un
-  // margen): con 250 m por delante, una lectura que caiga en el km 0,2 no
+  // Solo es llegar si lo que faltaba cabe en lo que has andado (mas 30 m):
+  // con 250 m por delante, una lectura que caiga en el km 0,2 no
   // te da por llegado; se queda donde ibas.
-  // Retenida, NO se mueve el punto desde el que se mide lo andado: asi lo
-  // que avanzas se va sumando y, si sigues por un tramo que la salida y la
-  // llegada comparten, acabas llegando (lo vio GPT al revisarlo: midiendo
-  // cada vez desde la ultima lectura, 3 m nunca llegaban a cubrir 90).
-  const falta=sentidoRuta>0?totalRuta-ref:ref;
-  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M){if(falta<=step+30)along=totalRuta;else{along=ref;retenido=true}}
-  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M){if(falta<=step+30)along=0;else{along=ref;retenido=true}}
+  // Retenida, lo que andas se SUMA lectura a lectura (no la recta desde un
+  // punto fijo, que en una curva no llega nunca), y para darte por llegado
+  // hace falta ademas estar a menos de 60 m de la meta: alejandote por la
+  // salida no se llega. Lo vio GPT al revisarlo, en dos vueltas.
+  const falta=sentidoRuta>0?totalRuta-ref:ref,meta=sentidoRuta>0?routePoints[routePoints.length-1]:routePoints[0];
+  const andado=(progressOnRoute.andado||0)+step;
+  if((sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M)||(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M)){
+   // (Con 30 m o menos por delante ya estabas en la meta: ahi no se pide
+   // cercania, que la salida puede quedar a 90 m de ella, como en la del autor.)
+   if(falta<=andado+30&&(falta<=30||dist(p,meta)<=60)){along=sentidoRuta>0?totalRuta:0}
+   else{along=ref;retenido=true}
+  }
  }
- if(reliable&&best<=30){ultimoAlong=along;if(!retenido)ultimoPuntoAlong=p}
+ if(reliable&&best<=30)progressOnRoute.andado=retenido?(progressOnRoute.andado||0)+step:0;
+ if(reliable&&best<=30){ultimoAlong=along;ultimoPuntoAlong=p}
  return {along,distance:best};
 }
 // Parado no hay giro que anunciar. «Gira a la derecha · En 50 m» solo

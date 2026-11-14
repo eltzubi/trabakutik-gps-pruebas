@@ -105,6 +105,13 @@ public class NativeTurnsTest {
   NavigationMetrics.Projection ult=salto;
   for(double x=15;x<=130;x+=3)ult=f.project(2/111195.,x/111195.,1,true);
   require(ult.along()>f.total()-5,"andando por la salida, se acaba llegando: "+Math.round(ult.along()));
+  // Alejandote de la meta por la salida, retenido, no se llega nunca.
+  NavigationMetrics g=new NavigationMetrics();g.configure(p,Collections.emptyList());
+  for(double x=-20;x<=10;x+=10)g.project((x<0?20+x*-1:20)/111195.,(x<0?0:x)/111195.,1,true);
+  g.project(20/111195.,10/111195.,1,true);
+  NavigationMetrics.Projection lejos=g.project(2/111195.,200/111195.,1,true);
+  for(double x=203;x<=290;x+=3)lejos=g.project(2/111195.,x/111195.,1,true);
+  require(lejos.along()<g.total()-20,"alejandote de la meta no se llega: "+Math.round(lejos.along()));
  }
  static void saltoNoEsVuelta(){
   NativeTurnsTest c=new NativeTurnsTest();

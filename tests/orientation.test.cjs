@@ -214,9 +214,20 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  const d=nuevo();d.ultimoAlong=total-250;d.ultimoPuntoAlong=punto(100,10);
  const antes=d.ultimoAlong,salto=d.progressOnRoute(punto(100,0));
  assert(salto.along<total-100,'no se da por llegado 250 m antes: '+Math.round(salto.along)+' de '+total+' (iba por '+Math.round(antes)+')');
- // Y siguiendo por el tramo de salida a pasos de 3 m, lo andado se suma: se
- // llega (antes se medía cada vez desde la ultima lectura y no se llegaba).
- const e=nuevo();e.ultimoAlong=total-90;e.ultimoPuntoAlong=punto(10,0);
- let ultimo;for(let x=13;x<=130;x+=3){ultimo=e.progressOnRoute(punto(x,0));if(x<60)assert(ultimo.along<total-20,'a '+(x-10)+' m aun no se ha llegado')}
- assert(ultimo.along>total-5,'andados los 90 m, se llega: '+Math.round(ultimo.along));
+ // Llegada que vuelve paralela a la salida, a 20 m, y acaba en (100,20).
+ // Retenido con 90 m por delante: por el tramo de salida HACIA la meta, a
+ // pasos de 3 m, lo andado se suma y se llega; alejandote, no.
+ const esq=[[0,0],[400,0],[400,100],[0,100],[0,20],[100,20]],par=[];
+ for(let k=1;k<esq.length;k++){const [A,B]=[esq[k-1],esq[k]],n=Math.round(Math.hypot(B[0]-A[0],B[1]-A[1])/10);
+  for(let q=(k===1?0:1);q<=n;q++)par.push(punto(A[0]+(B[0]-A[0])*q/n,A[1]+(B[1]-A[1])*q/n))}
+ const pc=par.map((_,k)=>10*k),pt=pc[pc.length-1];
+ const otro=()=>{const c={routePoints:par,routeCumulative:pc,ultimoAlong:pt-90,ultimoPuntoAlong:punto(10,0),sentidoRuta:1,R:Math.PI/180};
+  vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
+  vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);return c};
+ const e=otro();let ultimo;
+ for(let x=13;x<=100;x+=3){ultimo=e.progressOnRoute(punto(x,2));if(x<50)assert(ultimo.along<pt-20,'a '+(x-10)+' m aun no se ha llegado')}
+ assert(ultimo.along>pt-5,'andados los 90 m hacia la meta, se llega: '+Math.round(ultimo.along));
+ const f=otro();f.ultimoPuntoAlong=punto(100,0);
+ for(let x=103;x<=250;x+=3)ultimo=f.progressOnRoute(punto(x,2));
+ assert(ultimo.along<pt-20,'alejandote de la meta por la salida no se llega: '+Math.round(ultimo.along));
 });

@@ -40,7 +40,7 @@ final class NavigationMetrics {
     private int[] missing = new int[0];
     private final List<Event> events = new ArrayList<>();
     private final HashSet<Event> announced = new HashSet<>();
-    private double reference = Double.NaN, lastLat, lastLon;
+    private double reference = Double.NaN, lastLat, lastLon, heldWalked;
     private double motionAlong, motionLat, motionLon, movingMeters;
     private long motionTime, movingMillis, lastMovement;
     private int direction = 1;
@@ -53,6 +53,7 @@ final class NavigationMetrics {
         descent = new double[n];
         missing = new int[n + 1];
         reference = Double.NaN;
+        heldWalked = 0;
         resetPace();
         events.clear();
         announced.clear();
@@ -170,25 +171,27 @@ final class NavigationMetrics {
         if (hasReference && total > 2 * CIERRE_M && points.size() > 2) {
             double[] a = points.get(0), b = points.get(points.size() - 1);
             if (meters(a[0], a[1], b[0], b[1]) < 150) {
-                // Solo es llegar si lo que faltaba cabe en lo movido (+60 m);
+                // Solo es llegar si lo que faltaba cabe en lo andado (+30 m);
                 // si no, una lectura en el km 0,2 te deja donde ibas.
-                // Retenida, no se mueve el punto desde el que se mide lo
-                // andado: lo que avanzas se suma y acabas llegando.
-                if (dir > 0 && reference > total - CIERRE_M && result.along < CIERRE_M) {
-                    held = total - reference > step + 30;
-                    result = new Projection(held ? reference : total, result.distance);
-                } else if (dir < 0 && reference < CIERRE_M && result.along > total - CIERRE_M) {
-                    held = reference > step + 30;
-                    result = new Projection(held ? reference : 0, result.distance);
+                // Retenida, lo andado se suma lectura a lectura (la recta
+                // desde un punto fijo no llega nunca en una curva), y para
+                // llegar hay que estar a menos de 60 m de la meta.
+                boolean cierra = (dir > 0 && reference > total - CIERRE_M && result.along < CIERRE_M)
+                        || (dir < 0 && reference < CIERRE_M && result.along > total - CIERRE_M);
+                if (cierra) {
+                    double falta = dir > 0 ? total - reference : reference;
+                    double[] meta = dir > 0 ? b : a;
+                    held = !(falta <= heldWalked + step + 30
+                            && (falta <= 30 || meters(lat, lon, meta[0], meta[1]) <= 60));
+                    result = new Projection(held ? reference : (dir > 0 ? total : 0), result.distance);
                 }
             }
         }
         if (reliable && result.distance <= 30) {
             reference = result.along;
-            if (!held) {
-                lastLat = lat;
-                lastLon = lon;
-            }
+            heldWalked = held ? heldWalked + step : 0;
+            lastLat = lat;
+            lastLon = lon;
         }
         return result;
     }
