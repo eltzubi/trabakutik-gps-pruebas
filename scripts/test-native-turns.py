@@ -24,6 +24,7 @@ public class NativeTurnsTest {
  double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
+ double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
 '''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
@@ -39,7 +40,7 @@ public class NativeTurnsTest {
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
   checkDeviation(l);
   NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
-  if(decide&&!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along());
+  if(decide&&!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
   checkTurns(l,position);
  }
  // Los lados anunciados, sin las repeticiones de las fases de un mismo giro.
@@ -57,12 +58,48 @@ public class NativeTurnsTest {
 '''+''.join(method(m) for m in (
  ' static double coste(double ahead)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
- ' void decideSentido(double along)',' void ponSentido(int s)',
+ ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' void checkDeviation(Location l)',' double closest(double lat,double lon)'))+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
+ // UN SALTO DE LA PROYECCION NO ES DAR LA VUELTA. Avanzas de 5 en 5 m y, en
+ // una posicion, la proyeccion salta 50 m hacia atras (a la otra rama de una
+ // curva): sin el filtro eso eran 30 m netos de retroceso y «vas en sentido
+ // inverso», con los lados cambiados. Visto en la grabacion del autor del 14
+ // de noviembre de 2026.
+ // EL DESNIVEL CON UMBRAL Y EL FINAL DE UN CIRCUITO, en NavigationMetrics.
+ // Con 2 m de baile en cada punto, la suma cruda inflaba el «quedan»; y al
+ // volver a la salida de un circuito te daba otra vez la subida entera.
+ static void desnivelYCircuito(){
+  ArrayList<double[]> r=new ArrayList<>();
+  for(int m=0;m<=1000;m+=10)r.add(new double[]{m/111195.,0,100+(m%20==0?2:0)+m*0.05});
+  NavigationMetrics a=new NavigationMetrics();a.configure(r,Collections.emptyList());
+  double q=a.gain(0,1);
+  require(q>45&&q<56,"sube 50 m con 2 m de ruido: quedan unos 50, no "+Math.round(q));
+  // Circuito: cuadrado de 250 m que acaba 90 m antes de la salida.
+  ArrayList<double[]> c=new ArrayList<>();
+  for(int s=0;s<=910;s+=10){int t=s%250,l=s/250;double x=l==0?t:l==1?250:l==2?250-t:0,y=l==0?0:l==1?t:l==2?250:250-t;
+   c.add(new double[]{y/111195.,x/(111195*Math.cos(Math.toRadians(0))),100+(l==1?t*0.2:l==2?50:l==3?50-t*0.2:0)});}
+  NavigationMetrics b=new NavigationMetrics();b.configure(c,Collections.emptyList());
+  for(int k=c.size()-20;k<c.size();k++)b.project(c.get(k)[0],c.get(k)[1],1,true);
+  NavigationMetrics.Projection fin=b.project(0,0,1,true);
+  require(fin.along()>b.total()-5,"en la salida, al final del circuito, es el final: "+Math.round(fin.along()));
+  require(b.gain(fin.along(),1)==0,"y no queda subida");
+  NavigationMetrics e=new NavigationMetrics();e.configure(c,Collections.emptyList());
+  require(e.project(0,0,1,true).along()<5,"al empezar, la salida es el km 0");
+ }
+ static void saltoNoEsVuelta(){
+  NativeTurnsTest c=new NativeTurnsTest();
+  double[] along={100,105,110,60,65,70,75};
+  for(int k=0;k<along.length;k++)c.decideSentido(along[k],k*5/111195.,0);
+  require(c.sentido==1,"un salto de 50 m habiendote movido 5 no cambia el sentido");
+  // Y retroceder de verdad -moviendote lo mismo que retrocedes- si lo cambia.
+  NativeTurnsTest d=new NativeTurnsTest();
+  for(int k=0;k<10;k++)d.decideSentido(200-k*5,k*5/111195.,0);
+  require(d.sentido==-1,"retroceder 45 m de verdad si es ir al reves");
+ }
  static void metricsChecks(){
   ArrayList<double[]> line=new ArrayList<>();
   for(int m=0;m<=500;m+=10)line.add(new double[]{m/111195.,0,100+m*.10});
@@ -157,6 +194,9 @@ public class NativeTurnsTest {
   require(Double.isFinite(metrics.gain(300,1)),"Earlier gap does not hide subsequent gain");
  }
  public static void main(String[] args){
+  saltoNoEsVuelta();desnivelYCircuito();
+  System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
+  System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();
   NativeTurnsTest late=setup();late.checkTurns(new Location(72));
   require(late.spoken.equals(Arrays.asList(-1)),"First fix in phase 1 still speaks");

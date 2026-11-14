@@ -251,6 +251,15 @@ public class TrackingService extends Service implements LocationListener {
   // cuando los cruces pasaron a traer los rumbos de sus ramas: ahi el giro
   // son pocos grados y decir «cruce a la derecha» enganaria, porque lo que
   // hay que hacer es no seguir la via que se va por el otro lado.
+  // tipo 3 y 4: curva de herradura con su lado, suelta o en un cruce. Antes
+  // una herradura llegaba sin lado y en un cruce se decia «cruce, da la
+  // vuelta»: en plena revuelta de carretera suena a volver atras. Lo conto el
+  // autor: «me decia una vuelta en plena curva».
+  if(tipo>=3&&lado!=0){
+   String h=(tipo==4?"en el cruce, curva de herradura a la ":"curva de herradura a la ")+(lado<0?"izquierda":"derecha");
+   if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
+   return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+h;
+  }
   boolean esCruce=tipo!=0;
   String hacia=tipo==2
    ?(lado<0?"en el cruce, sigue por la izquierda":"en el cruce, sigue por la derecha")
@@ -510,6 +519,9 @@ public class TrackingService extends Service implements LocationListener {
     // el giro: perder el matiz es barato, perder el aviso no.
     int tipo=p.optInt("t",1);
     if(tipo<0||tipo>2)tipo=1;
+    // «h»:1, curva de herradura con su lado (la pagina desde noviembre de
+    // 2026): se guarda como tipo 3 si es suelta y 4 si cae en un cruce.
+    if(p.optInt("h",0)==1)tipo=tipo==0?3:4;
     // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
     // la lista cuando el giro cae en ese punto, asi que un giro en el 0 no se
     // pasaria nunca y bloquearia TODOS los de detras. La pagina no genera
@@ -607,12 +619,14 @@ public class TrackingService extends Service implements LocationListener {
      double[] giro=turns.get(mejor);
      int d=(int)giro[1];
      int tipo=giro.length<3?1:(int)giro[2];
-     boolean esCruce=tipo!=0;
+     boolean herradura=tipo>=3;
+     boolean esCruce=tipo==1||tipo==2||tipo==4;
      // Al reves, lo que se grabo como derecha es izquierda.
      int lado=d*sentido;
      String instruction=lado<0?"Izquierda":lado>0?"Derecha":esCruce?"Da la vuelta":"Herradura";
      if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
      if(tipo==2&&lado!=0)instruction="Sigue "+(lado<0?"izqda.":"dcha.");
+     if(herradura&&lado!=0)instruction="Herradura "+(lado<0?"izqda.":"dcha.");
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
      // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a
      // 50 m, 2 a 10 m y 3 en el propio cruce. El numero es el dato, que
@@ -744,11 +758,25 @@ public class TrackingService extends Service implements LocationListener {
  // mas cercano puede ser el de vuelta y en 3 km daba ocho cambios falsos;
  // se miran los 30 m netos de avance, que el baile del GPS no los da.
  static final double AVANCE_DECIDE_M=30;
+ double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
+ /** decideSentido con lo que de verdad te has movido desde la anterior. */
+ void decideSentido(double along,double lat,double lon){
+  movSentido=Double.isFinite(latSentido)
+    ?111195*Math.hypot(lat-latSentido,(lon-lonSentido)*Math.cos(Math.toRadians(lat))):Double.NaN;
+  latSentido=lat;lonSentido=lon;
+  decideSentido(along);
+ }
  void decideSentido(double along){
   if(!Double.isFinite(along))return;
   if(!Double.isFinite(alongPrevio)){alongPrevio=along;return;}
   double paso=along-alongPrevio;alongPrevio=along;
   if(Math.abs(paso)>200)return;            // salto raro: no cuenta
+  // NI UN AVANCE QUE NO TE HAS MOVIDO. Si sobre la ruta se avanza mucho mas
+  // de lo que de verdad te has movido, es la proyeccion saltando de tramo -en
+  // una curva, a la otra rama-, no tu: no cuenta. Visto con la grabacion del
+  // autor del 14 de noviembre de 2026: un salto asi le dio 31 s de «vas en
+  // sentido inverso», con los lados de los giros cambiados mientras durara.
+  if(Double.isFinite(movSentido)&&Math.abs(paso)>2*movSentido+10)return;
   alongAcum=sentido>0?Math.min(0,alongAcum+paso):Math.max(0,alongAcum+paso);
   if(Math.abs(alongAcum)<AVANCE_DECIDE_M)return;
   int nuevo=alongAcum>0?1:-1;alongAcum=0;
@@ -764,7 +792,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  // Al cambiar de ruta, callando: «vuelves al sentido de la ruta» en una ruta
  // que acabas de cargar no quiere decir nada.
- void olvidaSentido(){sentido=1;alongPrevio=Double.NaN;alongAcum=0;}
+ void olvidaSentido(){sentido=1;alongPrevio=Double.NaN;alongAcum=0;latSentido=Double.NaN;lonSentido=Double.NaN;movSentido=Double.NaN;}
  void vuelveALaRuta(){offRoute=false;cercaDesde=0;updateNotice();tonoBien();habla("De nuevo en la ruta");}
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;return;}
@@ -837,7 +865,7 @@ public class TrackingService extends Service implements LocationListener {
    if(l.hasAccuracy()&&l.getAccuracy()<=60){
     NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
     // Antes de los giros, que el lado de este mismo aviso ya salga bien.
-    if(!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along());
+    if(!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
     checkTurns(l,position);
     long now=SystemClock.elapsedRealtime();
     if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;

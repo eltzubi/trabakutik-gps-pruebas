@@ -48,7 +48,7 @@ public class GirosLimiteTest {
  File dir;File getFilesDir(){return dir;}
  final ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
  final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";
-''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + r'''
+''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' String fraseGiro(') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  static String lista(int n,int desde){StringBuilder b=new StringBuilder("[");
   for(int i=0;i<n;i++){if(i>0)b.append(',');b.append("{\"i\":"+(desde+i)+",\"dir\":"+(i%2==0?1:-1)+",\"t\":1}");}
@@ -70,7 +70,16 @@ public class GirosLimiteTest {
   // 3. Un giro en el punto 0 se ignora y no tapa a los de detras.
   t=new GirosLimiteTest(100);t.escribe("[{\"i\":0,\"dir\":1,\"t\":1},{\"i\":10,\"dir\":-1,\"t\":1},{\"i\":20,\"dir\":1,\"t\":0}]");t.loadTurns();
   require(t.turns.size()==2&&(int)t.turns.get(0)[0]==10,"el giro del punto 0 fuera, los otros dentro: "+t.turns.size());
-  System.out.println("OK: caben 2000 giros, por encima se vacia la lista y un giro en el punto 0 no tapa a los demas");
+  // 4. Una curva de herradura llega con su lado y se dice con el: nunca «da
+  //    la vuelta», que en plena revuelta suena a volver atras.
+  t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":1,\"t\":1,\"h\":1},{\"i\":20,\"dir\":-1,\"t\":0,\"h\":1},{\"i\":30,\"dir\":1,\"t\":1}]");t.loadTurns();
+  require((int)t.turns.get(0)[2]==4&&(int)t.turns.get(1)[2]==3&&(int)t.turns.get(2)[2]==1,"herradura en cruce=4, suelta=3, cruce normal=1");
+  String enCruce=t.fraseGiro(1,4,"1",48),suelta=t.fraseGiro(-1,3,"3",0),normal=t.fraseGiro(1,1,"1",50);
+  require(enCruce.equals("En 50 metros, en el cruce, curva de herradura a la derecha"),enCruce);
+  require(suelta.equals("Curva de herradura a la izquierda ahora"),suelta);
+  require(normal.equals("En 50 metros, cruce a la derecha"),normal);
+  require(!enCruce.contains("da la vuelta")&&!suelta.contains("da la vuelta"),"nunca «da la vuelta»");
+  System.out.println("OK: caben 2000 giros, por encima se vacia la lista, un giro en el punto 0 no tapa a los demas y la herradura dice su lado");
  }
 }'''
 

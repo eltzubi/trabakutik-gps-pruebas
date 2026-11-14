@@ -27,6 +27,7 @@ final class NavigationMetrics {
     private static final double CLIMB_DROP = 25, CLIMB_MIN_GAIN = 60, CLIMB_MIN_LENGTH = 600;
     private static final double WATER_NOTICE = 150, WATER_OFFSET = 30;
     private static final double CLIMB_LATE = 60;
+    private static final double UMBRAL_DESNIVEL = 5, CIERRE_M = 300;
     private static final long MAX_GAP_MS = 10_000;
     record Water(String name, double lat, double lon, boolean approximate) {}
     record Projection(double along, double distance) {}
@@ -55,16 +56,26 @@ final class NavigationMetrics {
         resetPace();
         events.clear();
         announced.clear();
+        // EL DESNIVEL SE CUENTA CON UN UMBRAL DE 5 M, como la pantalla. Sumar
+        // cada metro de un punto al siguiente mete el ruido de las alturas: en
+        // la ruta del autor del 14 de noviembre de 2026 daba 1732 m de subida
+        // donde su Garmin midio 1182 y la ficha dice 1311; con el umbral, 1325.
+        // Y el «quedan X m» iba inflado de principio a fin.
+        double ref = Double.NaN;
         for (int i = 0; i < n; i++) {
             double[] p = points.get(i);
             double h = heightAt(i);
             missing[i + 1] = missing[i] + (Double.isFinite(h) ? 0 : 1);
-            if (i == 0) continue;
-            double[] a = points.get(i - 1);
-            distance[i] = distance[i - 1] + meters(a[0], a[1], p[0], p[1]);
-            double delta = h - heightAt(i - 1);
-            ascent[i] = ascent[i - 1] + (Double.isFinite(delta) ? Math.max(0, delta) : 0);
-            descent[i] = descent[i - 1] + (Double.isFinite(delta) ? Math.max(0, -delta) : 0);
+            if (i > 0) {
+                double[] a = points.get(i - 1);
+                distance[i] = distance[i - 1] + meters(a[0], a[1], p[0], p[1]);
+                ascent[i] = ascent[i - 1];
+                descent[i] = descent[i - 1];
+            }
+            if (!Double.isFinite(h)) { ref = Double.NaN; continue; }
+            if (!Double.isFinite(ref)) { ref = h; continue; }
+            if (h >= ref + UMBRAL_DESNIVEL) { ascent[i] += h - ref; ref = h; }
+            else if (h <= ref - UMBRAL_DESNIVEL) { descent[i] += ref - h; ref = h; }
         }
         if (total() <= 0) return;
         for (int dir : new int[]{1, -1}) {
@@ -149,6 +160,21 @@ final class NavigationMetrics {
         }
         Projection result = Double.isFinite(nearby) && nearby <= nearest + 12
                 ? new Projection(nearbyAlong, nearby) : new Projection(nearestAlong, nearest);
+        // EL FINAL DE UN CIRCUITO NO ES SU PRINCIPIO. Si la ruta acaba a menos
+        // de 150 m de donde empieza y ya ibas por los ultimos CIERRE_M, volver
+        // a la salida es terminar: sin esto, el tramo mas cercano era el del
+        // km 0 y «quedan» volvia a ser la subida entera. Lo vio el autor al
+        // llegar al coche: su ruta acababa 89 m antes de la salida.
+        double total = total();
+        if (hasReference && total > 2 * CIERRE_M && points.size() > 2) {
+            double[] a = points.get(0), b = points.get(points.size() - 1);
+            if (meters(a[0], a[1], b[0], b[1]) < 150) {
+                if (dir > 0 && reference > total - CIERRE_M && result.along < CIERRE_M)
+                    result = new Projection(total, result.distance);
+                else if (dir < 0 && reference < CIERRE_M && result.along > total - CIERRE_M)
+                    result = new Projection(0, result.distance);
+            }
+        }
         if (reliable && result.distance <= 30) {
             reference = result.along;
             lastLat = lat;
