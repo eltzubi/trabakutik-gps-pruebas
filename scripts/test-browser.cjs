@@ -399,7 +399,7 @@ async function setup(context) {
         get tramosGps(){return tramosGps},get routePoints(){return routePoints}};`;
       await route.fulfill({contentType:'text/html',body:source.replace(end,'\n'+bridge+end)});
     });
-    let failPlanner=false,plannerRequests=0;
+    let failPlanner=false,plannerRequests=0,plannerCortas=0;
     // Polilinea de Valhalla: 6 decimales.
     const codificaValhalla=pts=>{
       let salida='',lat=0,lon=0;
@@ -416,7 +416,9 @@ async function setup(context) {
     // Va por POST a /route; las alturas, que son del mismo servidor, siguen
     // atendidas por su propia intercepción, mas abajo.
     await personal.route('https://valhalla1.openstreetmap.de/route',async route=>{
-      plannerRequests++;
+      // La segunda opinion (el camino mas corto, ver eligeTramosCortos) se
+      // cuenta aparte: lo que se mide aqui son los tramos pedidos.
+      if(JSON.parse(route.request().postData()||'{}').costing_options)plannerCortas++;else plannerRequests++;
       if(failPlanner){
         await route.fulfill({status:400,contentType:'application/json',
           body:JSON.stringify({error_code:171,error:'No suitable edges near location'})});
@@ -452,6 +454,8 @@ async function setup(context) {
     });
     await creator.waitForFunction(()=>window.__creator.tramosGps.length===2);
     assert.equal(plannerRequests,1);
+    await creator.waitForTimeout(1500);
+    assert.equal(plannerCortas,1,'y una peticion del camino mas corto, la segunda opinion');
     await creator.waitForFunction(()=>window.__creator.drawPoints.length>1&&window.__creator.drawPoints.every(p=>Number.isFinite(p[2]))&&!document.querySelector('#saveCreated').disabled);
     assert(await creator.evaluate(()=>window.__creator.drawPoints.length>=4),'conserva la curva del motor');
     assert(!(await creator.locator('#elevationSvg').isVisible()),'el gráfico arranca plegado al crear');

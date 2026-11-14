@@ -184,11 +184,12 @@ test('entre dos peticiones al planificador espera el segundo largo que pide OSM'
  // no se espera de verdad, solo se comprueba cuanto PIDE esperar.
  const c=creatorContext();
  vm.runInContext('seguirMapaGps=true;redGps=construyeRed([],null)',c);
- let rutas=0;const esperas=[];
+ let rutas=0,cortas=0;const esperas=[];
  c.fetch=async(url,opciones)=>{
   if(url.includes('/height?')){const q=JSON.parse(new URL(url).searchParams.get('json'));return {ok:true,json:async()=>({height:q.shape.map(()=>100),shape:q.shape})};}
   rutas++;
-  const pedido=JSON.parse(opciones.body).locations.map(l=>[l.lat,l.lon]);
+  const cuerpo=JSON.parse(opciones.body);if(cuerpo.costing_options)cortas++;
+  const pedido=cuerpo.locations.map(l=>[l.lat,l.lon]);
   return {ok:true,status:200,json:async()=>mapReply(pedido)};
  };
  await c.planificaMapaGps([[43,-2],[43.001,-2]]);
@@ -197,10 +198,37 @@ test('entre dos peticiones al planificador espera el segundo largo que pide OSM'
  c.setTimeout=(fn,ms)=>{if(ms<5000)esperas.push([ms,rutas]);return setTimeout(fn,ms<5000?0:ms)};
  // Otros puntos, para que sea una peticion nueva de verdad.
  await c.planificaMapaGps([[43.002,-2],[43.003,-2]]);
- assert.equal(rutas,2,'la segunda peticion se envia');
- const antes=esperas.filter(([,r])=>r===1);
- assert.equal(antes.length,1,'espera una sola vez antes de la segunda peticion');
- assert(antes[0][0]>900&&antes[0][0]<=1100,`espera ${antes[0][0]} ms, deberia ser algo menos de 1.100`);
+ // Cada calculo son dos peticiones: la normal y la del camino mas corto
+ // (la segunda opinion, ver eligeTramosCortos). Las dos esperan su turno.
+ assert.equal(rutas,4,'las peticiones se envian');assert.equal(cortas,2,'una de cada dos es la del camino mas corto');
+ for(const r of [2,3]){
+  const antes=esperas.filter(([,n])=>n===r);
+  assert.equal(antes.length,1,'espera una sola vez antes de la peticion '+(r+1));
+  assert(antes[0][0]>900&&antes[0][0]<=1100,`espera ${antes[0][0]} ms, deberia ser algo menos de 1.100`);
+ }
+});
+test('la segunda opinión del planificador: si falla, se queda el trazado normal; si ahorra de verdad, el corto',async()=>{
+ // Valhalla «a pie» metia una ruta del autor por el acceso de una casa. Se
+ // pide tambien el camino mas corto; si esa peticion falla, no pasa nada.
+ const c=creatorContext();
+ const A=[43,-2],B=[43,-1.996];   // 325 m en recta, de oeste a este
+ const rodeo=[A,[43,-1.9988],[43.0002,-1.9986],[43.0002,-1.9978],[43,-1.9976],B];
+ let modo='falla';
+ c.fetch=async(url,opt)=>{
+  const body=JSON.parse(opt.body);
+  if(body.costing_options){
+   if(modo==='falla')return {ok:false,status:429,json:async()=>({})};
+   return {ok:true,status:200,json:async()=>({trip:{locations:body.locations,legs:[{shape:codificaValhalla([A,B])}]}})};
+  }
+  return {ok:true,status:200,json:async()=>({trip:{locations:body.locations,legs:[{shape:codificaValhalla(rodeo)}]}})};
+ };
+ c.setTimeout=(fn,ms)=>setTimeout(fn,ms<5000?0:ms);
+ const ctl=new AbortController();
+ let r=await c.solicitaMapaGps([A,B],ctl.signal);
+ assert.equal(r.parts[0].length,rodeo.length,'con la segunda peticion fallando, se queda el normal y no hay error');
+ modo='bien';
+ r=await c.solicitaMapaGps([A,B],ctl.signal);
+ assert.equal(r.parts[0].length,2,'con la segunda bien, se queda la recta, que ahorra mas de 15 m y del 5 %');
 });
 test('sin aceptar el servicio no se envían coordenadas',async()=>{
  const c=creatorContext();let sent=0;c.confirm=()=>false;c.fetch=async()=>{sent++;throw Error('no debe enviarse')};
@@ -385,7 +413,8 @@ function codificaValhalla(pts){
 function planificadorConUnHueco(c,A,B,C){
  const pedidos=[];
  c.fetch=async(url,opt)=>{
-  const body=JSON.parse(opt.body);pedidos.push(body.locations.length);
+  // La segunda opinion (el camino mas corto) no cuenta como un tramo pedido.
+  const body=JSON.parse(opt.body);if(!body.costing_options)pedidos.push(body.locations.length);
   const es=(x,P)=>Math.abs(x.lat-P[0])<1e-6&&Math.abs(x.lon-P[1])<1e-6;
   const legs=[];
   for(let k=1;k<body.locations.length;k++){

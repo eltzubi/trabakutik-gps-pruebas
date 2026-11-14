@@ -366,5 +366,33 @@ function limpiaRuta(pts){
 // Un error de «por ahi no se puede pasar», marcado para distinguirlo de uno
 // de «el servicio no contesta»: el aviso que se le da al autor no es el mismo.
 const noHayPaso=t=>{const e=Error(t);e.sinCamino=true;return e};
+// EL PLANIFICADOR, CON SEGUNDA OPINION. Valhalla «a pie» a veces hace un
+// rodeo inutil: en una ruta del autor del 14 de noviembre de 2026 entraba
+// por el acceso de una casa y volvia a la carretera, 317 m donde por la
+// carretera son 296. «Siempre me lo crea asi». Se le pide tambien el camino
+// mas corto y, TRAMO A TRAMO, se queda el corto solo si ahorra de verdad: al
+// menos un AHORRO_PCT y AHORRO_M. Si no, manda el normal, que es el que sabe
+// preferir sendas a carreteras.
+// Lo que se descarto, medido sobre 70 trozos de 400 m de rutas reales:
+// encarecer las vias de servicio (service_factor) arreglaba la casa pero
+// sacaba a mundiokokoba de su camino (2 -> 35 m del track); pedir siempre el
+// mas corto mejoraba 3 y empeoraba 3. Con esta regla se coge lo bueno de los
+// dos. Y si el corto no llega o no cuadra, se queda el normal sin mas.
+const AHORRO_PCT=.05,AHORRO_M=15;
+function eligeTramosCortos(normal,corto){
+ if(!corto||!normal||!Array.isArray(corto.parts)||corto.parts.length!==normal.parts.length)return normal;
+ const largo=pts=>{let s=0;for(let k=1;k<pts.length;k++)s+=dist(pts[k-1],pts[k]);return s};
+ let cambiados=0;
+ const parts=normal.parts.map((n,i)=>{
+  const c=corto.parts[i];
+  if(!Array.isArray(c)||c.length<2)return n;
+  // Tiene que empezar y acabar donde el normal, o el trazado se cortaria.
+  if(dist(c[0],n[0])>1||dist(c[c.length-1],n[n.length-1])>1)return n;
+  const ln=largo(n),lc=largo(c);
+  if(lc<=ln*(1-AHORRO_PCT)&&ln-lc>=AHORRO_M){cambiados++;return c}
+  return n;
+ });
+ return cambiados?{anchors:normal.anchors,parts}:normal;
+}
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={descifraCaminos,enganchaOsm,rutaOsm,cargaCaminosOsm,descodificaValhalla,noHayPaso,RODEO_MAXIMO};
+if(typeof module==='object'&&module&&module.exports)module.exports={descifraCaminos,enganchaOsm,rutaOsm,cargaCaminosOsm,descodificaValhalla,noHayPaso,RODEO_MAXIMO,eligeTramosCortos,AHORRO_PCT,AHORRO_M};

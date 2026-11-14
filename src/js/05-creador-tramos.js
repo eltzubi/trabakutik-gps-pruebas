@@ -56,6 +56,15 @@ function respuestaMapaGps(data,solicitados){
  return {anchors,parts};
 }
 async function solicitaMapaGps(coords,signal){
+ const normal=respuestaMapaGps(await pideMapaGps(coords,signal,null),coords);
+ // La segunda opinion (ver eligeTramosCortos). Si falla, no pasa nada: se
+ // queda el normal. Solo se corta si el calculo se cancela.
+ let corto=null;
+ try{corto=respuestaMapaGps(await pideMapaGps(coords,signal,{pedestrian:{shortest:true}}),coords)}
+ catch(e){if(signal.aborted)throw e}
+ return eligeTramosCortos(normal,corto);
+}
+async function pideMapaGps(coords,signal,opciones){
  const espera=Math.max(0,1100-(Date.now()-ultimaPeticionMapaGps));
  if(espera)await new Promise((resolve,reject)=>{
   const cancel=()=>{clearTimeout(timer);reject(Error('Cálculo cancelado.'))};
@@ -64,10 +73,11 @@ async function solicitaMapaGps(coords,signal){
  });
  if(signal.aborted)throw Error('Cálculo cancelado.');
  ultimaPeticionMapaGps=Date.now();
- const cuerpo=JSON.stringify({
+ const peticion={
   locations:coords.map(p=>({lat:Number(p[0].toFixed(6)),lon:Number(p[1].toFixed(6)),type:'break'})),
-  costing:'pedestrian',directions_options:{units:'kilometers'}});
- const r=await fetch(URL_PLANIFICADOR,{method:'POST',body:cuerpo,signal,cache:'no-store',credentials:'omit',
+  costing:'pedestrian',directions_options:{units:'kilometers'}};
+ if(opciones)peticion.costing_options=opciones;
+ const r=await fetch(URL_PLANIFICADOR,{method:'POST',body:JSON.stringify(peticion),signal,cache:'no-store',credentials:'omit',
   headers:{Accept:'application/json','Content-Type':'application/json','X-Client-Id':'trabakutik.com'}});
  if(r.status===429)throw Error('El planificador está ocupado. Espera unos segundos y vuelve a intentarlo.');
  if(!r.ok){
@@ -77,7 +87,7 @@ async function solicitaMapaGps(coords,signal){
    throw noHayPaso('No hay conexión a pie entre esos puntos en OpenStreetMap. Acerca el punto al camino o elige otro paso.');
   throw Error('No se pudo conectar con el planificador. Conservamos el trazado anterior.');
  }
- return respuestaMapaGps(await r.json(),coords);
+ return r.json();
 }
 // Muestrear el terreno cada 30 m, con un límite por recorrido. Se conservan
 // todas las esquinas de la geometría y los puntos de paso del usuario.
