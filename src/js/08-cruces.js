@@ -222,9 +222,16 @@ function enviaGirosNativos(){
   // un lado sin apenas girar -«sigue por la derecha»-. Un APK viejo no
   // conoce el 2 y lo trata como cruce, que es lo que era antes: se pierde el
   // matiz, no el aviso.
-  window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>(
-   {i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0,
-    t:j.cruce?(j.mantente?2:1):0}))));
+  // Una herradura lleva ahora su LADO en «dir» y «h»:1 para que el servicio
+  // diga «curva de herradura a la derecha» en vez de «da la vuelta». Un APK
+  // que no conozca «h» la cantara como «cruce a la derecha» o «curva cerrada
+  // a la derecha»: el lado bueno, que es lo que importa.
+  window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>{
+   const herradura=j.direction==='vuelta',lado=herradura?j.hacia:j.direction;
+   const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
+   if(herradura)o.h=1;
+   return o;
+  })));
  }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
 }
 // EL AVISO DE UN CRUCE SALE DE LAS RAMAS DEL CRUCE, NO DE LA FORMA DEL TRACK.

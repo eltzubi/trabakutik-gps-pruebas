@@ -3117,9 +3117,16 @@ function enviaGirosNativos(){
   // un lado sin apenas girar -«sigue por la derecha»-. Un APK viejo no
   // conoce el 2 y lo trata como cruce, que es lo que era antes: se pierde el
   // matiz, no el aviso.
-  window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>(
-   {i:j.i,dir:j.direction==='izquierda'?-1:j.direction==='derecha'?1:0,
-    t:j.cruce?(j.mantente?2:1):0}))));
+  // Una herradura lleva ahora su LADO en «dir» y «h»:1 para que el servicio
+  // diga «curva de herradura a la derecha» en vez de «da la vuelta». Un APK
+  // que no conozca «h» la cantara como «cruce a la derecha» o «curva cerrada
+  // a la derecha»: el lado bueno, que es lo que importa.
+  window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>{
+   const herradura=j.direction==='vuelta',lado=herradura?j.hacia:j.direction;
+   const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
+   if(herradura)o.h=1;
+   return o;
+  })));
  }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
 }
 // EL AVISO DE UN CRUCE SALE DE LAS RAMAS DEL CRUCE, NO DE LA FORMA DEL TRACK.
@@ -3592,8 +3599,14 @@ function junctionGuidance(p,accuracy,progress){
  // «CURVA CERRADA», COMO LA VOZ DEL SERVICIO. La pantalla decia «Giro cerrado»
  // y la voz, con la pantalla apagada, «curva cerrada»: lo mismo con dos
  // nombres. Ahora los dos lo llaman igual.
+ // «DA LA VUELTA» NO: CURVA DE HERRADURA, CON SU LADO. Una herradura encima
+ // de un cruce se decia «Cruce · da la vuelta», y en plena revuelta de una
+ // carretera eso suena a volver por donde has venido. Lo conto el autor: «me
+ // decia una vuelta en plena curva». Ahora es una curva de herradura a la
+ // derecha o a la izquierda, haya cruce o no.
+ const ladoHerradura=ladoFlecha(turn,alReves);
  $('turnDirection').textContent=lado==='vuelta'
-   ?(esCruce?'Cruce · da la vuelta':'Curva de herradura')
+   ?(esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
    :turn.mantente?'Cruce · sigue por la '+lado
    :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
  $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
@@ -3644,7 +3657,7 @@ function junctionGuidance(p,accuracy,progress){
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'
-    ?(esCruce?'cruce, da la vuelta':'curva de herradura')
+    ?(esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
     :turn.mantente?'en el cruce, sigue por la '+lado
     :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.

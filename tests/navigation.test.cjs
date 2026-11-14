@@ -812,3 +812,19 @@ test('Un brinco del GPS hacia atras no se canta como horquilla',()=>{
  assert.equal(turns.filter(t=>t.direction==='vuelta').length,0,
   'un pico de seis metros no es una media vuelta');
 });
+test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dice «da la vuelta»',()=>{
+ // En plena revuelta de carretera, «cruce, da la vuelta» sonaba a volver
+ // atras. Lo conto el autor: «me decia una vuelta en plena curva».
+ let enviado=null;
+ const c={junctions:[{i:5,direction:'vuelta',hacia:'derecha',cruce:true,mantente:false},
+                     {i:9,direction:'vuelta',hacia:'izquierda',cruce:false,mantente:false},
+                     {i:14,direction:'izquierda',hacia:'izquierda',cruce:true,mantente:false}],
+  window:{TrabakutikAndroid:{setJunctions:j=>{enviado=JSON.parse(j)}}},console};
+ vm.createContext(c);vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE'),c);
+ c.enviaGirosNativos();
+ assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:1,t:1,h:1},{i:9,dir:-1,t:0,h:1},{i:14,dir:-1,t:1}]));
+ const ficha=source("const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
+ assert(!/da la vuelta/.test(ficha)&&/curva de herradura a la/.test(ficha),'la ficha dice «curva de herradura a la …»');
+ const voz=source("const giroTxt=lado==='vuelta'","// Si la primera lectura entra en fase 1");
+ assert(!/da la vuelta/.test(voz)&&/curva de herradura a la/.test(voz),'y la voz de la pagina tambien');
+});

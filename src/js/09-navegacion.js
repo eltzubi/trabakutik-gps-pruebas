@@ -142,8 +142,14 @@ function junctionGuidance(p,accuracy,progress){
  // «CURVA CERRADA», COMO LA VOZ DEL SERVICIO. La pantalla decia «Giro cerrado»
  // y la voz, con la pantalla apagada, «curva cerrada»: lo mismo con dos
  // nombres. Ahora los dos lo llaman igual.
+ // «DA LA VUELTA» NO: CURVA DE HERRADURA, CON SU LADO. Una herradura encima
+ // de un cruce se decia «Cruce · da la vuelta», y en plena revuelta de una
+ // carretera eso suena a volver por donde has venido. Lo conto el autor: «me
+ // decia una vuelta en plena curva». Ahora es una curva de herradura a la
+ // derecha o a la izquierda, haya cruce o no.
+ const ladoHerradura=ladoFlecha(turn,alReves);
  $('turnDirection').textContent=lado==='vuelta'
-   ?(esCruce?'Cruce · da la vuelta':'Curva de herradura')
+   ?(esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
    :turn.mantente?'Cruce · sigue por la '+lado
    :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
  $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
@@ -194,7 +200,7 @@ function junctionGuidance(p,accuracy,progress){
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'
-    ?(esCruce?'cruce, da la vuelta':'curva de herradura')
+    ?(esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
     :turn.mantente?'en el cruce, sigue por la '+lado
     :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.
