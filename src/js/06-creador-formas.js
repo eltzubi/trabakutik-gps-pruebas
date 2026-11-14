@@ -556,7 +556,7 @@ $('importGpxFile').onchange=async e=>{
 function showSaved(){
  const target=$('savedItems');target.replaceChildren();
  const list=savedList();
- if(!list.length){target.textContent='Aún no hay rutas guardadas. Puedes importar un GPX desde tu móvil o crear una ruta en el mapa.';return}
+ if(!list.length){target.textContent='Aún no hay rutas guardadas. Puedes importar un GPX desde tu móvil o crear una ruta en el mapa.';pintaGrabaciones(target);return}
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
   const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
@@ -565,6 +565,65 @@ function showSaved(){
   const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
   row.append(open,dl,share,del);target.append(row);
  });
+ pintaGrabaciones(target);
+}
+// LAS GRABACIONES, PARA VERLAS Y BORRARLAS. Cada vez que se graba, la app
+// guarda el recorrido dentro del telefono, y alli se iban quedando todas sin
+// manera de verlas ni de quitarlas. El autor lo pidio con tres condiciones:
+// «siempre que sea claro, que no se borre sin querer y que sea facil de
+// identificar». Por eso cada una dice el dia, la hora, los km y lo que duro;
+// el boton es rojo y se llama «Borrar»; antes de borrar se pregunta nombrando
+// esa grabacion, y la que se esta grabando no se puede borrar. Lo que se
+// puede borrar lo decide la app (Grabaciones.java), no la pagina.
+// Solo sale en una APK que lo sepa hacer: en la web o en una vieja, nada.
+const DIAS_GRAB=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES_GRAB=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function describeGrabacion(g){
+ // El nombre lleva el dia y la hora a la que empezo, en hora del telefono.
+ const m=/^trabakutik-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(g.nombre||'');
+ const f=m?new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]):null;
+ const dia=f?DIAS_GRAB[f.getDay()]+' '+f.getDate()+' de '+MESES_GRAB[f.getMonth()]:'fecha desconocida';
+ const hora=f?String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0'):'';
+ const km=Number.isFinite(g.km)?g.km.toFixed(1).replace('.',',')+' km':'';
+ const t0=Date.parse(g.inicio),t1=Date.parse(g.fin),min=Number.isFinite(t0)&&Number.isFinite(t1)?Math.round((t1-t0)/60000):NaN;
+ const dura=Number.isFinite(min)&&min>0?(min>=60?Math.floor(min/60)+' h '+(min%60)+' min':min+' min'):'';
+ const corto=f?dia.charAt(0).toUpperCase()+dia.slice(1).replace(' de ',' ').replace(/ (\S{3})\S*$/,' $1'):'Sin fecha';
+ return {dia,hora,km,dura,linea:[corto,hora,km,dura].filter(Boolean).join(' · ')};
+}
+function textoBorrarGrabacion(g){
+ const d=describeGrabacion(g);
+ return '¿Borrar la grabación del '+d.dia+(d.hora?' a las '+d.hora:'')
+  +([d.km,d.dura].filter(Boolean).length?' ('+[d.km,d.dura].filter(Boolean).join(', ')+')':'')+'?'
+  +'\n\nSe borra del teléfono y no se puede recuperar. Si antes la guardaste en Descargas, esa copia no se toca.';
+}
+function pintaGrabaciones(target){
+ const app=typeof window==='object'&&window?window.TrabakutikAndroid:null;
+ if(!app||typeof app.listRecordings!=='function'||typeof app.deleteRecording!=='function')return;
+ let lista=[];try{lista=JSON.parse(app.listRecordings()||'[]')}catch(e){lista=[]}
+ const caja=document.createElement('div');caja.className='grabaciones';
+ const h=document.createElement('h3');h.textContent='Grabaciones en el teléfono';caja.append(h);
+ if(!lista.length){const p=document.createElement('p');p.className='grab-vacio';p.textContent='No hay grabaciones guardadas en la app.';caja.append(p);target.append(caja);return}
+ for(const g of lista){
+  const d=describeGrabacion(g);
+  const row=document.createElement('div');row.className='routeitem grab-item';
+  const txt=document.createElement('span');txt.className='grab-txt';txt.textContent=d.linea;txt.style.flex='1';
+  row.append(txt);
+  if(g.grabando){
+   const s=document.createElement('span');s.className='grab-ahora';s.textContent='● Grabando ahora';row.append(s);
+  }else{
+   const del=document.createElement('button');del.type='button';del.className='btn-sub btn-borrar';del.textContent='Borrar';
+   del.setAttribute('aria-label','Borrar la grabación del '+d.dia+(d.hora?' a las '+d.hora:''));
+   del.onclick=()=>{
+    if(!confirm(textoBorrarGrabacion(g)))return;
+    let ok=false;try{ok=app.deleteRecording(g.nombre)===true}catch(e){ok=false}
+    notice(ok?'Grabación borrada: '+d.linea:'No se ha podido borrar la grabación');
+    showSaved();
+   };
+   row.append(del);
+  }
+  caja.append(row);
+ }
+ target.append(caja);
 }
 $('savedRoutes').onclick=()=>{$('savedDialog').classList.remove('hidden');showSaved()};
 $('closeSaved').onclick=()=>$('savedDialog').classList.add('hidden');

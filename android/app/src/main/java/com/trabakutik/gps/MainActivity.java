@@ -415,6 +415,16 @@ public class MainActivity extends Activity {
    try{String v=getPackageManager().getPackageInfo(getPackageName(),0).versionName;return v==null?"":v;}
    catch(Exception e){return "";}
   }
+  // LAS GRABACIONES GUARDADAS, PARA VERLAS Y BORRARLAS desde «Mis rutas».
+  // Lo de que nombre se puede borrar lo decide Grabaciones, no la pagina.
+  @JavascriptInterface public String listRecordings(){
+   try{return Grabaciones.lista(new File(getFilesDir(),"grabaciones"),TrackingService.ACTIVO?TrackingService.GRABANDO:null);}
+   catch(Exception e){return "[]";}
+  }
+  @JavascriptInterface public boolean deleteRecording(String nombre){
+   try{return Grabaciones.borra(new File(getFilesDir(),"grabaciones"),nombre,TrackingService.ACTIVO?TrackingService.GRABANDO:null);}
+   catch(Exception e){return false;}
+  }
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
   /** Solo la posicion, sin el trazado. El snapshot entero devuelve los puntos
    *  cada vez que cambia el archivo, que grabando es con cada punto nuevo, y

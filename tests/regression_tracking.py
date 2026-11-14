@@ -73,7 +73,7 @@ public class TrackingRegression {
  static class Location{double lat,lon;float acc=5;long ern=nowNs;Location(double m){lat=m/111195.;}
  double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}long getElapsedRealtimeNanos(){return ern;}}
  File dirBase;File getFilesDir(){return dirBase;}
- File file;String errorGrabacion="";long lastRecordedTime;double lastRecordedLat,lastRecordedLon;int points;boolean recording;
+ File file;static String GRABANDO;String errorGrabacion="";long lastRecordedTime;double lastRecordedLat,lastRecordedLon;int points;boolean recording;
  boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double velocidadSuave=1.2;int beeps=0;
  double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}

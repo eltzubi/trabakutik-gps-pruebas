@@ -22,6 +22,9 @@ public class TrackingService extends Service implements LocationListener {
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
   *  que una grabacion quedo a medias. */
  public static volatile boolean ACTIVO=false;
+ // El fichero que se esta grabando ahora (solo el nombre), para que «Mis
+ // rutas» no deje borrarlo. null si no se graba.
+ public static volatile String GRABANDO=null;
  /** Cierra un GPX que se quedo sin «</trkseg></trk></gpx>».
   *  beginRecording() escribe la cabecera y el cierre solo se escribe en
   *  endRecording(), asi que si Android mata el proceso mientras se graba
@@ -436,6 +439,7 @@ public class TrackingService extends Service implements LocationListener {
   // borraba la primera. Como OsmAnd y OpenTracks: si ya existe, _2, _3...
   file=new File(dir,"trabakutik-"+name+".gpx");
   for(int n=2;file.exists();n++)file=new File(dir,"trabakutik-"+name+"_"+n+".gpx");
+  GRABANDO=file.getName();
   errorGrabacion="";
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
@@ -943,7 +947,7 @@ public class TrackingService extends Service implements LocationListener {
   gastoUltimo=textoGasto(SystemClock.elapsedRealtime()-bateriaDesde,gastado,bateriaMetros,bateriaFixes,bateriaCargando);
   escribeBateria("# termina · "+gastoUltimo);
   bateriaDesde=0;
-  recording=false;
+  recording=false;GRABANDO=null;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).putString("gasto",gastoUltimo).apply();
  }
  void finish(){navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
