@@ -3530,7 +3530,7 @@ function computeJunctions(){
 // cambia como debe.
 // En ramas superpuestas se compara el avance con el desplazamiento real.
 function progressOnRoute(p,reliable=true){
- let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity;
+ let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity,retenido=false;
  const ref=Number.isFinite(ultimoAlong)?ultimoAlong:null;
  const step=ref!==null&&ultimoPuntoAlong?dist(ultimoPuntoAlong,p):0;
  const window=Math.max(25,Math.min(200,step*2+15));
@@ -3560,11 +3560,15 @@ function progressOnRoute(p,reliable=true){
   // Solo es llegar si lo que faltaba cabe en lo que te has movido (mas un
   // margen): con 250 m por delante, una lectura que caiga en el km 0,2 no
   // te da por llegado; se queda donde ibas.
+  // Retenida, NO se mueve el punto desde el que se mide lo andado: asi lo
+  // que avanzas se va sumando y, si sigues por un tramo que la salida y la
+  // llegada comparten, acabas llegando (lo vio GPT al revisarlo: midiendo
+  // cada vez desde la ultima lectura, 3 m nunca llegaban a cubrir 90).
   const falta=sentidoRuta>0?totalRuta-ref:ref;
-  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M)along=falta<=step+60?totalRuta:ref;
-  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M)along=falta<=step+60?0:ref;
+  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M){if(falta<=step+30)along=totalRuta;else{along=ref;retenido=true}}
+  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M){if(falta<=step+30)along=0;else{along=ref;retenido=true}}
  }
- if(reliable&&best<=30){ultimoAlong=along;ultimoPuntoAlong=p}
+ if(reliable&&best<=30){ultimoAlong=along;if(!retenido)ultimoPuntoAlong=p}
  return {along,distance:best};
 }
 // Parado no hay giro que anunciar. «Gira a la derecha · En 50 m» solo

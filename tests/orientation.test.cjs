@@ -214,4 +214,9 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  const d=nuevo();d.ultimoAlong=total-250;d.ultimoPuntoAlong=punto(100,10);
  const antes=d.ultimoAlong,salto=d.progressOnRoute(punto(100,0));
  assert(salto.along<total-100,'no se da por llegado 250 m antes: '+Math.round(salto.along)+' de '+total+' (iba por '+Math.round(antes)+')');
+ // Y siguiendo por el tramo de salida a pasos de 3 m, lo andado se suma: se
+ // llega (antes se medía cada vez desde la ultima lectura y no se llegaba).
+ const e=nuevo();e.ultimoAlong=total-90;e.ultimoPuntoAlong=punto(10,0);
+ let ultimo;for(let x=13;x<=130;x+=3){ultimo=e.progressOnRoute(punto(x,0));if(x<60)assert(ultimo.along<total-20,'a '+(x-10)+' m aun no se ha llegado')}
+ assert(ultimo.along>total-5,'andados los 90 m, se llega: '+Math.round(ultimo.along));
 });

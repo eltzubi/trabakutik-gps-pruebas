@@ -101,6 +101,10 @@ public class NativeTurnsTest {
   NavigationMetrics.Projection salto=f.project(2/111195.,12/111195.,1,true);
   require(salto.along()>f.total()-150,"90 m antes de llegar, una lectura en la salida no es el km 0: "+Math.round(salto.along())+" (iba por "+Math.round(ref.along())+")");
   require(salto.along()<f.total()-30,"ni la llegada: "+Math.round(salto.along())+" de "+Math.round(f.total()));
+  // Y siguiendo por la salida a pasos de 3 m, lo andado se suma y se llega.
+  NavigationMetrics.Projection ult=salto;
+  for(double x=15;x<=130;x+=3)ult=f.project(2/111195.,x/111195.,1,true);
+  require(ult.along()>f.total()-5,"andando por la salida, se acaba llegando: "+Math.round(ult.along()));
  }
  static void saltoNoEsVuelta(){
   NativeTurnsTest c=new NativeTurnsTest();
