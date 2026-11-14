@@ -645,6 +645,20 @@ test('Avisa de una APK nueva comparando con la versión publicada en instalar.ht
 // En estas pruebas los rumbos van en GRADOS de brujula: 90 es hacia el este,
 // que es hacia donde va corner(0), y 270 es por donde se llega.
 function ramas(...grupos){return grupos}
+test('Si las ramas del cruce no son las de la ruta, el lado sale del trazado',()=>{
+ // Lo vio el autor el 14 de noviembre de 2026: llegaba a 101 grados y salia a
+ // 161 -derecha-, pero el cruce encontrado era uno de al lado, con ramas a 6,
+ // 60 y 216, y se le dijo «cruce a la izquierda». Aqui, girado 11 grados:
+ // llega a 90, sale a 150, y las ramas (355, 205, 49) no son las suyas.
+ const turns=detector().detect(corner(-60),[cruceCon([355,205],[49])]);
+ assert.equal(turns.length,1,'el giro se avisa');
+ assert.equal(turns[0].direction,'derecha','por el lado del trazado, no por el de un cruce ajeno');
+});
+test('Si las ramas si son las de la ruta, mandan las ramas',()=>{
+ // El mismo giro con su cruce de verdad: llega por la de 270, sale por la de 150.
+ const turns=detector().detect(corner(-60),[cruceCon([90,270],[150])]);
+ assert.equal(turns.length,1);assert.equal(turns[0].direction,'derecha');assert(turns[0].cruce);
+});
 test('Un cruce por el que la ruta pasa dos veces se avisa las dos veces',()=>{
  // Era un Set de toda la ruta: el segundo paso, aunque alli hubiera que
  // cambiar de camino, se quedaba mudo -tambien en el servicio-. Medido en las

@@ -3098,6 +3098,7 @@ function enviaGirosNativos(){
 // a los 1.952 de antes -uno cada 820-. La ruta con mas es hirutxikiak, con
 // 88; el servicio de Android admite hasta 2000 por ruta (GIROS_MAX).
 const CRUCE_RECTO=25;
+const RAMA_ENCAJA=45;
 function difRumbo(a,b){let d=(a-b)%360;if(d>=180)d-=360;if(d<-180)d+=360;return d}
 function decideCruce(cruce,centro,antes,despues){
  const grupos=cruce[2];
@@ -3113,6 +3114,15 @@ function decideCruce(cruce,centro,antes,despues){
  if(!resto.length)return null;
  let mia=resto[0];
  for(const x of resto)if(Math.abs(difRumbo(x.r,sale))<Math.abs(difRumbo(mia.r,sale)))mia=x;
+ // LAS RAMAS TIENEN QUE SER LAS DE LA RUTA. El cruce se busca a 25 m del
+ // punto, y a veces el que sale es OTRO, uno de al lado. Lo vio el autor el 14
+ // de noviembre de 2026: llegaba a 101 grados y salia a 161 -derecha-, el
+ // cruce encontrado estaba a 23 m con ramas a 6, 60 y 216, ninguna por donde
+ // salia, y se le dijo «cruce a la izquierda». Si la rama por la que se sale,
+ // o la de llegada, no se parece a la ruta, esas ramas no son de este giro: se
+ // decide como sin ramas, por la forma del propio trazado. Medido en las 72
+ // rutas: el lado de las ramas contradecia el giro del trazado en 295 avisos.
+ if(Math.abs(difRumbo(mia.r,sale))>RAMA_ENCAJA||Math.abs(difRumbo(atras.r,detras))>RAMA_ENCAJA)return {sinRamas:true};
  if(mia.g===atras.g)return null;          // sigues por el mismo camino
  const otras=resto.filter(x=>x!==mia),desvio=difRumbo(mia.r,entra);
  let recta=null;
