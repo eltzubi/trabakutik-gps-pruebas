@@ -2360,7 +2360,58 @@ function compactRoutePoints(points,maxPoints=2200){
  // dijera «sin alturas disponibles» aunque la ruta las tuviera todas. El GPX
  // guardado nunca se tocaba, era solo la copia para dibujar y navegar.
  if(!Array.isArray(points)||points.length<=2)return points.map(p=>p.slice(0,3));
- const source=points.map(p=>Number.isFinite(p[2])?[p[0],p[1],p[2]]:[p[0],p[1]]);
+ // LOS PICOS DEL CREADOR FUERA. Al unir dos tramos, el planificador a veces
+ // se pasa unos metros y vuelve por el mismo sitio: la linea va y viene. Visto
+ // en una ruta del autor del 14 de noviembre de 2026, dos veces: 6-9 m y 30 m
+ // de ida y vuelta, 180 grados exactos. Cada pico fabricaba un aviso que no
+ // existe -una «curva de herradura» y un «cruce a la izquierda» falso-.
+ // Un pico es una media vuelta en la que la linea vuelve POR ENCIMA de la ida
+ // (a menos de PICO_M) durante, como mucho, PICO_MAX_M. Las dos condiciones
+ // importan: una herradura de verdad vuelve por el otro lado del camino, y una
+ // ida y vuelta de verdad -subir a una cima y bajar por el mismo sitio- es
+ // mucho mas larga que 40 m; esas no se tocan. Lo que se pierde: una
+ // desviacion real de menos de 40 m, ir y volver por el mismo sitio.
+ // Va aqui, al cargar la ruta para navegar: vale tambien para las guardadas.
+ const PICO_M=3,PICO_MAX_M=40;
+ function quitaPicos(P){
+  const kx=111195*Math.cos((P[0]?.[0]||43)*R),ky=111195;
+  const m=(a,b)=>Math.hypot((b[1]-a[1])*kx,(b[0]-a[0])*ky);
+  const alTramo=(p,a,b)=>{
+   const ax=(a[1]-p[1])*kx,ay=(a[0]-p[0])*ky,dx=(b[1]-a[1])*kx,dy=(b[0]-a[0])*ky,nn=dx*dx+dy*dy;
+   const t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0;return Math.hypot(ax+t*dx,ay+t*dy);
+  };
+  // ¿p cae encima de la ida que llega a la punta i (sus ultimos metros)?
+  const sobreLaIda=(out,i,p)=>{
+   let rec=0;
+   for(let k=i;k>0&&rec<=PICO_MAX_M+PICO_M;k--){
+    if(alTramo(p,out[k-1],out[k])<PICO_M)return true;
+    rec+=m(out[k-1],out[k]);
+   }
+   return false;
+  };
+  let out=P.filter((p,k)=>k===0||m(P[k-1],p)>=.5),vuelta=0;
+  // Media vuelta SECA en un solo punto (mas de 170 grados). Una herradura de
+  // verdad reparte el giro en varios puntos y, cerca de la punta, tambien
+  // vuelve a menos de 3 m de la ida: sin esto, se la comia.
+  const seca=(a,b,c)=>{
+   const x1=(b[1]-a[1])*kx,y1=(b[0]-a[0])*ky,x2=(c[1]-b[1])*kx,y2=(c[0]-b[0])*ky,n=Math.hypot(x1,y1)*Math.hypot(x2,y2);
+   return n>0&&(x1*x2+y1*y2)/n<-0.985;
+  };
+  for(let i=1;i<out.length-1&&vuelta<200;i++){
+   if(!seca(out[i-1],out[i],out[i+1])||!sobreLaIda(out,i,out[i+1]))continue;
+   // Lo que recorre volviendo por encima de la ida.
+   let j=i+1,largo=m(out[i],out[i+1]);
+   while(j+1<out.length&&sobreLaIda(out,i,out[j+1])&&largo<=PICO_MAX_M){largo+=m(out[j],out[j+1]);j++}
+   if(largo>PICO_MAX_M)continue;                  // ida y vuelta de verdad
+   // Se quita la punta y lo que se repite de la ida, hasta los mismos metros.
+   let k=i,atras=0;
+   while(k>0&&atras+m(out[k-1],out[k])<=largo+PICO_M){atras+=m(out[k-1],out[k]);k--}
+   out=out.slice(0,k+1).concat(out.slice(j+1));
+   i=Math.max(0,k-1);vuelta++;
+  }
+  return out;
+ }
+ const source=quitaPicos(points).map(p=>Number.isFinite(p[2])?[p[0],p[1],p[2]]:[p[0],p[1]]);
  const lat0=source[Math.floor(source.length/2)][0]*R;
  const scaleX=111195*Math.cos(lat0),scaleY=111195;
  function simplify(tolerance){
@@ -3297,7 +3348,18 @@ function computeJunctions(){
     if(v>BRINCO_GIRO)continue;
    }
   }
-  horquillas.set(i,Math.round(d));
+  // EL LADO DE LA HORQUILLA ES EL DE LA HORQUILLA ENTERA, de la llegada a la
+  // salida (40 m), no el de los 12 m del punto: una revuelta grande a la
+  // derecha que empieza torciendo un poco a la izquierda se cantaba «a la
+  // izquierda». Lo saco el Garmin del autor: 63 grados reales a la derecha.
+  // Se SUMA el giro tramo a tramo: con casi 180 grados, «salida menos
+  // llegada» cambia de signo por un grado de mas o de menos.
+  let giroTotal=0;
+  for(let k=i;k<=j;k++){
+   const g=((rumboTramo(pts[k],pts[k+1])-rumboTramo(pts[k-1],pts[k]))%360+540)%360-180;
+   giroTotal+=g;
+  }
+  horquillas.set(i,{grados:Math.round(d),lado:giroTotal>0?'derecha':'izquierda'});
   i=j;
  }
  for(let i=1;i<pts.length-1;i++){
@@ -3322,6 +3384,16 @@ function computeJunctions(){
     // Fichero de cruces antiguo, sin ramas: se decide como siempre, por el
     // angulo del propio track.
     porElCruce=angle>=CRUCE_GIRO;
+    // Y si no llega en 12 m, se mira en 30: un giro redondeado reparte el
+    // angulo y, medido justo en el cruce, parece casi recto. Visto en una ruta
+    // del autor: giro real de 114 grados a la derecha que en 12 m eran 44 y se
+    // quedaba sin aviso. El lado, de esa misma ventana ancha.
+    if(!porElCruce){
+     const ancho=geometriaEn(i,Math.min(30,margen));
+     if(ancho&&ancho.angle>=CRUCE_GIRO){
+      porElCruce=true;grados=ancho.angle;ladoCruce=ancho.cross>0?'izquierda':'derecha';
+     }
+    }
    }else if(d&&!(crucesDichos.has(elCruce)&&!haSalido(elCruce,crucesDichos.get(elCruce),i))){
     cruceAvisado=elCruce;
     porElCruce=true;
@@ -3344,7 +3416,7 @@ function computeJunctions(){
     // y vuelve: por eso se consulta despues y no en vez de.
     const h=horquillas.get(i);
     if(!h)continue;
-    grados=h;
+    grados=h.grados;ladoCruce=h.lado;
    }
   }
   // Dos avisos pegados serian dos «ahora» uno encima del otro. Pero EL CRUCE

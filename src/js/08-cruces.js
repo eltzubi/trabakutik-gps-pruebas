@@ -453,7 +453,18 @@ function computeJunctions(){
     if(v>BRINCO_GIRO)continue;
    }
   }
-  horquillas.set(i,Math.round(d));
+  // EL LADO DE LA HORQUILLA ES EL DE LA HORQUILLA ENTERA, de la llegada a la
+  // salida (40 m), no el de los 12 m del punto: una revuelta grande a la
+  // derecha que empieza torciendo un poco a la izquierda se cantaba «a la
+  // izquierda». Lo saco el Garmin del autor: 63 grados reales a la derecha.
+  // Se SUMA el giro tramo a tramo: con casi 180 grados, «salida menos
+  // llegada» cambia de signo por un grado de mas o de menos.
+  let giroTotal=0;
+  for(let k=i;k<=j;k++){
+   const g=((rumboTramo(pts[k],pts[k+1])-rumboTramo(pts[k-1],pts[k]))%360+540)%360-180;
+   giroTotal+=g;
+  }
+  horquillas.set(i,{grados:Math.round(d),lado:giroTotal>0?'derecha':'izquierda'});
   i=j;
  }
  for(let i=1;i<pts.length-1;i++){
@@ -478,6 +489,16 @@ function computeJunctions(){
     // Fichero de cruces antiguo, sin ramas: se decide como siempre, por el
     // angulo del propio track.
     porElCruce=angle>=CRUCE_GIRO;
+    // Y si no llega en 12 m, se mira en 30: un giro redondeado reparte el
+    // angulo y, medido justo en el cruce, parece casi recto. Visto en una ruta
+    // del autor: giro real de 114 grados a la derecha que en 12 m eran 44 y se
+    // quedaba sin aviso. El lado, de esa misma ventana ancha.
+    if(!porElCruce){
+     const ancho=geometriaEn(i,Math.min(30,margen));
+     if(ancho&&ancho.angle>=CRUCE_GIRO){
+      porElCruce=true;grados=ancho.angle;ladoCruce=ancho.cross>0?'izquierda':'derecha';
+     }
+    }
    }else if(d&&!(crucesDichos.has(elCruce)&&!haSalido(elCruce,crucesDichos.get(elCruce),i))){
     cruceAvisado=elCruce;
     porElCruce=true;
@@ -500,7 +521,7 @@ function computeJunctions(){
     // y vuelve: por eso se consulta despues y no en vez de.
     const h=horquillas.get(i);
     if(!h)continue;
-    grados=h;
+    grados=h.grados;ladoCruce=h.lado;
    }
   }
   // Dos avisos pegados serian dos «ahora» uno encima del otro. Pero EL CRUCE

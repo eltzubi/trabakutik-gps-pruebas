@@ -645,6 +645,48 @@ test('Avisa de una APK nueva comparando con la versión publicada en instalar.ht
 // En estas pruebas los rumbos van en GRADOS de brujula: 90 es hacia el este,
 // que es hacia donde va corner(0), y 270 es por donde se llega.
 function ramas(...grupos){return grupos}
+const linea5=(a,b)=>{const n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/5)),o=[];for(let k=1;k<=n;k++)o.push(point(a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n));return o};
+test('Un pico del creador -ir y volver unos metros por el mismo sitio- no da aviso',()=>{
+ // Visto en una ruta del autor: al unir tramos, el planificador se pasaba 6
+ // o 30 m y volvia por encima. Fabricaba una «curva de herradura» o un giro
+ // con el lado cambiado.
+ const recta=[point(-100,0),...linea5([-100,0],[0,0])];
+ const conPico=[...recta,point(0,15),point(0,0.5),...linea5([0,0],[100,0])];
+ assert.equal(detector().detect(conPico).length,0,'el pico se quita: es una recta');
+});
+test('Una ida y vuelta de verdad por el mismo camino no se toca',()=>{
+ // Subir a una cima y bajar por donde se ha subido tambien vuelve por encima
+ // de la ida, pero mucho mas de 40 m: eso es la ruta, no un pico.
+ const ida=[point(-100,0),...linea5([-100,0],[0,0]),...linea5([0,0],[0,120])];
+ const ruta=[...ida,...linea5([0,120],[0,0.5]),...linea5([0,0],[-100,0.5])];
+ const turns=detector().detect(ruta);
+ assert(turns.some(t=>t.direction==='vuelta'),'la media vuelta de la cima se sigue avisando');
+});
+// Dibuja una ruta como una tortuga: pasos de `paso` metros girando `giro`
+// grados por paso (positivo = a la izquierda). Empieza en (-150,0) hacia el este.
+function tortuga(tramos,paso=2){
+ let x=-150,y=0,rumbo=0;const pts=[point(x,y)];
+ for(const [metros,giroTotal] of tramos){
+  const n=Math.max(1,Math.round(metros/paso));
+  for(let k=0;k<n;k++){rumbo+=giroTotal/n*Math.PI/180;x+=paso*Math.cos(rumbo);y+=paso*Math.sin(rumbo);pts.push(point(x,y))}
+ }
+ return pts;
+}
+test('Un giro redondeado en un cruce de ramas ajenas se avisa, medido en 30 m',()=>{
+ // Giro real de 110 grados a la derecha repartido en 70 m: en 12 m parece
+ // casi recto. Las ramas del cruce no son las suyas (como en una ruta del
+ // autor: 114 grados reales, 44 en 12 m, sin aviso).
+ const pts=tortuga([[150,0],[70,-110],[120,0]]);
+ const turns=detector().detect(pts,[[...point(30,-12),[[300],[60],[20]]]]);
+ assert.equal(turns.length,1,'el giro se avisa');assert.equal(turns[0].direction,'derecha');
+});
+test('El lado de una herradura sale de la revuelta entera, no de sus primeros metros',()=>{
+ // Revuelta grande a la derecha que empieza torciendo a la izquierda: con los
+ // 12 m del punto se cantaba «a la izquierda» (Garmin del autor: a la derecha).
+ const pts=tortuga([[150,0],[10,35],[24,-215],[120,0]]);
+ const h=detector().detect(pts).find(t=>t.direction==='vuelta');
+ assert(h,'se avisa la herradura');assert.equal(h.hacia,'derecha');
+});
 test('Si las ramas del cruce no son las de la ruta, el lado sale del trazado',()=>{
  // Lo vio el autor el 14 de noviembre de 2026: llegaba a 101 grados y salia a
  // 161 -derecha-, pero el cruce encontrado era uno de al lado, con ramas a 6,
