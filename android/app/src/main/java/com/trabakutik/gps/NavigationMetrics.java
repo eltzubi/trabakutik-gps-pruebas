@@ -169,10 +169,12 @@ final class NavigationMetrics {
         if (hasReference && total > 2 * CIERRE_M && points.size() > 2) {
             double[] a = points.get(0), b = points.get(points.size() - 1);
             if (meters(a[0], a[1], b[0], b[1]) < 150) {
+                // Solo es llegar si lo que faltaba cabe en lo movido (+60 m);
+                // si no, una lectura en el km 0,2 te deja donde ibas.
                 if (dir > 0 && reference > total - CIERRE_M && result.along < CIERRE_M)
-                    result = new Projection(total, result.distance);
+                    result = new Projection(total - reference <= step + 60 ? total : reference, result.distance);
                 else if (dir < 0 && reference < CIERRE_M && result.along > total - CIERRE_M)
-                    result = new Projection(0, result.distance);
+                    result = new Projection(reference <= step + 60 ? 0 : reference, result.distance);
             }
         }
         if (reliable && result.distance <= 30) {

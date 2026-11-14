@@ -208,4 +208,10 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  assert(llegada.along>total-5,'en la salida, al final del circuito, es el final: '+Math.round(llegada.along)+' de '+total);
  // Y al empezar, la salida sigue siendo el km 0.
  assert(nuevo().progressOnRoute(punto(0,0)).along<5,'al empezar, la salida es el km 0');
+ // Pero con 250 m por delante, una lectura que caiga en el km 0,1 no te da
+ // por llegado: te deja donde ibas.
+ // (Una lectura que cae sobre el tramo de salida habiendote movido 10 m.)
+ const d=nuevo();d.ultimoAlong=total-250;d.ultimoPuntoAlong=punto(100,10);
+ const antes=d.ultimoAlong,salto=d.progressOnRoute(punto(100,0));
+ assert(salto.along<total-100,'no se da por llegado 250 m antes: '+Math.round(salto.along)+' de '+total+' (iba por '+Math.round(antes)+')');
 });

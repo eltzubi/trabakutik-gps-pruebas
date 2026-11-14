@@ -654,6 +654,32 @@ test('Un pico del creador -ir y volver unos metros por el mismo sitio- no da avi
  const conPico=[...recta,point(0,15),point(0,0.5),...linea5([0,0],[100,0])];
  assert.equal(detector().detect(conPico).length,0,'el pico se quita: es una recta');
 });
+test('Una ida y vuelta por el mismo camino es «da la vuelta», sin lado; una herradura no',()=>{
+ const ida=[point(-100,0),...linea5([-100,0],[0,0]),...linea5([0,0],[0,120])];
+ const ruta=[...ida,...linea5([0,120],[0,0.5]),...linea5([0,0],[-100,0.5])];
+ const v=detector().detect(ruta).find(t=>t.direction==='vuelta');
+ assert(v&&v.retorno===true,'la cima de ida y vuelta se marca como retorno');
+ const h=detector().detect(tortuga([[150,0],[10,35],[24,-215],[120,0]])).find(t=>t.direction==='vuelta');
+ assert(h&&!h.retorno,'una revuelta de carretera no es un retorno');
+ let enviado=null;
+ const c={junctions:[{i:5,direction:'vuelta',hacia:'derecha',cruce:false,mantente:false,retorno:true}],
+  window:{TrabakutikAndroid:{setJunctions:j=>{enviado=JSON.parse(j)}}},console};
+ vm.createContext(c);vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE'),c);
+ c.enviaGirosNativos();
+ assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:0,t:0}]),'sin lado ni h: el servicio dice «da la vuelta»');
+});
+test('Puntos muy juntos (cada 30 cm) no se borran, y el pico sigue desde donde vuelve a la ida',()=>{
+ const c={R:Math.PI/180};vm.createContext(c);
+ vm.runInContext(source('function compactRoutePoints(points,maxPoints=2200){','\nfunction ')+'',c);
+ const densa=[];for(let x=0;x<=300;x+=0.3)densa.push(point(x,0));
+ const out=c.compactRoutePoints(densa);
+ const fin=out[out.length-1];
+ assert(Math.abs(fin[1]-densa[densa.length-1][1])<1e-9,'el final se queda');
+ // A=(0,0) B=(100,0) C=(80,0) D=(80,20): la punta B sobra, se sigue por C.
+ const r=c.compactRoutePoints([point(0,0),point(100,0),point(80,0),point(80,20),point(80,200)]);
+ const xs=r.map(p=>Math.round((p[1]-point(0,0)[1])*111195*Math.cos(p[0]*Math.PI/180)));
+ assert(!xs.includes(100),'la punta B no se queda: '+xs.join(','));
+});
 test('Una ida y vuelta de verdad por el mismo camino no se toca',()=>{
  // Subir a una cima y bajar por donde se ha subido tambien vuelve por encima
  // de la ida, pero mucho mas de 40 m: eso es la ruta, no un pico.
@@ -824,9 +850,9 @@ test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dic
  c.enviaGirosNativos();
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:1,t:1,h:1},{i:9,dir:-1,t:0,h:1},{i:14,dir:-1,t:1}]));
  const ficha=source("const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
- assert(!/da la vuelta/.test(ficha)&&/curva de herradura a la/.test(ficha),'la ficha dice «curva de herradura a la …»');
+ assert(/turn\.retorno\?/.test(ficha)&&/curva de herradura a la/.test(ficha),'la ficha dice «curva de herradura a la …» salvo en una ida y vuelta');
  const voz=source("const giroTxt=lado==='vuelta'","// Si la primera lectura entra en fase 1");
- assert(!/da la vuelta/.test(voz)&&/curva de herradura a la/.test(voz),'y la voz de la pagina tambien');
+ assert(/turn\.retorno\?/.test(voz)&&/curva de herradura a la/.test(voz),'y la voz de la pagina tambien');
 });
 test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último «Quedan … m»',()=>{
  // El autor termino la salida y el perfil siguio diciendo «Quedan 1611 m

@@ -53,8 +53,12 @@ function progressOnRoute(p,reliable=true){
  const totalRuta=routeCumulative[routeCumulative.length-1]||0,CIERRE_M=300;
  if(ref!==null&&totalRuta>2*CIERRE_M&&routePoints.length>2
     &&dist(routePoints[0],routePoints[routePoints.length-1])<150){
-  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M)along=totalRuta;
-  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M)along=0;
+  // Solo es llegar si lo que faltaba cabe en lo que te has movido (mas un
+  // margen): con 250 m por delante, una lectura que caiga en el km 0,2 no
+  // te da por llegado; se queda donde ibas.
+  const falta=sentidoRuta>0?totalRuta-ref:ref;
+  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M)along=falta<=step+60?totalRuta:ref;
+  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M)along=falta<=step+60?0:ref;
  }
  if(reliable&&best<=30){ultimoAlong=along;ultimoPuntoAlong=p}
  return {along,distance:best};
@@ -160,7 +164,8 @@ function junctionGuidance(p,accuracy,progress){
  // derecha o a la izquierda, haya cruce o no.
  const ladoHerradura=ladoFlecha(turn,alReves);
  $('turnDirection').textContent=lado==='vuelta'
-   ?(esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
+   ?(turn.retorno?(esCruce?'Cruce · da la vuelta':'Da la vuelta')
+    :esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
    :turn.mantente?'Cruce · sigue por la '+lado
    :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
  $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
@@ -211,7 +216,8 @@ function junctionGuidance(p,accuracy,progress){
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'
-    ?(esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
+    ?(turn.retorno?(esCruce?'en el cruce, da la vuelta':'da la vuelta')
+     :esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
     :turn.mantente?'en el cruce, sigue por la '+lado
     :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.

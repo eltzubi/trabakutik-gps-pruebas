@@ -2389,7 +2389,13 @@ function compactRoutePoints(points,maxPoints=2200){
    }
    return false;
   };
-  let out=P.filter((p,k)=>k===0||m(P[k-1],p)>=.5),vuelta=0;
+  // Los duplicados se miden contra el ULTIMO QUE SE QUEDA, no contra el
+  // anterior del original: con puntos cada 30 cm se iban todos menos el
+  // primero (lo vio GPT al revisarlo). El final se queda siempre.
+  let out=[];
+  for(const q of P)if(!out.length||m(out[out.length-1],q)>=.5)out.push(q);
+  if(P.length>1&&out[out.length-1]!==P[P.length-1]){if(out.length>1)out[out.length-1]=P[P.length-1];else out.push(P[P.length-1]);}
+  let vuelta=0;
   // Media vuelta SECA en un solo punto (mas de 170 grados). Una herradura de
   // verdad reparte el giro en varios puntos y, cerca de la punta, tambien
   // vuelve a menos de 3 m de la ida: sin esto, se la comia.
@@ -2404,9 +2410,14 @@ function compactRoutePoints(points,maxPoints=2200){
    while(j+1<out.length&&sobreLaIda(out,i,out[j+1])&&largo<=PICO_MAX_M){largo+=m(out[j],out[j+1]);j++}
    if(largo>PICO_MAX_M)continue;                  // ida y vuelta de verdad
    // Se quita la punta y lo que se repite de la ida, hasta los mismos metros.
+   // Se retrocede por la ida hasta un punto que quede ANTES de donde la
+   // vuelta se reincorpora, y se sigue desde el punto de reincorporacion
+   // (out[j]), que esta encima de la ida. Quedarse con la punta y saltar a
+   // out[j+1] cortaba en diagonal si la ida tenia los puntos lejos.
+   // La punta se va siempre (al menos un paso atras).
    let k=i,atras=0;
-   while(k>0&&atras+m(out[k-1],out[k])<=largo+PICO_M){atras+=m(out[k-1],out[k]);k--}
-   out=out.slice(0,k+1).concat(out.slice(j+1));
+   do{atras+=m(out[k-1],out[k]);k--}while(k>0&&atras<largo-1);
+   out=out.slice(0,k+1).concat(m(out[k],out[j])<.5?out.slice(j+1):out.slice(j));
    i=Math.max(0,k-1);vuelta++;
   }
   return out;
@@ -3126,7 +3137,7 @@ function enviaGirosNativos(){
   // que no conozca «h» la cantara como «cruce a la derecha» o «curva cerrada
   // a la derecha»: el lado bueno, que es lo que importa.
   window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>{
-   const herradura=j.direction==='vuelta',lado=herradura?j.hacia:j.direction;
+   const herradura=j.direction==='vuelta'&&!j.retorno,lado=herradura?j.hacia:j.direction;
    const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
    if(herradura)o.h=1;
    return o;
@@ -3312,6 +3323,34 @@ function computeJunctions(){
  // Una sola por horquilla: encontrada, se salta hasta su final.
  const rumboTramo=(a,b)=>Math.atan2((b[1]-a[1])*Math.cos(a[0]*R),b[0]-a[0])*180/Math.PI;
  const horquillas=new Map();
+ // ¿Los puntos que quedan a 20 y a 60 m despues de i caen a menos de
+ // RETORNO_M de lo andado en los 80 m anteriores? Uno solo no basta: una
+ // herradura con las dos ramas pegadas tambien pasa cerca a los 20 m, y
+ // medido en las 72 rutas eso eran 27 «da la vuelta» falsos de 37.
+ const RETORNO_M=6;
+ const sobreLoAndado=(i,q)=>{
+  const kx=111195*Math.cos(q[0]*R),ky=111195;
+  for(let a=i;a>0&&routeCumulative[i]-routeCumulative[a]<80;a--){
+   const A=pts[a-1],B=pts[a],ax=(A[1]-q[1])*kx,ay=(A[0]-q[0])*ky,dx=(B[1]-A[1])*kx,dy=(B[0]-A[0])*ky,nn=dx*dx+dy*dy;
+   const t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0;
+   if(Math.hypot(ax+t*dx,ay+t*dy)<RETORNO_M)return true;
+  }
+  return false;
+ };
+ const vuelvePorLoAndado=i=>{
+  for(const metros of [20,60]){
+   // El punto a esos metros, interpolado: la copia simplificada deja rectas
+   // largas y el vertice siguiente puede estar a 150 m.
+   let k=i;
+   while(k+1<pts.length&&routeCumulative[k]-routeCumulative[i]<metros)k++;
+   const hecho=routeCumulative[k]-routeCumulative[i];
+   if(hecho<metros-5)return false;
+   const tramo=routeCumulative[k]-routeCumulative[k-1],t=tramo>0?Math.max(0,Math.min(1,1-(hecho-metros)/tramo)):1;
+   const q=[pts[k-1][0]+t*(pts[k][0]-pts[k-1][0]),pts[k-1][1]+t*(pts[k][1]-pts[k-1][1])];
+   if(!sobreLoAndado(i,q))return false;
+  }
+  return true;
+ };
  // La ventana se mide DESDE i hacia delante, no desde el punto anterior: la
  // copia simplificada deja rectas larguisimas, asi que el punto de antes puede
  // estar a 150 m y la ventana no se abriria nunca. Lo que se compara es el
@@ -3453,7 +3492,11 @@ function computeJunctions(){
   // asi que las dos cosas dicen lo mismo: por debajo es un giro cerrado, y
   // de 160 para arriba es una herradura de verdad.
   const direction=grados>=HORQUILLA?'vuelta':hacia;
-  junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente});
+  // UNA IDA Y VUELTA SI ES DAR LA VUELTA. Si lo que viene despues vuelve
+  // por encima de lo que se acaba de andar (a menos de RETORNO_M), no es una
+  // curva: es volver por el mismo camino, y ahi no hay lado que decir.
+  const retorno=direction==='vuelta'&&vuelvePorLoAndado(i);
+  junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente,retorno});
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
  enviaGirosNativos();
@@ -3514,8 +3557,12 @@ function progressOnRoute(p,reliable=true){
  const totalRuta=routeCumulative[routeCumulative.length-1]||0,CIERRE_M=300;
  if(ref!==null&&totalRuta>2*CIERRE_M&&routePoints.length>2
     &&dist(routePoints[0],routePoints[routePoints.length-1])<150){
-  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M)along=totalRuta;
-  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M)along=0;
+  // Solo es llegar si lo que faltaba cabe en lo que te has movido (mas un
+  // margen): con 250 m por delante, una lectura que caiga en el km 0,2 no
+  // te da por llegado; se queda donde ibas.
+  const falta=sentidoRuta>0?totalRuta-ref:ref;
+  if(sentidoRuta>0&&ref>totalRuta-CIERRE_M&&along<CIERRE_M)along=falta<=step+60?totalRuta:ref;
+  else if(sentidoRuta<0&&ref<CIERRE_M&&along>totalRuta-CIERRE_M)along=falta<=step+60?0:ref;
  }
  if(reliable&&best<=30){ultimoAlong=along;ultimoPuntoAlong=p}
  return {along,distance:best};
@@ -3621,7 +3668,8 @@ function junctionGuidance(p,accuracy,progress){
  // derecha o a la izquierda, haya cruce o no.
  const ladoHerradura=ladoFlecha(turn,alReves);
  $('turnDirection').textContent=lado==='vuelta'
-   ?(esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
+   ?(turn.retorno?(esCruce?'Cruce · da la vuelta':'Da la vuelta')
+    :esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
    :turn.mantente?'Cruce · sigue por la '+lado
    :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
  $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
@@ -3672,7 +3720,8 @@ function junctionGuidance(p,accuracy,progress){
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=lado==='vuelta'
-    ?(esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
+    ?(turn.retorno?(esCruce?'en el cruce, da la vuelta':'da la vuelta')
+     :esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
     :turn.mantente?'en el cruce, sigue por la '+lado
     :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.

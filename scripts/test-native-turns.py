@@ -89,6 +89,18 @@ public class NativeTurnsTest {
   require(b.gain(fin.along(),1)==0,"y no queda subida");
   NavigationMetrics e=new NavigationMetrics();e.configure(c,Collections.emptyList());
   require(e.project(0,0,1,true).along()<5,"al empezar, la salida es el km 0");
+  // Pero si la llegada vuelve paralela a la salida (20 m) y quedan 90 m, una
+  // lectura que cae en la salida no te da por llegado: te deja donde ibas.
+  ArrayList<double[]> p=new ArrayList<>();
+  double[][] esq={{0,0},{400,0},{400,100},{0,100},{0,20},{100,20}};
+  for(int k=1;k<esq.length;k++){double[] A=esq[k-1],B=esq[k];int n=(int)Math.round(Math.hypot(B[0]-A[0],B[1]-A[1])/10);
+   for(int u=(k==1?0:1);u<=n;u++)p.add(new double[]{(A[1]+(B[1]-A[1])*u/n)/111195.,(A[0]+(B[0]-A[0])*u/n)/111195.,100});}
+  NavigationMetrics f=new NavigationMetrics();f.configure(p,Collections.emptyList());
+  for(double x=-20;x<=10;x+=10)f.project((x<0?20+x*-1:20)/111195.,(x<0?0:x)/111195.,1,true);
+  NavigationMetrics.Projection ref=f.project(20/111195.,10/111195.,1,true);
+  NavigationMetrics.Projection salto=f.project(2/111195.,12/111195.,1,true);
+  require(salto.along()>f.total()-150,"90 m antes de llegar, una lectura en la salida no es el km 0: "+Math.round(salto.along())+" (iba por "+Math.round(ref.along())+")");
+  require(salto.along()<f.total()-30,"ni la llegada: "+Math.round(salto.along())+" de "+Math.round(f.total()));
  }
  static void saltoNoEsVuelta(){
   NativeTurnsTest c=new NativeTurnsTest();

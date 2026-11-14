@@ -227,7 +227,7 @@ function enviaGirosNativos(){
   // que no conozca «h» la cantara como «cruce a la derecha» o «curva cerrada
   // a la derecha»: el lado bueno, que es lo que importa.
   window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>{
-   const herradura=j.direction==='vuelta',lado=herradura?j.hacia:j.direction;
+   const herradura=j.direction==='vuelta'&&!j.retorno,lado=herradura?j.hacia:j.direction;
    const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
    if(herradura)o.h=1;
    return o;
@@ -413,6 +413,34 @@ function computeJunctions(){
  // Una sola por horquilla: encontrada, se salta hasta su final.
  const rumboTramo=(a,b)=>Math.atan2((b[1]-a[1])*Math.cos(a[0]*R),b[0]-a[0])*180/Math.PI;
  const horquillas=new Map();
+ // ¿Los puntos que quedan a 20 y a 60 m despues de i caen a menos de
+ // RETORNO_M de lo andado en los 80 m anteriores? Uno solo no basta: una
+ // herradura con las dos ramas pegadas tambien pasa cerca a los 20 m, y
+ // medido en las 72 rutas eso eran 27 «da la vuelta» falsos de 37.
+ const RETORNO_M=6;
+ const sobreLoAndado=(i,q)=>{
+  const kx=111195*Math.cos(q[0]*R),ky=111195;
+  for(let a=i;a>0&&routeCumulative[i]-routeCumulative[a]<80;a--){
+   const A=pts[a-1],B=pts[a],ax=(A[1]-q[1])*kx,ay=(A[0]-q[0])*ky,dx=(B[1]-A[1])*kx,dy=(B[0]-A[0])*ky,nn=dx*dx+dy*dy;
+   const t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0;
+   if(Math.hypot(ax+t*dx,ay+t*dy)<RETORNO_M)return true;
+  }
+  return false;
+ };
+ const vuelvePorLoAndado=i=>{
+  for(const metros of [20,60]){
+   // El punto a esos metros, interpolado: la copia simplificada deja rectas
+   // largas y el vertice siguiente puede estar a 150 m.
+   let k=i;
+   while(k+1<pts.length&&routeCumulative[k]-routeCumulative[i]<metros)k++;
+   const hecho=routeCumulative[k]-routeCumulative[i];
+   if(hecho<metros-5)return false;
+   const tramo=routeCumulative[k]-routeCumulative[k-1],t=tramo>0?Math.max(0,Math.min(1,1-(hecho-metros)/tramo)):1;
+   const q=[pts[k-1][0]+t*(pts[k][0]-pts[k-1][0]),pts[k-1][1]+t*(pts[k][1]-pts[k-1][1])];
+   if(!sobreLoAndado(i,q))return false;
+  }
+  return true;
+ };
  // La ventana se mide DESDE i hacia delante, no desde el punto anterior: la
  // copia simplificada deja rectas larguisimas, asi que el punto de antes puede
  // estar a 150 m y la ventana no se abriria nunca. Lo que se compara es el
@@ -554,7 +582,11 @@ function computeJunctions(){
   // asi que las dos cosas dicen lo mismo: por debajo es un giro cerrado, y
   // de 160 para arriba es una herradura de verdad.
   const direction=grados>=HORQUILLA?'vuelta':hacia;
-  junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente});
+  // UNA IDA Y VUELTA SI ES DAR LA VUELTA. Si lo que viene despues vuelve
+  // por encima de lo que se acaba de andar (a menos de RETORNO_M), no es una
+  // curva: es volver por el mismo camino, y ahi no hay lado que decir.
+  const retorno=direction==='vuelta'&&vuelvePorLoAndado(i);
+  junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente,retorno});
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
  enviaGirosNativos();

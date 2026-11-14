@@ -332,7 +332,13 @@ function compactRoutePoints(points,maxPoints=2200){
    }
    return false;
   };
-  let out=P.filter((p,k)=>k===0||m(P[k-1],p)>=.5),vuelta=0;
+  // Los duplicados se miden contra el ULTIMO QUE SE QUEDA, no contra el
+  // anterior del original: con puntos cada 30 cm se iban todos menos el
+  // primero (lo vio GPT al revisarlo). El final se queda siempre.
+  let out=[];
+  for(const q of P)if(!out.length||m(out[out.length-1],q)>=.5)out.push(q);
+  if(P.length>1&&out[out.length-1]!==P[P.length-1]){if(out.length>1)out[out.length-1]=P[P.length-1];else out.push(P[P.length-1]);}
+  let vuelta=0;
   // Media vuelta SECA en un solo punto (mas de 170 grados). Una herradura de
   // verdad reparte el giro en varios puntos y, cerca de la punta, tambien
   // vuelve a menos de 3 m de la ida: sin esto, se la comia.
@@ -347,9 +353,14 @@ function compactRoutePoints(points,maxPoints=2200){
    while(j+1<out.length&&sobreLaIda(out,i,out[j+1])&&largo<=PICO_MAX_M){largo+=m(out[j],out[j+1]);j++}
    if(largo>PICO_MAX_M)continue;                  // ida y vuelta de verdad
    // Se quita la punta y lo que se repite de la ida, hasta los mismos metros.
+   // Se retrocede por la ida hasta un punto que quede ANTES de donde la
+   // vuelta se reincorpora, y se sigue desde el punto de reincorporacion
+   // (out[j]), que esta encima de la ida. Quedarse con la punta y saltar a
+   // out[j+1] cortaba en diagonal si la ida tenia los puntos lejos.
+   // La punta se va siempre (al menos un paso atras).
    let k=i,atras=0;
-   while(k>0&&atras+m(out[k-1],out[k])<=largo+PICO_M){atras+=m(out[k-1],out[k]);k--}
-   out=out.slice(0,k+1).concat(out.slice(j+1));
+   do{atras+=m(out[k-1],out[k]);k--}while(k>0&&atras<largo-1);
+   out=out.slice(0,k+1).concat(m(out[k],out[j])<.5?out.slice(j+1):out.slice(j));
    i=Math.max(0,k-1);vuelta++;
   }
   return out;

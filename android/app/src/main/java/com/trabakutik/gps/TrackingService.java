@@ -260,11 +260,13 @@ public class TrackingService extends Service implements LocationListener {
    if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+h;
   }
+  // Sin lado, desde noviembre de 2026, solo llega una IDA Y VUELTA por el
+  // mismo camino: ahi si hay que dar la vuelta.
   boolean esCruce=tipo!=0;
   String hacia=tipo==2
    ?(lado<0?"en el cruce, sigue por la izquierda":"en el cruce, sigue por la derecha")
    :lado==0
-   ?(esCruce?"cruce, da la vuelta":"curva de herradura")
+   ?(esCruce?"cruce, da la vuelta":"da la vuelta")
    :esCruce?(lado<0?"cruce a la izquierda":"cruce a la derecha")
            :(lado<0?"curva cerrada a la izquierda":"curva cerrada a la derecha");
   if("3".equals(fase))return Character.toUpperCase(hacia.charAt(0))+hacia.substring(1)+" ahora";

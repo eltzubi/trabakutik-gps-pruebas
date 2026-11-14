@@ -79,6 +79,9 @@ public class GirosLimiteTest {
   require(suelta.equals("Curva de herradura a la izquierda ahora"),suelta);
   require(normal.equals("En 50 metros, cruce a la derecha"),normal);
   require(!enCruce.contains("da la vuelta")&&!suelta.contains("da la vuelta"),"nunca «da la vuelta»");
+  // 5. Sin lado solo llega una ida y vuelta por el mismo camino: ahi si.
+  String retorno=t.fraseGiro(0,0,"1",50);
+  require(retorno.equals("En 50 metros, da la vuelta"),retorno);
   System.out.println("OK: caben 2000 giros, por encima se vacia la lista, un giro en el punto 0 no tapa a los demas y la herradura dice su lado");
  }
 }'''
