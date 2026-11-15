@@ -126,10 +126,11 @@ function guiaIniciada(){
 // a la brujula, en letra clara. El autor: «la distancia que llevamos, el
 // tiempo y toda esa informacion un poco mas grande, en un recuadro abajo;
 // arriba se ve demasiado pequeñito». Ahora es un recuadro oscuro abajo a la
-// izquierda, encima de la tarjeta del giro: la ruta, lo hecho en grande, lo
-// que queda y el tiempo desde que empezaste. La linea de arriba se sigue
+// izquierda, encima de la tarjeta del giro. La linea de arriba se sigue
 // rellenando (la leen las pruebas) pero ya no se ve.
-let inicioSalida=null;
+// Desde el 15 de noviembre de 2026 son DOS TARJETAS BLANCAS, distancia y
+// alturas, sin el tiempo ni el nombre de la ruta: «solo distancias y
+// alturas», eligiendo la opcion 3 de las propuestas.
 // «HECHOS» ES LO QUE HAS ANDADO, NO DONDE ESTAS EN LA RUTA. El autor salio
 // kilometro y medio antes del principio de Trabakua-Mendibil y el recuadro
 // contaba desde el principio de la ruta: «la distancia me la esta cogiendo
@@ -155,8 +156,7 @@ function pintaAvance(along){
  if(!caja)return;
  const tb=$('tripBox');
  if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){
-  caja.classList.add('hidden');if(tb)tb.classList.add('hidden');
-  if(!guiaIniciada()){inicioSalida=null;try{localStorage.removeItem('trabakutik.inicioSalida')}catch(e){}}
+  caja.classList.add('hidden');if(tb)tb.classList.add('hidden');faltaSubidaRuta=null;
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
@@ -165,22 +165,78 @@ function pintaAvance(along){
  caja.innerHTML='Llevas <b>'+fmt(hecho)+'</b> \u00b7 faltan <b>'+fmt(queda)+'</b>';
  caja.classList.remove('hidden');
  if(!tb)return;
- // El inicio se guarda: si la pagina se recarga a mitad de salida, el tiempo
- // sigue contando desde el principio y no vuelve a cero (revision con GPT).
- if(inicioSalida===null){
-  let guardado=NaN;try{guardado=Number(localStorage.getItem('trabakutik.inicioSalida'))}catch(e){}
-  inicioSalida=Number.isFinite(guardado)&&guardado>0&&Date.now()-guardado<24*3600e3?guardado:Date.now();
-  try{localStorage.setItem('trabakutik.inicioSalida',String(inicioSalida))}catch(e){}
- }
- const min=Math.max(0,Math.floor((Date.now()-inicioSalida)/60000));
- $('tripRuta').textContent=$('mapTitle')?.textContent||'';
  // Con un decimal, que en grande se lee de un vistazo: «12,4 km».
  const km=m=>m>=1000?(m/1000).toFixed(1).replace('.',',')+' km':Math.round(m)+' m';
  const andado=recording?metrosGrabados():0;
- $('tripHecho').textContent=km(andado>0?andado:hecho)+' hechos';
- $('tripQueda').textContent=km(queda)+' quedan';
- $('tripTiempo').textContent=(min>=60?Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')+' min':min+' min')+' de salida';
+ const [numero,unidad]=km(andado>0?andado:hecho).split(' ');
+ $('tripHecho').textContent=numero;$('tripHechoU').textContent=unidad;
+ $('tripQueda').textContent=km(queda);
+ const frac=total>0?hecho/total:0;
+ $('tripBarra').style.width=(frac*100).toFixed(1)+'%';$('tripPunto').style.left=(frac*100).toFixed(1)+'%';
+ pintaAlturas(frac);
  tb.classList.remove('hidden');
+}
+// LAS ALTURAS SALEN DEL PERFIL DE LA RUTA, NO DEL GPS. Lo eligio el autor
+// el 15 de noviembre de 2026 (opcion 3 de las propuestas: distancias y
+// alturas, en recuadros blancos). La altura del GPS se equivoca hasta en 15 m
+// y su suma de subidas se infla con el ruido; la de la ruta es la misma con la
+// que se pinta el perfil. Se cuenta como el servicio (NavigationMetrics): un
+// umbral de 5 m, y un hueco sin altura vuelve a empezar la cuenta. Al reves,
+// lo que se sube es lo que la ruta baja.
+let perfilTrip={pts:null,n:0,datos:null};
+function perfilDeAlturas(){
+ const pts=typeof navigationProfilePoints==='function'?navigationProfilePoints():routePoints;
+ if(perfilTrip.pts===pts&&perfilTrip.n===pts.length)return perfilTrip.datos;
+ let datos=null;
+ if(Array.isArray(pts)&&pts.filter(p=>p&&Number.isFinite(p[2])).length>=2){
+  const n=pts.length,d=new Float64Array(n),asc=new Float64Array(n),des=new Float64Array(n),h=pts.map(p=>Number.isFinite(p[2])?p[2]:null);
+  let ref=null;
+  for(let i=0;i<n;i++){
+   if(i){d[i]=d[i-1]+dist(pts[i-1],pts[i]);asc[i]=asc[i-1];des[i]=des[i-1]}
+   if(h[i]===null){ref=null;continue}
+   if(ref===null){ref=h[i];continue}
+   if(h[i]>=ref+5){asc[i]+=h[i]-ref;ref=h[i]}else if(h[i]<=ref-5){des[i]+=ref-h[i];ref=h[i]}
+  }
+  // El dibujo, 80 muestras a distancias iguales, en el sentido de la ruta.
+  const T=d[n-1],M=80,muestras=[];let k=0;
+  for(let s=0;s<=M;s++){
+   const x=T*s/M;while(k<n-2&&d[k+1]<x)k++;
+   const a=h[k],b=h[k+1],t=d[k+1]>d[k]?(x-d[k])/(d[k+1]-d[k]):0;
+   muestras.push(a!==null&&b!==null?a+t*(b-a):(a!==null?a:b));
+  }
+  const conocidas=muestras.filter(v=>v!==null),lo=Math.min(...conocidas),hi=Math.max(...conocidas);
+  datos={d,h,asc,des,T,n,muestras,lo,hi};
+ }
+ perfilTrip={pts,n:Array.isArray(pts)?pts.length:0,datos,dibujo:null};
+ return datos;
+}
+function pintaAlturas(frac){
+ const tb=$('tripBox'),P=perfilDeAlturas();
+ if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;return}
+ tb.classList.remove('sin-alturas');
+ const pos=(sentidoRuta>0?frac:1-frac)*P.T;
+ let lo=0,hi=P.n-1;
+ while(lo<hi-1){const m=(lo+hi)>>1;if(P.d[m]<=pos)lo=m;else hi=m}
+ const i=lo,u=P.n-1;
+ const subido=sentidoRuta>0?P.asc[i]:P.des[u]-P.des[i];
+ const falta=sentidoRuta>0?P.asc[u]-P.asc[i]:P.des[i];
+ const a=P.h[i],b=P.h[i+1]??a,t=P.d[i+1]>P.d[i]?(pos-P.d[i])/(P.d[i+1]-P.d[i]):0;
+ const altura=a!==null&&b!==null?a+Math.max(0,Math.min(1,t))*(b-a):(a??b);
+ $('tripSubido').textContent='+'+Math.round(subido);
+ $('tripFalta').textContent='+'+Math.round(falta)+' m';faltaSubidaRuta=falta;
+ $('tripAltitud').textContent=altura===null?'—':String(Math.round(altura));
+ // El perfil, en el sentido de la marcha: lo que viene, a la derecha.
+ const y=v=>v===null?34:(32-(v-P.lo)/Math.max(30,P.hi-P.lo)*29).toFixed(1);
+ if(perfilTrip.dibujo!==sentidoRuta){
+  const m=sentidoRuta>0?P.muestras:P.muestras.slice().reverse(),M=m.length-1;
+  const linea=m.map((v,s)=>(s?'L':'M')+(s/M*200).toFixed(1)+' '+y(v)).join(' ');
+  $('tripPerfilLinea').setAttribute('d',linea);
+  const area=linea+' L200 34 L0 34 Z';
+  $('tripPerfilArea').setAttribute('d',area);$('tripPerfilHecho').setAttribute('d',area);
+  perfilTrip.dibujo=sentidoRuta;
+ }
+ $('tripHechoRect').setAttribute('width',(frac*200).toFixed(1));
+ const p=$('tripPerfilPunto');p.setAttribute('cx',(frac*200).toFixed(1));p.setAttribute('cy',y(altura));
 }
 function marcaAlReves(si){
  const c=$('reverseWarn');

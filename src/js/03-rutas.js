@@ -217,7 +217,7 @@ async function loadDetailedSelected(i,request){
   if(detailedLine.length<=12000){
    routePoints=detailedProfilePoints=detailedLine;pintaBotonMapa();
    ultimoAlong=ultimoPuntoAlong=null;alongPrevio=null;alongAcum=0;
-   liveProfileAlong=null;liveNativeMetrics=null;
+   liveProfileAlong=null;liveNativeMetrics=null;faltaSubidaRuta=null;
    // LOS PUNTOS PRIMERO, LOS GIROS DESPUES. Aqui estaba al reves:
    // computeJunctions acaba mandando los giros al servicio, asi que durante
    // unos milisegundos el servicio tenia los giros del trazado FINO contra

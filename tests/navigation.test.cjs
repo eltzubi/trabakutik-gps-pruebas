@@ -866,22 +866,31 @@ test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último 
  assert.equal(vm.runInContext('liveNativeMetrics',c),null);
  assert.equal(pintado,1,'y se vuelve a pintar el texto');
 });
-test('Lo que llevas va en el recuadro de abajo, en grande: hecho, quedan y tiempo de salida',()=>{
- // El autor: «la distancia que llevamos, el tiempo y toda esa informacion un
- // poco mas grande, en un recuadro abajo; arriba se ve demasiado pequeñito».
- const nodo=()=>({textContent:'',innerHTML:'',classList:{h:new Set(['hidden']),add(x){this.h.add(x)},remove(x){this.h.delete(x)},contains(x){return this.h.has(x)}}});
- const n={routeProgress:nodo(),tripBox:nodo(),tripRuta:nodo(),tripHecho:nodo(),tripQueda:nodo(),tripTiempo:nodo(),mapTitle:{textContent:'Vuelta al monte Oiz'}};
- let ahora=1_000_000;
- const c={$:id=>n[id],gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,
-  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date:{now:()=>ahora},Math,String,Number};
+test('Lo que llevas va abajo en dos tarjetas: distancia y alturas',()=>{
+ // El autor: «la distancia que llevamos [...] en un recuadro abajo». Y el 15
+ // de noviembre de 2026: «solo distancias y alturas», opcion 3 de las
+ // propuestas. Las alturas salen del perfil de la ruta, con umbral de 5 m.
+ const nodo=()=>({textContent:'',innerHTML:'',style:{},attrs:{},setAttribute(k,v){this.attrs[k]=v},classList:{h:new Set(['hidden']),add(x){this.h.add(x)},remove(x){this.h.delete(x)},contains(x){return this.h.has(x)}}});
+ const n={};const $=id=>n[id]||(n[id]=nodo());
+ const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,
+  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,Float64Array,
+  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))};
  vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
  c.pintaAvance(12400);
  assert(!n.tripBox.classList.contains('hidden'),'se ve el recuadro');
- assert.equal(n.tripRuta.textContent,'Vuelta al monte Oiz');
- assert.equal(n.tripHecho.textContent,'12,4 km hechos');assert.equal(n.tripQueda.textContent,'26,8 km quedan');
- assert.equal(n.tripTiempo.textContent,'0 min de salida');
- ahora+=65*60000;c.pintaAvance(20000);
- assert.equal(n.tripTiempo.textContent,'1 h 05 min de salida');
+ assert.equal(n.tripHecho.textContent,'12,4');assert.equal(n.tripHechoU.textContent,'km');
+ assert.equal(n.tripQueda.textContent,'26,8 km');
+ assert.equal(n.tripBarra.style.width,'31.6%','la barra va por lo hecho');
+ assert(n.tripBox.classList.contains('sin-alturas'),'sin alturas en la ruta, solo la distancia');
+ // Con alturas: 100 -> 150 -> 120 -> 200 m, cada 111 m.
+ c.routePoints=[[43,-2.5,100],[43.001,-2.5,150],[43.002,-2.5,120],[43.003,-2.5,200]];c.routeCumulative=[0,111.2,222.4,333.6];
+ c.pintaAvance(230);
+ assert(!n.tripBox.classList.contains('sin-alturas'));
+ assert.equal(n.tripSubido.textContent,'+50');assert.equal(n.tripFalta.textContent,'+80 m');
+ assert.equal(n.tripAltitud.textContent,'125','la altura de la ruta donde vas');
+ // Al reves, lo que se sube es lo que la ruta baja.
+ c.sentidoRuta=-1;c.pintaAvance(100);
+ assert.equal(n.tripSubido.textContent,'+30');assert.equal(n.tripFalta.textContent,'+0 m');
  c.recording=false;c.pintaAvance(20000);
  assert(n.tripBox.classList.contains('hidden'),'sin guia, no se ve');
 });
@@ -917,20 +926,20 @@ test('Las dos listas se calculan, y la del revés va al servicio aparte',()=>{
 test('«Hechos» es lo que has andado grabando, aunque salieras antes del principio de la ruta',()=>{
  // El autor salio kilometro y medio antes del principio de la ruta y el
  // recuadro contaba desde el principio: «hemos salido kilometro y medio mas abajo».
- const nodo=()=>({textContent:'',innerHTML:'',classList:{add(){},remove(){},contains(){return false}}});
- const n={routeProgress:nodo(),tripBox:nodo(),tripRuta:nodo(),tripHecho:nodo(),tripQueda:nodo(),tripTiempo:nodo(),mapTitle:{textContent:'Trabakua Mendibil'}};
+ const nodo=()=>({textContent:'',innerHTML:'',style:{},setAttribute(){},classList:{add(){},remove(){},contains(){return false}}});
+ const n={};const $=id=>n[id]||(n[id]=nodo());
  // 1,5 km grabados al norte antes de llegar a la ruta, en 16 puntos (y un corte).
  const recorded=[];for(let k=0;k<=15;k++)recorded.push([43+k*100/111195,-2.5]);
  recorded.splice(8,0,null);
- const c={$:id=>n[id],gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded,
+ const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded,Float64Array,
   routeCumulative:[0,6080],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,
   dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))};
  vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
  c.pintaAvance(200);
- assert.equal(n.tripHecho.textContent,'1,5 km hechos','lo andado, no los 200 m de la ruta');
- assert.equal(n.tripQueda.textContent,'5,9 km quedan','lo que queda sigue siendo de la ruta');
+ assert.equal(n.tripHecho.textContent,'1,5','lo andado, no los 200 m de la ruta');
+ assert.equal(n.tripQueda.textContent,'5,9 km','lo que queda sigue siendo de la ruta');
  recorded.push([43+1600/111195,-2.5]);c.pintaAvance(300);
- assert.equal(n.tripHecho.textContent,'1,6 km hechos','y suma lo nuevo');
+ assert.equal(n.tripHecho.textContent,'1,6','y suma lo nuevo');
 });
 test('Si al revés no hace falta ningún aviso, no se usan los de la ida dados la vuelta',()=>{
  let resets=0;

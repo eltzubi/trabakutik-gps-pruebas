@@ -458,6 +458,10 @@ let profileCollapsed=true,navProfileCollapsed=true;
 let profileHeights=null,profileHeightsRequest=null,profileHeightsError=false;
 // Las alturas de Trabakutik corresponden punto por punto al mapa general.
 // Se usan solo para el perfil: nunca sustituyen la geometría de navegación.
+// Lo que falta por subir segun el perfil de la ruta: lo escribe la tarjeta de
+// alturas (07-servicio) y lo usa tambien esta linea, para que la pantalla no
+// enseñe dos cifras distintas para lo mismo.
+let faltaSubidaRuta=null;
 let liveProfileAlong=null,liveNativeMetrics=null,liveProfilePlot=null,nativeRouteKey=null,detailedProfilePoints=null;
 function expireNavigationMetrics(){
  if(mode==='create'||liveProfileAlong===null&&!liveNativeMetrics)return;
@@ -486,7 +490,8 @@ function paintNavigationMetrics(){
  if(!summary)return;
  let text=$('profileDistance')?.textContent??'';
  if(data&&Date.now()-data.time<=10000){
-  if(Number.isFinite(data.gain))text='↑ Quedan '+Math.round(data.gain)+' m aprox.';
+  const falta=Number.isFinite(faltaSubidaRuta)?faltaSubidaRuta:data.gain;
+  if(Number.isFinite(falta))text='↑ Quedan '+Math.round(falta)+' m aprox.';
   if(typeof pausado!=='undefined'&&!pausado&&Number.isFinite(data.etaMs)&&data.etaMs>=0){
    const eta=new Date(data.time+data.etaMs);
    text+=' · Llegada aprox. '+eta.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
