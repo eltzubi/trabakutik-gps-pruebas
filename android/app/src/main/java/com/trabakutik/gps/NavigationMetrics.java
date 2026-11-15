@@ -134,32 +134,54 @@ final class NavigationMetrics {
         result[1] = Math.hypot(x + t * dx, y + t * dy);
     }
 
+    // EN UNA RUTA DE IDA Y VUELTA, EL TRAMO QUE VA HACIA DONDE TE MUEVES (lo
+    // mismo que progressOnRoute en la pagina). La ida y la vuelta pasan a
+    // pocos metros en sentidos contrarios y la mas cercana podia ser la de
+    // vuelta: avanzando se «retrocedia» sobre ella y se decidia que ibas al
+    // reves. Un tramo que va en contra de tu marcha pesa SENTIDO_PEN metros mas.
+    private static final double RUMBO_MIN_M = 8, SENTIDO_PEN = 20;
+
     Projection project(double lat, double lon, int dir, boolean reliable) {
-        double nearest = Double.POSITIVE_INFINITY, nearestAlong = 0;
-        double nearby = Double.POSITIVE_INFINITY, nearbyAlong = 0, bestScore = Double.POSITIVE_INFINITY;
+        double nearest = Double.POSITIVE_INFINITY, nearestAlong = 0, nearestEf = Double.POSITIVE_INFINITY;
+        double nearby = Double.POSITIVE_INFINITY, nearbyAlong = 0, bestScore = Double.POSITIVE_INFINITY, nearbyEf = Double.POSITIVE_INFINITY;
         double[] segment = new double[2];
         double scale = 111195 * Math.cos(Math.toRadians(lat));
         boolean hasReference = Double.isFinite(reference);
         double step = hasReference ? meters(lastLat, lastLon, lat, lon) : 0;
         double window = Math.max(25, Math.min(200, step * 2 + 15));
         double predicted = reference + Math.min(step, window) * dir;
+        double rumboMarcha = hasReference && step >= RUMBO_MIN_M
+                ? Math.toDegrees(Math.atan2((lon - lastLon) * scale, (lat - lastLat) * 111195)) : Double.NaN;
         for (int i = 1; i < distance.length; i++) {
             projectSegment(i, lat, lon, scale, segment);
             double along = segment[0], error = segment[1];
-            if (error < nearest - 1e-6
-                    || (Math.abs(error - nearest) <= 1e-6 && !hasReference && dir < 0)) {
+            double pen = 0;
+            if (Double.isFinite(rumboMarcha)) {
+                double[] a = points.get(i - 1), b = points.get(i);
+                double dx = (b[1] - a[1]) * scale, dy = (b[0] - a[0]) * 111195;
+                if (dx != 0 || dy != 0) {
+                    double tramo = Math.toDegrees(Math.atan2(dx, dy)) + (dir < 0 ? 180 : 0);
+                    double dif = Math.abs((((rumboMarcha - tramo) % 360) + 540) % 360 - 180);
+                    if (dif > 100) pen = SENTIDO_PEN;
+                }
+            }
+            double ef = error + pen;
+            if (ef < nearestEf - 1e-6
+                    || (Math.abs(ef - nearestEf) <= 1e-6 && !hasReference && dir < 0)) {
+                nearestEf = ef;
                 nearest = error;
                 nearestAlong = along;
             }
             if (!hasReference || Math.abs(along - reference) > window) continue;
-            double score = error + .20 * Math.abs(along - predicted);
+            double score = ef + .20 * Math.abs(along - predicted);
             if (score < bestScore) {
                 bestScore = score;
                 nearby = error;
+                nearbyEf = ef;
                 nearbyAlong = along;
             }
         }
-        Projection result = Double.isFinite(nearby) && nearby <= nearest + 12
+        Projection result = Double.isFinite(nearby) && nearbyEf <= nearestEf + 12
                 ? new Projection(nearbyAlong, nearby) : new Projection(nearestAlong, nearest);
         // EL FINAL DE UN CIRCUITO NO ES SU PRINCIPIO. Si la ruta acaba a menos
         // de 150 m de donde empieza y ya ibas por los ultimos CIERRE_M, volver

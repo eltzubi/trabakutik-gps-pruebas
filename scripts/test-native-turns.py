@@ -113,6 +113,17 @@ public class NativeTurnsTest {
   for(double x=203;x<=290;x+=3)lejos=g.project(2/111195.,x/111195.,1,true);
   require(lejos.along()<g.total()-20,"alejandote de la meta no se llega: "+Math.round(lejos.along()));
  }
+ // IDA Y VUELTA: el tramo que va hacia donde te mueves. Ida al norte por x=0,
+ // vuelta al sur por x=8; se entra en y=300 pegado a la vuelta y se sube.
+ static void idaYVuelta(){
+  ArrayList<double[]> r=new ArrayList<>();
+  for(int y=0;y<=1000;y+=10)r.add(new double[]{y/111195.,0,100});
+  for(int y=1000;y>=0;y-=10)r.add(new double[]{y/111195.,8/111195.,100});
+  NavigationMetrics m=new NavigationMetrics();m.configure(r,Collections.emptyList());
+  NavigationMetrics.Projection pr=null;
+  for(int y=300;y<=420;y+=10)pr=m.project(y/111195.,6/111195.,1,true);
+  require(Math.abs(pr.along()-420)<15,"va por la ida, km 0,42, no por la vuelta: "+Math.round(pr.along()));
+ }
  static void saltoNoEsVuelta(){
   NativeTurnsTest c=new NativeTurnsTest();
   double[] along={100,105,110,60,65,70,75};
@@ -217,7 +228,7 @@ public class NativeTurnsTest {
   require(Double.isFinite(metrics.gain(300,1)),"Earlier gap does not hide subsequent gain");
  }
  public static void main(String[] args){
-  saltoNoEsVuelta();desnivelYCircuito();
+  saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();

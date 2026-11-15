@@ -3767,6 +3767,21 @@ function progressOnRoute(p,reliable=true){
  const window=Math.max(25,Math.min(200,step*2+15));
  const predicted=(ref??0)+Math.min(step,window)*sentidoRuta;
  const latScale=111195,lonScale=latScale*Math.cos(p[0]*R);
+ // EN UNA RUTA DE IDA Y VUELTA, EL TRAMO QUE VA HACIA DONDE TE MUEVES. La ida
+ // y la vuelta pasan a pocos metros, en sentidos contrarios, y la mas
+ // cercana podia ser la de vuelta: avanzando, «retrocedias» sobre ella y se
+ // decidia que ibas al reves. Lo vio el autor el 15 de noviembre de 2026 en
+ // Trabakua-Mendibil, que es ida y vuelta casi entera: entro en la ruta un
+ // poco mas adelante y le salto «la estas haciendo AL REVES» sin ir al
+ // reves. Ahora, si te has movido lo bastante para saber hacia donde
+ // (RUMBO_MIN_M), un tramo que va en contra de tu marcha pesa SENTIDO_PEN
+ // metros mas. Con un solo tramo cerca no cambia nada: si de verdad vas al
+ // reves en una ruta sin tramos repetidos, se sigue viendo.
+ const RUMBO_MIN_M=8,SENTIDO_PEN=20;
+ let rumboMarcha=null;
+ if(ultimoPuntoAlong&&step>=RUMBO_MIN_M)
+  rumboMarcha=Math.atan2((p[1]-ultimoPuntoAlong[1])*lonScale,(p[0]-ultimoPuntoAlong[0])*latScale)*180/Math.PI;
+ let bestEf=Infinity,cercaEf=Infinity;
  for(let i=1;i<routePoints.length;i++){
   const a=routePoints[i-1],b=routePoints[i];
   const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale;
@@ -3774,12 +3789,18 @@ function progressOnRoute(p,reliable=true){
   const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1)));
   const meters=Math.hypot(ax+t*dx,ay+t*dy);
   const candidate=routeCumulative[i-1]+t*(routeCumulative[i]-routeCumulative[i-1]);
-  if(meters<best-1e-6||(Math.abs(meters-best)<=1e-6&&ref===null&&sentidoRuta<0)){best=meters;along=candidate}
+  let pen=0;
+  if(rumboMarcha!==null&&(dx||dy)){
+   const tramo=Math.atan2(dx,dy)*180/Math.PI+(sentidoRuta<0?180:0);
+   if(Math.abs(((rumboMarcha-tramo)%360+540)%360-180)>100)pen=SENTIDO_PEN;
+  }
+  const ef=meters+pen;
+  if(ef<bestEf-1e-6||(Math.abs(ef-bestEf)<=1e-6&&ref===null&&sentidoRuta<0)){bestEf=ef;best=meters;along=candidate}
   if(ref===null||Math.abs(candidate-ref)>window)continue;
-  const score=meters+.20*Math.abs(candidate-predicted);
-  if(score<bestScore){bestScore=score;cerca=meters;alongCerca=candidate}
+  const score=ef+.20*Math.abs(candidate-predicted);
+  if(score<bestScore){bestScore=score;cerca=meters;cercaEf=ef;alongCerca=candidate}
  }
- if(Number.isFinite(cerca)&&cerca<=best+12){best=cerca;along=alongCerca}
+ if(Number.isFinite(cerca)&&cercaEf<=bestEf+12){best=cerca;along=alongCerca}
  // EL FINAL DE UN CIRCUITO NO ES SU PRINCIPIO. Si la ruta acaba donde empezo
  // y ya ibas por los ultimos CIERRE_M, volver a la salida es TERMINAR: sin
  // esto el tramo mas cercano era el del km 0 y todo se ponia a empezar otra

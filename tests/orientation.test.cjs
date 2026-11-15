@@ -231,3 +231,26 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  for(let x=103;x<=250;x+=3)ultimo=f.progressOnRoute(punto(x,2));
  assert(ultimo.along<pt-20,'alejandote de la meta por la salida no se llega: '+Math.round(ultimo.along));
 });
+
+test('En una ruta de ida y vuelta, el tramo que va hacia donde te mueves: no se decide «al revés»',()=>{
+ // Trabakua-Mendibil, 15 de noviembre de 2026: es ida y vuelta casi entera,
+ // con la vuelta a pocos metros de la ida. El autor entro en la ruta un poco
+ // mas adelante y le salto «la estas haciendo AL REVES» sin ir al reves.
+ // Aqui: ida hacia el norte por x=0 y vuelta hacia el sur por x=8; se entra
+ // en y=300 pegado a la vuelta (x=6) y se anda hacia el norte.
+ const route=[];for(let y=0;y<=1000;y+=10)route.push(punto(0,y));for(let y=1000;y>=0;y-=10)route.push(punto(8,y));
+ const cum=[0];for(let k=1;k<route.length;k++)cum.push(cum[k-1]+(k===101?8:10));
+ const c={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
+ vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
+ vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);
+ let pr;for(let y=300;y<=420;y+=10)pr=c.progressOnRoute(punto(6,y));
+ assert(Math.abs(pr.along-420)<15,'va por la ida, a la altura del km 0,42: '+Math.round(pr.along));
+ // Y de verdad al reves en una ruta SIN tramos repetidos se sigue viendo: el
+ // avance baja.
+ const solo=[];for(let y=0;y<=1000;y+=10)solo.push(punto(0,y));
+ const d={routePoints:solo,routeCumulative:solo.map((_,k)=>10*k),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
+ vm.createContext(d);vm.runInContext(source('const dist=(a,b)=>','\n'),d);
+ vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),d);
+ const a0=d.progressOnRoute(punto(2,600)).along;let a1;for(let y=590;y>=480;y-=10)a1=d.progressOnRoute(punto(2,y)).along;
+ assert(a1<a0-100,'bajando por una ruta que va hacia arriba, el avance baja: '+Math.round(a0)+' -> '+Math.round(a1));
+});
