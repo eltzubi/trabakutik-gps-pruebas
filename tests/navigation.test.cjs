@@ -866,33 +866,82 @@ test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último 
  assert.equal(vm.runInContext('liveNativeMetrics',c),null);
  assert.equal(pintado,1,'y se vuelve a pintar el texto');
 });
-test('Lo que llevas va abajo en dos tarjetas: distancia y alturas',()=>{
- // El autor: «la distancia que llevamos [...] en un recuadro abajo». Y el 15
- // de noviembre de 2026: «solo distancias y alturas», opcion 3 de las
- // propuestas. Las alturas salen del perfil de la ruta, con umbral de 5 m.
+function cajaTrip(extra={}){
  const nodo=()=>({textContent:'',innerHTML:'',style:{},attrs:{},setAttribute(k,v){this.attrs[k]=v},classList:{h:new Set(['hidden']),add(x){this.h.add(x)},remove(x){this.h.delete(x)},contains(x){return this.h.has(x)}}});
  const n={};const $=id=>n[id]||(n[id]=nodo());
- const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,
-  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,Float64Array,
-  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))};
+ const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded:[],
+  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,Float64Array,Uint8Array,Map,Infinity,
+  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180)),...extra};
  vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
+ return {c,n};
+}
+// Una ruta recta hacia el norte desde (43,-2.5), con una altura por punto cada
+// «paso» metros, y un trazado grabado andando por ella cada 10 m.
+const rutaNorte=(alturas,paso=111.195)=>alturas.map((h,i)=>[43+i*paso/111195,-2.5,h]);
+const andaNorte=(desde,hasta,dx=0)=>{const l=[];for(let m=desde;desde<=hasta?m<=hasta:m>=hasta;m+=desde<=hasta?10:-10)l.push([43+m/111195,-2.5+dx/(111195*Math.cos(43*Math.PI/180))]);return l};
+const acumula=pts=>{const c=[0];for(let k=1;k<pts.length;k++)c.push(c[k-1]+Math.hypot((pts[k][0]-pts[k-1][0])*111195,0));return c};
+test('Lo que llevas va abajo en dos tarjetas: distancia y alturas',()=>{
+ // El autor: «la distancia que llevamos [...] en un recuadro abajo». Y el 15
+ // de noviembre de 2026: «solo distancias y alturas», opcion 3.
+ const {c,n}=cajaTrip();
  c.pintaAvance(12400);
  assert(!n.tripBox.classList.contains('hidden'),'se ve el recuadro');
- assert.equal(n.tripHecho.textContent,'12,4');assert.equal(n.tripHechoU.textContent,'km');
+ assert.equal(n.tripHecho.textContent,'0','grabando y sin andar: 0, no la posicion en la ruta');
  assert.equal(n.tripQueda.textContent,'26,8 km');
- assert.equal(n.tripBarra.style.width,'31.6%','la barra va por lo hecho');
+ assert.equal(n.tripBarra.style.width,'0.0%','la barra es TU salida');
  assert(n.tripBox.classList.contains('sin-alturas'),'sin alturas en la ruta, solo la distancia');
- // Con alturas: 100 -> 150 -> 120 -> 200 m, cada 111 m.
- c.routePoints=[[43,-2.5,100],[43.001,-2.5,150],[43.002,-2.5,120],[43.003,-2.5,200]];c.routeCumulative=[0,111.2,222.4,333.6];
- c.pintaAvance(230);
- assert(!n.tripBox.classList.contains('sin-alturas'));
- assert.equal(n.tripSubido.textContent,'+50');assert.equal(n.tripFalta.textContent,'+80 m');
- assert.equal(n.tripAltitud.textContent,'125','la altura de la ruta donde vas');
- // Al reves, lo que se sube es lo que la ruta baja.
- c.sentidoRuta=-1;c.pintaAvance(100);
- assert.equal(n.tripSubido.textContent,'+30');assert.equal(n.tripFalta.textContent,'+0 m');
- c.recording=false;c.pintaAvance(20000);
+ c.recording=false;c.navegaNativo=true;c.pintaAvance(12400);
+ assert.equal(n.tripHecho.textContent,'—','sin grabar no se sabe lo andado');
+ c.navegaNativo=false;c.pintaAvance(20000);
  assert(n.tripBox.classList.contains('hidden'),'sin guia, no se ve');
+});
+test('Antes de llegar a la ruta el recuadro sale, con la ruta a cuantos metros',()=>{
+ // Salio 1,5 km antes del principio de la ruta y hasta engancharse no salia nada.
+ const {c,n}=cajaTrip();
+ c.pintaAvance(null,{enRuta:false,distRuta:1350});
+ assert(!n.tripBox.classList.contains('hidden'));
+ assert.equal(n.tripQuedaTxt.textContent,'ruta a ');assert.equal(n.tripQueda.textContent,'1,4 km');
+});
+test('Lo subido cuenta desde donde empiezas, no desde el principio de la ruta',()=>{
+ // Ruta 100 -> 150 -> 120 -> 200 m. Empiezas en la cima de 150 (a mitad):
+ // lo subido es lo que subes tu, +80, y no +130 desde el principio.
+ const pts=rutaNorte([100,150,120,200]);
+ const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});
+ c.recorded=andaNorte(112,333);
+ c.pintaAvance(333);
+ // Con el umbral de 5 m, lo ultimo que se sube cuenta al completar el escalon.
+ const num=t=>Number(t.replace(/[^\d]/g,''));
+ assert(num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'subido '+n.tripSubido.textContent);
+ assert(!n.tripSubido.textContent.startsWith('≥'));
+ assert.equal(n.tripFalta.textContent,'+0 m');
+ assert.equal(n.tripAltitud.textContent,'200');
+ // Y si llegas desde fuera de la ruta, lo de fuera no suma y se dice con «≥».
+ c.recorded=[...andaNorte(112,112,300).map(q=>q),[43+112/111195,-2.5+250/(111195*Math.cos(43*Math.PI/180))],...andaNorte(112,333)];
+ c.recorded.unshift([43+112/111195,-2.5+500/(111195*Math.cos(43*Math.PI/180))]);
+ c.pintaAvance(333);
+ assert(n.tripSubido.textContent.startsWith('≥+')&&num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'lo andado lejos de la ruta no suma y se dice: '+n.tripSubido.textContent);
+});
+test('Ida y vuelta por el mismo camino: la cuenta no salta de rama',()=>{
+ // Ida hacia el norte subiendo de 100 a 160 y vuelta al sur por el mismo
+ // camino, 6 m al lado. Cerca de cada punto pasan las dos ramas; si se cogiera
+ // la mas cercana, la cuenta saltaria de una a otra.
+ const ida=rutaNorte([100,120,140,160],100);
+ const vuelta=ida.slice(0,3).reverse().map(p=>[p[0],p[1]+6/(111195*Math.cos(43*Math.PI/180)),p[2]]);
+ const pts=[...ida,...vuelta];
+ const cum=[0];for(let k=1;k<pts.length;k++)cum.push(cum[k-1]+Math.hypot((pts[k][0]-pts[k-1][0])*111195,(pts[k][1]-pts[k-1][1])*111195*Math.cos(43*Math.PI/180)));
+ const {c,n}=cajaTrip({routePoints:pts,routeCumulative:cum});
+ c.recorded=[...andaNorte(0,300,1),...andaNorte(300,0,5)];
+ c.pintaAvance(cum[cum.length-1]);
+ const sub=Number(n.tripSubido.textContent.replace(/[^\d]/g,''));
+ assert(sub>=55&&sub<=60,'solo la subida de la ida: '+n.tripSubido.textContent);
+});
+test('Al revés lo que falta por subir se cuenta al revés, desde donde estás',()=>{
+ // 10 -> 4 -> 0 m: andando al reves (0 -> 4 -> 10) faltan 10 m. Restando los
+ // acumulados de bajada de la ida salian 6 (revision con GPT).
+ const pts=rutaNorte([10,4,0]);
+ const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts),sentidoRuta:-1});
+ c.pintaAvance(acumula(pts)[2]);
+ assert.equal(n.tripFalta.textContent,'+10 m');
 });
 test('Al revés se usan los avisos calculados al revés, con su lado, sin darles la vuelta',()=>{
  // Trabakua-Mendibil al reves, 15 de noviembre de 2026: «me ha indicado a la
@@ -936,10 +985,10 @@ test('«Hechos» es lo que has andado grabando, aunque salieras antes del princi
   dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))};
  vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
  c.pintaAvance(200);
- assert.equal(n.tripHecho.textContent,'1,5','lo andado, no los 200 m de la ruta');
+ assert.equal(n.tripHecho.textContent,'1,4','lo andado, no los 200 m de la ruta, y sin cruzar el corte');
  assert.equal(n.tripQueda.textContent,'5,9 km','lo que queda sigue siendo de la ruta');
  recorded.push([43+1600/111195,-2.5]);c.pintaAvance(300);
- assert.equal(n.tripHecho.textContent,'1,6','y suma lo nuevo');
+ assert.equal(n.tripHecho.textContent,'1,5','y suma lo nuevo');
 });
 test('Si al revés no hace falta ningún aviso, no se usan los de la ida dados la vuelta',()=>{
  let resets=0;

@@ -389,7 +389,8 @@ function onFix(pos){
   // ficha del cruce: asi no va un fix por detras.
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
-  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong);
+  // En la ruta solo con posicion fiable; con una mala se queda lo ultimo dicho.
+  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d});
   liveProfileAlong=guiaIniciada()&&fiable&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
    updateOffRoute(d,pos.coords.accuracy);
@@ -438,16 +439,18 @@ window.trabakutikSyncNative=()=>{
    notice((puntos>1?'Salida finalizada · Guardar GPX o Descartar':'Salida finalizada')+avisoDeCortes());
   }else reconciliaBotonera();
   if(Array.isArray(data.points)){
-   const segments=[[]],valid=[];
+   // Los cortes se guardan tambien en «recorded» (como null, igual que la
+   // grabacion del navegador): lo andado y lo subido no cruzan un corte.
+   const segments=[[]],valid=[],conCortes=[];
    for(const p of data.points){
     if(Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1])){
-     segments[segments.length-1].push(p);valid.push(p);
-    }else if(segments[segments.length-1].length)segments.push([]);
+     segments[segments.length-1].push(p);valid.push(p);conCortes.push(p);
+    }else if(segments[segments.length-1].length){segments.push([]);if(conCortes.length&&conCortes[conCortes.length-1]!==null)conCortes.push(null)}
    }
    const connected=segments.filter(segment=>segment.length);
    cortesGrabacion=Math.max(0,connected.length-1);
    if(valid.length>1){
-    recorded=valid;
+    recorded=conCortes;
     if(!recordLayer)recordLayer=L.polyline(connected,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,className:'recorded-red'}).addTo(map);
     else recordLayer.setLatLngs(connected);
     recordLayer.bringToFront();

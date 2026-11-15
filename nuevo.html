@@ -409,7 +409,7 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
 #audioMode .audio-label{font-size:8px;line-height:1;font-weight:700}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="tripBox" class="hidden" aria-live="off"><div class="trip-card trip-dist"><h3>Distancia</h3><div class="trip-num"><span id="tripHecho"></span><small id="tripHechoU">km</small></div><div class="trip-sec">quedan <b id="tripQueda"></b></div><div class="trip-pista"><i id="tripBarra"></i><b id="tripPunto"></b></div></div><div class="trip-card trip-alt"><div class="trip-pares"><div><h3>Subido</h3><div class="trip-num chico"><span id="tripSubido"></span><small>m</small></div></div><div><h3>Altitud</h3><div class="trip-num chico"><span id="tripAltitud"></span><small>m</small></div></div></div><svg id="tripPerfil" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="tripHechoClip"><rect id="tripHechoRect" x="0" y="0" width="0" height="34"/></clipPath></defs><path id="tripPerfilArea" fill="#dff1e5"/><path id="tripPerfilHecho" fill="#16a34a" fill-opacity=".35" clip-path="url(#tripHechoClip)"/><path id="tripPerfilLinea" fill="none" stroke="#16a34a" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle id="tripPerfilPunto" r="3.5" fill="#0d1a20"/></svg><div class="trip-sec">falta <b id="tripFalta"></b></div></div></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="tripBox" class="hidden" aria-live="off"><div class="trip-card trip-dist"><h3>Distancia</h3><div class="trip-num"><span id="tripHecho"></span><small id="tripHechoU">km</small></div><div class="trip-sec"><span id="tripQuedaTxt">quedan </span><b id="tripQueda"></b></div><div class="trip-pista"><i id="tripBarra"></i><b id="tripPunto"></b></div></div><div class="trip-card trip-alt"><div class="trip-pares"><div><h3>Subido</h3><div class="trip-num chico"><span id="tripSubido"></span><small>m</small></div></div><div><h3>Altitud</h3><div class="trip-num chico"><span id="tripAltitud"></span><small>m</small></div></div></div><svg id="tripPerfil" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="tripHechoClip"><path id="tripHechoRect" d=""/></clipPath></defs><path id="tripPerfilArea" fill="#dff1e5"/><path id="tripPerfilHecho" fill="#16a34a" fill-opacity=".35" clip-path="url(#tripHechoClip)"/><path id="tripPerfilLinea" fill="none" stroke="#16a34a" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle id="tripPerfilPunto" r="3.5" fill="#0d1a20"/></svg><div class="trip-sec">falta <b id="tripFalta"></b></div></div></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
  <div class="elevation-head"><strong id="elevationTitle">PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -2959,94 +2959,192 @@ function guiaIniciada(){
 // mas abajo». Grabando, se suma el trazado grabado (la linea roja); sin
 // grabar, queda lo de antes, el avance sobre la ruta. Se suma solo lo nuevo.
 let metrosAndados={lista:null,n:0,m:0};
+// Y SIN SUMAR LOS CORTES. Un corte de la grabacion (sin GPS, un tunel) es un
+// trozo que no se sabe por donde fue: antes se sumaba la recta entre sus dos
+// extremos. Ahora el null del trazado corta la cuenta (revision con GPT).
 function metrosGrabados(){
  if(typeof recorded==='undefined'||!Array.isArray(recorded)||recorded.length<2)return 0;
  const c=metrosAndados;
  if(c.lista!==recorded||recorded.length<c.n){c.lista=recorded;c.n=0;c.m=0;c.ultimo=null}
  for(let k=c.n;k<recorded.length;k++){
   const q=recorded[k];
-  if(!Array.isArray(q)||!Number.isFinite(q[0]))continue;
+  if(!Array.isArray(q)||!Number.isFinite(q[0])){c.ultimo=null;continue}
   if(c.ultimo)c.m+=dist(c.ultimo,q);
   c.ultimo=q;
  }
  c.n=recorded.length;
  return c.m;
 }
-function pintaAvance(along){
+// TODO DESDE DONDE EMPIEZAS TU, NO DESDE DONDE EMPIEZA LA RUTA. Lo pidio el
+// autor el 15 de noviembre de 2026: salio 1,5 km antes de Trabakua-Mendibil,
+// otro dia arranco en la cima, y lo subido y la barra contaban desde el
+// principio de la ruta. Revisado con GPT. Ahora:
+// - hechos: lo andado grabado, sin los cortes; sin grabar, «—», que restar
+//   posiciones sobre la ruta no es lo andado;
+// - antes de llegar a la ruta el recuadro sale igual, con lo que la ruta
+//   queda en linea recta;
+// - la barra es lo andado frente a lo andado mas lo que queda; la posicion
+//   sobre la ruta va aparte y es la que mueve el punto del perfil;
+// - lo subido se saca recorriendo TU trazado grabado sobre el perfil de la
+//   ruta (abajo, subidaSesion); lo andado lejos de la ruta no tiene alturas
+//   fiables y no suma: entonces la cifra lleva «≥» delante.
+let enRutaUltimo=false;
+function pintaAvance(along,info){
  const caja=$('routeProgress');
  if(!caja)return;
  const tb=$('tripBox');
- if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){
+ if(!guiaIniciada()||routeCumulative.length<2){
   caja.classList.add('hidden');if(tb)tb.classList.add('hidden');faltaSubidaRuta=null;
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
- const hecho=Math.max(0,Math.min(total,sentidoRuta>0?along:total-along));
- const queda=Math.max(0,total-hecho);
- caja.innerHTML='Llevas <b>'+fmt(hecho)+'</b> \u00b7 faltan <b>'+fmt(queda)+'</b>';
- caja.classList.remove('hidden');
+ const conPos=Number.isFinite(along);
+ // Sin «info» (llamadas antiguas y pruebas) se da por bueno que esta en la ruta.
+ const enRuta=conPos&&(info?(info.enRuta??enRutaUltimo):true);
+ if(info&&info.enRuta!=null)enRutaUltimo=info.enRuta;
+ const hechoRuta=conPos?Math.max(0,Math.min(total,sentidoRuta>0?along:total-along)):0;
+ const queda=conPos?Math.max(0,total-hechoRuta):null;
+ if(conPos){caja.innerHTML='Llevas <b>'+fmt(hechoRuta)+'</b> · faltan <b>'+fmt(queda)+'</b>';caja.classList.remove('hidden')}
+ else caja.classList.add('hidden');
  if(!tb)return;
  // Con un decimal, que en grande se lee de un vistazo: «12,4 km».
  const km=m=>m>=1000?(m/1000).toFixed(1).replace('.',',')+' km':Math.round(m)+' m';
- const andado=recording?metrosGrabados():0;
- const [numero,unidad]=km(andado>0?andado:hecho).split(' ');
- $('tripHecho').textContent=numero;$('tripHechoU').textContent=unidad;
- $('tripQueda').textContent=km(queda);
- const frac=total>0?hecho/total:0;
+ const andado=recording?metrosGrabados():null;
+ if(andado===null){$('tripHecho').textContent='—';$('tripHechoU').textContent=''}
+ else{const [numero,unidad]=km(andado).split(' ');$('tripHecho').textContent=numero;$('tripHechoU').textContent=unidad}
+ if(queda!==null){$('tripQuedaTxt').textContent='quedan ';$('tripQueda').textContent=km(queda)}
+ else{$('tripQuedaTxt').textContent='ruta a ';$('tripQueda').textContent=info&&Number.isFinite(info.distRuta)?km(info.distRuta):'—'}
+ const frac=queda===null?0:andado!==null&&andado+queda>0?andado/(andado+queda):total>0?hechoRuta/total:0;
  $('tripBarra').style.width=(frac*100).toFixed(1)+'%';$('tripPunto').style.left=(frac*100).toFixed(1)+'%';
- pintaAlturas(frac);
+ pintaAlturas(conPos?along/total:null,enRuta);
  tb.classList.remove('hidden');
 }
-// LAS ALTURAS SALEN DEL PERFIL DE LA RUTA, NO DEL GPS. Lo eligio el autor
-// el 15 de noviembre de 2026 (opcion 3 de las propuestas: distancias y
-// alturas, en recuadros blancos). La altura del GPS se equivoca hasta en 15 m
-// y su suma de subidas se infla con el ruido; la de la ruta es la misma con la
-// que se pinta el perfil. Se cuenta como el servicio (NavigationMetrics): un
-// umbral de 5 m, y un hueco sin altura vuelve a empezar la cuenta. Al reves,
-// lo que se sube es lo que la ruta baja.
+// LAS ALTURAS SALEN DEL PERFIL DE LA RUTA, NO DEL GPS. La altura del GPS de
+// Android va sobre el elipsoide (unos 50 m de mas aqui), se equivoca 10-20 m
+// y el trazado que manda el servicio ni la trae. Umbral de 5 m, como el
+// servicio, y un hueco sin altura vuelve a empezar la cuenta.
 let perfilTrip={pts:null,n:0,datos:null};
+const BINS_TRIP=80;
 function perfilDeAlturas(){
  const pts=typeof navigationProfilePoints==='function'?navigationProfilePoints():routePoints;
  if(perfilTrip.pts===pts&&perfilTrip.n===pts.length)return perfilTrip.datos;
  let datos=null;
  if(Array.isArray(pts)&&pts.filter(p=>p&&Number.isFinite(p[2])).length>=2){
-  const n=pts.length,d=new Float64Array(n),asc=new Float64Array(n),des=new Float64Array(n),h=pts.map(p=>Number.isFinite(p[2])?p[2]:null);
-  let ref=null;
-  for(let i=0;i<n;i++){
-   if(i){d[i]=d[i-1]+dist(pts[i-1],pts[i]);asc[i]=asc[i-1];des[i]=des[i-1]}
-   if(h[i]===null){ref=null;continue}
-   if(ref===null){ref=h[i];continue}
-   if(h[i]>=ref+5){asc[i]+=h[i]-ref;ref=h[i]}else if(h[i]<=ref-5){des[i]+=ref-h[i];ref=h[i]}
+  const n=pts.length,d=new Float64Array(n),h=pts.map(p=>Number.isFinite(p[2])?p[2]:null);
+  for(let i=1;i<n;i++)d[i]=d[i-1]+dist(pts[i-1],pts[i]);
+  const T=d[n-1],M=BINS_TRIP,muestras=[];
+  for(let s=0;s<=M;s++)muestras.push(alturaEnPerfil({d,h,n},T*s/M));
+  const conocidas=muestras.filter(v=>v!==null);
+  // Rejilla de tramos para buscar rapido los que pasan cerca de un punto.
+  const CEL=0.0004,rej=new Map();
+  for(let k=0;k<n-1;k++){
+   const a=pts[k],b=pts[k+1];
+   const la0=Math.floor((Math.min(a[0],b[0])-CEL)/CEL),la1=Math.floor((Math.max(a[0],b[0])+CEL)/CEL);
+   const lo0=Math.floor((Math.min(a[1],b[1])-CEL)/CEL),lo1=Math.floor((Math.max(a[1],b[1])+CEL)/CEL);
+   for(let x=la0;x<=la1;x++)for(let y=lo0;y<=lo1;y++){const key=x+'/'+y;let l=rej.get(key);if(!l)rej.set(key,l=[]);l.push(k)}
   }
-  // El dibujo, 80 muestras a distancias iguales, en el sentido de la ruta.
-  const T=d[n-1],M=80,muestras=[];let k=0;
-  for(let s=0;s<=M;s++){
-   const x=T*s/M;while(k<n-2&&d[k+1]<x)k++;
-   const a=h[k],b=h[k+1],t=d[k+1]>d[k]?(x-d[k])/(d[k+1]-d[k]):0;
-   muestras.push(a!==null&&b!==null?a+t*(b-a):(a!==null?a:b));
-  }
-  const conocidas=muestras.filter(v=>v!==null),lo=Math.min(...conocidas),hi=Math.max(...conocidas);
-  datos={d,h,asc,des,T,n,muestras,lo,hi};
+  datos={pts,d,h,T,n,muestras,lo:conocidas.length?Math.min(...conocidas):0,hi:conocidas.length?Math.max(...conocidas):0,rej,CEL};
  }
  perfilTrip={pts,n:Array.isArray(pts)?pts.length:0,datos,dibujo:null};
  return datos;
 }
-function pintaAlturas(frac){
+function alturaEnPerfil(P,x){
+ let lo=0,hi=P.n-1;
+ while(lo<hi-1){const m=(lo+hi)>>1;if(P.d[m]<=x)lo=m;else hi=m}
+ const a=P.h[lo],b=P.h[Math.min(lo+1,P.n-1)];
+ const t=P.d[lo+1]>P.d[lo]?Math.max(0,Math.min(1,(x-P.d[lo])/(P.d[lo+1]-P.d[lo]))):0;
+ return a!==null&&b!==null?a+t*(b-a):(a??b);
+}
+// El umbral de 5 m con su estado: se le van dando alturas en el orden en que
+// se andan. Un null (sin altura) corta: la siguiente vuelve a ser referencia.
+function nuevaCuenta(){return {ref:null,sube:0}}
+function cuenta(c,h){
+ if(h===null||!Number.isFinite(h)){c.ref=null;return}
+ if(c.ref===null){c.ref=h;return}
+ if(h>=c.ref+5){c.sube+=h-c.ref;c.ref=h}else if(h<=c.ref-5)c.ref=h;
+}
+// Las alturas de a a b por el perfil, EN EL ORDEN EN QUE SE ANDAN, con los
+// vertices de en medio: comparar solo las dos puntas se come la cima que hay
+// entre ellas.
+function recorrePerfil(P,c,a,b){
+ if(b>=a){for(let i=0;i<P.n;i++)if(P.d[i]>a&&P.d[i]<b)cuenta(c,P.h[i])}
+ else{for(let i=P.n-1;i>=0;i--)if(P.d[i]<a&&P.d[i]>b)cuenta(c,P.h[i])}
+ cuenta(c,alturaEnPerfil(P,b));
+}
+// Lo que se sube de a a b, empezando la cuenta en a: asi se cuenta igual al
+// derecho y al reves. Restar acumulados desde el principio no valia: el
+// umbral depende de lo de antes, y al reves no es lo mismo que bajar
+// (0 -> 4 -> 10 m daba 6 en vez de 10; revision con GPT).
+function subidaEntre(P,a,b){
+ const c=nuevaCuenta();cuenta(c,alturaEnPerfil(P,a));recorrePerfil(P,c,a,b);return c.sube;
+}
+// Donde cae un punto en la ruta. Si hay varios tramos a menos de 30 m -una ida
+// y vuelta por el mismo camino, dos ramas de una horquilla- gana el que sigue
+// al punto anterior, no el mas cercano: si no, la cuenta saltaria de rama.
+function casaEnRuta(P,q,previo){
+ const l=P.rej.get(Math.floor(q[0]/P.CEL)+'/'+Math.floor(q[1]/P.CEL));
+ if(!l)return null;
+ const kx=111195*Math.cos(q[0]*Math.PI/180),ky=111195;
+ let mejor=null,coste=Infinity;
+ for(const k of l){
+  const A=P.pts[k],B=P.pts[k+1];
+  const ax=(A[1]-q[1])*kx,ay=(A[0]-q[0])*ky,dx=(B[1]-A[1])*kx,dy=(B[0]-A[0])*ky,nn=dx*dx+dy*dy;
+  const t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0,dd=Math.hypot(ax+t*dx,ay+t*dy);
+  if(dd>30)continue;
+  const along=P.d[k]+t*(P.d[k+1]-P.d[k]);
+  const c=previo===null?dd:Math.abs(along-previo)+dd;
+  if(c<coste){coste=c;mejor=along}
+ }
+ return mejor;
+}
+// LO SUBIDO DE TU SALIDA. Se recorre el trazado grabado entero -lo da el
+// servicio, asi que vale aunque la pagina haya dormido con la pantalla
+// apagada- y solo se procesan los puntos nuevos. Cada punto se casa con la
+// ruta; entre dos puntos casados y seguidos se recorre el perfil de en medio.
+// Un corte, un punto lejos de la ruta o un salto que no se ha podido andar
+// (mas del doble de lo movido mas 30 m) cortan la cuenta: no se inventa por
+// donde fue. Lo andado lejos de la ruta se apunta aparte, para el «≥».
+let subSes=null;
+function subidaSesion(P){
+ const vacio={sube:0,fuera:0,bins:new Uint8Array(BINS_TRIP)};
+ if(!recording||!Array.isArray(recorded))return vacio;
+ const clave=q=>Array.isArray(q)?q[0].toFixed(6)+','+q[1].toFixed(6):'-';
+ const primero=recorded.find(q=>Array.isArray(q));
+ const s=subSes;
+ if(!s||s.P!==P||recorded.length<s.n||s.primero!==clave(primero)||(s.n>0&&clave(recorded[s.n-1])!==s.ultimo)){
+  subSes={P,n:0,primero:clave(primero),ultimo:'-',previo:null,punto:null,c:nuevaCuenta(),fuera:0,bins:new Uint8Array(BINS_TRIP)};
+ }
+ const S=subSes,marca=(a,b)=>{const i0=Math.floor(Math.min(a,b)/P.T*BINS_TRIP),i1=Math.floor(Math.max(a,b)/P.T*BINS_TRIP);for(let i=Math.max(0,i0);i<=Math.min(BINS_TRIP-1,i1);i++)S.bins[i]=1};
+ for(let k=S.n;k<recorded.length;k++){
+  const q=recorded[k];
+  if(!Array.isArray(q)||!Number.isFinite(q[0])){S.previo=null;S.punto=null;S.c.ref=null;continue}
+  const paso=S.punto?dist(S.punto,q):0;
+  const along=casaEnRuta(P,q,S.previo);
+  if(along===null){S.fuera+=paso;S.previo=null;S.c.ref=null}
+  else if(S.previo!==null&&Math.abs(along-S.previo)<=2*paso+30){recorrePerfil(P,S.c,S.previo,along);marca(S.previo,along)}
+  else{S.c.ref=null;cuenta(S.c,alturaEnPerfil(P,along));marca(along,along)}
+  if(along!==null)S.previo=along;
+  S.punto=q;
+ }
+ S.n=recorded.length;S.ultimo=clave(recorded[S.n-1]);
+ return {sube:S.c.sube,fuera:S.fuera,bins:S.bins};
+}
+function pintaAlturas(fracRuta,enRuta){
  const tb=$('tripBox'),P=perfilDeAlturas();
  if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;return}
  tb.classList.remove('sin-alturas');
- const pos=(sentidoRuta>0?frac:1-frac)*P.T;
- let lo=0,hi=P.n-1;
- while(lo<hi-1){const m=(lo+hi)>>1;if(P.d[m]<=pos)lo=m;else hi=m}
- const i=lo,u=P.n-1;
- const subido=sentidoRuta>0?P.asc[i]:P.des[u]-P.des[i];
- const falta=sentidoRuta>0?P.asc[u]-P.asc[i]:P.des[i];
- const a=P.h[i],b=P.h[i+1]??a,t=P.d[i+1]>P.d[i]?(pos-P.d[i])/(P.d[i+1]-P.d[i]):0;
- const altura=a!==null&&b!==null?a+Math.max(0,Math.min(1,t))*(b-a):(a??b);
- $('tripSubido').textContent='+'+Math.round(subido);
- $('tripFalta').textContent='+'+Math.round(falta)+' m';faltaSubidaRuta=falta;
+ const S=subidaSesion(P);
+ $('tripSubido').textContent=(S.fuera>=100?'≥':'')+'+'+Math.round(S.sube);
+ const pos=fracRuta===null?null:fracRuta*P.T;
+ // La altitud y el punto, solo estando en la ruta ahora: la ultima posicion
+ // buena no es la altitud de donde estas.
+ const altura=pos!==null&&enRuta?alturaEnPerfil(P,pos):null;
  $('tripAltitud').textContent=altura===null?'—':String(Math.round(altura));
+ const falta=pos===null?null:subidaEntre(P,pos,sentidoRuta>0?P.T:0);
+ $('tripFalta').textContent=falta===null?'—':'+'+Math.round(falta)+' m';
+ faltaSubidaRuta=falta;
  // El perfil, en el sentido de la marcha: lo que viene, a la derecha.
+ const xDe=v=>(sentidoRuta>0?v/P.T:1-v/P.T)*200;
  const y=v=>v===null?34:(32-(v-P.lo)/Math.max(30,P.hi-P.lo)*29).toFixed(1);
  if(perfilTrip.dibujo!==sentidoRuta){
   const m=sentidoRuta>0?P.muestras:P.muestras.slice().reverse(),M=m.length-1;
@@ -3056,8 +3154,14 @@ function pintaAlturas(frac){
   $('tripPerfilArea').setAttribute('d',area);$('tripPerfilHecho').setAttribute('d',area);
   perfilTrip.dibujo=sentidoRuta;
  }
- $('tripHechoRect').setAttribute('width',(frac*200).toFixed(1));
- const p=$('tripPerfilPunto');p.setAttribute('cx',(frac*200).toFixed(1));p.setAttribute('cy',y(altura));
+ // Sombreado lo que de verdad has pisado, a trozos: si entras en el km 5,
+ // llegas al 8 y vuelves al 6, lo del 5 al 8 sigue hecho.
+ let clip='';const w=200/BINS_TRIP;
+ for(let i=0;i<BINS_TRIP;i++)if(S.bins[i]){const x=sentidoRuta>0?i*w:200-(i+1)*w;clip+='M'+x.toFixed(1)+' 0h'+w.toFixed(1)+'v34h-'+w.toFixed(1)+'Z'}
+ $('tripHechoRect').setAttribute('d',clip);
+ const p=$('tripPerfilPunto');
+ if(altura===null)p.setAttribute('r','0');
+ else{p.setAttribute('r','3.5');p.setAttribute('cx',xDe(pos).toFixed(1));p.setAttribute('cy',y(altura))}
 }
 function marcaAlReves(si){
  const c=$('reverseWarn');
@@ -4327,7 +4431,8 @@ function onFix(pos){
   // ficha del cruce: asi no va un fix por detras.
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
-  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong);
+  // En la ruta solo con posicion fiable; con una mala se queda lo ultimo dicho.
+  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d});
   liveProfileAlong=guiaIniciada()&&fiable&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
    updateOffRoute(d,pos.coords.accuracy);
@@ -4376,16 +4481,18 @@ window.trabakutikSyncNative=()=>{
    notice((puntos>1?'Salida finalizada · Guardar GPX o Descartar':'Salida finalizada')+avisoDeCortes());
   }else reconciliaBotonera();
   if(Array.isArray(data.points)){
-   const segments=[[]],valid=[];
+   // Los cortes se guardan tambien en «recorded» (como null, igual que la
+   // grabacion del navegador): lo andado y lo subido no cruzan un corte.
+   const segments=[[]],valid=[],conCortes=[];
    for(const p of data.points){
     if(Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1])){
-     segments[segments.length-1].push(p);valid.push(p);
-    }else if(segments[segments.length-1].length)segments.push([]);
+     segments[segments.length-1].push(p);valid.push(p);conCortes.push(p);
+    }else if(segments[segments.length-1].length){segments.push([]);if(conCortes.length&&conCortes[conCortes.length-1]!==null)conCortes.push(null)}
    }
    const connected=segments.filter(segment=>segment.length);
    cortesGrabacion=Math.max(0,connected.length-1);
    if(valid.length>1){
-    recorded=valid;
+    recorded=conCortes;
     if(!recordLayer)recordLayer=L.polyline(connected,{color:'#ff354c',weight:6.5,opacity:1,interactive:false,className:'recorded-red'}).addTo(map);
     else recordLayer.setLatLngs(connected);
     recordLayer.bringToFront();
