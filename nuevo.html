@@ -3512,6 +3512,8 @@ if(typeof map!=='undefined')map.on('zoomstart',()=>{
 // scripts/make_cruces.py del repo Rutas-Mallabia.
 const URL_CRUCES='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/cruces-zona.json';
 let zonaCruces=null,zonaPide=null,crucesPeticion=0,zonaRefrescada=false;
+// Las rotondas de cruces-zona.json pegadas al track cargado: [lat,lon,radio].
+let rotondasOsm=[];
 // Se guarda TAL COMO VIENE -en diferencias-, no descifrado: en pares de
 // grados sueltos ocupa 338 KB del movil y asi 127, y ahi dentro estan tambien
 // tus rutas guardadas, que se quedan sin sitio («No hay espacio para guardar
@@ -3564,7 +3566,18 @@ function descifraZona(j){
  if(puntos.length<2)throw new Error('cruces-zona.json vacio');
  const ramas=descifraRamas(j.ramas,j.paso_rama||6,puntos.length);
  if(ramas)for(let i=0;i<puntos.length;i++)puntos[i].push(ramas[i]);
- return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas};
+ // Las rotondas: centro en diferencias, como los cruces, y el radio en metros.
+ // Un fichero viejo no las trae y todo sigue como antes.
+ const rotondas=[];
+ if(Array.isArray(j.rotondas)&&j.rotondas.length%3===0){
+  let rx=0,ry=0;
+  for(let i=0;i<j.rotondas.length;i+=3){
+   rx+=j.rotondas[i];ry+=j.rotondas[i+1];
+   const r=j.rotondas[i+2];
+   if(Number.isFinite(rx)&&Number.isFinite(ry)&&r>0&&r<=60)rotondas.push([rx/esc,ry/esc,r]);
+  }
+ }
+ return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas,rotondas};
 }
 function bajaZona(){
  return fetch(URL_CRUCES,{cache:'default'})
@@ -3583,7 +3596,8 @@ function cargaZonaCruces(){
     // se habria quedado sin ellas para siempre si solo se mirara cuantos
     // cruces hay, porque pueden coincidir.
     const cambia=zonaCruces&&(z.puntos.length!==zonaCruces.puntos.length
-      ||z.fecha!==zonaCruces.fecha||!!z.ramas!==!!zonaCruces.ramas);
+      ||z.fecha!==zonaCruces.fecha||!!z.ramas!==!!zonaCruces.ramas
+      ||(z.rotondas||[]).length!==(zonaCruces.rotondas||[]).length);
     if(cambia){zonaCruces=z;aplicaCruces()}
    }).catch(()=>{});
   }
@@ -3618,6 +3632,11 @@ function aplicaCruces(){
    if(toca)cerca.push(c);
   }
   crucesOsm=cerca;
+  rotondasOsm=(z.rotondas||[]).filter(c=>{
+   const k0=Math.floor(c[0]/CEL),k1=Math.floor(c[1]/CEL);
+   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)if(celdas.has((k0+a)+'/'+(k1+b)))return true;
+   return false;
+  });
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
   if(!cerca.length){
@@ -4150,10 +4169,75 @@ function calculaCrucesDe(){
   junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente,retorno});
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
+ if(crucesOsm.length&&rotondasOsm.length)resuelveRotondas(pts);
+}
+// UNA ROTONDA ES UN CRUCE, NO DOS. El autor cruzo una rotonda siguiendo recto
+// y oyo «gira a la derecha»; a la derecha habia una calle de direccion
+// prohibida. En OSM la entrada y la salida son dos cruces, y cada uno, visto
+// suelto, es un giro de 50 a 90 grados -casi siempre a la derecha, que es por
+// donde se entra-. Simulado sobre las 186 rotondas de la zona con sus ramas
+// reales: de 3.824 pasos siguiendo recto, en 3.473 se decia algun giro.
+// Ahora, donde la ruta pasa por una rotonda, se quitan los avisos de dentro y
+// se compara el rumbo con el que LLEGAS (los ROT_BRAZO m de antes) con el
+// rumbo con el que SALES (los de despues). Recto -menos de ROT_RECTO grados-
+// no se dice nada, como en cualquier cruce que se pasa de largo; si no, UN
+// aviso a la entrada, con el lado de la salida. Da igual por que lado de la
+// isleta vaya el track: cuenta por donde entras y por donde sales.
+function resuelveRotondas(pts){
+ const ROT_MARGEN=10,ROT_DENTRO=3,ROT_BRAZO=30,ROT_RECTO=35,ROT_VUELTA=150;
+ const cum=routeCumulative,n=pts.length,total=cum[n-1];
+ const enMetro=m=>{
+  let k=1;while(k<n-1&&cum[k]<m)k++;
+  const tr=cum[k]-cum[k-1],t=tr>0?Math.max(0,Math.min(1,(m-cum[k-1])/tr)):1;
+  return [pts[k-1][0]+t*(pts[k][0]-pts[k-1][0]),pts[k-1][1]+t*(pts[k][1]-pts[k-1][1])];
+ };
+ for(const rot of rotondasOsm){
+  const c=[rot[0],rot[1]],r=Math.max(rot[2],6)+ROT_MARGEN;
+  // Dentro: el punto, o un tramo suyo que pasa por la rotonda. La copia
+  // simplificada de una ruta guardada puede cruzar una rotonda pequeña con
+  // una sola recta, sin ningun punto dentro.
+  const kx=111195*Math.cos(c[0]*R),ky=111195;
+  const tramo=(p,q)=>{const ax=(p[1]-c[1])*kx,ay=(p[0]-c[0])*ky,dx=(q[1]-p[1])*kx,dy=(q[0]-p[0])*ky,nn=dx*dx+dy*dy,t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0;return Math.hypot(ax+t*dx,ay+t*dy)};
+  const dentro=q=>dist(pts[q],c)<=r||(q>0&&tramo(pts[q-1],pts[q])<=r)||(q+1<n&&tramo(pts[q],pts[q+1])<=r);
+  let k=0;
+  while(k<n){
+   while(k<n&&!dentro(k))k++;
+   if(k>=n)break;
+   const a=k;
+   while(k+1<n&&dentro(k+1))k++;
+   const b=k;k++;
+   // Los metros donde la ruta entra en la rotonda y sale de ella, medidos de
+   // metro en metro: con la copia simplificada no tiene por que haber un
+   // punto en el borde.
+   let mIn=-1,mOut=-1,cerca=Infinity;
+   const m0=cum[Math.max(a-1,0)],m1=cum[Math.min(b+1,n-1)];
+   for(let m=m0;m<=m1;m+=1){const d=dist(enMetro(m),c);if(d<cerca)cerca=d;if(d<=r){if(mIn<0)mIn=m;mOut=m}}
+   // PASAR AL LADO NO ES CRUZARLA. El margen sirve para medir, pero la ruta
+   // tiene que meterse en el anillo (su radio y ROT_DENTRO de error de GPS):
+   // en markinaurjauziak y santaeufemia la ruta pasa por una calle a 10 m de
+   // una rotonda de 28 m de radio, sin entrar, y su cruce de al lado es suyo.
+   if(mIn<0||cerca>Math.max(rot[2],6)+ROT_DENTRO)continue;
+   junctions=junctions.filter(j=>!(j.along>=mIn-15&&j.along<=mOut+15&&dist(j.point,c)<=r+15));
+   // Sin brazo antes o despues (la ruta empieza o acaba en la rotonda) no
+   // hay con que comparar: se quitan los de dentro y no se dice nada.
+   if(mIn<8||total-mOut<8)continue;
+   const antes=enMetro(Math.max(0,mIn-ROT_BRAZO)),despues=enMetro(Math.min(total,mOut+ROT_BRAZO));
+   const neto=difRumbo(bearingBetween(enMetro(mOut),despues),bearingBetween(antes,enMetro(mIn)));
+   if(Math.abs(neto)<ROT_RECTO)continue;
+   let i=1;while(i+1<n&&cum[i+1]<=mIn)i++;
+   const lado=neto<0?'izquierda':'derecha',vuelta=Math.abs(neto)>=ROT_VUELTA;
+   const aviso={i,point:pts[i],along:cum[i],direction:vuelta?'vuelta':lado,hacia:lado,
+    angle:Math.round(Math.abs(neto)),cruce:true,mantente:false,retorno:vuelta,rotonda:true};
+   let p=0;while(p<junctions.length&&junctions[p].i<i)p++;
+   junctions.splice(p,0,aviso);
+  }
+ }
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe};
+if(typeof module==='object'&&module&&module.exports){module.exports={ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe,resuelveRotondas};
+ Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
+}
 // DONDE ESTAS EN LA RUTA, SIN PERDER EL HILO. Esto cogia el tramo mas cercano
 // de TODA la ruta, sin mirar por donde ibas hace un segundo. En una ruta que
 // pasa dos veces por el mismo sitio -ida y vuelta, un circuito que repite un

@@ -1117,3 +1117,42 @@ test('Un bailoteo del GPS de 2 m en una recta no es una herradura',()=>{
  const h=detector().detectCrudo(tortuga([[150,0],[34,-180],[120,0]]));
  assert(h.some(t=>t.direction==='vuelta'),'la herradura de verdad sigue');
 });
+// UNA ROTONDA ES UN CRUCE, NO DOS. El autor la cruzo recto y oyo «gira a la
+// derecha». Rotonda de 15 m de radio en el origen, recorrida en sentido
+// contrario a las agujas del reloj; la entrada al sur, salidas al norte y al
+// este, cada una un cruce de OSM con sus ramas (la calle y el anillo).
+test('una rotonda: recto no dice nada, y saliendo a un lado se dice una vez',()=>{
+ const anillo=(desde,hasta)=>{const o=[];for(let t=desde;t<=hasta;t+=15)o.push(point(15*Math.cos(t*Math.PI/180),15*Math.sin(t*Math.PI/180)));return o};
+ const recta=(x0,y0,x1,y1)=>{const o=[];for(let k=0;k<=9;k++)o.push(point(x0+(x1-x0)*k/9,y0+(y1-y0)*k/9));return o};
+ const cruces=[[...point(0,-15),[[180],[90,270]]],[...point(0,15),[[0],[270,90]]],[...point(15,0),[[90],[0,180]]]];
+ const rotonda=[[...point(0,0),15]];
+ const recto=[...recta(0,-80,0,-16),...anillo(-90,90),...recta(0,16,0,80)];
+ const derecha=[...recta(0,-80,0,-16),...anillo(-90,0),...recta(16,0,80,0)];
+ const c=detector();
+ c.rotondasOsm=[];
+ const antes=c.detectCrudo(recto,cruces);
+ assert(antes.length>0,'sin las rotondas, la entrada y la salida se cantaban como giros');
+ c.rotondasOsm=rotonda;
+ assert.equal(c.detectCrudo(recto,cruces).length,0,'cruzando recto no se dice nada: '+JSON.stringify(c.junctions.map(j=>j.direction)));
+ assert.equal(JSON.stringify((c.junctionsReves||[]).map(j=>j.direction)),'[]','ni al reves');
+ const d=c.detectCrudo(derecha,cruces);
+ assert.equal(d.length,1,'saliendo a la derecha, un aviso: '+JSON.stringify(d.map(j=>j.direction)));
+ assert.equal(d[0].direction,'derecha');assert.equal(d[0].rotonda,true);assert(d[0].along<70,'a la entrada de la rotonda');
+ assert.equal(JSON.stringify(c.junctionsReves.map(j=>j.direction)),'["izquierda"]','al reves, a la izquierda');
+ // Las rutas guardadas (las del creador) se abren simplificadas.
+ assert.equal(c.detect(recto,cruces).length,0,'simplificada, recto tampoco: '+JSON.stringify(c.junctions.map(j=>j.direction)));
+ const ds=c.detect(derecha,cruces);
+ assert.equal(JSON.stringify(ds.map(j=>j.direction)),'["derecha"]','simplificada, un aviso a la derecha');
+ // Una sola recta cruzando la rotonda, sin ningun punto dentro.
+ assert.equal(c.detectCrudo([point(0,-80),point(0,-40),point(0,40),point(0,80)],cruces).length,0,'una recta que la cruza tampoco');
+ // Entrar y volver por la misma calle es dar la vuelta.
+ const vuelta=[...recta(0,-80,0,-16),...anillo(-90,255),...recta(0,-16,0.5,-80)];
+ const v=c.detectCrudo(vuelta,cruces);
+ assert.equal(v.length,1);assert.equal(v[0].direction,'vuelta');assert.equal(v[0].retorno,true);
+});
+test('cruces-zona.json trae las rotondas, y uno viejo sin ellas sigue valiendo',()=>{
+ const c=pieza('08-cruces.js',{atob:(s)=>Buffer.from(s,'base64').toString('binary')});
+ const z=c.descifraZona({escala:100000,dif:[4320000,-250000,10,10],rotondas:[4320000,-250000,12,5,5,20,1,1,99]});
+ assert.equal(JSON.stringify(z.rotondas),JSON.stringify([[43.2,-2.5,12],[43.20005,-2.49995,20]]),'la de 99 m no es una rotonda');
+ assert.equal(JSON.stringify(c.descifraZona({escala:100000,dif:[4320000,-250000,10,10]}).rotondas),'[]');
+});

@@ -411,3 +411,31 @@ Wikiloc, y en quejas de usuarios de Komoot. Cifras para ir andando:
   3. el umbral de fuera de ruta: 15 m es más estricto que los demás
      (22-75 m). Bajo árboles puede avisar sin motivo, aunque se suma la
      precisión del GPS. Se dejó así porque el autor quería que avisara.
+
+## Rotondas: un solo cruce (15 de noviembre de 2026)
+
+El autor cruzó una rotonda siguiendo recto, con una ruta hecha en el creador,
+y oyó «gira a la derecha»; a la derecha había una calle de dirección
+prohibida. En OSM la entrada y la salida de una rotonda son dos cruces, y
+cada uno, visto suelto, es un giro de 50-90 grados. Simulado sobre las 186
+rotondas de la zona, con las ramas reales de cada cruce:
+
+| | pasos | con aviso equivocado antes | después |
+|---|---|---|---|
+| sigues recto | 3.824 | 3.473 (91 %) | 456, todos a 40-60 m fuera de la rotonda (brazos inventados por la simulación) |
+| sales a un lado | 15.434 | 9.672 | 3.015 (671 son salidas de 30-35°, que ahora se callan) |
+
+Ahora `cruces-zona.json` trae el centro y el radio de cada rotonda
+(`make_cruces.py --rotondas`, en Rutas-Mallabia) y `resuelveRotondas` (pieza
+08) quita los avisos de dentro y compara el rumbo con el que **entras** y con
+el que **sales** (30 m de brazo): menos de 35° es recto y no se dice nada,
+como en cualquier cruce que se pasa de largo; si no, un aviso a la entrada
+con el lado de la salida, y de 150° para arriba «da la vuelta». La ruta tiene
+que meterse en el anillo (radio + 3 m): pasar por una calle de al lado no
+cuenta (markinaurjauziak y santaeufemia pasan a 10 m de una de 28 m).
+
+En las 72 rutas publicadas cambian 11, todas en rotondas que cruzan; en
+aixola, galdaramiño y karabieta se cruzaba recto y se decía «derecha».
+
+Se dice «cruce a la derecha», no «en la rotonda, sal a la derecha»: eso
+pediría una frase nueva en la aplicación (APK). Está propuesto, no hecho.
