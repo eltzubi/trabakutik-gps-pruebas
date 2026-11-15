@@ -87,6 +87,8 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
 
 ## Reglas permanentes del autor
 
+- **Cuando el autor pide un cambio, en cuanto esta resuelto y comprobado se sube sin volver a preguntar.** Lo pidio el 15 de noviembre de 2026: «si te pido cambios, subes; no tienes que estar pidiendo otra vez "sube", siempre que hayas solucionado algo y no te hayas inventado nada, sin avisarme». Vale para lo que el pide, no para cambios que se te ocurran a ti: esos se proponen y se espera.
+
 - **Nunca sus coordenadas** en nada que se suba. Un commit se bloqueó una vez
   por eso.
 - **Los avisos hablados no dicen nombres de sitios.** Medido y decidido: ver
