@@ -864,3 +864,22 @@ test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último 
  assert.equal(vm.runInContext('liveNativeMetrics',c),null);
  assert.equal(pintado,1,'y se vuelve a pintar el texto');
 });
+test('Lo que llevas va en el recuadro de abajo, en grande: hecho, quedan y tiempo de salida',()=>{
+ // El autor: «la distancia que llevamos, el tiempo y toda esa informacion un
+ // poco mas grande, en un recuadro abajo; arriba se ve demasiado pequeñito».
+ const nodo=()=>({textContent:'',innerHTML:'',classList:{h:new Set(['hidden']),add(x){this.h.add(x)},remove(x){this.h.delete(x)},contains(x){return this.h.has(x)}}});
+ const n={routeProgress:nodo(),tripBox:nodo(),tripRuta:nodo(),tripHecho:nodo(),tripQueda:nodo(),tripTiempo:nodo(),mapTitle:{textContent:'Vuelta al monte Oiz'}};
+ let ahora=1_000_000;
+ const c={$:id=>n[id],gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,
+  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date:{now:()=>ahora},Math,String,Number};
+ vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
+ c.pintaAvance(12400);
+ assert(!n.tripBox.classList.contains('hidden'),'se ve el recuadro');
+ assert.equal(n.tripRuta.textContent,'Vuelta al monte Oiz');
+ assert.equal(n.tripHecho.textContent,'12,4 km hechos');assert.equal(n.tripQueda.textContent,'26,8 km quedan');
+ assert.equal(n.tripTiempo.textContent,'0 min de salida');
+ ahora+=65*60000;c.pintaAvance(20000);
+ assert.equal(n.tripTiempo.textContent,'1 h 05 min de salida');
+ c.recording=false;c.pintaAvance(20000);
+ assert(n.tripBox.classList.contains('hidden'),'sin guia, no se ve');
+});

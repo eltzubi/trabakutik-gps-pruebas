@@ -122,15 +122,38 @@ function pintaBrujula(h){
 function guiaIniciada(){
  return !gpsApagadoPorTi&&mode==='nav'&&routePoints.length>1&&(recording||navegaNativo);
 }
+// LO QUE LLEVAS, EN GRANDE Y ABAJO. Iba en una linea de 11 px arriba, junto
+// a la brujula, en letra clara. El autor: «la distancia que llevamos, el
+// tiempo y toda esa informacion un poco mas grande, en un recuadro abajo;
+// arriba se ve demasiado pequeñito». Ahora es un recuadro oscuro abajo a la
+// izquierda, encima de la tarjeta del giro: la ruta, lo hecho en grande, lo
+// que queda y el tiempo desde que empezaste. La linea de arriba se sigue
+// rellenando (la leen las pruebas) pero ya no se ve.
+let inicioSalida=null;
 function pintaAvance(along){
  const caja=$('routeProgress');
  if(!caja)return;
- if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){caja.classList.add('hidden');return}
+ const tb=$('tripBox');
+ if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){
+  caja.classList.add('hidden');if(tb)tb.classList.add('hidden');
+  if(!guiaIniciada())inicioSalida=null;
+  return;
+ }
  const total=routeCumulative[routeCumulative.length-1];
  const hecho=Math.max(0,Math.min(total,sentidoRuta>0?along:total-along));
  const queda=Math.max(0,total-hecho);
  caja.innerHTML='Llevas <b>'+fmt(hecho)+'</b> \u00b7 faltan <b>'+fmt(queda)+'</b>';
  caja.classList.remove('hidden');
+ if(!tb)return;
+ if(inicioSalida===null)inicioSalida=Date.now();
+ const min=Math.max(0,Math.floor((Date.now()-inicioSalida)/60000));
+ $('tripRuta').textContent=$('mapTitle')?.textContent||'';
+ // Con un decimal, que en grande se lee de un vistazo: «12,4 km».
+ const km=m=>m>=1000?(m/1000).toFixed(1).replace('.',',')+' km':Math.round(m)+' m';
+ $('tripHecho').textContent=km(hecho)+' hechos';
+ $('tripQueda').textContent=km(queda)+' quedan';
+ $('tripTiempo').textContent=(min>=60?Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')+' min':min+' min')+' de salida';
+ tb.classList.remove('hidden');
 }
 function marcaAlReves(si){
  const c=$('reverseWarn');
