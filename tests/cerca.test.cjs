@@ -14,7 +14,8 @@ function cerca(tracks){
    R:Math.PI/180,refreshRouteLayers(){},$:()=>({textContent:'',title:''})};
  vm.createContext(c);
  vm.runInContext(source('const dist=(a,b)=>','function bearingBetween('),c);
- vm.runInContext(source('function closestMeters(p,path)','function resetJunctionView('),c);
+ // closestMeters es de la 08, cerrada: se pide con require().
+ c.closestMeters=require('./pieza.cjs').pieza('08-cruces.js',{R:Math.PI/180}).closestMeters;
  vm.runInContext(source('const nearbyRadius=','function applyNearbyPosition('),c);
  // nearbyCercanas se declara con let: no es una propiedad del contexto, hay
  // que pedirsela al vm. Y se copia a un array de AQUI, que el deepStrictEqual

@@ -17,19 +17,36 @@ function meters(a,b){
  const r=Math.PI/180,q=Math.sin((b[0]-a[0])*r/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;
  return 12742000*Math.asin(Math.min(1,Math.sqrt(q)));
 }
+// LA PIEZA 08 ESTA CERRADA: el detector la pide con require(). Lo que usa de
+// las demas -compactRoutePoints de la 06, bearingBetween de la 02, sin cerrar
+// todavia- se recorta aparte y se le deja en lo global, como lo comparte la
+// pagina. Su propio enviaGirosNativos y resetJunctionView corren de verdad,
+// con un puente y una pantalla de mentira.
+const {pieza}=require('./pieza.cjs');
+const ayudas={R:Math.PI/180,dist:meters};vm.createContext(ayudas);
+vm.runInContext(source('function compactRoutePoints(','function loadSaved(item){'),ayudas);
+vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),ayudas);
+const nodoMudo=()=>({classList:{add(){},remove(){},toggle(){},contains(){return false}},style:{setProperty(){},removeProperty(){}},textContent:''});
 function detector(){
- const calls=[],c={R:Math.PI/180,dist:meters,routePoints:[],crucesOsm:[],junctions:[],junctionWarned:new Set(),junctionZoomOnce:new Set(),routeCumulative:[],resetJunctionView(){},enviaGirosNativos(){calls.push(c.junctions.map(j=>({...j})))},window:{TrabakutikAndroid:{setJunctions(){calls.push([])}}}};
- vm.createContext(c);
- vm.runInContext(source('function compactRoutePoints(','function loadSaved(item){'),c);
- // decideCruce vive fuera de computeJunctions para poder probarla sola, y
- // necesita bearingBetween: se cargan las tres del fichero de verdad, que
- // una copia en el test no prueba nada.
- vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),c);
- vm.runInContext(source('const CRUCE_RECTO=25;','function computeJunctions(){'),c);
- vm.runInContext(source('function computeJunctions(){','// Punto de avance sobre la ruta'),c);
+ const c=pieza('08-cruces.js',{R:Math.PI/180,dist:meters,bearingBetween:ayudas.bearingBetween,compactRoutePoints:ayudas.compactRoutePoints,
+  routePoints:[],crucesOsm:[],junctions:[],junctionsReves:null,junctionWarned:new Set(),junctionZoomOnce:new Set(),routeCumulative:[],
+  turnMarker:null,junctionActive:-1,junctionBlocked:-1,junctionZoom:null,autoZooming:false,$:()=>nodoMudo(),
+  window:{TrabakutikAndroid:{setJunctions(){},setJunctionsReves(){}}}});
  c.detect=(points,cruces=[])=>{c.routePoints=c.compactRoutePoints(points);c.crucesOsm=cruces;c.computeJunctions();return c.junctions};
  // Las rutas de la web llegan a la app sin compactar: asi las calcula.
  c.detectCrudo=(points,cruces=[])=>{c.routePoints=points;c.crucesOsm=cruces;c.computeJunctions();return c.junctions};
+ return c;
+}
+// Para las pruebas de INTEGRACION que cruzan varias piezas con estado
+// compartido (abrir una ruta guardada): un entorno propio con los trozos de
+// cada pieza, como antes. Las piezas cerradas siguen probandose arriba.
+function entornoIntegracion(){
+ const calls=[],c={R:Math.PI/180,dist:meters,routePoints:[],crucesOsm:[],junctions:[],junctionWarned:new Set(),junctionZoomOnce:new Set(),routeCumulative:[],resetJunctionView(){},enviaGirosNativos(){calls.push(c.junctions.map(j=>({...j})))},window:{TrabakutikAndroid:{setJunctions(){calls.push([])}}}};
+ vm.createContext(c);
+ vm.runInContext(source('function compactRoutePoints(','function loadSaved(item){'),c);
+ vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),c);
+ vm.runInContext(source('const CRUCE_RECTO=25;','function computeJunctions(){'),c);
+ vm.runInContext(source('function computeJunctions(){','// Punto de avance sobre la ruta'),c);
  return c;
 }
 function corner(deg){
@@ -261,8 +278,7 @@ test('La herradura guarda el lado y la flecha se dibuja hacia ese lado',()=>{
   assert.equal(g.direction,lado);assert.equal(g.hacia,lado);
  }
  // Y lo que llega al dibujo es ese lado, no «derecha» por defecto.
- const c={};vm.createContext(c);
- vm.runInContext(source('function ladoFlecha(turn,alReves){','// Velocidad suavizada'),c);
+ const c={ladoFlecha:pieza('08-cruces.js').ladoFlecha};vm.createContext(c);
  vm.runInContext(source('function flechaGiro(','// Velocidad suavizada'),c);
  assert.equal(c.ladoFlecha(izq[0],false),'izquierda');
  assert.equal(c.ladoFlecha(der[0],false),'derecha');
@@ -353,19 +369,17 @@ test('Rutas vacías, de dos puntos y demasiado cortas no inventan indicaciones',
 });
 test('Los índices enviados a Android corresponden a la ruta simplificada',()=>{
  const c=detector(),sent=[];c.window.TrabakutikAndroid.setJunctions=json=>sent.push(JSON.parse(json));
- vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE DE LAS RAMAS'),c);
  c.detect(corner(-140));assert.equal(sent.length,1);
  assert.equal(sent[0][0].i,1);assert.equal(sent[0][0].dir,1);assert.equal(sent[0][0].t,0);
  assert(sent[0][0].i<c.routePoints.length);
  // Un giro en un cruce conocido viaja marcado con t:1; el servicio lo dice de
  // otra manera -«toma el camino de la derecha» y no «gira a la derecha»-.
  const d=detector(),cruces=[];d.window.TrabakutikAndroid.setJunctions=json=>cruces.push(JSON.parse(json));
- vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE DE LAS RAMAS'),d);
  d.detect(corner(60),[point(0,0)]);
  assert.deepEqual(cruces.at(-1),[{i:1,dir:-1,t:1}]);
 });
 function savedFlow(){
- const c=detector(),nodes=new Map(),calls=[];
+ const c=entornoIntegracion(),nodes=new Map(),calls=[];
  c.$=id=>{if(!nodes.has(id)){
   const hidden=new Set(['hidden']);
   nodes.set(id,{textContent:'',disabled:false,classList:{add:k=>hidden.add(k),remove:k=>hidden.delete(k),contains:k=>hidden.has(k),toggle(k,on){if(on)hidden.add(k);else hidden.delete(k)}}});
@@ -668,8 +682,7 @@ test('Una ida y vuelta por el mismo camino es «da la vuelta», sin lado; una he
  let enviado=null;
  const c={junctions:[{i:5,direction:'vuelta',hacia:'derecha',cruce:false,mantente:false,retorno:true}],
   window:{TrabakutikAndroid:{setJunctions:j=>{enviado=JSON.parse(j)}}},console};
- vm.createContext(c);vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE'),c);
- c.enviaGirosNativos();
+ pieza('08-cruces.js',{junctions:c.junctions,junctionsReves:c.junctionsReves??null,window:c.window}).enviaGirosNativos();
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:0,t:0}]),'sin lado ni h: el servicio dice «da la vuelta»');
 });
 test('Puntos muy juntos (cada 30 cm) no se borran, y el pico sigue desde donde vuelve a la ida',()=>{
@@ -813,9 +826,7 @@ test('Un cruce solo se avisa una vez aunque la ruta deje varios puntos dentro',(
  assert.equal(turns.filter(t=>t.cruce).length,1);
 });
 test('Las ramas se leen del fichero y se agrupan por camino',()=>{
- const c={atob:(s)=>Buffer.from(s,'base64').toString('binary')};
- vm.createContext(c);
- vm.runInContext(source('function descifraRamas(','function descifraZona(j){'),c);
+ const c=pieza('08-cruces.js',{atob:(s)=>Buffer.from(s,'base64').toString('binary')});
  // Bytes 1, 94 y 143: rumbo 1 (nueva rama), rumbo 30 con el bit 64 -mismo
  // camino que la anterior- y rumbo 15 con el bit 128 -ultima del cruce-.
  // Entre realidades distintas de vm, deepEqual compara prototipos: JSON.
@@ -850,8 +861,7 @@ test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dic
                      {i:9,direction:'vuelta',hacia:'izquierda',cruce:false,mantente:false},
                      {i:14,direction:'izquierda',hacia:'izquierda',cruce:true,mantente:false}],
   window:{TrabakutikAndroid:{setJunctions:j=>{enviado=JSON.parse(j)}}},console};
- vm.createContext(c);vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE'),c);
- c.enviaGirosNativos();
+ pieza('08-cruces.js',{junctions:c.junctions,junctionsReves:c.junctionsReves??null,window:c.window}).enviaGirosNativos();
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:1,t:1,h:1},{i:9,dir:-1,t:0,h:1},{i:14,dir:-1,t:1}]));
  const ficha=source("const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
  assert(/turn\.retorno\?/.test(ficha)&&/curva de herradura a la/.test(ficha),'la ficha dice «curva de herradura a la …» salvo en una ida y vuelta');
@@ -1007,7 +1017,7 @@ test('Al revés se usan los avisos calculados al revés, con su lado, sin darles
   resetJunctionView(){},flechaGiro:()=>'',hablarGiro(){},notice(){},getAudio(){},pitidos(){},giraNativo:true,Number,Math,Date,String};
  vm.createContext(c);
  c.guiaIniciada=()=>true;c.setTimeout=()=>0;c.clearTimeout=()=>{};c.junctionBlocked=null;
- vm.runInContext(source('function ladoFlecha(turn,alReves){','// Velocidad suavizada'),c);
+ c.ladoFlecha=pieza('08-cruces.js').ladoFlecha;
  vm.runInContext(source('let listaCrucesActiva=null;','function rumboDeLaRuta(progreso){'),c);
  c.junctionGuidance(point(0,0),5);
  assert.equal(n.turnDirection&&n.turnDirection.textContent,'Cruce a la derecha','el lado de la lista al reves, tal cual');
@@ -1016,8 +1026,7 @@ test('Las dos listas se calculan, y la del revés va al servicio aparte',()=>{
  let ida=null,vuelta=null;
  const c={junctions:[{i:5,direction:'derecha',cruce:true}],junctionsReves:[{i:9,direction:'izquierda',cruce:true,reves:true}],
   window:{TrabakutikAndroid:{setJunctions:j=>{ida=JSON.parse(j)},setJunctionsReves:j=>{vuelta=JSON.parse(j)}}},console};
- vm.createContext(c);vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE'),c);
- c.enviaGirosNativos();
+ pieza('08-cruces.js',{junctions:c.junctions,junctionsReves:c.junctionsReves??null,window:c.window}).enviaGirosNativos();
  assert.equal(JSON.stringify(ida),JSON.stringify([{i:5,dir:1,t:1}]));
  assert.equal(JSON.stringify(vuelta),JSON.stringify([{i:9,dir:-1,t:1}]));
 });

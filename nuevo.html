@@ -3467,7 +3467,8 @@ function resetJunctionView(){
   setTimeout(()=>{autoZooming=false},300);
  }
 }
-map.on('zoomstart',()=>{
+// En la pagina siempre hay mapa; en las pruebas (require) no.
+if(typeof map!=='undefined')map.on('zoomstart',()=>{
  if(!autoZooming&&junctionActive>=0){
   junctionBlocked=junctionActive;
   junctionZoom=null; // Respetar el zoom que el usuario acaba de elegir.
@@ -3652,9 +3653,9 @@ function enviaGirosNativos(){
 // a los 1.952 de antes -uno cada 820-. La ruta con mas es hirutxikiak, con
 // 88; el servicio de Android admite hasta 2000 por ruta (GIROS_MAX).
 const CRUCE_RECTO=25;
-const RAMA_ENCAJA=45;
 function difRumbo(a,b){let d=(a-b)%360;if(d>=180)d-=360;if(d<-180)d+=360;return d}
 function decideCruce(cruce,centro,antes,despues){
+ const RAMA_ENCAJA=45;
  const grupos=cruce[2];
  if(!Array.isArray(grupos)||!grupos.length)return {sinRamas:true};
  const ramas=[];
@@ -3712,8 +3713,8 @@ function decideCruce(cruce,centro,antes,despues){
 // calcular los avisos se saltan los puntos a menos de ESPACIO_GIROS_M del
 // ultimo que se queda; las distancias no se tocan: cada aviso vuelve a su
 // punto y a su distancia de la ruta tal cual.
-const ESPACIO_GIROS_M=3;
 function espaciaParaGiros(pts){
+ const ESPACIO_GIROS_M=3;
  const idx=[];
  for(let k=0;k<pts.length;k++)
   if(!idx.length||dist(pts[idx[idx.length-1]],pts[k])>=ESPACIO_GIROS_M)idx.push(k);
@@ -3732,8 +3733,9 @@ function espaciaParaGiros(pts){
 // cae: sale con el rumbo contrario. Una vuelta a una manzana tampoco: no
 // tiene punta, tiene dos esquinas. Para los avisos se quitan los puntos del
 // pico; las distancias de la ruta no se tocan.
-const PICO_TRAMO_M=60,PICO_PUNTA_M=20,PICO_PUNTA_MIN_M=6,PICO_EXTRA_M=8,PICO_VUELTA=120,PICO_SIGUE=35,PICO_LEJOS_M=25,PICO_PUNTA_ANG=60;
 function quitaPicos(pts,idx){
+ // Sus umbrales solo los usa ella: van dentro (pieza cerrada).
+ const PICO_TRAMO_M=60,PICO_PUNTA_M=20,PICO_PUNTA_MIN_M=6,PICO_EXTRA_M=8,PICO_VUELTA=120,PICO_SIGUE=35,PICO_LEJOS_M=25,PICO_PUNTA_ANG=60;
  const m=idx.length;if(m<5)return idx;
  const P=k=>pts[idx[k]],cum=[0];
  for(let k=1;k<m;k++)cum[k]=cum[k-1]+dist(P(k-1),P(k));
@@ -4120,6 +4122,8 @@ function calculaCrucesDe(){
  }
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada.
+if(typeof module==='object'&&module&&module.exports)module.exports={ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe};
 // DONDE ESTAS EN LA RUTA, SIN PERDER EL HILO. Esto cogia el tramo mas cercano
 // de TODA la ruta, sin mirar por donde ibas hace un segundo. En una ruta que
 // pasa dos veces por el mismo sitio -ida y vuelta, un circuito que repite un
