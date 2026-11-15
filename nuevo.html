@@ -128,6 +128,7 @@ button{min-width:0}
 .map-turn-sign{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:2px solid #dcfbff;background:#07586c;color:#e8ffff;font-size:31px;font-weight:700;box-shadow:0 2px 12px #001a2699}
 .turn-hint{position:absolute;z-index:1100;left:10px;right:10px;bottom:12px;padding:13px 15px;border-radius:20px;background:linear-gradient(160deg,#0b2b3bf2,#071d29f7);border:1px solid #3d8ea4;box-shadow:0 0 0 1px #4de1ff22,0 10px 34px #000b,inset 0 1px 0 #ffffff14;color:#f0fcff;pointer-events:none}
 #map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
+#map.giro-al-lado .turn-hint{right:70px}
 /* Por id y no por clase: «.info span» y «.info b» ponen display:block y
    ganan por especificidad a una clase, asi que la brujula y los kilometros
    se apilaban en cuatro lineas en vez de ir en fila. */
@@ -4196,6 +4197,15 @@ function sigueMoviendose(p,ahora){
  return ahora-refParadoT<PARADO_MS;
 }
 let listaCrucesActiva=null;
+function colocaGiro(){
+ const t=$('turnHint'),m=$('map'),col=document.querySelector('#map .tools');
+ if(!t||!col||t.classList.contains('hidden'))return;
+ m.classList.remove('giro-al-lado');
+ const a=t.getBoundingClientRect(),b=col.getBoundingClientRect();
+ if(a.top<b.bottom&&b.left<a.right)m.classList.add('giro-al-lado');
+ m.style.setProperty('--turn-alto',Math.round(t.getBoundingClientRect().height+16)+'px');
+}
+window.addEventListener('resize',()=>{try{colocaGiro()}catch(e){}});
 function junctionGuidance(p,accuracy,progress){
  const moviendose=sigueMoviendose(p,Date.now());
  // Los giros y el zoom de cruces esperan al inicio de la salida.
@@ -4304,6 +4314,11 @@ function junctionGuidance(p,accuracy,progress){
  // el borde, y los creditos se quedarian unos pixeles bajos.
  $('map').classList.add('con-giro');
  $('map').style.setProperty('--turn-alto',Math.round($('turnHint').getBoundingClientRect().height+16)+'px');
+ // SI NO CABE, AL LADO DE LOS BOTONES Y NO ENCIMA. Con el panel de abajo el
+ // mapa es mas bajo, y en un movil pequeño (320x640) o un portatil (1280x800)
+ // la tarjeta subia hasta tapar el + y el - (medido el 15 de noviembre de
+ // 2026). Entonces se estrecha y deja libre la columna de la derecha.
+ colocaGiro();
  // Solo se amplía UNA vez por cruce. Si se toca el zoom, se respeta.
  if(ahead>=0&&ahead<=45&&junctionBlocked!==j&&!junctionZoomOnce.has(j)){
   junctionZoomOnce.add(j);

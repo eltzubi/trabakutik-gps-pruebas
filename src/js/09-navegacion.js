@@ -132,6 +132,15 @@ function sigueMoviendose(p,ahora){
  return ahora-refParadoT<PARADO_MS;
 }
 let listaCrucesActiva=null;
+function colocaGiro(){
+ const t=$('turnHint'),m=$('map'),col=document.querySelector('#map .tools');
+ if(!t||!col||t.classList.contains('hidden'))return;
+ m.classList.remove('giro-al-lado');
+ const a=t.getBoundingClientRect(),b=col.getBoundingClientRect();
+ if(a.top<b.bottom&&b.left<a.right)m.classList.add('giro-al-lado');
+ m.style.setProperty('--turn-alto',Math.round(t.getBoundingClientRect().height+16)+'px');
+}
+window.addEventListener('resize',()=>{try{colocaGiro()}catch(e){}});
 function junctionGuidance(p,accuracy,progress){
  const moviendose=sigueMoviendose(p,Date.now());
  // Los giros y el zoom de cruces esperan al inicio de la salida.
@@ -240,6 +249,11 @@ function junctionGuidance(p,accuracy,progress){
  // el borde, y los creditos se quedarian unos pixeles bajos.
  $('map').classList.add('con-giro');
  $('map').style.setProperty('--turn-alto',Math.round($('turnHint').getBoundingClientRect().height+16)+'px');
+ // SI NO CABE, AL LADO DE LOS BOTONES Y NO ENCIMA. Con el panel de abajo el
+ // mapa es mas bajo, y en un movil pequeño (320x640) o un portatil (1280x800)
+ // la tarjeta subia hasta tapar el + y el - (medido el 15 de noviembre de
+ // 2026). Entonces se estrecha y deja libre la columna de la derecha.
+ colocaGiro();
  // Solo se amplía UNA vez por cruce. Si se toca el zoom, se respeta.
  if(ahead>=0&&ahead<=45&&junctionBlocked!==j&&!junctionZoomOnce.has(j)){
   junctionZoomOnce.add(j);
