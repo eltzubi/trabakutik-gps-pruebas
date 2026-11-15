@@ -11,6 +11,9 @@ function section(start, end) {
   assert(j > i, end);
   return html.slice(i, j);
 }
+// La 06 esta cerrada: lo suyo se pide con require().
+const {pieza,arranque10}=require('./pieza.cjs');
+const p06=(entorno={})=>pieza('06-creador-formas.js',entorno,arranque10());
 function run(code, ctx) {
   vm.createContext(ctx);
   vm.runInContext(code, ctx);
@@ -75,12 +78,12 @@ test('mover, cerrar y deshacer conservan un trazado mixto',()=>{
   assert.deepEqual(Array.from(s.segments.at(-1)),Array.from(s.segments[1]).reverse());
 });
 test('el GPX manual no inventa alturas y el resumen no une huecos',()=>{
-  const c=run(section('function xmlEscape(', 'function download('),{});
+  const c=p06();
   const points=[[43,-2,100],[43.01,-2.01,null],[43.02,-2.02,300]];
   const xml=c.gpx(points,'Ruta personal');
   assert.equal((xml.match(/<trkpt /g)||[]).length,3);
   assert(!xml.includes('<ele>null</ele>'));assert(!xml.includes('<ele>0</ele>'));
-  const e=run(section('function elevationText(', 'function loadSaved('),{R:Math.PI/180});
+  const e=p06({R:Math.PI/180,dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*81000)});
   assert.match(e.elevationText(points),/\+0 \/ -0.*alturas incompletas/);
 });
 
@@ -290,9 +293,9 @@ test('detecta una cima intermedia en una recta nueva y exporta sus alturas',asyn
  c.fetch=async url=>{const q=JSON.parse(new URL(url).searchParams.get('json'));return {ok:true,json:async()=>({height:q.shape.map(p=>100+100*(1-Math.abs((p.lat-43)/.009-.5)*2))})}};
  await c.alturasTerrenoGps(result,new AbortController().signal);
  assert(result.parts[0].length>20,'muestras dentro de la recta');
- const e=run(section('function elevationText(', 'function loadSaved('),{R:Math.PI/180});
+ const e=p06({R:Math.PI/180,dist:c.dist});
  const summary=e.elevationText(result.parts[0]);assert.match(summary,/\+9\d \/ -9\d/);
- const xml=run(section('function xmlEscape(', 'function download('),{}).gpx(result.parts[0],'Cima nueva');
+ const xml=e.gpx(result.parts[0],'Cima nueva');
  assert.equal((xml.match(/<ele>/g)||[]).length,result.parts[0].length);
  assert(result.anchors.every(p=>Number.isFinite(p[2])));
 });
@@ -479,26 +482,26 @@ test('con el planificador, arrastrar un punto solo recalcula sus tramos y deja l
 test('Borrar el trazado quita tambien las rayas de los tramos hechos a mano',()=>{
  // Solo updateDraw las quitaba: tras «Borrar» o abrir otra ruta se quedaban
  // pintadas en el mapa sin trazado debajo.
- const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
- const a=html.indexOf('function clearDraft(){'),b=html.indexOf("$('clearCreated').onclick",a);
  const quitadas=[],nodo={disabled:false,classList:{add(){},remove(){},toggle(){}}};
- const raya={id:'raya'},c={map:{removeLayer:l=>quitadas.push(l)},manoLayers:[raya],drawMarks:[],junctionMarks:[],drawLayer:null,
-  redGps:null,nodosManualesGps:new Set(),routePoints:[],$:()=>nodo,cancelaMapaGps(){},estadoMapaGps(){},updateElevation(){}};
- vm.createContext(c);vm.runInContext(html.slice(a,b)+';clearDraft();',c);
+ const raya={id:'raya'};
+ const c=p06({map:{removeLayer:l=>quitadas.push(l)},manoLayers:[raya],drawMarks:[],junctionMarks:[],drawLayer:null,
+  redGps:null,nodosManualesGps:new Set(),routePoints:[],$:()=>nodo,cancelaMapaGps(){},estadoMapaGps(){},updateElevation(){}});
+ c.clearDraft();
  assert(quitadas.includes(raya),'la raya amarilla se quita del mapa');
  assert.equal(c.manoLayers.length,0);
 });
 test('Descargar un GPX de Mis rutas conserva el nombre de verdad dentro del fichero',()=>{
  // Se pasaba el nombre ya convertido en nombre de fichero, y el GPX llevaba
  // dentro «mi-ruta-13-11-2026» en vez de «Mi ruta 13/11/2026».
- const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
- const a=html.indexOf('function showSaved(){'),b=html.indexOf("$('savedRoutes').onclick",a);
  const botones=[],descargas=[];
  const el=()=>{const e={append(...h){},replaceChildren(){},style:{},set onclick(f){this._c=f},get onclick(){return this._c}};botones.push(e);return e};
- const c={document:{createElement:el},$:()=>({replaceChildren(){},append(){}}),
-  savedList:()=>[{name:'Mi ruta 13/11/2026',points:[[43,-2],[43.001,-2]],created:1}],
-  elevationText:()=>'',canShareGpx:()=>false,download:(pts,nombre)=>descargas.push(nombre)};
- vm.createContext(c);vm.runInContext(html.slice(a,b)+';showSaved();',c);
+ // savedList, elevationText y download son de la 06: los de verdad, con un
+ // almacen y el puente de la app de mentira (se mira el nombre DENTRO del GPX).
+ const guardadas=JSON.stringify([{name:'Mi ruta 13/11/2026',points:[[43,-2],[43.001,-2]],created:1}]);
+ const c=p06({document:{createElement:el},$:()=>({replaceChildren(){},append(){}}),R:Math.PI/180,dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*81000),
+  localStorage:{getItem:()=>guardadas,setItem(){}},navigator:{},
+  window:{TrabakutikAndroid:{saveGpx:(fichero,xml)=>descargas.push(xml.match(/<name>(.*?)<\/name>/)[1])}}});
+ c.showSaved();
  botones.find(b=>b.textContent==='↓ GPX').onclick();
  assert.deepEqual(descargas,['Mi ruta 13/11/2026']);
 });

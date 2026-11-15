@@ -24,7 +24,8 @@ function meters(a,b){
 // con un puente y una pantalla de mentira.
 const {pieza,arranque09,arranque10,trozo}=require('./pieza.cjs');
 const ayudas={R:Math.PI/180,dist:meters};vm.createContext(ayudas);
-vm.runInContext(source('function compactRoutePoints(','function loadSaved(item){'),ayudas);
+// compactRoutePoints es de la 06, cerrada: se coge de la pieza cargada.
+ayudas.compactRoutePoints=pieza('06-creador-formas.js',{R:Math.PI/180,dist:meters},arranque10()).compactRoutePoints;
 vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),ayudas);
 const nodoMudo=()=>({classList:{add(){},remove(){},toggle(){},contains(){return false}},style:{setProperty(){},removeProperty(){}},textContent:''});
 function detector(){
@@ -677,8 +678,7 @@ test('Una ida y vuelta por el mismo camino es «da la vuelta», sin lado; una he
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:0,t:0}]),'sin lado ni h: el servicio dice «da la vuelta»');
 });
 test('Puntos muy juntos (cada 30 cm) no se borran, y el pico sigue desde donde vuelve a la ida',()=>{
- const c={R:Math.PI/180};vm.createContext(c);
- vm.runInContext(source('function compactRoutePoints(points,maxPoints=2200){','\nfunction ')+'',c);
+ const c=pieza('06-creador-formas.js',{R:Math.PI/180,dist:meters},arranque10());
  const densa=[];for(let x=0;x<=300;x+=0.3)densa.push(point(x,0));
  const out=c.compactRoutePoints(densa);
  const fin=out[out.length-1];

@@ -12,9 +12,12 @@ function el(tag){return {tag,children:[],attrs:{},style:{},className:'',textCont
  append(...c){this.children.push(...c)},setAttribute(k,v){this.attrs[k]=v}}}
 function contexto(app,respuesta){
  const avisos=[];let repintado=0;const preguntas=[];
- const c={window:{TrabakutikAndroid:app},document:{createElement:el},JSON,Date,Number,String,Math,
-  confirm:t=>{preguntas.push(t);return respuesta},notice:t=>avisos.push(t),showSaved:()=>{repintado++}};
- vm.createContext(c);vm.runInContext(source('const DIAS_GRAB=',"$('savedRoutes').onclick"),c);
+ // La 06 esta cerrada: se pide con require(). showSaved es suyo: el de verdad,
+ // y repintar la lista es vaciar el hueco de «Mis rutas».
+ const lista=el('div');lista.replaceChildren=()=>{repintado++;lista.children=[]};
+ const {pieza,arranque10}=require('./pieza.cjs');
+ const c=pieza('06-creador-formas.js',{window:{TrabakutikAndroid:app},document:{createElement:el},$:id=>id==='savedItems'?lista:el('div'),
+  localStorage:{getItem:()=>'[]',setItem(){}},confirm:t=>{preguntas.push(t);return respuesta},notice:t=>avisos.push(t)},arranque10());
  return {c,avisos,preguntas,get repintado(){return repintado}};
 }
 const todos=n=>[n,...n.children.flatMap(todos)];

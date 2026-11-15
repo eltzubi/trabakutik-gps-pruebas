@@ -2844,6 +2844,12 @@ $('saveCreated').onclick=()=>{
  if(name===null)return;
  openSaveDialog(drawPoints,name.trim()||'Mi ruta','created');
 };
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
+// estado va con accesores: se lee y se escribe la variable de verdad.
+if(typeof module==='object'&&module&&module.exports){
+ module.exports={cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
+ Object.defineProperties(module.exports,{savedFromDialog:{get:()=>savedFromDialog,set:v=>{savedFromDialog=v},enumerable:true},pendingSave:{get:()=>pendingSave,set:v=>{pendingSave=v},enumerable:true},estadoBotonera:{get:()=>estadoBotonera,set:v=>{estadoBotonera=v},enumerable:true},ultimoVozEstado:{get:()=>ultimoVozEstado,set:v=>{ultimoVozEstado=v},enumerable:true},rutasListas:{get:()=>rutasListas,set:v=>{rutasListas=v},enumerable:true},ultimoParoNativo:{get:()=>ultimoParoNativo,set:v=>{ultimoParoNativo=v},enumerable:true},giraNativo:{get:()=>giraNativo,set:v=>{giraNativo=v},enumerable:true},savedLine:{get:()=>savedLine,set:v=>{savedLine=v},enumerable:true}});
+}
 // EL NUMERO DE VERSION, ABAJO. Lo pidio el autor: hasta ahora, para saber si
 // tenia la APK al dia, habia que ir a Ajustes de Android. Va dentro del pie,
 // asi que en marcha desaparece con el resto.
