@@ -25,7 +25,7 @@ public class NativeTurnsTest {
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
-'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+'''
+'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
@@ -311,6 +311,12 @@ public class NativeTurnsTest {
   require(!c.offRoute,"a 20 m del track no salta");
   for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,30,5));}
   require(c.offRoute,"a 30 m si");
+  // UN SEGUNDO AVISO, UNO SOLO: al minuto y a mas de 50 m.
+  int veces=0;for(String t:c.dicho)if(t.startsWith("Sigues fuera"))veces++;
+  require(veces==0,"a 30 m no se recuerda");
+  for(int k=0;k<50;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,70,5));}
+  veces=0;for(String t:c.dicho)if(t.startsWith("Sigues fuera"))veces++;
+  require(veces==1,"al minuto y lejos, un recordatorio y solo uno: "+veces);
   SystemClock.reloj=1000;
 
   System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras, cruce recien pasado, avisos con mala señal, ruta al reves sin la pagina y vuelta a la ruta");

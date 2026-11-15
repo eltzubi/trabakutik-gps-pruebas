@@ -451,8 +451,11 @@ function updateOffRoute(d,accuracy){
  // por hora -el autor lo sufrio-. Con 4 s hacen falta cuatro lecturas
  // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
  // verdad se detecta a 104 m en vez de a 86. Barato.
- if(!alerted&&Date.now()-farSince>=4000){alerted=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
+ if(!alerted&&Date.now()-farSince>=4000){alerted=true;fueraDesdePag=Date.now();recordadoPag=false;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
+ // Un segundo aviso, uno solo, al minuto y a mas de 50 m (como el servicio).
+ else if(alerted&&!recordadoPag&&d>=50&&Date.now()-fueraDesdePag>=60000){recordadoPag=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
+let fueraDesdePag=0,recordadoPag=false;
 try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
 try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}
 function avisaModoAudioNativo(){

@@ -1102,10 +1102,20 @@ public class TrackingService extends Service implements LocationListener {
   // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
   // verdad se detecta a 104 m en vez de a 86. Barato.
   if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=4000){
-   offRoute=true;updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
+   offRoute=true;fueraDesde=SystemClock.elapsedRealtime();recordado=false;updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
+  }
+  // UN SEGUNDO AVISO, UNO SOLO. Si el primero no se oyo -el movil en la
+  // mochila, viento- seguias andando fuera sin saberlo. Locus permite
+  // repetirlo; aqui una vez, al minuto y si ya estas lejos (RECUERDA_M), para
+  // no dar la lata a quien se ha salido a proposito. Lo decidio el autor el
+  // 15 de noviembre de 2026.
+  else if(offRoute&&!recordado&&d>=RECUERDA_M&&SystemClock.elapsedRealtime()-fueraDesde>=RECUERDA_MS){
+   recordado=true;pitidos(4,180);habla("Sigues fuera del recorrido");
   }
  }
- static final double FUERA_M=25;
+ static final double FUERA_M=25,RECUERDA_M=50;
+ static final long RECUERDA_MS=60_000;
+ long fueraDesde=0;boolean recordado=false;
  static final long MAX_EDAD_FIX_NS=10_000_000_000L;
  boolean esAntigua(Location l){
   long t=l.getElapsedRealtimeNanos();
