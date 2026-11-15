@@ -26,6 +26,10 @@
 // cambia como debe.
 // En ramas superpuestas se compara el avance con el desplazamiento real.
 let anclaRumbo={p:null,ruta:null,rumbo:null,t:0};
+// «✋ Sobraba» (ver mas abajo): arriba, porque junctionGuidance lo usa y puede
+// correr antes de llegar a esas lineas.
+let avisoMarcable=null,avisoMarcadoJ=-1,avisoMarcadoLista=null;
+const AVISOS_MAL='avisos-mal',AVISO_MAL_M=250;
 function progressOnRoute(p,reliable=true){
  let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity,retenido=false;
  const ref=Number.isFinite(ultimoAlong)?ultimoAlong:null;
@@ -159,6 +163,8 @@ function junctionGuidance(p,accuracy,progress){
  const lista=sentidoRuta<0&&Array.isArray(junctionsReves)?junctionsReves:junctions;
  if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear()}
  listaCrucesActiva=lista;
+ // (con typeof: las pruebas que recortan esta funcion no traen el «✋ Sobraba»)
+ if(typeof avisoMarcable!=='undefined'&&avisoMarcable&&!guiaIniciada()){avisoMarcable=null;pintaAvisoMal()}
  if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!lista.length||accuracy>60){
   if(junctionActive>=0)resetJunctionView();return;
  }
@@ -167,6 +173,7 @@ function junctionGuidance(p,accuracy,progress){
  if(progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
   if(junctionActive>=0)resetJunctionView();return;
  }
+ if(typeof buscaAvisoMarcable==='function')buscaAvisoMarcable(lista,progress);
  const coste=distance=>distance>=0?distance:-distance*4;
  let best=null;
  for(let j=0;j<lista.length;j++){
@@ -312,6 +319,81 @@ function junctionGuidance(p,accuracy,progress){
          +' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
+}
+// «✋ SOBRABA»: APUNTAR UN AVISO QUE ESTABA DE MAS. Lo pidio el autor el 15
+// de noviembre de 2026 despues de una tarde intentando saber, de memoria y
+// con los kilometros de Wikiloc, que avisos de Asuntza bira por Aginaga
+// sobraban: los numeros de otra aplicacion no cuadraban con los nuestros y
+// se acabo ajustando una regla con casos que no eran. Este boton guarda el
+// sitio exacto, la ruta, el kilometro y lo que se dijo, al momento. Sale
+// despues de pasar un aviso, mientras no te alejes AVISO_MAL_M, y se guarda
+// solo en el movil (localStorage); la lista se copia desde «Avisos marcados».
+function textoDeGiro(turn,alReves){
+ const cambia=l=>alReves?(l==='izquierda'?'derecha':l==='derecha'?'izquierda':l):l;
+ const lado=cambia(turn.direction),hacia=cambia(turn.hacia||turn.direction);
+ if(turn.rotonda)return lado==='vuelta'?'Rotonda · da la vuelta':'Rotonda · sal a la '+lado;
+ if(turn.direction==='vuelta')return turn.retorno?(turn.cruce!==false?'Cruce · da la vuelta':'Da la vuelta'):'Curva de herradura a la '+hacia;
+ if(turn.mantente)return 'Cruce · sigue por la '+lado;
+ return (turn.cruce!==false?'Cruce a la ':'Curva cerrada a la ')+lado;
+}
+function avisosMarcados(){
+ try{const l=JSON.parse(localStorage.getItem(AVISOS_MAL)||'[]');return Array.isArray(l)?l:[]}catch(e){return []}
+}
+function buscaAvisoMarcable(lista,progress){
+ let mejor=null;
+ for(let j=0;j<lista.length;j++){
+  const atras=(progress.along-lista[j].along)*sentidoRuta;
+  if(atras>=5&&atras<=AVISO_MAL_M&&(!mejor||atras<mejor.atras))mejor={j,atras};
+ }
+ if(!mejor)avisoMarcable=null;
+ else if(!avisoMarcable||avisoMarcable.j!==mejor.j||avisoMarcable.lista!==lista){
+  const turn=lista[mejor.j];
+  avisoMarcable={j:mejor.j,lista,turn,texto:textoDeGiro(turn,sentidoRuta<0&&lista===junctions)};
+ }
+ pintaAvisoMal();
+}
+function pintaAvisoMal(){
+ if(typeof $!=='function')return;const b=$('avisoMal');if(!b)return;
+ const ver=!!avisoMarcable&&!(avisoMarcadoJ===avisoMarcable.j&&avisoMarcadoLista===avisoMarcable.lista)&&junctionActive<0;
+ b.classList.toggle('hidden',!ver);
+ if(ver)b.textContent='✋ Sobraba: «'+avisoMarcable.texto+'»';
+}
+function marcaAvisoMal(){
+ if(!avisoMarcable)return;
+ const t=avisoMarcable.turn,l=avisosMarcados();
+ const ruta=(($('tripRuta')&&$('tripRuta').textContent)||($('mapTitle')&&$('mapTitle').textContent)||'').trim();
+ l.push({ruta,km:Math.round(t.along)/1000,sentido:sentidoRuta,dicho:avisoMarcable.texto,grados:t.angle,
+  lat:+(+t.point[0]).toFixed(5),lon:+(+t.point[1]).toFixed(5),fecha:new Date().toISOString()});
+ while(l.length>300)l.shift();
+ try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l))}catch(e){}
+ avisoMarcadoJ=avisoMarcable.j;avisoMarcadoLista=avisoMarcable.lista;
+ pintaAvisoMal();pintaBotonAvisos();
+ try{notice('Apuntado: «'+avisoMarcable.texto+'» sobraba · '+l.length+' en la lista')}catch(e){}
+}
+function pintaBotonAvisos(){
+ if(typeof $!=='function')return;const b=$('avisosMarcados');if(!b)return;
+ const n=avisosMarcados().length;
+ b.classList.toggle('hidden',!n);b.textContent='✋ Avisos marcados ('+n+')';
+}
+function textoAvisos(){
+ return avisosMarcados().map(a=>(a.ruta||'Ruta')+' · km '+(+a.km).toFixed(2).replace('.',',')+(a.sentido<0?' (al revés)':'')
+  +' · «'+a.dicho+'» sobraba · '+a.lat+','+a.lon+' · '+String(a.fecha||'').slice(0,16).replace('T',' ')).join('\n');
+}
+if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $('avisoMal').addEventListener==='function'){
+ $('avisoMal').addEventListener('click',marcaAvisoMal);
+ $('avisosMarcados').addEventListener('click',()=>{$('avisosTexto').value=textoAvisos();$('avisosEstado').textContent='';$('avisosDialogo').classList.remove('hidden')});
+ $('avisosCerrar').addEventListener('click',()=>$('avisosDialogo').classList.add('hidden'));
+ $('avisosCopiar').addEventListener('click',()=>{
+  const t=$('avisosTexto'),ok=()=>{$('avisosEstado').textContent='Copiada: pégala en el chat'};
+  const aMano=()=>{try{t.focus();t.select();if(document.execCommand('copy'))ok();else $('avisosEstado').textContent='Selecciónala y cópiala a mano'}catch(e){$('avisosEstado').textContent='Selecciónala y cópiala a mano'}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value).then(ok,aMano);else aMano();
+ });
+ $('avisosBorrar').addEventListener('click',()=>{
+  if(!confirm('¿Borrar la lista de avisos marcados?'))return;
+  try{localStorage.removeItem(AVISOS_MAL)}catch(e){}
+  $('avisosTexto').value='';pintaBotonAvisos();$('avisosEstado').textContent='Lista borrada';
+ });
+ pintaBotonAvisos();
 }
 // Rumbo del mismo tramo que usa el progreso. En un cruce o en una ida y
 // vuelta, buscar otra vez el más cercano podría escoger la otra rama.
@@ -675,6 +757,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS};
+ module.exports={progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }

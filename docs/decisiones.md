@@ -481,3 +481,14 @@ los **nuestros** (15,60), y callaba el km 3,13, donde se deja la pista
 principal de piedra por una de tierra de frente: «sería gran error», dijo el
 autor. **Lección: comprobar cada caso con una captura del sitio, nunca por el
 número del kilómetro de otra aplicación.**
+
+## «✋ Sobraba»: apuntar los avisos que están de más (16 de noviembre de 2026)
+
+Después de pasar un aviso de giro, mientras no te alejes 250 m, sale un botón
+«✋ Sobraba: «Cruce a la izquierda»». Un toque guarda en el móvil la ruta, el
+km, lo que se dijo, el sentido y el sitio exacto. La lista se ve y se copia
+desde «✋ Avisos marcados (N)» en la botonera de la app, para pegarla en el
+chat. Lo pidió el autor «solo hasta que aprendas a identificar lo que
+buscamos»: la tarde anterior se perdió intentando cuadrar de memoria
+kilómetros de Wikiloc con los nuestros. Con esta lista se corrigen avisos
+sobre casos seguros. Cuando deje de aportar, se quita. Solo página: sin APK.

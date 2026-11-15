@@ -1194,3 +1194,28 @@ test('bloqueo de pantalla: se quita solo manteniendo pulsado, y al dejar de guia
  c.bloquea();guia=false;g('tripBox').delete('hidden');c.pintaDespeja();
  assert(!c.bloqueada&&g('candado').has('hidden'),'al dejar de guiar se quita sola');
 });
+test('«✋ Sobraba»: sale tras pasar un aviso, apunta lo dicho y el sitio, y no se repite',()=>{
+ const almacen={},nodos={};
+ const nodo=id=>nodos[id]||(nodos[id]={textContent:id==='tripRuta'?'Asuntza bira por Aginaga':'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}}});
+ const avisos=[];
+ const c=pieza('09-navegacion.js',{window:{},$:nodo,localStorage:{getItem:k=>almacen[k]??null,setItem:(k,v)=>{almacen[k]=v},removeItem:k=>{delete almacen[k]}},
+  notice:t=>avisos.push(t),junctionActive:-1,sentidoRuta:1,junctions:[]},arranque09());
+ const lista=[{along:1000,point:[43.2,-2.5],direction:'izquierda',hacia:'izquierda',cruce:true,angle:79},{along:3000,point:[43.21,-2.51],direction:'derecha',cruce:false,angle:140}];
+ c.buscaAvisoMarcable(lista,{along:990});
+ assert(nodo('avisoMal').classList.contains('hidden'),'antes del cruce no sale');
+ c.buscaAvisoMarcable(lista,{along:1040});
+ assert(!nodo('avisoMal').classList.contains('hidden'),'pasado el cruce, sale');
+ assert.equal(nodo('avisoMal').textContent,'✋ Sobraba: «Cruce a la izquierda»');
+ c.marcaAvisoMal();
+ const l=JSON.parse(almacen['avisos-mal']);
+ assert.equal(l.length,1);assert.equal(l[0].ruta,'Asuntza bira por Aginaga');assert.equal(l[0].km,1);assert.equal(l[0].dicho,'Cruce a la izquierda');
+ assert(nodo('avisoMal').classList.contains('hidden'),'apuntado, se esconde');
+ c.buscaAvisoMarcable(lista,{along:1100});
+ assert(nodo('avisoMal').classList.contains('hidden'),'y no vuelve a salir para el mismo');
+ c.buscaAvisoMarcable(lista,{along:1400});
+ assert.equal(c.avisoMarcable,null,'lejos ya no se ofrece');
+ assert(/Asuntza bira por Aginaga · km 1,00 · «Cruce a la izquierda» sobraba · 43.2,-2.5/.test(c.textoAvisos()),c.textoAvisos());
+ // al reves con la lista de la ida, el lado se cambia
+ assert.equal(c.textoDeGiro(lista[0],true),'Cruce a la derecha');
+ assert.equal(c.textoDeGiro(lista[1],false),'Curva cerrada a la derecha');
+});
