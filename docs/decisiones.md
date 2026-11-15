@@ -375,3 +375,39 @@ se decidió y por qué:
 - Revisado con GPT antes de escribir el código. Las pruebas de la ida y
   vuelta, el 0 → 4 → 10, empezar en la cima y llegar desde fuera están en
   `tests/navigation.test.cjs`.
+
+## Comparado con otros navegadores (15 de noviembre de 2026)
+
+Buscado en la documentación de OsmAnd y Locus, en la ayuda de AllTrails y
+Wikiloc, y en quejas de usuarios de Komoot. Cifras para ir andando:
+
+| | OsmAnd | Locus | AllTrails | HiiKER | Trabakutik |
+|---|---|---|---|---|---|
+| Aviso «gira en X m» | 22 s antes (24 m) | lo elige el usuario | — | — | voz a 35 m (unos 31 s), pitidos a 50 m, 8-30 m y en el cruce |
+| «Gira ya» | 12 m como mínimo | — | — | — | 3 pitidos en el cruce |
+| Fuera de ruta | 22 m (20 s) | 30-100 m, a elegir | unos 50 m | 50 m | 15 m (o la precisión + 7 m) durante 4 s |
+| Repetir el aviso de fuera de ruta | no | opcional | no; se puede silenciar | — | no |
+| Sin señal GPS | a los 20 s | — | — | — | sí |
+| Callarse si vas al revés | sí | — | — | — | se calcula la lista al revés |
+| Llegada al final | sí | sí | — | — | **no lo tenía: añadido** |
+| Dos giros muy seguidos | — | se avisan juntos (opcional) | — | — | uno detrás de otro |
+| Pedir que Android no la corte por batería | — | — | sí, «sin restricciones» | — | **no lo tenía: añadido** |
+
+- **Añadido el mismo día:**
+  - el aviso de llegada (`AvisoLlegada`: una vez, y solo habiendo andado la
+    mitad, por las circulares);
+  - pedir al empezar que la batería no esté restringida (`compruebaBateria`,
+    como mucho una vez por semana). Samsung es de las marcas que más cortan
+    las apps en segundo plano (dontkillmyapp.com).
+- **Las quejas de Komoot** se parecen a las que ya se han arreglado aquí:
+  - giros donde no hay giro: picos del GPX, ramas de los cruces;
+  - avisos demasiado pronto o tarde: los 35 m;
+  - fuera de ruta falsos por huecos del GPX.
+- **Propuesto y pendiente de que decida el autor:**
+  1. un segundo aviso si sigues fuera de ruta (por ejemplo, al minuto y a
+     más de 50 m);
+  2. decir juntos dos giros muy seguidos («a la derecha y enseguida a la
+     izquierda»);
+  3. el umbral de fuera de ruta: 15 m es más estricto que los demás
+     (22-75 m). Bajo árboles puede avisar sin motivo, aunque se suma la
+     precisión del GPS. Se dejó así porque el autor quería que avisara.
