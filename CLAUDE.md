@@ -67,6 +67,12 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
 
 ## Trampas que ya han mordido
 
+- **El código de salida de la batería, no su texto.** El 15 de noviembre de
+  2026 se subió con tres pruebas en rojo: la orden acababa en
+  `bateria.sh | tail -1 && git push`, y `&&` miraba el resultado de `tail`,
+  que siempre sale bien. Lo que decide es el código de salida de la batería
+  misma (`if ! bash bateria.sh; then … no se sube; fi`). Si una orden termina
+  en `| algo && git push`, está mal.
 - **Compilar Java sin el SDK de Android**: `javac` sobre `android/**` da
   cientos de errores porque no existe ninguna clase de Android. Eso es
   normal. Lo que NO vale es contar errores: `javac` se para en 100 por

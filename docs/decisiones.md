@@ -321,3 +321,42 @@ se decidió y por qué:
   Un paso obligatorio con forma de pico de 20 m o menos, como dos senderos en
   T a pocos metros con un obstáculo entre ellos, perdería su aviso. No ha
   salido en ninguna de las 74 rutas. Revisado con GPT, que lo señaló.
+
+## El panel de abajo y «desde donde empiezas» (15 de noviembre de 2026)
+
+- **Lo eligió el autor, entre ocho maquetas:** un panel oscuro de lado a
+  lado, como el de su captura y sin el botón de foto. Lleva el nombre de la
+  ruta, tres columnas (distancia, desnivel y GPS), el perfil ancho con tu
+  punto y los botones Pausa / Seguir, Parar y Mandos. Pidió «solo distancias
+  y alturas»: el tiempo de salida y el ritmo se quitaron.
+- **Va en el flujo, debajo del mapa, no flotando encima.** Flotando, el
+  botón de mandos tapaba las tarjetas. Mientras se guía ocupa el sitio de la
+  barra «Perfil de altura», que lleva dentro. Con el mapa más bajo, la
+  tarjeta del giro se estrecha si no cabe y deja libre la columna de botones
+  (en 320x568, 320x640 y 1280x800 tapaba el + y el −).
+- **Todo cuenta desde donde empiezas tú, no desde el principio de la
+  ruta.** Salió 1,5 km antes de Trabakua-Mendibil, y otro día arrancó en la
+  cima. Lo que muestra cada dato:
+  - **hechos:** lo andado grabado, sin sumar los cortes de grabación. Sin
+    grabar sale «—»: restar posiciones sobre la ruta no es lo andado;
+  - **barra:** lo andado frente a lo andado más lo que queda;
+  - **subido y bajado:** se recorre tu trazado grabado sobre el perfil de la
+    ruta, con continuidad entre puntos, para no saltar de rama en una ida y
+    vuelta. Vale con la pantalla apagada, porque el trazado lo da el
+    servicio;
+  - **falta por subir:** se cuenta desde tu punto exacto y en tu sentido.
+    Restar acumulados desde el principio daba mal al revés: en 0 → 4 → 10 m
+    salían 6 en vez de 10;
+  - **antes de llegar a la ruta:** el panel sale igual, con la distancia en
+    línea recta hasta ella.
+- **Las alturas son las del perfil de la ruta, no las del GPS.** La altura
+  del GPS de Android va sobre el elipsoide (unos 50 m de más aquí), se
+  equivoca 10-20 m y el trazado del servicio ni la trae. Lo andado lejos de
+  la ruta no suma subida, y la cifra lleva «≥» delante. Lo que lo resolvería
+  es el barómetro: ver abajo.
+- **Las rutas guardadas e importadas usan todos sus puntos para el perfil,**
+  no la copia simplificada del mapa, que se comía las cimas en mitad de una
+  recta.
+- Revisado con GPT antes de escribir el código. Las pruebas de la ida y
+  vuelta, el 0 → 4 → 10, empezar en la cima y llegar desde fuera están en
+  `tests/navigation.test.cjs`.
