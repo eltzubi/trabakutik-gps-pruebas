@@ -3447,18 +3447,40 @@ function decideCruce(cruce,centro,antes,despues){
 // todo otra vez sobre la ruta dada la vuelta y se guarda en junctionsReves,
 // con el punto y la distancia de la ruta tal como esta; al reves se usa esa
 // lista tal cual, sin cambiar lados.
+// LOS BAILOTEOS DEL GPS NO SON GIROS. En el km 3,93 de Trabakua-Mendibil el
+// GPX da un paso de 2,3 m a un lado y vuelve 1,5 m: el tramo con el que se
+// «llega» al punto apunta casi hacia atras y salia una «herradura a la
+// derecha de 171°» en plena recta. Lo vio el autor el 15 de noviembre de
+// 2026: «aqui no deberia haber ninguna indicacion, no hay excusas». Para
+// calcular los avisos se saltan los puntos a menos de ESPACIO_GIROS_M del
+// ultimo que se queda; las distancias no se tocan: cada aviso vuelve a su
+// punto y a su distancia de la ruta tal cual.
+const ESPACIO_GIROS_M=3;
+function espaciaParaGiros(pts){
+ const idx=[];
+ for(let k=0;k<pts.length;k++)
+  if(!idx.length||dist(pts[idx[idx.length-1]],pts[k])>=ESPACIO_GIROS_M)idx.push(k);
+ if(idx[idx.length-1]!==pts.length-1){if(idx.length>1)idx[idx.length-1]=pts.length-1;else idx.push(pts.length-1)}
+ return idx;
+}
 function computeJunctions(){
  const pts=routePoints,n=pts.length;
- calculaCrucesDe();
- const ida=junctions,cum=routeCumulative,total=cum[cum.length-1]||0;
+ const cum=[0];for(let k=1;k<n;k++)cum[k]=cum[k-1]+dist(pts[k-1],pts[k]);
+ const idx=n>=3?espaciaParaGiros(pts):pts.map((_,k)=>k),m=idx.length;
+ const aRuta=(j,k)=>Object.assign({},j,{i:k,along:cum[k]});
  // null = sin calcular (entonces se le da la vuelta a la ida, como antes);
  // [] = calculada y sin ningun aviso, que al reves puede pasar.
- let vuelta=null;
- if(n>=3){
-  routePoints=pts.slice().reverse();
-  try{calculaCrucesDe();vuelta=junctions.map(j=>Object.assign({},j,{i:n-1-j.i,along:total-j.along,reves:true}));}
-  finally{routePoints=pts;}
- }
+ let ida=[],vuelta=null;
+ try{
+  routePoints=idx.map(k=>pts[k]);
+  calculaCrucesDe();
+  ida=junctions.map(j=>aRuta(j,idx[j.i]));
+  if(m>=3){
+   routePoints=routePoints.slice().reverse();
+   calculaCrucesDe();
+   vuelta=junctions.map(j=>Object.assign(aRuta(j,idx[m-1-j.i]),{reves:true}));
+  }
+ }finally{routePoints=pts}
  junctions=ida;routeCumulative=cum;junctionsReves=vuelta;
  junctionWarned.clear();junctionZoomOnce.clear();
  enviaGirosNativos();

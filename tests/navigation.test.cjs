@@ -28,6 +28,8 @@ function detector(){
  vm.runInContext(source('const CRUCE_RECTO=25;','function computeJunctions(){'),c);
  vm.runInContext(source('function computeJunctions(){','// Punto de avance sobre la ruta'),c);
  c.detect=(points,cruces=[])=>{c.routePoints=c.compactRoutePoints(points);c.crucesOsm=cruces;c.computeJunctions();return c.junctions};
+ // Las rutas de la web llegan a la app sin compactar: asi las calcula.
+ c.detectCrudo=(points,cruces=[])=>{c.routePoints=points;c.crucesOsm=cruces;c.computeJunctions();return c.junctions};
  return c;
 }
 function corner(deg){
@@ -941,3 +943,17 @@ test('Si al revés no hace falta ningún aviso, no se usan los de la ida dados l
  assert.equal(c.junctionActive,-1,'no se enseña ningun giro: al reves no hay ninguno');
 });
 
+test('Un bailoteo del GPS de 2 m en una recta no es una herradura',()=>{
+ // Trabakua-Mendibil, km 3,93: el GPX da un paso de 2,3 m a un lado y vuelve
+ // 1,5 m, y salia «curva de herradura a la derecha, 171°» en plena recta. El
+ // autor: «aqui no deberia haber ninguna indicacion, no hay excusas».
+ // El trozo de verdad de la ruta publicada (56 puntos), en metros alrededor
+ // del punto del baile: con el codigo anterior salia «vuelta 171°».
+ const real=[[186,269.2],[177.5,268.4],[176.7,267],[179,261.6],[171.8,246.2],[168.3,232.3],[174.3,211.7],[170.3,199.7],[162.6,191.4],[109.2,152.9],[97.2,141.4],[87.4,128.2],[80.5,115.9],[78.8,111.4],[78.3,98.1],[72.9,78.9],[66.7,64.9],[59.7,58.7],[54.1,47.5],[55.7,29],[52.8,8.5],[52,4.7],[45.1,-3.3],[35.7,-6.9],[18.5,-5.2],[9.5,-3.4],[1.2,-0.4],[-0.2,1.4],[0,0],[-6.9,1.8],[-17.6,8.9],[-36.1,11.9],[-36.7,13.9],[-36.4,12.7],[-40.2,14],[-49.9,13.3],[-67.3,15.3],[-92.7,30.6],[-109.9,37.7],[-126.6,39.3],[-152.4,49.5],[-165.3,45],[-175.8,45.5],[-199,42.9],[-244.6,42],[-247.5,44.1],[-260,45.3],[-278.5,42],[-288.6,42.3],[-295.1,39.8],[-299.8,40.3],[-318.2,30.2],[-347.4,24.6],[-368.2,14.8],[-384.3,10.1],[-399.9,-0.3]];
+ const conBaile=real.map(q=>point(q[0],q[1]));
+ const turns=detector().detectCrudo(conBaile);
+ assert.equal(turns.filter(t=>t.direction==='vuelta').length,0,'ninguna herradura: '+JSON.stringify(turns.map(t=>t.direction+' '+t.angle)));
+ // Y una herradura de verdad se sigue avisando.
+ const h=detector().detectCrudo(tortuga([[150,0],[34,-180],[120,0]]));
+ assert(h.some(t=>t.direction==='vuelta'),'la herradura de verdad sigue');
+});
