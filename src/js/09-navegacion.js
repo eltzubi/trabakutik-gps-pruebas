@@ -133,6 +133,7 @@ function sigueMoviendose(p,ahora){
 }
 let listaCrucesActiva=null;
 function colocaGiro(){
+ if(typeof document==='undefined'||!document.querySelector)return;
  const t=$('turnHint'),m=$('map'),col=document.querySelector('#map .tools');
  if(!t||!col||t.classList.contains('hidden'))return;
  m.classList.remove('giro-al-lado');
@@ -140,7 +141,7 @@ function colocaGiro(){
  if(a.top<b.bottom&&b.left<a.right)m.classList.add('giro-al-lado');
  m.style.setProperty('--turn-alto',Math.round(t.getBoundingClientRect().height+16)+'px');
 }
-window.addEventListener('resize',()=>{try{colocaGiro()}catch(e){}});
+if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('resize',()=>{try{colocaGiro()}catch(e){}});
 function junctionGuidance(p,accuracy,progress){
  const moviendose=sigueMoviendose(p,Date.now());
  // Los giros y el zoom de cruces esperan al inicio de la salida.
