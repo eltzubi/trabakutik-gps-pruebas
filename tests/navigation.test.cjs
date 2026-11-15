@@ -1194,15 +1194,3 @@ test('bloqueo de pantalla: se quita solo manteniendo pulsado, y al dejar de guia
  c.bloquea();guia=false;g('tripBox').delete('hidden');c.pintaDespeja();
  assert(!c.bloqueada&&g('candado').has('hidden'),'al dejar de guiar se quita sola');
 });
-// Asuntza bira por Aginaga, km 2,78: la ruta pasa recta a 20 m de un cruce y
-// se decidia con sus ramas como si lo atravesara. Ahora no; pero si el track
-// gira de verdad junto a un cruce a 20 m (km 7,72), el aviso se queda.
-test('un cruce a 20 m con la ruta recta no es de la ruta; girando, si',()=>{
- const recta=[];for(let x=-150;x<=150;x+=5)recta.push(point(x,0));
- const alLado=[[...point(0,20),[[250],[120,300]]]];
- assert.equal(detector().detectCrudo(recta,alLado).length,0,'recta junto a un cruce a 20 m: nada');
- const gira=[];for(let x=-150;x<=0;x+=5)gira.push(point(x,0));
- for(let k=1;k<=30;k++)gira.push(point(5*k*Math.cos(-60*Math.PI/180),5*k*Math.sin(-60*Math.PI/180)));
- const j=detector().detectCrudo(gira,[[...point(0,18),[[270],[120,300]]]]);
- assert.equal(j.length,1,'girando 60 grados junto al cruce, un aviso');assert.equal(j[0].direction,'derecha');
-});

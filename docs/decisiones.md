@@ -463,29 +463,21 @@ ficha del giro y la voz siguen. El aviso de caída («Estoy bien») es un
 diálogo de Android, por encima de la página, y no lo tapa. Al dejar de guiar
 se quita solo. Solo página: no hace falta APK.
 
-## Valhalla como referencia de los giros, medido y descartado; y el cruce «de al lado» (15 de noviembre de 2026)
+## Valhalla como referencia de los giros, medido y descartado (15 de noviembre de 2026)
 
 Se encajaron las 73 rutas publicadas en los caminos de OSM con el ajuste de
 trazas de Valhalla (servidor de FOSSGIS; sin nada a menos de 1,5 km de
 Trabakua, con permiso del autor): 1.359 km, el 95,9 % de los puntos a menos de
 15 m. **Sus propias indicaciones no sirven** (3 en 20 km en 7pago, 70 en 33 km
 en aixola). Comparando nuestros avisos de cruce con sus cambios de camino: 76 %
-coinciden y 24 % no; y 155 de 1.181 giros suyos los callamos.
+coinciden y 24 % no. Comprobado por el autor con capturas, en Asuntza bira por
+Aginaga: en los km 7,72 y 13,02 acertamos nosotros y Valhalla se equivoca
+(junta pistas distintas). **No compensa encajar las rutas con Valhalla.**
 
-El autor comprobó sobre el terreno siete de los que no coincidían, en Asuntza
-bira por Aginaga: en 7,72, 8,22 y 13,02 acertamos nosotros y Valhalla se
-equivoca (junta pistas distintas); en 2,78, 3,13, 3,50 y 8,93 sobraba nuestro
-aviso. **No compensa encajar las rutas con Valhalla.**
-
-Dos de los falsos (2,78 y 3,13) tenían la misma causa: el track pasa casi
-recto a 20-25 m de un cruce y se decidía con sus ramas como si lo
-atravesara. Regla nueva en la pieza 08: si el cruce está a más de 15 m y el
-track gira menos de 25°, ese cruce no es de la ruta. En las 73 rutas: 167
-avisos de cruce menos (2.141 → 1.974). Se probaron y descartaron otras dos:
-buscar cruces a 15 m en vez de 25 (pierde 48 giros reales) y quitar la
-reserva «ramas que no cuadran → ángulo del track desde 45°» (pierde 91).
-
-Quedan sin arreglar: el 3,50 (el track gira 137° en 100 m junto a un cruce a
-14 m; el autor lo recuerda como curva menor) y el 8,93 (una Y de 24° donde la
-ruta sigue por la pista principal de piedra y la otra rama es de tierra: haría
-falta el `tracktype` de cada ramal, que cruces-zona.json no trae).
+Se metió y se quitó el mismo día una regla («un cruce a más de 15 m con el
+track girando menos de 25° no es de la ruta»): estaba ajustada con respuestas
+de memoria que eran kilómetros de **Wikiloc** (17,12 km esa ruta) cuadradas con
+los **nuestros** (15,60), y callaba el km 3,13, donde se deja la pista
+principal de piedra por una de tierra de frente: «sería gran error», dijo el
+autor. **Lección: comprobar cada caso con una captura del sitio, nunca por el
+número del kilómetro de otra aplicación.**

@@ -685,21 +685,7 @@ function calculaCrucesDe(){
   // asi que «otra ruta a menos de 28 m» es cierto casi todo el rato y no
   // significa cruce, significa que van juntas. Por eso los cruces se traen de
   // OSM y no de las propias rutas.
-  // UN CRUCE AL LADO NO ES UN CRUCE DE LA RUTA. Se busca a CERCA_CRUCE (25 m)
-  // y, si la ruta pasa recta a 20-25 m de un cruce, se decidia con las ramas
-  // de ese cruce como si lo atravesara: «cruce a la derecha» en plena recta,
-  // a veces con el lado cambiado. Lo comprobo el autor sobre el terreno el 15
-  // de noviembre de 2026 en Asuntza bira por Aginaga: en los km 2,78, 3,13 y
-  // 3,50 no hay nada que decir, y los tres tenian el cruce a 20-25 m con el
-  // track girando 13-21 grados. Los buenos de esa ruta (7,72, 8,22, 13,02) se
-  // quedan: o el cruce esta mas cerca o el track gira de verdad. Medido en
-  // las 73 rutas contra el ajuste a caminos de Valhalla: 167 avisos menos y
-  // unos 13 giros reales perdidos (segun Valhalla, que en esta zona se
-  // equivoca a menudo). Si el track gira menos de LEJOS_GIRO grados y el
-  // cruce esta a mas de LEJOS_M, no es de esta ruta.
-  const LEJOS_M=15,LEJOS_GIRO=25;
-  let elCruce=cruceEn(b);
-  if(elCruce&&angle<LEJOS_GIRO&&dist(b,elCruce)>LEJOS_M)elCruce=null;
+  const elCruce=cruceEn(b);
   const cruce=!!elCruce;
   let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null;
   if(cruce){
