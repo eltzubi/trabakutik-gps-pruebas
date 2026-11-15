@@ -847,6 +847,14 @@ public class TrackingService extends Service implements LocationListener {
  // de 12 km/h para arriba no cambia nada, porque ahi manda ya el v*18.
  double avisoVoz(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(200,Math.max(35,v*18));}
  double avisoCorto(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(30,Math.max(8,v*3));}
+ // «… AHORA» UN POCO ANTES DEL CRUCE, NO ENCIMA. Sonaba al llegar a 0 m, y a
+ // eso se suman el retraso del GPS (1-2 s) y lo que tarda en arrancar la voz:
+ // en bici a 20 km/h caia 5-10 m pasado el cruce. Es la queja de un hilo
+ // entero del foro de Suunto sobre rutas de Komoot («the vibration is inside
+ // but mostly after the turns»). Lo pidio el autor el 15 de noviembre de 2026.
+ // Dos segundos de marcha, entre 4 y 12 m, y siempre por debajo del aviso
+ // corto para que este no se quede sin sitio.
+ double avisoYa(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(avisoCorto()-2,Math.min(12,Math.max(4,v*2)));}
  // Cual de los giros de la ventana es «el tuyo». Manda el que tienes
  // DELANTE y mas cerca; uno ya pasado solo gana si lo acabas de cruzar,
  // que es para lo que existe el suelo negativo de la ventana: que no se
@@ -879,7 +887,7 @@ public class TrackingService extends Service implements LocationListener {
    return;
   }
   double along=position.along();
-  double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz();
+  double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz(),dYa=avisoYa();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
   String next="";
@@ -929,7 +937,7 @@ public class TrackingService extends Service implements LocationListener {
      // la ventana de fuera, que empieza en -7 m.
      // Fase "v": solo voz, y la primera de todas. Los pitidos siguen
      // exactamente donde estaban, que para eso van bien.
-     String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>0?"2":ahead<=0?"3"
+     String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>dYa?"2":ahead<=dYa?"3"
        :ahead<=dv?"v":null;
      if(fase!=null){
       String clave=(usaReves?"r":"")+mejor+":"+fase;

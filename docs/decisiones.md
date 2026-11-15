@@ -439,3 +439,15 @@ aixola, galdaramiño y karabieta se cruzaba recto y se decía «derecha».
 
 Desde la misma noche se dice «en la rotonda, sal a la derecha» (lo pidio el
 autor): la pagina manda «ro»:1 y la APK lo dice; una APK anterior dice «cruce a la derecha».
+
+## «… ahora» dos segundos antes del cruce (15 de noviembre de 2026)
+
+Sonaba al llegar a 0 m del cruce. Con el retraso del GPS (1-2 s) y lo que
+tarda en arrancar la voz, en bici a 20 km/h caía 5-10 m pasado el cruce. Es
+la queja de un hilo entero del foro de Suunto sobre rutas de Komoot («the
+vibration is inside but mostly after the turns», forum.suunto.com/post/191752;
+el moderador lo reconoce en /post/191804). Ahora suena dos segundos de marcha
+antes: 4 m andando, 11 m en bici a 20 km/h, 12 como mucho, y siempre por
+debajo del aviso corto (los dos pitidos). Lo mismo en el servicio
+(`avisoYa`) y en la página (cuarto valor de `distanciasDeAviso`). Lo pidió el
+autor tras leer el informe de quejas.

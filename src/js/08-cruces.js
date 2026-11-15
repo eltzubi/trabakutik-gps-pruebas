@@ -35,7 +35,11 @@ function distanciasDeAviso(){
  // 60 y andando a 4 km/h daba 54 s de antelacion: demasiado. Con 35 son 32 s
  // andando, y de 12 km/h para arriba no cambia nada.
  return [Math.min(90,Math.max(25,v*9)),Math.min(30,Math.max(8,v*3)),
-         Math.min(200,Math.max(35,v*18))];
+         Math.min(200,Math.max(35,v*18)),
+         // El cuarto: donde se dice «… ahora». Dos segundos ANTES del cruce
+         // (4-12 m), no encima: con el retraso del GPS y de la voz caia ya
+         // dentro o pasado el giro. Igual que avisoYa() del servicio.
+         Math.min(Math.min(30,Math.max(8,v*3))-2,Math.min(12,Math.max(4,v*2)))];
 }
 // Los pitidos de una tanda se programan todos de golpe para que suenen
 // seguidos. Se guardan para poder cortarlos: si no, al poner silencio
@@ -823,4 +827,5 @@ function resuelveRotondas(pts){
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
 if(typeof module==='object'&&module&&module.exports){module.exports={ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
+ Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }

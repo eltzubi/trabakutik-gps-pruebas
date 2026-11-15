@@ -1166,3 +1166,12 @@ test('rotonda: el servicio recibe «ro» y la pantalla y la voz dicen «sal a la
  assert(jg.includes("'Rotonda · sal a la '+lado")&&jg.includes("'en la rotonda, sal a la '+lado"),'pantalla y voz de la pagina');
  assert(jg.indexOf("turn.rotonda")<jg.indexOf("turn.retorno"),'la rotonda se mira antes que la vuelta');
 });
+test('la pagina dice «ahora» dos segundos antes del cruce, como el servicio',()=>{
+ const c=pieza('08-cruces.js');
+ c.velocidadSuave=10;const a=c.distanciasDeAviso();
+ assert.equal(a[3],12,'en bici rapida, 12 m antes');
+ c.velocidadSuave=1.2;assert.equal(c.distanciasDeAviso()[3],4,'andando, 4 m antes');
+ assert(a[3]<a[1],'siempre por debajo del aviso corto');
+ const jg=String(pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance);
+ assert(jg.includes("else if(ahead<=dYa)fase='3'"),'la fase del cruce empieza en dYa, no en 0');
+});

@@ -76,7 +76,7 @@ public class TrackingRegression {
  File file;static String GRABANDO;String errorGrabacion="";long lastRecordedTime;double lastRecordedLat,lastRecordedLon;int points;boolean recording;
  boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double velocidadSuave=1.2;int beeps=0;
- double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}
+ double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}double avisoYa(){return 4;}
  void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){}
  NavigationMetrics metrics=new NavigationMetrics();
  void checkTurns(Location l){

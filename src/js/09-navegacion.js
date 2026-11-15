@@ -163,7 +163,7 @@ function junctionGuidance(p,accuracy,progress){
   if(junctionActive>=0)resetJunctionView();return;
  }
  progress=progress??progressOnRoute(p,false);
- const [d1,d2,dv]=distanciasDeAviso();
+ const [d1,d2,dv,dYa]=distanciasDeAviso();
  if(progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
   if(junctionActive>=0)resetJunctionView();return;
  }
@@ -248,7 +248,7 @@ function junctionGuidance(p,accuracy,progress){
  const r1=Math.round(d1/5)*5,r2=Math.round(d2/5)*5;
  $('turnRot1').textContent=r1+' m';
  $('turnRot2').textContent=r2+' m';
- for(const [id,enc] of [['1',ahead<=d1],['2',ahead<=d2],['3',ahead<=0]]){
+ for(const [id,enc] of [['1',ahead<=d1],['2',ahead<=d2],['3',ahead<=dYa]]){
   $('turnFase'+id).classList.toggle('on',enc);
   $('turnRot'+id).classList.toggle('on',enc);
  }
@@ -285,8 +285,8 @@ function junctionGuidance(p,accuracy,progress){
  // se descarta el cruce pasados -12 m y la ficha se cierra a -9.
  let fase=null;
  if(ahead<=d1&&ahead>d2)fase='1';
- else if(ahead<=d2&&ahead>0)fase='2';
- else if(ahead<=0)fase='3';
+ else if(ahead<=d2&&ahead>dYa)fase='2';
+ else if(ahead<=dYa)fase='3';
  else if(ahead<=dv)fase='v';   // solo voz, y la primera de todas
  if(fase&&!junctionWarned.has(j+':'+fase)){
   junctionWarned.add(j+':'+fase);
