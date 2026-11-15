@@ -1081,7 +1081,11 @@ public class TrackingService extends Service implements LocationListener {
   // entra en ruta, solo al salir». Ahora la franja tambien devuelve, con los
   // mismos 4 s que saca: cuatro segundos fuera para avisar, cuatro dentro
   // para volver, y asi el baile del GPS en el borde no enciende y apaga.
-  if(d<=Math.max(15,acc+7)){
+  // 25 M Y NO 15. Los demas navegadores avisan de fuera de ruta mas lejos:
+  // OsmAnd a 22 m andando, AllTrails y HiiKER a 50, Locus entre 30 y 100. Con
+  // 15 m, bajo arbolado avisaba sin motivo. Lo decidio el autor el 15 de
+  // noviembre de 2026, con la comparacion delante (docs/decisiones.md).
+  if(d<=Math.max(FUERA_M,acc+7)){
    farSince=0;
    if(offRoute){
     if(cercaDesde==0)cercaDesde=SystemClock.elapsedRealtime();
@@ -1101,6 +1105,7 @@ public class TrackingService extends Service implements LocationListener {
    offRoute=true;updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
   }
  }
+ static final double FUERA_M=25;
  static final long MAX_EDAD_FIX_NS=10_000_000_000L;
  boolean esAntigua(Location l){
   long t=l.getElapsedRealtimeNanos();

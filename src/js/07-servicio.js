@@ -440,7 +440,9 @@ function updateOffRoute(d,accuracy){
  const near=d<=Math.max(11,accuracy+4);
  if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
- const far=d>Math.max(15,accuracy+7);
+ // 25 m y no 15, como el servicio: los demas navegadores avisan a 22-100 m y
+ // con 15, bajo arbolado, avisaba sin motivo (decidido el 15 nov 2026).
+ const far=d>Math.max(25,accuracy+7);
  if(!far){farSince=0;return}
  if(!farSince)farSince=Date.now();
  // 800 ms a 1,5 s por lectura significa DOS lecturas: basta un par de

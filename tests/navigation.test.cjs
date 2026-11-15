@@ -964,6 +964,15 @@ test('Revisión con GPT: el barómetro se ve aunque la ruta no tenga alturas, y 
  c.baroNativo=null;c.pintaAvance(12400);
  assert.equal(n.tripSubido.textContent,'—');assert.equal(n.tripDesnivel.attrs['aria-label'],'Desnivel sin datos');
 });
+test('Fuera de ruta a 25 m, no a 15: como los demás navegadores (decidido el 15 nov 2026)',()=>{
+ let ahora=1e6;const dicho=[];
+ const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:true,gpsApagadoPorTi:false,
+  alerted:false,onRouteSeen:true,farSince:0,hablar:t=>dicho.push(t),notice(){},Date:{now:()=>ahora}});
+ for(let k=0;k<6;k++){ahora+=1500;c.updateOffRoute(20,5)}
+ assert.equal(c.alerted,false,'a 20 m no salta');
+ for(let k=0;k<5;k++){ahora+=1500;c.updateOffRoute(30,5)}
+ assert.equal(c.alerted,true,'a 30 m si');
+});
 test('Revisión con GPT: en una recta, un punto en un vértice cae donde está, no 10 m atrás',()=>{
  const pts=rutaNorte([100,100,100,100],10);
  const {c}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});

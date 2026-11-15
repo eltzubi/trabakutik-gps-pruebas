@@ -10,15 +10,18 @@ const path=require('node:path');
 // despues de cargarla, para no dejar relojes cambiados a las demas pruebas.
 // Lo que dejo en lo global la carga anterior se quita antes de la siguiente:
 // cada prueba empieza limpia (un mapa de mentira de una no le llega a otra).
-const puestos=new Set();
+// Se guarda lo que habia antes, y se devuelve: si una prueba cambia Date o
+// setTimeout, a la siguiente le llega el de verdad, no un hueco.
+const puestos=new Map();
+const apunta=k=>{if(!puestos.has(k))puestos.set(k,[k in globalThis,globalThis[k]])};
 function pieza(nombre,entorno={},arranque=null){
- for(const k of puestos)delete globalThis[k];
+ for(const [k,[estaba,valor]] of puestos){if(estaba)globalThis[k]=valor;else delete globalThis[k]}
  puestos.clear();
  // Se carga SIN documento: lo que la pieza hace al arrancar en la pagina
  // -pintar, conectar botones- no corre aqui, aunque una prueba anterior haya
  // dejado uno. Despues se pone el de esta prueba, si lo trae.
  const habia='document' in globalThis,antes=globalThis.document;
- for(const [k,v] of Object.entries(entorno)){puestos.add(k);if(k!=='document')globalThis[k]=v}
+ for(const [k,v] of Object.entries(entorno)){apunta(k);if(k!=='document')globalThis[k]=v}
  delete globalThis.document;
  const ruta=require.resolve(path.join(__dirname,'../src/js/'+nombre));
  delete require.cache[ruta];
@@ -32,7 +35,7 @@ function pieza(nombre,entorno={},arranque=null){
  }
  return new Proxy(m,{
   get:(t,k)=>k in t?t[k]:globalThis[k],
-  set:(t,k,v)=>{const d=Object.getOwnPropertyDescriptor(t,k);if(d&&d.set)d.set(v);else{puestos.add(k);globalThis[k]=v}return true},
+  set:(t,k,v)=>{const d=Object.getOwnPropertyDescriptor(t,k);if(d&&d.set)d.set(v);else{apunta(k);globalThis[k]=v}return true},
   has:(t,k)=>k in t||k in globalThis
  });
 }

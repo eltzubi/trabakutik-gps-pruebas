@@ -25,7 +25,7 @@ public class NativeTurnsTest {
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
-'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+'''
+'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
@@ -304,6 +304,13 @@ public class NativeTurnsTest {
   require(c.offRoute,"fuera");
   SystemClock.reloj+=1500;c.posicion(new Location(250,4,5));
   require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"a 4 m se dice ya: "+c.dicho);
+  // A 20 M NO ES FUERA DE RUTA (decidido el 15 nov 2026: 25 m, como los
+  // demas navegadores, que avisan a 22-100 m). A 30 m si.
+  c=setup();SystemClock.reloj=1000;c.posicion(new Location(250,0,5));
+  for(int k=0;k<8;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,20,5));}
+  require(!c.offRoute,"a 20 m del track no salta");
+  for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,30,5));}
+  require(c.offRoute,"a 30 m si");
   SystemClock.reloj=1000;
 
   System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras, cruce recien pasado, avisos con mala señal, ruta al reves sin la pagina y vuelta a la ruta");

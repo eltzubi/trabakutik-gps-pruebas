@@ -72,7 +72,7 @@ En este orden. Si algo falla, no se sube.
 ```
 node scripts/construye.cjs --comprueba   # src/ y nuevo.html cuadran
 node scripts/revisa-tipos.cjs            # fallos de nombre en el JavaScript
-node --test tests/*.test.cjs             # 213 pruebas
+node --test tests/*.test.cjs             # 214 pruebas
 node scripts/test-browser.cjs            # 10 bloques en Chromium de verdad
 python3 scripts/test-native-turns.py
 python3 tests/regression_tracking.py
