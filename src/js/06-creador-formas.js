@@ -408,7 +408,7 @@ function loadSaved(item){
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();
- junctions=[];
+ junctions=[];junctionsReves=[];
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);pintaBotonMapa();
  chosen=-1;updateNativeLaunchLink();
@@ -433,7 +433,7 @@ function loadSaved(item){
  // Y la lista se vacia ANTES: syncNativeRoute manda tambien los giros que
  // tenga la pagina, que aqui todavia son los de la ruta anterior. Si los
  // nuevos no llegaban al servicio, se quedaba con los de otra ruta.
- junctions=[];
+ junctions=[];junctionsReves=[];
  syncNativeRoute();
  computeJunctions();
  aplicaCruces();
@@ -484,7 +484,7 @@ function clearActiveRoute(){
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
  routePoints=[];chosen=-1;activeSavedId=null;updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
- junctions=[];junctionWarned.clear();routeCumulative=[];crucesOsm=[];
+ junctions=[];junctionsReves=[];junctionWarned.clear();routeCumulative=[];crucesOsm=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
  setRouteTitle('Mapa de rutas',null);

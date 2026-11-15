@@ -535,7 +535,7 @@ test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progres
  const calls=[],classes=new Set();
  const c={mode:'nav',routePoints:corner(140),recording:false,navegaNativo:false,gpsApagadoPorTi:false,
   $:()=>({classList:{add:k=>classes.add(k)},innerHTML:''}),routeCumulative:[0,100],
-  sigueMoviendose:()=>true,alerted:false,junctions:[{}],junctionActive:1,
+  sigueMoviendose:()=>true,alerted:false,junctions:[{}],junctionsReves:[],sentidoRuta:1,junctionWarned:new Set(),junctionActive:1,
   resetJunctionView:()=>calls.push('reset-turn'),Number,
   getAudio(){throw Error('No debe activar audio')},hablar(){throw Error('No debe hablar')},pitidos(){throw Error('No debe pitar')}
  };
@@ -543,7 +543,7 @@ test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progres
  vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
  vm.runInContext(source('function updateOffRoute(','try{const modoGuardado='),c);
  // La guarda debe cerrar una indicación antigua antes de medir el siguiente cruce.
- vm.runInContext(source('function junctionGuidance(','function rumboDeLaRuta(progreso){'),c);
+ vm.runInContext(source('let listaCrucesActiva=null;','function rumboDeLaRuta(progreso){'),c);
  assert.equal(c.guiaIniciada(),false);
  c.updateOffRoute(100,5);c.junctionGuidance(point(0,0),5);c.pintaAvance(20);
  assert.equal(c.alerted,false);assert(classes.has('hidden'));assert.deepEqual(calls,['reset-turn']);
@@ -882,4 +882,33 @@ test('Lo que llevas va en el recuadro de abajo, en grande: hecho, quedan y tiemp
  assert.equal(n.tripTiempo.textContent,'1 h 05 min de salida');
  c.recording=false;c.pintaAvance(20000);
  assert(n.tripBox.classList.contains('hidden'),'sin guia, no se ve');
+});
+test('Al revés se usan los avisos calculados al revés, con su lado, sin darles la vuelta',()=>{
+ // Trabakua-Mendibil al reves, 15 de noviembre de 2026: «me ha indicado a la
+ // derecha, pero a la derecha continua la pista». Darle la vuelta al lado de
+ // la ida falla en los cruces: al reves llegas por otra rama.
+ const nodo=()=>({textContent:'',innerHTML:'',style:{setProperty(){},removeProperty(){}},classList:{add(){},remove(){},toggle(){}},getBoundingClientRect:()=>({height:80})});
+ const n={};const $=id=>n[id]||(n[id]=nodo());
+ const ida=[{i:5,point:point(0,0),along:100,direction:'derecha',hacia:'derecha',angle:37,cruce:true,mantente:false}];
+ const vuelta=[{i:5,point:point(0,0),along:100,direction:'derecha',hacia:'derecha',angle:25,cruce:true,mantente:false,reves:true}];
+ const c={$,mode:'nav',routePoints:corner(140),recording:true,navegaNativo:true,gpsApagadoPorTi:false,routeCumulative:[0,100,200],
+  sigueMoviendose:()=>true,alerted:false,junctions:ida,junctionsReves:vuelta,sentidoRuta:-1,junctionWarned:new Set(),junctionActive:-1,
+  junctionZoomOnce:new Set(),turnMarker:null,map:{removeLayer(){},addLayer(){},getZoom:()=>15,setView(){},flyTo(){},panTo(){},setZoom(){},getCenter:()=>({lat:0,lng:0}),stop(){}},L:{divIcon:()=>({}),marker:()=>({addTo(){return this},options:{}})},
+  distanciasDeAviso:()=>[50,10,90],avanzaPorLaRuta:()=>true,progressOnRoute:()=>({along:120,distance:2}),dist:()=>10,
+  resetJunctionView(){},flechaGiro:()=>'',hablarGiro(){},notice(){},getAudio(){},pitidos(){},giraNativo:true,Number,Math,Date,String};
+ vm.createContext(c);
+ c.guiaIniciada=()=>true;c.setTimeout=()=>0;c.clearTimeout=()=>{};c.junctionBlocked=null;
+ vm.runInContext(source('function ladoFlecha(turn,alReves){','// Velocidad suavizada'),c);
+ vm.runInContext(source('let listaCrucesActiva=null;','function rumboDeLaRuta(progreso){'),c);
+ c.junctionGuidance(point(0,0),5);
+ assert.equal(n.turnDirection&&n.turnDirection.textContent,'Cruce a la derecha','el lado de la lista al reves, tal cual');
+});
+test('Las dos listas se calculan, y la del revés va al servicio aparte',()=>{
+ let ida=null,vuelta=null;
+ const c={junctions:[{i:5,direction:'derecha',cruce:true}],junctionsReves:[{i:9,direction:'izquierda',cruce:true,reves:true}],
+  window:{TrabakutikAndroid:{setJunctions:j=>{ida=JSON.parse(j)},setJunctionsReves:j=>{vuelta=JSON.parse(j)}}},console};
+ vm.createContext(c);vm.runInContext(source('function enviaGirosNativos(){','// EL AVISO DE UN CRUCE SALE'),c);
+ c.enviaGirosNativos();
+ assert.equal(JSON.stringify(ida),JSON.stringify([{i:5,dir:1,t:1}]));
+ assert.equal(JSON.stringify(vuelta),JSON.stringify([{i:9,dir:-1,t:1}]));
 });

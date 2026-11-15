@@ -226,12 +226,16 @@ function enviaGirosNativos(){
   // diga «curva de herradura a la derecha» en vez de «da la vuelta». Un APK
   // que no conozca «h» la cantara como «cruce a la derecha» o «curva cerrada
   // a la derecha»: el lado bueno, que es lo que importa.
-  window.TrabakutikAndroid.setJunctions(JSON.stringify(junctions.map(j=>{
+  const aNativo=lista=>JSON.stringify(lista.map(j=>{
    const herradura=j.direction==='vuelta'&&!j.retorno,lado=herradura?j.hacia:j.direction;
    const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
    if(herradura)o.h=1;
    return o;
-  })));
+  }));
+  window.TrabakutikAndroid.setJunctions(aNativo(junctions));
+  // Los del sentido inverso, ya con su lado: el servicio los usa tal cual
+  // yendo al reves. Una APK que no los sepa leer sigue cambiando el lado.
+  if(window.TrabakutikAndroid.setJunctionsReves)window.TrabakutikAndroid.setJunctionsReves(aNativo(junctionsReves||[]));
  }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
 }
 // EL AVISO DE UN CRUCE SALE DE LAS RAMAS DEL CRUCE, NO DE LA FORMA DEL TRACK.
@@ -303,7 +307,31 @@ function decideCruce(cruce,centro,antes,despues){
                     :(desvio<0?'izquierda':'derecha');
  return {grados:Math.round(Math.abs(desvio)),lado,mantente};
 }
+// AL REVES, LOS AVISOS SE CALCULAN AL REVES. Antes se cogian los del sentido
+// en que se grabo la ruta y se les cambiaba el lado. En una curva vale; en un
+// cruce no: al reves llegas por otra rama y las demas quedan en otro sitio.
+// Lo vio el autor el 15 de noviembre de 2026 haciendo Trabakua-Mendibil al
+// reves: «me ha indicado a la derecha, pero a la derecha continua la pista».
+// Medido en esa ruta: 6 cruces con el lado cambiado, el suyo entre ellos
+// (decia «derecha 37°», y en su sentido es a la izquierda). Ahora se calcula
+// todo otra vez sobre la ruta dada la vuelta y se guarda en junctionsReves,
+// con el punto y la distancia de la ruta tal como esta; al reves se usa esa
+// lista tal cual, sin cambiar lados.
 function computeJunctions(){
+ const pts=routePoints,n=pts.length;
+ calculaCrucesDe();
+ const ida=junctions,cum=routeCumulative,total=cum[cum.length-1]||0;
+ let vuelta=[];
+ if(n>=3){
+  routePoints=pts.slice().reverse();
+  try{calculaCrucesDe();vuelta=junctions.map(j=>Object.assign({},j,{i:n-1-j.i,along:total-j.along,reves:true}));}
+  finally{routePoints=pts;}
+ }
+ junctions=ida;routeCumulative=cum;junctionsReves=vuelta;
+ junctionWarned.clear();junctionZoomOnce.clear();
+ enviaGirosNativos();
+}
+function calculaCrucesDe(){
  resetJunctionView();
  junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
  routeCumulative=[0];
@@ -589,6 +617,5 @@ function computeJunctions(){
   junctions.push({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce,mantente,retorno});
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
- enviaGirosNativos();
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.

@@ -46,9 +46,9 @@ public class GirosLimiteTest {
  static class Log{static void w(String a,String b,Throwable t){}}
  static class android{static class util{static class Log{static void w(String a,String b,Throwable t){}}}}
  File dir;File getFilesDir(){return dir;}
- final ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>();
+ final ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();
  final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";
-''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' String fraseGiro(') + r'''
+''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + metodo(' String fraseGiro(') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  static String lista(int n,int desde){StringBuilder b=new StringBuilder("[");
   for(int i=0;i<n;i++){if(i>0)b.append(',');b.append("{\"i\":"+(desde+i)+",\"dir\":"+(i%2==0?1:-1)+",\"t\":1}");}

@@ -96,10 +96,17 @@ function sigueMoviendose(p,ahora){
  if(!refParado||dist(p,refParado)>PARADO_M){refParado=p;refParadoT=ahora;return true}
  return ahora-refParadoT<PARADO_MS;
 }
+let listaCrucesActiva=null;
 function junctionGuidance(p,accuracy,progress){
  const moviendose=sigueMoviendose(p,Date.now());
  // Los giros y el zoom de cruces esperan al inicio de la salida.
- if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!junctions.length||accuracy>60){
+ // Yendo al reves, la lista calculada al reves (ver computeJunctions). Si
+ // cambia la lista, lo que se estaba enseñando o ya se habia avisado era de
+ // la otra: se empieza de cero.
+ const lista=sentidoRuta<0&&junctionsReves.length?junctionsReves:junctions;
+ if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear()}
+ listaCrucesActiva=lista;
+ if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!lista.length||accuracy>60){
   if(junctionActive>=0)resetJunctionView();return;
  }
  progress=progress??progressOnRoute(p,false);
@@ -109,13 +116,13 @@ function junctionGuidance(p,accuracy,progress){
  }
  const coste=distance=>distance>=0?distance:-distance*4;
  let best=null;
- for(let j=0;j<junctions.length;j++){
+ for(let j=0;j<lista.length;j++){
   // Por el sentido en que VAS, no por el que se grabo. Yendo al reves
   // «along» decrece, asi que sin esto «ahead» salia negativo para los cruces
   // que tienes delante y positivo para los que ya pasaste: el navegador
   // avisaba de giros a tu espalda, o de ninguno. Y en esta web hay rutas que
   // el propio autor recomienda hacer al reves.
-  const turn=junctions[j],ahead=(turn.along-progress.along)*sentidoRuta;
+  const turn=lista[j],ahead=(turn.along-progress.along)*sentidoRuta;
   // La ventana sigue al primer aviso: a 40 km/h se avisa a 90 m, asi que
   // con los 58 de antes el cruce ni se miraba hasta estar encima.
   // Y el suelo tambien va con la velocidad. El GPS del servicio da una
@@ -134,9 +141,9 @@ function junctionGuidance(p,accuracy,progress){
   junctionActive=best.j;
  }
  const {j,ahead,turn}=best;
- // Al reves, lo que se grabo como derecha es izquierda. La forma del giro
- // (los grados) no cambia; el lado, si.
- const alReves=sentidoRuta<0;
+ // Al reves con la lista calculada al reves, el lado ya es el bueno. Solo si
+ // no la hay (no deberia pasar) se le da la vuelta al de la ida, como antes.
+ const alReves=sentidoRuta<0&&lista===junctions;
  const lado=turn.direction==='vuelta'?'vuelta'
    :alReves?(turn.direction==='izquierda'?'derecha':'izquierda')
    :turn.direction;

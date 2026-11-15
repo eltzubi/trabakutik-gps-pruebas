@@ -228,7 +228,7 @@ async function loadDetailedSelected(i,request){
    // Se vacia la lista antes de mandar los puntos para que el servicio no
    // se quede ni un instante con los giros viejos sobre la linea nueva;
    // computeJunctions le manda enseguida los buenos.
-   junctions=[];
+   junctions=[];junctionsReves=[];
    try{syncNativeRoute()}catch(e){console.warn('Ruta fina no enviada',e)}
    computeJunctions();
    updateElevation();
@@ -264,7 +264,7 @@ function selectRoute(i){
   // haya, y computeJunctions los recalcula y los vuelve a mandar detras.
   // Vaciados antes, como en loadDetailedSelected: los que hay aqui son los de
   // la ruta anterior y no pueden llegar al servicio ni un instante.
-  junctions=[];
+  junctions=[];junctionsReves=[];
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
   aplicaCruces();

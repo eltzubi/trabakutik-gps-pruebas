@@ -17,7 +17,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.telephony.SmsManager;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double alongPrevio=Double.NaN,alongAcum=0;long cercaDesde=0;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final ArrayList<double[]> turnsReves=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double alongPrevio=Double.NaN,alongAcum=0;long cercaDesde=0;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final NavigationMetrics metrics=new NavigationMetrics();
  List<NavigationMetrics.Water> waterPoints;
  int metricsRouteKey;
@@ -682,8 +682,15 @@ public class TrackingService extends Service implements LocationListener {
   return cuantos<=GIROS_MAX&&json.length()<=GIROS_MAX_BYTES?json:"[]";
  }
  void loadTurns(){
-  turns.clear();warnedTurns.clear();upcomingTurn="";
-  File f=new File(getFilesDir(),"giros-activos.json");
+  turns.clear();turnsReves.clear();warnedTurns.clear();upcomingTurn="";
+  leeGiros(new File(getFilesDir(),"giros-activos.json"),turns);
+  // Los calculados al reves (la pagina nueva los manda aparte): yendo al
+  // reves se usan estos, ya con su lado, en vez de darle la vuelta a los de
+  // la ida. En un cruce darle la vuelta al lado no vale: al reves llegas por
+  // otra rama.
+  leeGiros(new File(getFilesDir(),"giros-reves.json"),turnsReves);
+ }
+ void leeGiros(File f,ArrayList<double[]> turns){
   if(!f.exists())return;
   try{
    byte[] raw=new byte[(int)Math.min(f.length(),GIROS_MAX_BYTES)];
@@ -764,6 +771,9 @@ public class TrackingService extends Service implements LocationListener {
  // de error el «ahora» puede llegar unos metros antes o despues; callarse del
  // todo es peor.
  void checkTurns(Location l,NavigationMetrics.Projection position){
+  // Yendo al reves, la lista calculada al reves si la hay (lado ya bueno).
+  boolean usaReves=sentido<0&&!turnsReves.isEmpty();
+  ArrayList<double[]> turns=usaReves?turnsReves:this.turns;
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>60)return;
   if(offRoute||position.distance()>25){
    if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}
@@ -802,8 +812,9 @@ public class TrackingService extends Service implements LocationListener {
      int tipo=giro.length<3?1:(int)giro[2];
      boolean herradura=tipo>=3;
      boolean esCruce=tipo==1||tipo==2||tipo==4;
-     // Al reves, lo que se grabo como derecha es izquierda.
-     int lado=d*sentido;
+     // Al reves, lo que se grabo como derecha es izquierda... salvo con la
+     // lista calculada al reves, que ya trae el lado de quien va al reves.
+     int lado=usaReves?d:d*sentido;
      String instruction=lado<0?"Izquierda":lado>0?"Derecha":esCruce?"Da la vuelta":"Herradura";
      if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
      if(tipo==2&&lado!=0)instruction="Sigue "+(lado<0?"izqda.":"dcha.");
@@ -822,11 +833,11 @@ public class TrackingService extends Service implements LocationListener {
      String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>0?"2":ahead<=0?"3"
        :ahead<=dv?"v":null;
      if(fase!=null){
-      String clave=mejor+":"+fase;
+      String clave=(usaReves?"r":"")+mejor+":"+fase;
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
-       if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add(mejor+":v")))
+       if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add((usaReves?"r":"")+mejor+":v")))
         habla(fraseGiro(lado,tipo,fase,ahead));
       }
      }

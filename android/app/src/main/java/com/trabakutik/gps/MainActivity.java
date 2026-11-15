@@ -645,6 +645,9 @@ public class MainActivity extends Activity {
     if(!guardar.equals(json))android.util.Log.w("TrabakutikGPS","Giros de mas ("+turns.length()+"): se vacia la lista");
     File f=new File(getFilesDir(),"giros-activos.json");
     try(FileOutputStream out=new FileOutputStream(f)){out.write(guardar.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    // Los del sentido inverso son de esta misma ruta y llegan justo despues
+    // (setJunctionsReves): los de la ruta anterior no pueden quedarse.
+    new File(getFilesDir(),"giros-reves.json").delete();
     // Antes esto se quedaba aqui: «se leen al iniciar NAVIGATE». Pero si ya
     // se estaba navegando, el servicio no se enteraba nunca y se quedaba sin
     // giros -o con los de la ruta anterior-, mientras la pagina se callaba
@@ -654,6 +657,17 @@ public class MainActivity extends Activity {
     try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("TURNS"));}
     catch(Exception ignored){}
    }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudieron registrar giros",e);}
+  }
+  // AL REVES, LOS AVISOS CALCULADOS AL REVES (ver computeJunctions en la
+  // pagina): ya traen su lado y el servicio los usa tal cual yendo al reves.
+  @JavascriptInterface public void setJunctionsReves(String json){
+   try{
+    org.json.JSONArray turns=new org.json.JSONArray(json);
+    String guardar=TrackingService.girosQueCaben(json,turns.length());
+    try(FileOutputStream out=new FileOutputStream(new File(getFilesDir(),"giros-reves.json"))){out.write(guardar.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    if(!TrackingService.ACTIVO)return;
+    try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("TURNS"));}catch(Exception ignored){}
+   }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudieron registrar los giros al reves",e);}
   }
   @JavascriptInterface public void stopNavigation(){
    runOnUiThread(()->{
