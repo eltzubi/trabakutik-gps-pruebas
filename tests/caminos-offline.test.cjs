@@ -5,14 +5,8 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const vm=require('node:vm');
 const path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
-function source(start,end){
- const a=html.indexOf(start),b=html.indexOf(end,a);
- assert(a>=0&&b>a,`No se encontró ${start}`);
- return html.slice(a,b);
-}
 // La pieza 04 esta cerrada: se pide con require() y no se recorta del HTML.
 // Lo que usa de fuera -«dist» y «R»- se le deja en el ambito global, igual
 // que se lo da la pagina.
@@ -20,15 +14,13 @@ const R=Math.PI/180;
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 globalThis.R=R;globalThis.dist=dist;
 const red04=require('../src/js/04-creador-red.js');
+// La 05 tambien esta cerrada: se pide con require() y lo que usa de la 04
+// -enganchaOsm, rutaOsm, RODEO_MAXIMO- y «redOsm» se le dejan en lo global.
+const {pieza}=require('./pieza.cjs');
 function contexto(){
- // planLocalMapa es de la pieza 05, que todavia no esta cerrada: esa si se
- // recorta, y se le dan las funciones de la 04 ya cargadas.
- const c={Math,Number,Array,JSON,console,R,dist,redOsm:null,
-  enganchaOsm:red04.enganchaOsm,rutaOsm:red04.rutaOsm,RODEO_MAXIMO:red04.RODEO_MAXIMO};
- vm.createContext(c);
- vm.runInContext(source('function porQueNoHayCamino(','function respuestaMapaGps('),c);
+ const c=pieza('05-creador-tramos.js',{redOsm:null,enganchaOsm:red04.enganchaOsm,rutaOsm:red04.rutaOsm,RODEO_MAXIMO:red04.RODEO_MAXIMO});
  c.descifraCaminos=red04.descifraCaminos;
- c.ponRed=red=>{c.redOsm=red};
+ c.ponRed=red=>{globalThis.redOsm=red};
  return c;
 }
 // Una red de juguete en forma de T, con las coordenadas en centesimas de
@@ -136,11 +128,12 @@ test('Un punto lejos del camino no se calcula a lo loco',()=>{
  assert.equal(c.planLocalMapa([[43.5,-2.1],[43.2,-2.4988]]),null);
 });
 test('Los dos cálculos del creador tienen la red de seguridad enchufada',()=>{
- const tramo=source('async function planificaTramoMapa(','async function planificaMapaGps(');
+ const p05=pieza('05-creador-tramos.js');
+ const tramo=p05.planificaTramoMapa.toString();
  assert(/planLocalMapa\(\[desde,hasta\]\)/.test(tramo),
   'el tramo suelto tiene que caer a los caminos guardados');
  assert(/Sin conexión · tramo por los caminos guardados/.test(tramo));
- const todo=source('async function planificaMapaGps(','function metros(a, b)');
+ const todo=p05.planificaMapaGps.toString();
  assert(/planLocalMapa\(coords\)/.test(todo),
   'el recorrido entero tambien');
  assert(/Sin conexión · recorrido por los caminos guardados/.test(todo));

@@ -101,8 +101,6 @@ async function pideMapaGps(coords,signal,opciones){
 }
 // Muestrear el terreno cada 30 m, con un límite por recorrido. Se conservan
 // todas las esquinas de la geometría y los puntos de paso del usuario.
-const cacheAlturasMapaGps=new Map();
-let ultimaAlturaMapaGps=0;
 function interpolaMapaGps(a,b,f){
  let dl=b[1]-a[1];if(dl>180)dl-=360;if(dl< -180)dl+=360;
  const lon=((a[1]+dl*f+540)%360)-180;
@@ -125,6 +123,8 @@ function muestrasAlturaGps(result){
  });
  return {rows,samples};
 }
+const cacheAlturasMapaGps=new Map();
+let ultimaAlturaMapaGps=0;
 async function alturasTerrenoGps(result,signal){
  const {rows,samples}=muestrasAlturaGps(result);
  const key=p=>p[0].toFixed(6)+','+p[1].toFixed(6);
@@ -450,10 +450,13 @@ function metros(a, b){
 // Con una ventana vertical proporcional a la distancia, las pendientes suaves
 // se ven suaves y las pronunciadas mantienen un ángulo mayor.
 // Los paneles flotantes no deben marcar puntos al pulsarlos.
+// En la pagina siempre hay documento; en las pruebas (require) no.
+if(typeof document!=='undefined'){
 for(const id of ['elevationPanel','createActions','plannerCredit']){
  const el=$(id);el.addEventListener('click',e=>e.stopPropagation());el.addEventListener('dblclick',e=>e.stopPropagation());
 }
 document.querySelector('.modes').addEventListener('click',e=>e.stopPropagation());
+}
 let profileCollapsed=true,navProfileCollapsed=true;
 let profileHeights=null,profileHeightsRequest=null,profileHeightsError=false;
 // Las alturas de Trabakutik corresponden punto por punto al mapa general.
@@ -522,6 +525,7 @@ function loadProfileHeights(){
   .catch(()=>{profileHeightsError=true})
   .finally(()=>{profileHeightsRequest=null;updateElevation()});
 }
+if(typeof $==='function'){
 $('toggleProfile').onclick=()=>{
  if(mode==='create')profileCollapsed=!profileCollapsed;
  else{navProfileCollapsed=!navProfileCollapsed;if(!navProfileCollapsed)profileHeightsError=false}
@@ -531,6 +535,7 @@ $('toggleProfile').onclick=()=>{
 $('elevationPanel').querySelector('.elevation-head').addEventListener('click',e=>{
  if(!e.target.closest('button'))$('toggleProfile').click();
 });
+}
 function updateElevation(){
  const panel=$('elevationPanel');
  if(!panel)return;
@@ -693,7 +698,7 @@ function updateDraw(){
  $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2&&drawPoints.length<2);
  updateElevation();
 }
-map.on('click',e=>{
+if(typeof map!=='undefined')map.on('click',e=>{
  if(mode!=='create')return;
  if(!redGps){notice('Preparando red de caminos…');return}
  if(seguirMapaGps){
@@ -710,3 +715,42 @@ map.on('click',e=>{
  if(!anclasGps.length){anclasGps.push(node);tramosGps.push([node]);updateDraw();notice('Punto inicial marcado. Toca otro punto del camino.');return}
  const prev=anclasGps[anclasGps.length-1];
  let segment=tramoGps(prev,node);
+ // EN MANUAL, EL TOQUE LARGO BUSCA CAMINO. Lo pidio el autor: «marcaje en
+ // corto, recto; marcaje largo que busque el camino o ruta por donde va y que
+ // lo marque bien». Por debajo de MARCA_LARGA metros se queda la recta de
+ // siempre -que es para lo que se usa: forzar un trozo, cruzar donde no hay
+ // camino-; por encima se intenta ir por los trazados de Trabakutik. Se hace
+ // con la red local, NO con el planificador de fuera: en Manual no sale del
+ // movil ni una coordenada, y eso se mantiene.
+ // Si no hay conexion por los trazados, o el rodeo es desproporcionado, se
+ // queda la recta y no se dice nada: el toque hace lo que hacia.
+ if(trazadoManual&&segment.manual){
+  const pa=redGps.nodos[prev],pb=redGps.nodos[node],recto=metros(pa,pb);
+  if(recto>=MARCA_LARGA){
+   const na=nodoCerca(redGps,pa[0],pa[1]),nb=nodoCerca(redGps,pb[0],pb[1]);
+   if(na>=0&&nb>=0&&na!==nb){
+    const via=camino(redGps,na,nb);
+    if(via&&via.length>1){
+     const largo=via.slice(1).reduce((v,id,i)=>v+metros(redGps.nodos[via[i]],redGps.nodos[id]),0);
+     if(largo<=Math.max(300,recto*2.5)){
+      const tr=[prev];
+      for(const id of via)if(id!==tr[tr.length-1])tr.push(id);
+      if(node!==tr[tr.length-1])tr.push(node);
+      segment=tr;
+      notice('Tramo por los caminos de Trabakutik · '+(largo/1000).toFixed(2)+' km');
+     }
+    }
+   }
+  }
+ }
+ if(!segment){notice('No hay conexión por los trazados de Trabakutik. Puedes añadir el enlace en Manual.');return}
+ if(segment.length===1)return;
+ anclasGps.push(node);tramosGps.push(segment);updateDraw();
+ const routeLength=segment.slice(1).reduce((v,id,i)=>v+metros(redGps.nodos[segment[i]],redGps.nodos[id]),0);
+ const direct=metros(redGps.nodos[prev],redGps.nodos[node]);
+ if(direct>30&&routeLength>direct*2.5&&routeLength-direct>300)
+  notice('Este tramo da un rodeo de '+(routeLength/1000).toFixed(2)+' km. Deshacer permite cambiarlo.');
+ else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
+});
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada.
+if(typeof module==='object'&&module&&module.exports)module.exports={porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};

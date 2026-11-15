@@ -6,22 +6,14 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const vm=require('node:vm');
 const path=require('node:path');
-const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
-function source(start,end){
- const a=html.indexOf(start),b=html.indexOf(end,a);
- assert(a>=0&&b>a,`No se encontró ${start}`);
- return html.slice(a,b);
-}
+// La 05 esta cerrada: se pide con require(); «redOsm» va en lo global.
+const {pieza}=require('./pieza.cjs');
 function conRed(red){
- const c={redOsm:red};
- vm.createContext(c);
- vm.runInContext(source('function porQueNoHayCamino(','function planLocalMapa('),c);
+ const c=pieza('05-creador-tramos.js',{redOsm:red});
  // sinCamino: lo marca el planificador cuando de verdad no hay paso, para
  // distinguirlo de un fallo del servicio.
- return (m,sinCamino)=>vm.runInContext('porQueNoHayCamino('+
-   JSON.stringify(m===undefined?null:{message:m,sinCamino:!!sinCamino})+')',c);
+ return (m,sinCamino)=>{globalThis.redOsm=red;return c.porQueNoHayCamino(m===undefined?null:{message:m,sinCamino:!!sinCamino})};
 }
 test('sin los caminos bajados, lo dice y no culpa al mapa', ()=>{
  const di=conRed(null);

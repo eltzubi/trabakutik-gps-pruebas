@@ -1589,8 +1589,6 @@ async function pideMapaGps(coords,signal,opciones){
 }
 // Muestrear el terreno cada 30 m, con un límite por recorrido. Se conservan
 // todas las esquinas de la geometría y los puntos de paso del usuario.
-const cacheAlturasMapaGps=new Map();
-let ultimaAlturaMapaGps=0;
 function interpolaMapaGps(a,b,f){
  let dl=b[1]-a[1];if(dl>180)dl-=360;if(dl< -180)dl+=360;
  const lon=((a[1]+dl*f+540)%360)-180;
@@ -1613,6 +1611,8 @@ function muestrasAlturaGps(result){
  });
  return {rows,samples};
 }
+const cacheAlturasMapaGps=new Map();
+let ultimaAlturaMapaGps=0;
 async function alturasTerrenoGps(result,signal){
  const {rows,samples}=muestrasAlturaGps(result);
  const key=p=>p[0].toFixed(6)+','+p[1].toFixed(6);
@@ -1938,10 +1938,13 @@ function metros(a, b){
 // Con una ventana vertical proporcional a la distancia, las pendientes suaves
 // se ven suaves y las pronunciadas mantienen un ángulo mayor.
 // Los paneles flotantes no deben marcar puntos al pulsarlos.
+// En la pagina siempre hay documento; en las pruebas (require) no.
+if(typeof document!=='undefined'){
 for(const id of ['elevationPanel','createActions','plannerCredit']){
  const el=$(id);el.addEventListener('click',e=>e.stopPropagation());el.addEventListener('dblclick',e=>e.stopPropagation());
 }
 document.querySelector('.modes').addEventListener('click',e=>e.stopPropagation());
+}
 let profileCollapsed=true,navProfileCollapsed=true;
 let profileHeights=null,profileHeightsRequest=null,profileHeightsError=false;
 // Las alturas de Trabakutik corresponden punto por punto al mapa general.
@@ -2010,6 +2013,7 @@ function loadProfileHeights(){
   .catch(()=>{profileHeightsError=true})
   .finally(()=>{profileHeightsRequest=null;updateElevation()});
 }
+if(typeof $==='function'){
 $('toggleProfile').onclick=()=>{
  if(mode==='create')profileCollapsed=!profileCollapsed;
  else{navProfileCollapsed=!navProfileCollapsed;if(!navProfileCollapsed)profileHeightsError=false}
@@ -2019,6 +2023,7 @@ $('toggleProfile').onclick=()=>{
 $('elevationPanel').querySelector('.elevation-head').addEventListener('click',e=>{
  if(!e.target.closest('button'))$('toggleProfile').click();
 });
+}
 function updateElevation(){
  const panel=$('elevationPanel');
  if(!panel)return;
@@ -2181,7 +2186,7 @@ function updateDraw(){
  $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2&&drawPoints.length<2);
  updateElevation();
 }
-map.on('click',e=>{
+if(typeof map!=='undefined')map.on('click',e=>{
  if(mode!=='create')return;
  if(!redGps){notice('Preparando red de caminos…');return}
  if(seguirMapaGps){
@@ -2235,6 +2240,8 @@ map.on('click',e=>{
   notice('Este tramo da un rodeo de '+(routeLength/1000).toFixed(2)+' km. Deshacer permite cambiarlo.');
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada.
+if(typeof module==='object'&&module&&module.exports)module.exports={porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
 // CERRAR EL CIRCULO. 52 de las 68 rutas de Trabakutik empiezan y acaban a
 // menos de 100 m: el circuito es lo normal, y hasta ahora habia que volver al
 // punto de partida a toques. El nodo repetido al final es a proposito: asi se
