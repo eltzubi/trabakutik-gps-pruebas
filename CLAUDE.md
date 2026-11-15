@@ -129,3 +129,18 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
   cosas a la vez.
 - Lo que ya se midió y se decidió está en **`docs/decisiones.md`**. Léelo
   antes de volver a proponer algo que suene a idea nueva.
+
+## Habilidades instaladas (`.claude/skills/`)
+
+- **`duel`**: una segunda opinión de GPT sobre un cambio (ver su SKILL.md
+  para la clave y el `--stream`).
+- **`replica-*`** (once, de github.com/Jakeschincariol/replica-skill, MIT;
+  licencia en `replica-LICENSE.txt`). Las instaló el autor el 15 de noviembre
+  de 2026 «para que nos pueda ayudar con el navegador y la web». Aquí sirven
+  para **estudiar cómo resuelven algo otras apps** (AllTrails, Wikiloc,
+  Komoot) y traer la idea, no para clonar una app: lo suyo -código, logos,
+  textos, fotos- no se copia nunca, y las propias habilidades lo exigen. Las
+  más útiles: `replica-recon` (cómo es una app por dentro, de fuentes
+  públicas), `replica-entrepreneur` (qué se queja la gente en las reseñas),
+  `replica-test` (recorrer los flujos buscando fallos) y el comprobador de
+  contraste de `replica-design` (`python3 contrast.py "#9fb3c0" "#0f1a20"`).
