@@ -138,16 +138,19 @@ function guiaIniciada(){
 // mas abajo». Grabando, se suma el trazado grabado (la linea roja); sin
 // grabar, queda lo de antes, el avance sobre la ruta. Se suma solo lo nuevo.
 let metrosAndados={lista:null,n:0,m:0};
+const puntoValido=q=>Array.isArray(q)&&Number.isFinite(q[0])&&Number.isFinite(q[1]);
 // Y SIN SUMAR LOS CORTES. Un corte de la grabacion (sin GPS, un tunel) es un
 // trozo que no se sabe por donde fue: antes se sumaba la recta entre sus dos
 // extremos. Ahora el null del trazado corta la cuenta (revision con GPT).
+// El trazado se da por «solo crece» (el servicio solo añade puntos al final);
+// si encoge o cambia de array, se cuenta otra vez entero.
 function metrosGrabados(){
- if(typeof recorded==='undefined'||!Array.isArray(recorded)||recorded.length<2)return 0;
  const c=metrosAndados;
+ if(typeof recorded==='undefined'||!Array.isArray(recorded)||recorded.length<2){c.lista=null;c.n=0;c.m=0;c.ultimo=null;return 0}
  if(c.lista!==recorded||recorded.length<c.n){c.lista=recorded;c.n=0;c.m=0;c.ultimo=null}
  for(let k=c.n;k<recorded.length;k++){
   const q=recorded[k];
-  if(!Array.isArray(q)||!Number.isFinite(q[0])){c.ultimo=null;continue}
+  if(!puntoValido(q)){c.ultimo=null;continue}
   if(c.ultimo)c.m+=dist(c.ultimo,q);
   c.ultimo=q;
  }
@@ -157,30 +160,32 @@ function metrosGrabados(){
 // TODO DESDE DONDE EMPIEZAS TU, NO DESDE DONDE EMPIEZA LA RUTA. Lo pidio el
 // autor el 15 de noviembre de 2026: salio 1,5 km antes de Trabakua-Mendibil,
 // otro dia arranco en la cima, y lo subido y la barra contaban desde el
-// principio de la ruta. Revisado con GPT. Ahora:
+// principio de la ruta. Revisado con GPT en dos rondas. Ahora:
 // - hechos: lo andado grabado, sin los cortes; sin grabar, «—», que restar
-//   posiciones sobre la ruta no es lo andado;
-// - antes de llegar a la ruta el recuadro sale igual, con lo que la ruta
-//   queda en linea recta;
+//   posiciones sobre la ruta no es lo andado, y tampoco hay barra;
+// - antes de llegar a la ruta, y fuera de ella, se dice a cuanto esta;
 // - la barra es lo andado frente a lo andado mas lo que queda; la posicion
 //   sobre la ruta va aparte y es la que mueve el punto del perfil;
 // - lo subido se saca recorriendo TU trazado grabado sobre el perfil de la
-//   ruta (abajo, subidaSesion); lo andado lejos de la ruta no tiene alturas
-//   fiables y no suma: entonces la cifra lleva «≥» delante.
+//   ruta (abajo, subidaSesion). Si falta un trozo -lejos de la ruta, un
+//   corte, un salto, sin alturas- la cifra lleva «~»: es una estimacion
+//   parcial, no un minimo garantizado.
+// - la altitud y el punto, solo con una posicion buena y en la ruta.
 let enRutaUltimo=false;
 function pintaAvance(along,info){
  const caja=$('routeProgress');
  if(!caja)return;
  const tb=$('tripBox');
  if(!guiaIniciada()||routeCumulative.length<2){
-  caja.classList.add('hidden');faltaSubidaRuta=null;
-  if(tb&&!tb.classList.contains('hidden')){tb.classList.add('hidden');document.body.classList.remove('con-panel')}
+  caja.classList.add('hidden');faltaSubidaRuta=null;enRutaUltimo=false;
+  if(tb&&!tb.classList.contains('hidden')){tb.classList.add('hidden');document.body.classList.remove('con-panel');$('tripGps').textContent='—'}
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
- const conPos=Number.isFinite(along);
+ const conPos=Number.isFinite(along)&&total>0;
  // Sin «info» (llamadas antiguas y pruebas) se da por bueno que esta en la ruta.
- const enRuta=conPos&&(info?(info.enRuta??enRutaUltimo):true);
+ // Con una posicion mala (enRuta null) no se sabe: ni en la ruta ni fuera.
+ const estado=!info?'ruta':info.enRuta===true?'ruta':info.enRuta===false?'fuera':'dudosa';
  if(info&&info.enRuta!=null)enRutaUltimo=info.enRuta;
  const hechoRuta=conPos?Math.max(0,Math.min(total,sentidoRuta>0?along:total-along)):0;
  const queda=conPos?Math.max(0,total-hechoRuta):null;
@@ -192,65 +197,94 @@ function pintaAvance(along,info){
  const andado=recording?metrosGrabados():null;
  if(andado===null){$('tripHecho').textContent='—';$('tripHechoU').textContent=''}
  else{const [numero,unidad]=km(andado).split(' ');$('tripHecho').textContent=numero;$('tripHechoU').textContent=unidad}
- if(queda!==null){$('tripQuedaTxt').textContent='quedan ';$('tripQueda').textContent=km(queda)}
- else{$('tripQuedaTxt').textContent='ruta a ';$('tripQueda').textContent=info&&Number.isFinite(info.distRuta)?km(info.distRuta):'—'}
- const frac=queda===null?0:andado!==null&&andado+queda>0?andado/(andado+queda):total>0?hechoRuta/total:0;
+ const aDist=info&&Number.isFinite(info.distRuta)?km(info.distRuta):'—';
+ if(!conPos){$('tripQuedaTxt').textContent='ruta a ';$('tripQueda').textContent=aDist}
+ else if(estado==='fuera'){$('tripQuedaTxt').textContent='fuera · ruta a ';$('tripQueda').textContent=aDist}
+ else{$('tripQuedaTxt').textContent='quedan ';$('tripQueda').textContent=km(queda)}
+ // La barra solo con lo andado: sin grabar no hay salida que medir.
+ const frac=andado!==null&&queda!==null&&andado+queda>0?andado/(andado+queda):0;
  $('tripBarra').style.width=(frac*100).toFixed(1)+'%';
  $('tripRuta').textContent=$('mapTitle')?.textContent||'';
- if(info&&Number.isFinite(info.precision))$('tripGps').textContent='±'+Math.round(info.precision)+' m';
- pintaAlturas(conPos?along/total:null,enRuta);
+ $('tripGps').textContent=info&&Number.isFinite(info.precision)?'±'+Math.round(info.precision)+' m':(info?'—':$('tripGps').textContent);
+ pintaAlturas(conPos?along/total:null,estado);
  if(tb.classList.contains('hidden')){tb.classList.remove('hidden');document.body.classList.add('con-panel');try{map.invalidateSize()}catch(e){}}
 }
 // LAS ALTURAS SALEN DEL PERFIL DE LA RUTA, NO DEL GPS. La altura del GPS de
 // Android va sobre el elipsoide (unos 50 m de mas aqui), se equivoca 10-20 m
 // y el trazado que manda el servicio ni la trae. Umbral de 5 m, como el
 // servicio, y un hueco sin altura vuelve a empezar la cuenta.
-let perfilTrip={pts:null,n:0,datos:null};
+let perfilTrip={clave:null,datos:null};
 const BINS_TRIP=80;
+// navigationProfilePoints puede devolver un array NUEVO en cada llamada (una
+// ruta de la web con las alturas aparte): la cache va por lo que lo decide,
+// no por el array, o se rehacia todo -perfil, rejilla y lo subido- en cada
+// posicion (revision con GPT).
+function clavePerfil(){
+ return [routePoints,typeof chosen==='undefined'?-1:chosen,typeof profileHeights==='undefined'?null:profileHeights,typeof perfilGuardado==='undefined'?null:perfilGuardado,typeof detailedProfilePoints==='undefined'?null:detailedProfilePoints];
+}
+function mismaClave(a,b){return !!a&&!!b&&a.length===b.length&&a.every((x,i)=>x===b[i])}
 function perfilDeAlturas(){
- const pts=typeof navigationProfilePoints==='function'?navigationProfilePoints():routePoints;
- if(perfilTrip.pts===pts&&perfilTrip.n===pts.length)return perfilTrip.datos;
+ const clave=clavePerfil();
+ if(mismaClave(perfilTrip.clave,clave))return perfilTrip.datos;
+ const crudo=typeof navigationProfilePoints==='function'?navigationProfilePoints():routePoints;
+ const pts=Array.isArray(crudo)?crudo.filter(puntoValido):[];
  let datos=null;
- if(Array.isArray(pts)&&pts.filter(p=>p&&Number.isFinite(p[2])).length>=2){
+ if(pts.filter(p=>Number.isFinite(p[2])).length>=2){
   const n=pts.length,d=new Float64Array(n),h=pts.map(p=>Number.isFinite(p[2])?p[2]:null);
   for(let i=1;i<n;i++)d[i]=d[i-1]+dist(pts[i-1],pts[i]);
-  const T=d[n-1],M=BINS_TRIP,muestras=[];
-  for(let s=0;s<=M;s++)muestras.push(alturaEnPerfil({d,h,n},T*s/M));
-  const conocidas=muestras.filter(v=>v!==null);
-  // Rejilla de tramos para buscar rapido los que pasan cerca de un punto.
-  const CEL=0.0004,rej=new Map();
-  for(let k=0;k<n-1;k++){
-   const a=pts[k],b=pts[k+1];
-   const la0=Math.floor((Math.min(a[0],b[0])-CEL)/CEL),la1=Math.floor((Math.max(a[0],b[0])+CEL)/CEL);
-   const lo0=Math.floor((Math.min(a[1],b[1])-CEL)/CEL),lo1=Math.floor((Math.max(a[1],b[1])+CEL)/CEL);
-   for(let x=la0;x<=la1;x++)for(let y=lo0;y<=lo1;y++){const key=x+'/'+y;let l=rej.get(key);if(!l)rej.set(key,l=[]);l.push(k)}
+  const T=d[n-1];
+  if(T>0){
+   const M=BINS_TRIP,muestras=[];
+   for(let s=0;s<=M;s++)muestras.push(alturaEnPerfil({d,h,n},T*s/M));
+   const conocidas=muestras.filter(v=>v!==null);
+   // Rejilla de tramos: cada tramo en las celdas que de verdad cruza (con
+   // un margen de una celda), no en todo su rectangulo. Un tramo de mas de
+   // 2 km es un salto del trazado, no un camino: no se indexa.
+   const CEL=0.0004,rej=new Map(),mete=(x,y,k)=>{const key=x+'/'+y;let l=rej.get(key);if(!l)rej.set(key,l=[]);if(l[l.length-1]!==k)l.push(k)};
+   for(let k=0;k<n-1;k++){
+    const A=pts[k],B=pts[k+1],largo=d[k+1]-d[k];
+    if(largo>2000)continue;
+    const pasos=Math.max(1,Math.ceil(largo/20));
+    for(let s=0;s<=pasos;s++){
+     const la=A[0]+(B[0]-A[0])*s/pasos,lo=A[1]+(B[1]-A[1])*s/pasos;
+     const cx=Math.floor(la/CEL),cy=Math.floor(lo/CEL);
+     for(let x=cx-1;x<=cx+1;x++)for(let y=cy-1;y<=cy+1;y++)mete(x,y,k);
+    }
+   }
+   datos={pts,d,h,T,n,muestras,lo:conocidas.length?Math.min(...conocidas):0,hi:conocidas.length?Math.max(...conocidas):0,rej,CEL};
   }
-  datos={pts,d,h,T,n,muestras,lo:conocidas.length?Math.min(...conocidas):0,hi:conocidas.length?Math.max(...conocidas):0,rej,CEL};
  }
- perfilTrip={pts,n:Array.isArray(pts)?pts.length:0,datos,dibujo:null};
+ perfilTrip={clave,datos,dibujo:null};
  return datos;
 }
+// El primer vertice con distancia >= x (busqueda binaria).
+function primeroDesde(P,x){let lo=0,hi=P.n;while(lo<hi){const m=(lo+hi)>>1;if(P.d[m]<x)lo=m+1;else hi=m}return lo}
+// La altura en x. Si a uno de los dos extremos del tramo le falta la altura,
+// no se inventa: null (antes se cogia la del vecino; revision con GPT).
 function alturaEnPerfil(P,x){
  let lo=0,hi=P.n-1;
  while(lo<hi-1){const m=(lo+hi)>>1;if(P.d[m]<=x)lo=m;else hi=m}
- const a=P.h[lo],b=P.h[Math.min(lo+1,P.n-1)];
- const t=P.d[lo+1]>P.d[lo]?Math.max(0,Math.min(1,(x-P.d[lo])/(P.d[lo+1]-P.d[lo]))):0;
- return a!==null&&b!==null?a+t*(b-a):(a??b);
+ const j=Math.min(lo+1,P.n-1),a=P.h[lo],b=P.h[j];
+ const t=P.d[j]>P.d[lo]?Math.max(0,Math.min(1,(x-P.d[lo])/(P.d[j]-P.d[lo]))):0;
+ if(t===0)return a;if(t===1)return b;
+ return a!==null&&b!==null?a+t*(b-a):null;
 }
 // El umbral de 5 m con su estado: se le van dando alturas en el orden en que
 // se andan. Un null (sin altura) corta: la siguiente vuelve a ser referencia.
-function nuevaCuenta(){return {ref:null,sube:0,baja:0}}
+function nuevaCuenta(){return {ref:null,sube:0,baja:0,huecos:0}}
 function cuenta(c,h){
- if(h===null||!Number.isFinite(h)){c.ref=null;return}
+ if(h===null||!Number.isFinite(h)){c.ref=null;c.huecos++;return}
  if(c.ref===null){c.ref=h;return}
  if(h>=c.ref+5){c.sube+=h-c.ref;c.ref=h}else if(h<=c.ref-5){c.baja+=c.ref-h;c.ref=h}
 }
 // Las alturas de a a b por el perfil, EN EL ORDEN EN QUE SE ANDAN, con los
 // vertices de en medio: comparar solo las dos puntas se come la cima que hay
-// entre ellas.
+// entre ellas. Solo se miran los vertices entre a y b (busqueda binaria): ir
+// por todos en cada pareja eran cientos de millones de vueltas al despertar
+// con un trazado largo (revision con GPT).
 function recorrePerfil(P,c,a,b){
- if(b>=a){for(let i=0;i<P.n;i++)if(P.d[i]>a&&P.d[i]<b)cuenta(c,P.h[i])}
- else{for(let i=P.n-1;i>=0;i--)if(P.d[i]<a&&P.d[i]>b)cuenta(c,P.h[i])}
+ if(b>=a){for(let i=primeroDesde(P,a);i<P.n&&P.d[i]<b;i++)if(P.d[i]>a)cuenta(c,P.h[i])}
+ else{for(let i=primeroDesde(P,a)-1;i>=0&&P.d[i]>b;i--)if(P.d[i]<a)cuenta(c,P.h[i])}
  cuenta(c,alturaEnPerfil(P,b));
 }
 // Lo que se sube de a a b, empezando la cuenta en a: asi se cuenta igual al
@@ -260,88 +294,99 @@ function recorrePerfil(P,c,a,b){
 function subidaEntre(P,a,b){
  const c=nuevaCuenta();cuenta(c,alturaEnPerfil(P,a));recorrePerfil(P,c,a,b);return c.sube;
 }
-// Donde cae un punto en la ruta. Si hay varios tramos a menos de 30 m -una ida
-// y vuelta por el mismo camino, dos ramas de una horquilla- gana el que sigue
-// al punto anterior, no el mas cercano: si no, la cuenta saltaria de rama.
-function casaEnRuta(P,q,previo){
+// Donde cae un punto en la ruta. Entre los tramos a menos de 30 m, los que se
+// pueden haber andado desde el punto anterior (no mas lejos que «alcance»)
+// son los candidatos, y de ellos gana el MAS CERCANO al punto. La continuidad
+// es una condicion, no una penalizacion: sumarla al coste dejaba al punto 10
+// m por detras en una recta (revision con GPT). Si ninguno es alcanzable, el
+// mas cercano de todos, y la cuenta se corta (salto).
+function casaEnRuta(P,q,previo,alcance){
  const l=P.rej.get(Math.floor(q[0]/P.CEL)+'/'+Math.floor(q[1]/P.CEL));
  if(!l)return null;
  const kx=111195*Math.cos(q[0]*Math.PI/180),ky=111195;
- let mejor=null,coste=Infinity;
+ let cerca=null,dCerca=Infinity,alc=null,dAlc=Infinity;
  for(const k of l){
   const A=P.pts[k],B=P.pts[k+1];
   const ax=(A[1]-q[1])*kx,ay=(A[0]-q[0])*ky,dx=(B[1]-A[1])*kx,dy=(B[0]-A[0])*ky,nn=dx*dx+dy*dy;
-  const t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0,dd=Math.hypot(ax+t*dx,ay+t*dy);
-  if(dd>30)continue;
-  const along=P.d[k]+t*(P.d[k+1]-P.d[k]);
-  const c=previo===null?dd:Math.abs(along-previo)+dd;
-  if(c<coste){coste=c;mejor=along}
+  const t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0,ex=ax+t*dx,ey=ay+t*dy,dd2=ex*ex+ey*ey;
+  if(dd2>900)continue;
+  const dd=Math.sqrt(dd2),along=P.d[k]+t*(P.d[k+1]-P.d[k]);
+  if(dd<dCerca){dCerca=dd;cerca=along}
+  if(previo!==null&&Math.abs(along-previo)<=alcance&&dd<dAlc){dAlc=dd;alc=along}
  }
- return mejor;
+ return alc!==null?alc:cerca;
 }
 // LO SUBIDO DE TU SALIDA. Se recorre el trazado grabado entero -lo da el
 // servicio, asi que vale aunque la pagina haya dormido con la pantalla
 // apagada- y solo se procesan los puntos nuevos. Cada punto se casa con la
 // ruta; entre dos puntos casados y seguidos se recorre el perfil de en medio.
-// Un corte, un punto lejos de la ruta o un salto que no se ha podido andar
-// (mas del doble de lo movido mas 30 m) cortan la cuenta: no se inventa por
-// donde fue. Lo andado lejos de la ruta se apunta aparte, para el «≥».
+// Un corte, un tramo con alguna punta lejos de la ruta, un salto que no se ha
+// podido andar (mas del doble de lo movido mas 30 m) o un hueco sin alturas
+// cortan la cuenta y la marcan como PARCIAL: no se inventa por donde fue.
 let subSes=null;
 function subidaSesion(P){
- const vacio={sube:0,baja:0,fuera:0,bins:new Uint8Array(BINS_TRIP)};
- if(!recording||!Array.isArray(recorded))return vacio;
- const clave=q=>Array.isArray(q)?q[0].toFixed(6)+','+q[1].toFixed(6):'-';
- const primero=recorded.find(q=>Array.isArray(q));
+ if(!recording||!Array.isArray(recorded))return null;
+ const clave=q=>puntoValido(q)?q[0].toFixed(6)+','+q[1].toFixed(6):'-';
+ const primero=recorded.find(puntoValido);
  const s=subSes;
  if(!s||s.P!==P||recorded.length<s.n||s.primero!==clave(primero)||(s.n>0&&clave(recorded[s.n-1])!==s.ultimo)){
-  subSes={P,n:0,primero:clave(primero),ultimo:'-',previo:null,punto:null,c:nuevaCuenta(),fuera:0,bins:new Uint8Array(BINS_TRIP)};
+  subSes={P,n:0,primero:clave(primero),ultimo:'-',previo:null,punto:null,c:nuevaCuenta(),fuera:0,parcial:false,bins:new Uint8Array(BINS_TRIP)};
  }
  const S=subSes,marca=(a,b)=>{const i0=Math.floor(Math.min(a,b)/P.T*BINS_TRIP),i1=Math.floor(Math.max(a,b)/P.T*BINS_TRIP);for(let i=Math.max(0,i0);i<=Math.min(BINS_TRIP-1,i1);i++)S.bins[i]=1};
  for(let k=S.n;k<recorded.length;k++){
   const q=recorded[k];
-  if(!Array.isArray(q)||!Number.isFinite(q[0])){S.previo=null;S.punto=null;S.c.ref=null;continue}
-  const paso=S.punto?dist(S.punto,q):0;
-  const along=casaEnRuta(P,q,S.previo);
-  if(along===null){S.fuera+=paso;S.previo=null;S.c.ref=null}
-  else if(S.previo!==null&&Math.abs(along-S.previo)<=2*paso+30){recorrePerfil(P,S.c,S.previo,along);marca(S.previo,along)}
-  else{S.c.ref=null;cuenta(S.c,alturaEnPerfil(P,along));marca(along,along)}
+  if(!puntoValido(q)){if(S.punto)S.parcial=true;S.previo=null;S.punto=null;S.c.ref=null;continue}
+  const paso=S.punto?dist(S.punto,q):0,alcance=2*paso+30;
+  const along=casaEnRuta(P,q,S.previo,alcance);
+  if(along===null){if(S.punto)S.fuera+=paso;S.previo=null;S.c.ref=null}
+  else if(S.previo!==null&&Math.abs(along-S.previo)<=alcance){recorrePerfil(P,S.c,S.previo,along);marca(S.previo,along)}
+  else{
+   // Primer punto en la ruta, o se llega desde fuera, o un salto.
+   if(S.punto){S.fuera+=paso;if(S.previo!==null)S.parcial=true}
+   S.c.ref=null;cuenta(S.c,alturaEnPerfil(P,along));marca(along,along);
+  }
   if(along!==null)S.previo=along;
   S.punto=q;
  }
  S.n=recorded.length;S.ultimo=clave(recorded[S.n-1]);
- return {sube:S.c.sube,baja:S.c.baja,fuera:S.fuera,bins:S.bins};
+ return {sube:S.c.sube,baja:S.c.baja,parcial:S.parcial||S.fuera>=50||S.c.huecos>0,bins:S.bins};
 }
-function pintaAlturas(fracRuta,enRuta){
+function pintaAlturas(fracRuta,estado){
  const tb=$('tripBox'),P=perfilDeAlturas();
  if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;for(const id of ['tripSubido','tripBajado','tripAltitud'])$(id).textContent='—';$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
- const al=S.fuera>=100?'≥':'';
- $('tripSubido').textContent=al+Math.round(S.sube);$('tripBajado').textContent=al+Math.round(S.baja);
+ if(!S){$('tripSubido').textContent='—';$('tripBajado').textContent='—'}
+ else{const al=S.parcial?'~':'';$('tripSubido').textContent=al+Math.round(S.sube);$('tripBajado').textContent=al+Math.round(S.baja)}
  const pos=fracRuta===null?null:fracRuta*P.T;
- // La altitud y el punto, solo estando en la ruta ahora: la ultima posicion
- // buena no es la altitud de donde estas.
- const altura=pos!==null&&enRuta?alturaEnPerfil(P,pos):null;
+ // La altitud y el punto, solo estando en la ruta AHORA y con una posicion
+ // buena: la ultima posicion buena no es la altitud de donde estas.
+ const altura=pos!==null&&estado==='ruta'?alturaEnPerfil(P,pos):null;
  $('tripAltitud').textContent=altura===null?'—':String(Math.round(altura));
- const falta=pos===null?null:subidaEntre(P,pos,sentidoRuta>0?P.T:0);
- $('tripFalta').textContent=falta===null?'—':'▲'+Math.round(falta)+' m';
- faltaSubidaRuta=falta;
- // El perfil, en el sentido de la marcha: lo que viene, a la derecha.
+ // Lo que falta, desde la ultima posicion buena en la ruta; fuera de ella se
+ // deja lo ultimo dicho, que salirse unos metros no cambia lo que queda.
+ if(pos!==null&&estado==='ruta'){
+  const falta=subidaEntre(P,pos,sentidoRuta>0?P.T:0);
+  $('tripFalta').textContent='▲'+Math.round(falta)+' m';faltaSubidaRuta=falta;
+ }else if(pos===null){$('tripFalta').textContent='—';faltaSubidaRuta=null}
+ // El perfil, en el sentido de la marcha: lo que viene, a la derecha. Un
+ // trozo sin alturas se deja en blanco, no pegado al suelo.
  const W=300,H=48;
  const xDe=v=>(sentidoRuta>0?v/P.T:1-v/P.T)*W;
- const y=v=>v===null?H:(H-3-(v-P.lo)/Math.max(30,P.hi-P.lo)*(H-8)).toFixed(1);
+ const y=v=>(H-3-(v-P.lo)/Math.max(30,P.hi-P.lo)*(H-8)).toFixed(1);
  if(perfilTrip.dibujo!==sentidoRuta){
   const m=sentidoRuta>0?P.muestras:P.muestras.slice().reverse(),M=m.length-1;
-  const linea=m.map((v,s)=>(s?'L':'M')+(s/M*W).toFixed(1)+' '+y(v)).join(' ');
-  $('tripPerfilLinea').setAttribute('d',linea);
-  const area=linea+' L'+W+' '+H+' L0 '+H+' Z';
-  $('tripPerfilArea').setAttribute('d',area);$('tripPerfilHecho').setAttribute('d',area);
+  let linea='',area='',tramo=[];
+  const cierra=()=>{if(tramo.length>1){const l=tramo.map((q,i)=>(i?'L':'M')+q[0]+' '+q[1]).join(' ');linea+=l+' ';area+=l+' L'+tramo[tramo.length-1][0]+' '+H+' L'+tramo[0][0]+' '+H+' Z '}tramo=[]};
+  m.forEach((v,s)=>{if(v===null)cierra();else tramo.push([(s/M*W).toFixed(1),y(v)])});cierra();
+  $('tripPerfilLinea').setAttribute('d',linea.trim());
+  $('tripPerfilArea').setAttribute('d',area.trim());$('tripPerfilHecho').setAttribute('d',area.trim());
   perfilTrip.dibujo=sentidoRuta;
  }
  // Sombreado lo que de verdad has pisado, a trozos: si entras en el km 5,
  // llegas al 8 y vuelves al 6, lo del 5 al 8 sigue hecho.
  let clip='';const w=W/BINS_TRIP;
- for(let i=0;i<BINS_TRIP;i++)if(S.bins[i]){const x=sentidoRuta>0?i*w:W-(i+1)*w;clip+='M'+x.toFixed(1)+' 0h'+w.toFixed(1)+'v'+H+'h-'+w.toFixed(1)+'Z'}
+ if(S)for(let i=0;i<BINS_TRIP;i++)if(S.bins[i]){const x=sentidoRuta>0?i*w:W-(i+1)*w;clip+='M'+x.toFixed(1)+' 0h'+w.toFixed(1)+'v'+H+'h-'+w.toFixed(1)+'Z'}
  $('tripHechoRect').setAttribute('d',clip);
  const p=$('tripPerfilPunto');
  if(altura===null)p.setAttribute('r','0');

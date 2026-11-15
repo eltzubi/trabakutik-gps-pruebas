@@ -914,14 +914,14 @@ test('Lo subido cuenta desde donde empiezas, no desde el principio de la ruta',(
  // Con el umbral de 5 m, lo ultimo que se sube cuenta al completar el escalon.
  const num=t=>Number(t.replace(/[^\d]/g,''));
  assert(num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'subido '+n.tripSubido.textContent);
- assert(!n.tripSubido.textContent.startsWith('≥'));
+ assert(!n.tripSubido.textContent.startsWith('~'));
  assert.equal(n.tripFalta.textContent,'▲0 m');
  assert.equal(n.tripAltitud.textContent,'200');
  // Y si llegas desde fuera de la ruta, lo de fuera no suma y se dice con «≥».
  c.recorded=[...andaNorte(112,112,300).map(q=>q),[43+112/111195,-2.5+250/(111195*Math.cos(43*Math.PI/180))],...andaNorte(112,333)];
  c.recorded.unshift([43+112/111195,-2.5+500/(111195*Math.cos(43*Math.PI/180))]);
  c.pintaAvance(333);
- assert(n.tripSubido.textContent.startsWith('≥')&&num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'lo andado lejos de la ruta no suma y se dice: '+n.tripSubido.textContent);
+ assert(n.tripSubido.textContent.startsWith('~')&&num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'lo andado lejos de la ruta no suma y se dice: '+n.tripSubido.textContent);
 });
 test('Ida y vuelta por el mismo camino: la cuenta no salta de rama',()=>{
  // Ida hacia el norte subiendo de 100 a 160 y vuelta al sur por el mismo
@@ -936,6 +936,43 @@ test('Ida y vuelta por el mismo camino: la cuenta no salta de rama',()=>{
  c.pintaAvance(cum[cum.length-1]);
  const sub=Number(n.tripSubido.textContent.replace(/[^\d]/g,''));
  assert(sub>=55&&sub<=60,'solo la subida de la ida: '+n.tripSubido.textContent);
+});
+test('Revisión con GPT: en una recta, un punto en un vértice cae donde está, no 10 m atrás',()=>{
+ const pts=rutaNorte([100,100,100,100],10);
+ const {c}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});
+ const P=c.perfilDeAlturas();
+ const a=c.casaEnRuta(P,[pts[2][0],pts[2][1]],0,50);
+ assert(Math.abs(a-20)<0.01,'cae en el metro 20, no en el 10: '+a);
+});
+test('Revisión con GPT: sin grabar no hay barra ni subida, y sin posición buena no hay altitud',()=>{
+ const pts=rutaNorte([100,150,120,200]);
+ const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts),recording:false,navegaNativo:true});
+ c.pintaAvance(200,{enRuta:true,distRuta:2,precision:5});
+ assert.equal(n.tripBarra.style.width,'0.0%','sin grabar, la barra no cuenta desde el principio de la ruta');
+ assert.equal(n.tripSubido.textContent,'—');assert.equal(n.tripBajado.textContent,'—');
+ assert.notEqual(n.tripAltitud.textContent,'—','en la ruta y con buena posicion, si');
+ c.pintaAvance(200,{enRuta:null,distRuta:2,precision:80});
+ assert.equal(n.tripAltitud.textContent,'—','con una posicion mala no se da una altitud vieja como actual');
+ c.pintaAvance(200,{enRuta:false,distRuta:140,precision:5});
+ assert.equal(n.tripQuedaTxt.textContent,'fuera · ruta a ');assert.equal(n.tripQueda.textContent,'140 m');
+});
+test('Revisión con GPT: un tramo sin alturas no se rellena con la del vecino',()=>{
+ const pts=rutaNorte([100,null,200]);
+ const {c}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});
+ const P=c.perfilDeAlturas();
+ assert.equal(c.alturaEnPerfil(P,50),null);assert.equal(c.alturaEnPerfil(P,0),100);
+});
+test('Revisión con GPT: 20.000 puntos grabados sobre una ruta de 20.000 no bloquean la página',()=>{
+ const alturas=Array.from({length:20000},(_,i)=>100+50*Math.sin(i/300));
+ const pts=rutaNorte(alturas,1);
+ const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});
+ c.recorded=Array.from({length:20000},(_,i)=>[pts[i][0],pts[i][1]]);
+ const t0=Date.now();c.pintaAvance(19990);const ms=Date.now()-t0;
+ // En Chromium de verdad son 46 ms (300 con la CPU frenada 4x); aqui, dentro
+ // de un vm, todo va mas lento. El tope esta para pillar el recorrido entero
+ // por pareja, que eran cientos de millones de vueltas.
+ assert(ms<3000,'tarda '+ms+' ms');
+ assert(Number(n.tripSubido.textContent.replace(/[^\d]/g,''))>100,'y cuenta: '+n.tripSubido.textContent);
 });
 test('Al revés lo que falta por subir se cuenta al revés, desde donde estás',()=>{
  // 10 -> 4 -> 0 m: andando al reves (0 -> 4 -> 10) faltan 10 m. Restando los
