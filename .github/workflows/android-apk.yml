@@ -142,6 +142,9 @@ jobs:
       - name: Comprobar lo subido y bajado con el barometro
         working-directory: ${{ github.workspace }}
         run: python3 tests/barometro.py
+      - name: Comprobar el aviso de llegada al final de la ruta
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/llegada.py
       - name: Comprobar que una nota del mapa no borra el informe de fallo
         working-directory: ${{ github.workspace }}
         run: python3 tests/informe_fallo.py

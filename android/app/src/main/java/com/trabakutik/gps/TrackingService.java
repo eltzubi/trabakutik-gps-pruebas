@@ -207,6 +207,7 @@ public class TrackingService extends Service implements LocationListener {
  // tambien fuera de la ruta (AlturaBarometrica). Se pide una lectura por
  // segundo con hasta 10 s de lote, que el chip las junta y gasta casi nada.
  // Sin barometro no pasa nada: la pagina cuenta con el perfil de la ruta.
+ final AvisoLlegada llegada=new AvisoLlegada();
  final AlturaBarometrica baro=new AlturaBarometrica();
  SensorManager baroSm=null;long baroGuardado=0,baroUltimaHora=0;
  final SensorEventListener oyenteBaro=new SensorEventListener(){
@@ -684,7 +685,7 @@ public class TrackingService extends Service implements LocationListener {
   updateNotice();
  }
  void loadRoute(){
-  route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";
+  route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";llegada.reinicia();
   metrics.configure(route,Collections.emptyList());
   metricsRouteKey=0;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("metrics").apply();
@@ -1126,6 +1127,13 @@ public class TrackingService extends Service implements LocationListener {
     // Antes de los giros, que el lado de este mismo aviso ya salga bien.
     if(!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
     checkTurns(l,position);
+    // El final de la ruta se dice (AvisoLlegada): una vez, y solo si de
+    // verdad la has andado, que en una circular se empieza en el final.
+    llegada.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy());
+    if(!offRoute&&l.getAccuracy()<=35&&position.distance()<=30){
+     double total=metrics.total(),hecho=sentido>0?position.along():total-position.along();
+     if(llegada.llega(hecho,total)){tonoBien();habla("Has llegado al final de la ruta");}
+    }
     long now=SystemClock.elapsedRealtime();
     if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;
     if(!offRoute&&position.distance()<=30&&l.getAccuracy()<=35){

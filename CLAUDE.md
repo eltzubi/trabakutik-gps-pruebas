@@ -83,6 +83,7 @@ python3 tests/giros_limite.py
 python3 tests/grabaciones_borrar.py
 python3 tests/caida_sos.py
 python3 tests/barometro.py
+python3 tests/llegada.py
 python3 tests/informe_fallo.py
 python3 scripts/test-gasto-bateria.py
 python3 scripts/test-nombre-descarga.py
