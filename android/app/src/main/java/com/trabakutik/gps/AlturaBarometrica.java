@@ -17,6 +17,20 @@ package com.trabakutik.gps;
  * UMBRAL_M, como el perfil: lo que no pasa del umbral no suma. En pausa no
  * cuenta nada, y al seguir se empieza desde la altura de ese momento.
  *
+ * LA PAUSA VA POR LA HORA DE CADA LECTURA, no por cuando llega. Las lecturas
+ * llegan en lotes de hasta 10 s, asi que una medida durante la pausa podia
+ * llegar ya reanudado y contarse; y al seguir, el filtro arrastraba la altura
+ * de antes de la pausa y sumaba esa diferencia. Ahora: lo medido entre pausa
+ * y reanudacion no entra, y la primera lectura de despues reinicia el filtro
+ * entero, no solo la referencia. Una lectura repetida o desordenada se tira:
+ * antes ponia el filtro de golpe en ella y podia contar un salto. Revisado
+ * con GPT el 15 de noviembre de 2026.
+ *
+ * Lo que sigue sin hacer, a sabiendas: subidas y bajadas repetidas de menos
+ * de UMBRAL_M no suman (en un terreno muy ondulado se cuenta de menos), y al
+ * parar pueden quedar sin contar las lecturas del ultimo lote y el retraso
+ * del filtro (unos metros si se para subiendo).
+ *
  * Sin nada de Android, para poder probarlo con javac a secas.
  */
 final class AlturaBarometrica {
@@ -25,7 +39,8 @@ final class AlturaBarometrica {
 
     private double suave = Double.NaN, ref = Double.NaN;
     private long ultima = -1;
-    private boolean enPausa = false;
+    private boolean enPausa = false, reiniciar = false;
+    private long pausaDesde = -1, sigueDesde = -1, ultimaUsada = -1;
     double sube = 0, baja = 0;
     int muestras = 0;
 
@@ -37,26 +52,33 @@ final class AlturaBarometrica {
     /** Una lectura del barometro (hPa) en el instante t (ms). */
     void muestra(double hPa, long t) {
         if (!(hPa > 300 && hPa < 1100)) return;     // lectura imposible
+        if (ultima >= 0 && t <= ultima) return;      // repetida o desordenada
         double h = altura(hPa);
-        if (ultima < 0 || t <= ultima) suave = h;
-        else suave += (1 - Math.exp(-(t - ultima) / TAU_MS)) * (h - suave);
         ultima = t;
         muestras++;
-        if (enPausa) return;
+        // Medida durante una pausa (aunque llegue despues): no entra.
+        if (pausaDesde >= 0 && t >= pausaDesde && (enPausa || t < sigueDesde)) return;
+        if (Double.isNaN(suave) || (reiniciar && t >= sigueDesde)) {
+            suave = h; ref = h; reiniciar = false; ultimaUsada = t;
+            return;
+        }
+        suave += (1 - Math.exp(-(t - ultimaUsada) / TAU_MS)) * (h - suave);
+        ultimaUsada = t;
         if (Double.isNaN(ref)) { ref = suave; return; }
         if (suave >= ref + UMBRAL_M) { sube += suave - ref; ref = suave; }
         else if (suave <= ref - UMBRAL_M) { baja += ref - suave; ref = suave; }
     }
 
-    void pausa() { enPausa = true; }
+    /** Pausa desde el instante t (ms, la misma base que las lecturas). */
+    void pausa(long t) { enPausa = true; pausaDesde = t; }
 
-    /** Al seguir, la referencia es la altura de ahora: la pausa no cuenta. */
-    void sigue() { enPausa = false; ref = Double.NaN; }
+    /** Reanuda en t: lo medido en pausa no cuenta y el filtro empieza de cero. */
+    void sigue(long t) { enPausa = false; sigueDesde = t; reiniciar = true; }
 
     void reinicia() {
         suave = ref = Double.NaN;
-        ultima = -1;
-        enPausa = false;
+        ultima = ultimaUsada = pausaDesde = sigueDesde = -1;
+        enPausa = reiniciar = false;
         sube = baja = 0;
         muestras = 0;
     }

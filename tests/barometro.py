@@ -55,9 +55,9 @@ public class BarometroTest{
   //    se empieza desde ahi.
   b=new AlturaBarometrica();t=0;
   tramo(b,600,200,300,0.3);double antes=b.sube;
-  b.pausa();tramo(b,600,300,400,0.3);
+  b.pausa(t);tramo(b,600,300,400,0.3);
   require(Math.abs(b.sube-antes)<0.01,"en pausa no suma: "+b.sube+" vs "+antes);
-  b.sigue();tramo(b,60,400,400,0.3);tramo(b,600,400,500,0.3);tramo(b,60,500,500,0.3);
+  b.sigue(t);tramo(b,60,400,400,0.3);tramo(b,600,400,500,0.3);tramo(b,60,500,500,0.3);
   require(Math.abs(b.sube-antes-100)<=6,"al seguir cuenta desde la altura de entonces: "+(b.sube-antes));
 
   // 5. Lecturas imposibles (0, 2000 hPa) se ignoran.
@@ -65,6 +65,41 @@ public class BarometroTest{
   tramo(b,60,100,100,0.2);b.muestra(0,t+=1000);b.muestra(2000,t+=1000);b.muestra(Double.NaN,t+=1000);
   tramo(b,60,100,100,0.2);
   require(b.sube<1&&b.baja<1,"las imposibles no cuentan: "+b.sube+"/"+b.baja);
+
+  // 7. Revision con GPT: el filtro estabilizado, en pausa sube 20 m con UNA
+  //    sola lectura, y al seguir se queda quieto: no puede sumar esos 20 m
+  //    (antes el filtro los arrastraba y los contaba al seguir).
+  b=new AlturaBarometrica();t=0;
+  tramo(b,120,300,300,0.1);double a7=b.sube;
+  b.pausa(t);t+=1000;b.muestra(hPa(320),t);b.sigue(t);
+  tramo(b,180,320,320,0.1);
+  require(b.sube-a7<1,"lo de la pausa no se cuenta al seguir: "+(b.sube-a7));
+
+  // 8. Un lote que cruza la pausa: lo medido ANTES de pausar cuenta aunque
+  //    llegue despues, y lo medido DURANTE no, aunque llegue reanudado.
+  b=new AlturaBarometrica();t=0;
+  tramo(b,60,100,100,0.1);
+  long antesDePausa=t;
+  // Se pulsa pausa en t+30 s, pero el lote con lo medido de t a t+30 (una
+  // subida de 10 m) llega despues de pulsarla.
+  b.pausa(antesDePausa+30_000);
+  for(int k=1;k<=30;k++)b.muestra(hPa(100+10.0*k/30),antesDePausa+k*1000);
+  for(int k=31;k<=90;k++)b.muestra(hPa(110),antesDePausa+k*1000);   // reposo
+  require(b.sube>=6,"lo medido antes de pausar cuenta aunque llegue tarde: "+b.sube);
+  double a8=b.sube;
+  // En pausa se sube 50 m; el lote llega ya reanudado.
+  long reanuda=antesDePausa+200_000;
+  b.sigue(reanuda);
+  for(int k=91;k<=199;k++)b.muestra(hPa(110+50.0*(k-90)/109),antesDePausa+k*1000);
+  for(int k=200;k<=320;k++)b.muestra(hPa(160),antesDePausa+k*1000);
+  require(b.sube-a8<1,"lo medido en pausa no cuenta aunque llegue reanudado: "+(b.sube-a8));
+
+  // 9. Lecturas repetidas o desordenadas: se tiran, no hacen saltos.
+  b=new AlturaBarometrica();t=0;
+  tramo(b,60,200,200,0.1);
+  b.muestra(hPa(260),t);b.muestra(hPa(260),t-5000);
+  tramo(b,60,200,200,0.1);
+  require(b.sube<1&&b.baja<1,"repetidas y desordenadas no cuentan: "+b.sube+"/"+b.baja);
 
   // 6. Reiniciar deja todo a cero.
   b.reinicia();require(b.sube==0&&b.baja==0&&b.muestras==0,"reinicia");

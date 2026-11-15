@@ -328,6 +328,7 @@ let subSes=null;
 // servicio con el trazado (AlturaBarometrica.java). Cubre tambien lo andado
 // fuera de la ruta, asi que cuando esta manda el, y sin «~».
 let baroNativo=null;
+const BARO_VIEJO_MS=90000;
 function subidaSesion(P){
  if(!recording||!Array.isArray(recorded))return null;
  const clave=q=>puntoValido(q)?q[0].toFixed(6)+','+q[1].toFixed(6):'-';
@@ -360,7 +361,9 @@ function pintaAlturas(fracRuta,estado){
  if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;for(const id of ['tripSubido','tripBajado','tripAltitud'])$(id).textContent='—';$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
- if(recording&&baroNativo){$('tripSubido').textContent=String(Math.round(baroNativo.sube));$('tripBajado').textContent=String(Math.round(baroNativo.baja))}
+ // Si el barometro lleva mas de BARO_VIEJO_MS sin dar una lectura, lo que
+ // enseña no avanza: va con «~» (revision con GPT).
+ if(recording&&baroNativo){const al=baroNativo.t&&Date.now()-baroNativo.t>BARO_VIEJO_MS?'~':'';$('tripSubido').textContent=al+Math.round(baroNativo.sube);$('tripBajado').textContent=al+Math.round(baroNativo.baja)}
  else if(!S){$('tripSubido').textContent='—';$('tripBajado').textContent='—'}
  else{const al=S.parcial?'~':'';$('tripSubido').textContent=al+Math.round(S.sube);$('tripBajado').textContent=al+Math.round(S.baja)}
  const pos=fracRuta===null?null:fracRuta*P.T;

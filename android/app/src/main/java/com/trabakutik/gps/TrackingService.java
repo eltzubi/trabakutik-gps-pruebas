@@ -208,11 +208,14 @@ public class TrackingService extends Service implements LocationListener {
  // segundo con hasta 10 s de lote, que el chip las junta y gasta casi nada.
  // Sin barometro no pasa nada: la pagina cuenta con el perfil de la ruta.
  final AlturaBarometrica baro=new AlturaBarometrica();
- SensorManager baroSm=null;long baroGuardado=0;
+ SensorManager baroSm=null;long baroGuardado=0,baroUltimaHora=0;
  final SensorEventListener oyenteBaro=new SensorEventListener(){
   @Override public void onSensorChanged(SensorEvent e){
    if(e==null||e.values==null||e.values.length<1)return;
+   // La hora de la lectura va en el reloj desde el arranque, el mismo que
+   // SystemClock.elapsedRealtime(): asi la pausa se compara bien.
    baro.muestra(e.values[0],e.timestamp/1_000_000L);
+   baroUltimaHora=System.currentTimeMillis();
    long ahora=SystemClock.elapsedRealtime();
    if(ahora-baroGuardado>=5000){baroGuardado=ahora;guardaBaro();}
   }
@@ -221,12 +224,14 @@ public class TrackingService extends Service implements LocationListener {
  void guardaBaro(){
   try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
     .putBoolean("baro",baroSm!=null&&baro.muestras>0)
-    .putFloat("baroSube",(float)baro.sube).putFloat("baroBaja",(float)baro.baja).apply();}
+    .putFloat("baroSube",(float)baro.sube).putFloat("baroBaja",(float)baro.baja)
+    // La hora de la ultima lectura: si deja de llegar, la pagina lo marca.
+    .putLong("baroT",baroUltimaHora).apply();}
   catch(Exception ignored){}
  }
  void arrancaBaro(){
   paraBaro();
-  baro.reinicia();baroGuardado=0;
+  baro.reinicia();baroGuardado=0;baroUltimaHora=0;
   try{
    SensorManager sm=(SensorManager)getSystemService(SENSOR_SERVICE);
    Sensor s=sm==null?null:sm.getDefaultSensor(Sensor.TYPE_PRESSURE);
@@ -381,10 +386,10 @@ public class TrackingService extends Service implements LocationListener {
    }
    return START_NOT_STICKY;
   }
-  if("PAUSE".equals(action)){pausado=true;baro.pausa();metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
+  if("PAUSE".equals(action)){pausado=true;baro.pausa(SystemClock.elapsedRealtime());metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
   if("RESUME".equals(action)){
    pausado=false;forzarCorte=true;    // que el descanso no salga como una recta
-   baro.sigue();                     // y lo que cambie la presion en pausa no cuenta
+   baro.sigue(SystemClock.elapsedRealtime()); // lo medido en pausa no cuenta
    if(active)updateNotice();return START_NOT_STICKY;
   }
   if("STOP_RECORD".equals(action)){

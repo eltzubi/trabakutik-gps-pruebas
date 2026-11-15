@@ -945,9 +945,12 @@ test('Con barómetro, lo subido y bajado son los suyos, también fuera de la rut
  const pts=rutaNorte([100,150,120,200]);
  const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});
  c.recorded=andaNorte(112,333);
- c.baroNativo={sube:412.4,baja:96.6};
+ c.baroNativo={sube:412.4,baja:96.6,t:Date.now()};
  c.pintaAvance(333);
  assert.equal(n.tripSubido.textContent,'412');assert.equal(n.tripBajado.textContent,'97');
+ // Si lleva minutos sin lecturas, lo que enseña no avanza: «~».
+ c.baroNativo={sube:412.4,baja:96.6,t:Date.now()-5*60000};c.pintaAvance(333);
+ assert.equal(n.tripSubido.textContent,'~412');
  c.baroNativo=null;c.pintaAvance(333);
  assert.notEqual(n.tripSubido.textContent,'412','sin barometro, el perfil de la ruta');
 });
