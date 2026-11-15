@@ -25,7 +25,7 @@ public class NativeTurnsTest {
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
-'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;',src).group(0)+'''
+'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;',src).group(0)+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
@@ -33,7 +33,7 @@ public class NativeTurnsTest {
  static class ToneGenerator{static final int TONE_PROP_ACK=2;}
  void updateNotice(){}void pitidos(int n,int ms){beeps++;}void pitidos(int n,int ms,int t){beeps++;}
  ArrayList<String> dicho=new ArrayList<>();
- void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s));}catch(NumberFormatException e){}}
+ void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s.split(" ")[0]));}catch(NumberFormatException e){}}
  // Lo mismo que hace onLocationChanged con cada posicion, en el mismo orden.
  void posicion(Location l){posicion(l,true);}
  void posicion(Location l,boolean decide){
@@ -58,6 +58,7 @@ public class NativeTurnsTest {
 '''+''.join(method(m) for m in (
  ' static double coste(double ahead)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
+ ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' void checkDeviation(Location l)',' double closest(double lat,double lon)'))+'''
@@ -130,6 +131,27 @@ public class NativeTurnsTest {
   w.project(460/111195.,6/111195.,1,false);
   NavigationMetrics.Projection pb=w.project(361/111195.,6/111195.,1,true);
   require(Math.abs(pb.along()-361)<15,"tras una posicion mala sigue por la ida: "+Math.round(pb.along()));
+ }
+ // DOS GIROS SEGUIDOS SE DICEN JUNTOS: a 20 m, «y enseguida a la derecha»;
+ // a 80 m, cada uno el suyo. Y al reves de la ruta, el siguiente es el de
+ // atras y con el lado cambiado.
+ static void girosSeguidos(){
+  NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});
+  c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{12,1,1});c.turns.add(new double[]{20,-1,1});
+  c.metrics.configure(c.route,Collections.emptyList());
+  require(c.giroSeguido(c.turns,0,false).equals(" y enseguida a la derecha"),"a 20 m se dicen juntos: '"+c.giroSeguido(c.turns,0,false)+"'");
+  require(c.giroSeguido(c.turns,1,false).isEmpty(),"a 80 m no");
+  require(c.giroSeguido(c.turns,2,false).isEmpty(),"el ultimo no tiene siguiente");
+  c.sentido=-1;
+  require(c.giroSeguido(c.turns,1,false).equals(" y enseguida a la derecha"),"al reves, el de atras con el lado cambiado: '"+c.giroSeguido(c.turns,1,false)+"'");
+  require(c.giroSeguido(c.turns,0,false).isEmpty(),"al reves, el primero ya es el ultimo");
+  require(c.giroSeguido(c.turns,1,true).equals(" y enseguida a la izquierda"),"con la lista de vuelta, el lado ya viene puesto");
+  // Andando de verdad: el aviso del primero lleva el segundo.
+  NativeTurnsTest w=new NativeTurnsTest();for(int m=0;m<=300;m+=10)w.route.add(new double[]{m/111195.,0});
+  w.turns.add(new double[]{10,-1,1});w.turns.add(new double[]{12,1,1});
+  for(int m=0;m<=95;m+=5)w.posicion(new Location(m));
+  boolean junto=false;for(String d:w.dicho)if(d.startsWith("-1")&&d.endsWith(" y enseguida a la derecha"))junto=true;
+  require(junto,"al acercarte al primero se dicen los dos: "+w.dicho);
  }
  static void saltoNoEsVuelta(){
   NativeTurnsTest c=new NativeTurnsTest();
@@ -235,7 +257,7 @@ public class NativeTurnsTest {
   require(Double.isFinite(metrics.gain(300,1)),"Earlier gap does not hide subsequent gain");
  }
  public static void main(String[] args){
-  saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();
+  saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();

@@ -293,6 +293,27 @@ public class TrackingService extends Service implements LocationListener {
   return t.toString();
  }
  static String unDecimal(double v){return String.format(Locale.ROOT,"%.1f",v).replace('.',',');}
+ // DOS GIROS MUY SEGUIDOS SE DICEN JUNTOS. Si el siguiente esta a menos de
+ // SEGUIDO_M, al decir este se añade «y enseguida a la izquierda»: si no, el
+ // segundo llegaba cuando ya estabas en el, o se te pasaba. Lo hace Locus
+ // («dos giros a la vez») y lo piden los estudios de navegacion a pie. Lo
+ // decidio el autor el 15 de noviembre de 2026.
+ static final double SEGUIDO_M=30;
+ String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves){
+  if(actual<0||actual>=turns.size())return "";
+  double aqui=metrics.distance[(int)turns.get(actual)[0]];
+  int sig=-1;double mejor=Double.POSITIVE_INFINITY;
+  for(int k=0;k<turns.size();k++){
+   if(k==actual)continue;
+   int i=(int)turns.get(k)[0];if(i<0||i>=metrics.distance.length)continue;
+   double hasta=(metrics.distance[i]-aqui)*sentido;
+   if(hasta>0.5&&hasta<mejor){mejor=hasta;sig=k;}
+  }
+  if(sig<0||mejor>SEGUIDO_M)return "";
+  int d=(int)turns.get(sig)[1],lado=usaReves?d:d*sentido;
+  if(lado==0)return "";
+  return " y enseguida a la "+(lado<0?"izquierda":"derecha");
+ }
  String fraseGiro(int lado,int tipo,String fase,double ahead){
   // Lo que pidio el autor fue que le avisaran de los CRUCES, asi que la voz
   // dice si es un cruce o una curva. Y «cambio de sentido» en un sendero
@@ -903,7 +924,7 @@ public class TrackingService extends Service implements LocationListener {
        warnedTurns.add(clave);
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
        if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add((usaReves?"r":"")+mejor+":v")))
-        habla(fraseGiro(lado,tipo,fase,ahead));
+        habla(fraseGiro(lado,tipo,fase,ahead)+giroSeguido(turns,mejor,usaReves));
       }
      }
   }
