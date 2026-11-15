@@ -50,13 +50,15 @@ final class EnvioSms {
             // Tres casos, que no son lo mismo: enviado (todos los trozos bien),
             // no ha salido (algun trozo con error, o ni se pudo pedir) y sin
             // confirmar (faltan respuestas a los 60 s: puede salir aun).
-            StringBuilder si = new StringBuilder(), no = new StringBuilder(), duda = new StringBuilder();
+            // Y un cuarto: a medias (algun trozo bien y otro mal), que no es «no ha salido».
+            StringBuilder si = new StringBuilder(), no = new StringBuilder(), duda = new StringBuilder(), medias = new StringBuilder();
             for (int c = 0; c < n; c++) {
-                StringBuilder sb = partesDe[c] == 0 || mal[c] > 0 ? no : bien[c] == partesDe[c] ? si : duda;
+                StringBuilder sb = partesDe[c] == 0 || (mal[c] > 0 && bien[c] == 0) ? no
+                        : mal[c] > 0 ? medias : bien[c] == partesDe[c] ? si : duda;
                 if (sb.length() > 0) sb.append(", ");
                 sb.append(contactos.get(c).nombre());
             }
-            fin.accept(ContactosSos.textoEnvio(si.toString(), no.toString(), duda.toString()));
+            fin.accept(ContactosSos.textoEnvio(si.toString(), no.toString(), duda.toString(), medias.toString()));
         };
         oyente[0] = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) {

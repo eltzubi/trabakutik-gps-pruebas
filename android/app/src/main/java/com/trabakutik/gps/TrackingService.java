@@ -465,6 +465,10 @@ public class TrackingService extends Service implements LocationListener {
  }
  void disparaCaida(boolean prueba){
   if(caidaEnCurso)return;
+  // Se vuelve a mirar AHORA que se ven los botones para cancelar: el canal se
+  // puede bloquear despues de armar. Sin ellos no se arranca una cuenta atras
+  // que no se podria parar (revision con GPT).
+  if(!avisosCaidaVisibles(this)){android.util.Log.w("TrabakutikGPS","Aviso de caida sin notificaciones visibles: no se arranca");return;}
   caidaEnCurso=true;caidaPrueba=prueba;CAIDA_PRUEBA=prueba;
   CAIDA_FIN=SystemClock.elapsedRealtime()+CUENTA_MS;
   NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);

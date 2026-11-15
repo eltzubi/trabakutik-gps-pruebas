@@ -103,8 +103,10 @@ final class ContactosSos {
      * el SOS de siempre. Sin posicion, se dice.
      */
     /** Lo que se dice tras enviar (EnvioSms): enviado, no ha salido, sin confirmar. */
-    static String textoEnvio(String si, String no, String duda) {
+    static String textoEnvio(String si, String no, String duda) { return textoEnvio(si, no, duda, ""); }
+    static String textoEnvio(String si, String no, String duda, String medias) {
         StringBuilder t = new StringBuilder(si.isEmpty() ? "No se ha confirmado ningún envío" : "Enviado a " + si);
+        if (!medias.isEmpty()) t.append(". Envío incompleto a ").append(medias).append(" (puede que le haya llegado una parte)");
         if (!no.isEmpty()) t.append(". No ha salido a ").append(no);
         if (!duda.isEmpty()) t.append(". Sin confirmar a ").append(duda).append(" (puede salir aún)");
         return t.append('.').toString();

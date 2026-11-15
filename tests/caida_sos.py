@@ -108,6 +108,8 @@ public class CaidaSosTest{
   require(ContactosSos.textoEnvio("Ama","","").equals("Enviado a Ama."),"enviado");
   require(ContactosSos.textoEnvio("Ama","Aita","Jon").equals("Enviado a Ama. No ha salido a Aita. Sin confirmar a Jon (puede salir aún)."),ContactosSos.textoEnvio("Ama","Aita","Jon"));
   require(ContactosSos.textoEnvio("","","Ama").startsWith("No se ha confirmado"),"sin confirmar no es enviado");
+  String med=ContactosSos.textoEnvio("","","","Ama");
+  require(med.contains("Envío incompleto a Ama")&&!med.contains("No ha salido"),"a medias no es no ha salido: "+med);
   System.out.println("OK: salta con golpe en marcha y quieto; no con bache, movil caido parado, levantarse, golpe flojo, repeticion ni si el GPS sigue en marcha; contactos y mensaje");
  }
 }'''
