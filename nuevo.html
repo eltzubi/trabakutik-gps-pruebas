@@ -5277,5 +5277,11 @@ function pintaSos(){
 }
 window.trabakutikSosActualizado=()=>{if(!$('sosDialog').classList.contains('hidden'))pintaSos()};
 if($('closeSos'))$('closeSos').onclick=()=>$('sosDialog').classList.add('hidden');
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
+// estado va con accesores: se lee y se escribe la variable de verdad.
+if(typeof module==='object'&&module&&module.exports){
+ module.exports={pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos};
+ Object.defineProperties(module.exports,{MAPA_Z_MIN:{get:()=>MAPA_Z_MIN,enumerable:true},MAPA_Z_MAX:{get:()=>MAPA_Z_MAX,enumerable:true},MAPA_MARGEN:{get:()=>MAPA_MARGEN,enumerable:true},CAPAS_GUARDABLES:{get:()=>CAPAS_GUARDABLES,enumerable:true},guiandoAntes:{get:()=>guiandoAntes,set:v=>{guiandoAntes=v},enumerable:true},pausado:{get:()=>pausado,set:v=>{pausado=v},enumerable:true},bajadaMapa:{get:()=>bajadaMapa,set:v=>{bajadaMapa=v},enumerable:true}});
+}
 })();
 </script></body></html>

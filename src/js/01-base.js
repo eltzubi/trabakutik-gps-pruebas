@@ -1,5 +1,4 @@
 
-(()=>{'use strict';
 // Los titulos de verdad de cada ruta. Sin esto la lista enseñaba el nombre
 // del archivo —«zengotitagarai», «askakosantakataline»— y no se sabia de que
 // ruta se trataba. Salen de data/rutas.json, que escribe el build de la web

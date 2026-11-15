@@ -10,11 +10,12 @@ function el(tag){return {tag,children:[],attrs:{},className:'',textContent:'',ch
  append(...c){this.children.push(...c)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attrs[k]=v},
  classList:{h:new Set(['hidden']),add(x){this.h.add(x)},remove(x){this.h.delete(x)},contains(x){return this.h.has(x)}}}}
 const todos=n=>[n,...(n.children||[]).flatMap(todos)];
+// La 10 esta cerrada: abreSos se pide con require().
+const {pieza,arranque10}=require('./pieza.cjs');
 function contexto(app,{confirma=true,respuestas=[]}={}){
  const nodos={sosDialog:el('div'),sosCuerpo:el('div'),closeSos:el('button')};
- const c={window:{TrabakutikAndroid:app},document:{createElement:el},JSON,
-  $:id=>nodos[id],confirm:()=>confirma,prompt:()=>respuestas.shift()??null,alert:()=>{}};
- vm.createContext(c);vm.runInContext(source('function abreSos(){','window.trabakutikSosActualizado'),c);
+ const c=pieza('10-aplicacion.js',{window:{TrabakutikAndroid:app},document:{createElement:el},
+  $:id=>nodos[id],confirm:()=>confirma,prompt:()=>respuestas.shift()??null,alert:()=>{}},arranque10());
  return {c,nodos};
 }
 const cfg=(o={})=>JSON.stringify({activo:true,contactos:[{nombre:'Ama',telefono:'+34600111222'}],max:3,permisoSms:true,golpes:2,caidas:0,...o});
@@ -65,8 +66,7 @@ test('Con permiso de SMS y un contacto sale «Enviar un SMS de prueba»; sin per
 });
 test('Si falta la hoja en el HTML (una página vieja en la caché), el botón pide ayuda como siempre',()=>{
  let compartido=0;const app={shareSos:()=>compartido++,getSosConfig:()=>'{}'};
- const c={window:{TrabakutikAndroid:app},document:{createElement:()=>({})},JSON,$:()=>null,confirm:()=>true,prompt:()=>null,alert:()=>{}};
- vm.createContext(c);vm.runInContext(source('function abreSos(){','window.trabakutikSosActualizado'),c);
+ const c=pieza('10-aplicacion.js',{window:{TrabakutikAndroid:app},document:{createElement:()=>({})},$:()=>null,confirm:()=>true,prompt:()=>null,alert:()=>{}},arranque10());
  c.abreSos();assert.equal(compartido,1);
 });
 test('La hoja dice por qué no funciona: sin permiso de SMS o sin notificaciones',()=>{

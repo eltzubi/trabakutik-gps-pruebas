@@ -8,22 +8,17 @@ const vm=require('node:vm');
 const path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../nuevo.html'),'utf8');
 const sw=fs.readFileSync(path.join(__dirname,'../sw.js'),'utf8');
-function source(start,end){
- const a=html.indexOf(start),b=html.indexOf(end,a);
- assert(a>=0&&b>a,`No se encontró ${start}`);
- return html.slice(a,b);
-}
+// La 10 esta cerrada: se pide con require(). Lo de las demas -L, las capas
+// del mapa- va en lo global; sus constantes las da la pieza.
+const {pieza,arranque10,trozo}=require('./pieza.cjs');
+const nodos10={};
 function contexto(){
- const c={L:{Util:{template:(t,d)=>t.replace(/\{(\w+)\}/g,(m,k)=>k in d?d[k]:m)}},
+ const c=pieza('10-aplicacion.js',{L:{Util:{template:(t,d)=>t.replace(/\{(\w+)\}/g,(m,k)=>k in d?d[k]:m)}},
   baseMaps:{
    ign:{_url:'https://www.ign.es/wmts/mapa-raster?TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'},
    osm:{_url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}},
-  routePoints:[],drawPoints:[],Math,Promise,Set,Array,Number,JSON,console};
- vm.createContext(c);
- vm.runInContext(source('const MAPA_Z_MIN=','function cacheDeMapas()'),c);
- // Un «const» dentro de un vm NO es una propiedad del contexto: hay que
- // leerlo evaluando su nombre dentro.
- c.val=n=>vm.runInContext(n,c);
+  routePoints:[],drawPoints:[]},arranque10(nodos10));
+ c.val=n=>c[n];
  return c;
 }
 const recta=(km)=>{const p=[];for(let m=0;m<=km*1000;m+=20)p.push([43.2+m/111195,-2.55]);return p};
@@ -57,7 +52,7 @@ test('Solo se pueden guardar las capas del IGN',()=>{
  // OpenStreetMap lo prohibe en su politica de teselas: solo entran las dos
  // del IGN, que van con licencia CC-BY 4.0. OpenTopoMap no decia nada del
  // asunto y por eso, entre otras, salio del navegador.
- const capas=c.val('Object.keys(CAPAS_GUARDABLES).sort().join(" ")');
+ const capas=Object.keys(c.CAPAS_GUARDABLES).sort().join(" ");
  assert.equal(capas,'ign pnoa');
 });
 test('La URL de la tesela sale de la capa de Leaflet, no de una copia',()=>{
@@ -90,10 +85,12 @@ test('El service worker guarda el mapa bajado aparte y no lo tira nunca',()=>{
   'el service worker solo atiende las teselas que pide el mapa');
 });
 test('Sin sitio en el teléfono se dice eso, no «mejor cobertura»',()=>{
- const bloque=source('function guardaMapaRuta(','function puntosDelMapa()');
+ const p10=contexto();
+ const bloque=p10.guardaMapaRuta.toString();
  assert(/QuotaExceededError/.test(bloque),'hay que distinguir el disco lleno del fallo de red');
  assert(/estado\.sinSitio=true/.test(bloque));
- const aviso=source("if($('mapaBajar'))$('mapaBajar').onclick=",'mapaGuardadoInfo().then(info=>{');
+ // El manejador del boton, el que la pieza le puso al cargarse.
+ const aviso=nodos10.mapaBajar.onclick.toString();
  assert(/e\.sinSitio\)notice\('No cabe el mapa entero/.test(aviso),
   'y el aviso tiene que decir que libere espacio, no que busque cobertura');
  assert(aviso.indexOf('e.sinSitio)notice')<aviso.indexOf('e.fallos)notice'),

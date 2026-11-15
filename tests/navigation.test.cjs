@@ -22,7 +22,7 @@ function meters(a,b){
 // todavia- se recorta aparte y se le deja en lo global, como lo comparte la
 // pagina. Su propio enviaGirosNativos y resetJunctionView corren de verdad,
 // con un puente y una pantalla de mentira.
-const {pieza,arranque09,trozo}=require('./pieza.cjs');
+const {pieza,arranque09,arranque10,trozo}=require('./pieza.cjs');
 const ayudas={R:Math.PI/180,dist:meters};vm.createContext(ayudas);
 vm.runInContext(source('function compactRoutePoints(','function loadSaved(item){'),ayudas);
 vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),ayudas);
@@ -193,7 +193,7 @@ test('Quedarse sin satélites se dice en alto, una vez, y la vuelta también',()
  assert.equal(dicho.length,2,'la vuelta tampoco se repite');
  // La ubicacion apagada se dice con sus palabras: no es lo mismo que no ver
  // satelites, porque esto lo arregla el con un boton.
- const otro=pieza('07-servicio.js',{navegaNativo:false,window:{speechSynthesis:voz()},pitidos(){}});
+ const otro=pieza('07-servicio.js',{navegaNativo:false,gpsApagadoPorTi:false,audioModo:'voz',window:{speechSynthesis:voz()},pitidos(){}});
  otro.avisaSinGps(true);
  assert.match(dicho[2],/ubicación del teléfono está apagada/);
  // Si navega el servicio, los pitidos los pone el: la pagina no los duplica.
@@ -531,12 +531,10 @@ test('La botonera no recupera un segundo inicio de Navegar, y el pie sigue a la 
  // Cada id lleva sus propias clases: con un unico juego compartido, esconder
  // el pie de mandos tapaba que el boton de Navegar hubiera reaparecido.
  const clases=new Map(),g=id=>{if(!clases.has(id))clases.set(id,new Set());return clases.get(id)},cuerpo=new Set();
- const c={$:id=>({textContent:'',classList:{add:k=>g(id).add(k),remove:k=>g(id).delete(k),contains:k=>g(id).has(k),toggle(k,on){if(on)g(id).add(k);else g(id).delete(k)}}}),
+ // La 10 esta cerrada: se pide con require().
+ const c=pieza('10-aplicacion.js',{$:id=>({textContent:'',classList:{add:k=>g(id).add(k),remove:k=>g(id).delete(k),contains:k=>g(id).has(k),toggle(k,on){if(on)g(id).add(k);else g(id).delete(k)}}}),
   document:{body:{classList:{contains:k=>cuerpo.has(k),toggle(k,on){if(on)cuerpo.add(k);else cuerpo.delete(k)}}}},
-  map:{invalidateSize(){}}};
- c.guiaIniciada=()=>c.navegaNativo;
- vm.createContext(c);
- vm.runInContext(source('let guiandoAntes=false;','function reconciliaBotonera(){'),c);
+  map:{invalidateSize(){}},guiaIniciada:()=>globalThis.navegaNativo},arranque10());
  for(const active of [false,true,false]){
   c.navegaNativo=active;c.enLaApp=true;c.mode='nav';c.routePoints=corner(140);
   c.pintaBotonNavegar();

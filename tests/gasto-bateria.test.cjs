@@ -16,20 +16,24 @@ function source(start,end){
 }
 function contexto(puente){
  const dichos=[],cola=[];
- const c={window:puente?{TrabakutikAndroid:puente}:{},notice:t=>dichos.push(t),
-  setTimeout:(f,ms)=>{cola.push([f,ms]);return cola.length}};
- vm.createContext(c);
- vm.runInContext(source('function pideGasto(',"$('recordStop').onclick"),c);
+ // La 10 esta cerrada: pideGasto se pide con require(). Sus reintentos van
+ // por setTimeout: se le da un reloj que solo apunta, y se devuelve el de
+ // verdad al acabar la prueba (corre()).
+ const {pieza,arranque10}=require('./pieza.cjs');
+ const p10=pieza('10-aplicacion.js',{window:puente?{TrabakutikAndroid:puente}:{},notice:t=>dichos.push(t)},arranque10()),c={};
+ const relojDeVerdad=globalThis.setTimeout;
+ const conReloj=fn=>{globalThis.setTimeout=(f,ms)=>{cola.push([f,ms]);return cola.length};try{return fn()}finally{globalThis.setTimeout=relojDeVerdad}};
+ c.pideGasto=(...a)=>conReloj(()=>p10.pideGasto(...a));
  c.dichos=dichos;
  // Los reintentos van por setTimeout: aqui se corren a mano, que es lo que
  // haria el reloj.
- c.corre=(topes=40)=>{let n=0;while(cola.length&&n++<topes){const [f]=cola.shift();f();}return n};
+ c.corre=(topes=40)=>conReloj(()=>{let n=0;while(cola.length&&n++<topes){const [f]=cola.shift();f();}return n});
  c.espera=()=>cola.length;
  return c;
 }
 test('el resumen del servicio se pega al aviso de fin', ()=>{
  const c=contexto({gastoBateria:()=>'6 h 12 min · 34 % de batería · 5,5 % por hora'});
- vm.runInContext("pideGasto('Salida finalizada',9)",c);
+ c.pideGasto('Salida finalizada',9);
  assert.equal(c.dichos.length,1);
  assert.equal(c.dichos[0],'Salida finalizada · 6 h 12 min · 34 % de batería · 5,5 % por hora');
  assert.equal(c.espera(),0,'con el resumen en la mano no tiene que reintentar');
@@ -37,7 +41,7 @@ test('el resumen del servicio se pega al aviso de fin', ()=>{
 test('insiste mientras el servicio no ha cerrado el GPX', ()=>{
  let veces=0;
  const c=contexto({gastoBateria:()=>(++veces<4?'':'2 h 0 min · 11 % de batería')});
- vm.runInContext("pideGasto('Salida finalizada',9)",c);
+ c.pideGasto('Salida finalizada',9);
  assert.equal(c.dichos.length,0,'todavía no hay nada que decir');
  c.corre();
  assert.equal(veces,4);
@@ -46,7 +50,7 @@ test('insiste mientras el servicio no ha cerrado el GPX', ()=>{
 test('si nunca llega, se calla: ni un «· » suelto', ()=>{
  let veces=0;
  const c=contexto({gastoBateria:()=>{veces++;return ''}});
- vm.runInContext("pideGasto('Salida finalizada',9)",c);
+ c.pideGasto('Salida finalizada',9);
  c.corre();
  assert.equal(c.dichos.length,0);
  assert.equal(veces,10,'un intento y nueve reintentos, y para');
@@ -54,7 +58,7 @@ test('si nunca llega, se calla: ni un «· » suelto', ()=>{
 });
 test('sin aplicación no pregunta nada', ()=>{
  const c=contexto(null);
- vm.runInContext("pideGasto('Salida finalizada',9)",c);
+ c.pideGasto('Salida finalizada',9);
  assert.equal(c.dichos.length,0);
  assert.equal(c.espera(),0);
 });
@@ -63,13 +67,13 @@ test('sin aplicación no pregunta nada', ()=>{
 // vez, para no estar nueve reintentos pidiendo lo que no existe.
 test('con una aplicación anterior no se pregunta ni se insiste', ()=>{
  const c=contexto({stopRecording(){}});
- vm.runInContext("pideGasto('Salida finalizada',9)",c);
+ c.pideGasto('Salida finalizada',9);
  assert.equal(c.dichos.length,0);
  assert.equal(c.espera(),0);
 });
 test('un puente que falla no rompe el parar', ()=>{
  const c=contexto({gastoBateria:()=>{throw new Error('servicio muerto')}});
- assert.doesNotThrow(()=>vm.runInContext("pideGasto('Salida finalizada',2)",c));
+ assert.doesNotThrow(()=>c.pideGasto('Salida finalizada',2));
  assert.doesNotThrow(()=>c.corre());
  assert.equal(c.dichos.length,0);
 });
