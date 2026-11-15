@@ -954,6 +954,16 @@ test('Con barómetro, lo subido y bajado son los suyos, también fuera de la rut
  c.baroNativo=null;c.pintaAvance(333);
  assert.notEqual(n.tripSubido.textContent,'412','sin barometro, el perfil de la ruta');
 });
+test('Revisión con GPT: el barómetro se ve aunque la ruta no tenga alturas, y con palabras',()=>{
+ const {c,n}=cajaTrip();   // ruta sin alturas
+ c.baroNativo={sube:412.4,baja:96.6,t:Date.now()};
+ c.pintaAvance(12400);
+ assert(n.tripBox.classList.contains('sin-alturas'),'sin perfil');
+ assert.equal(n.tripSubido.textContent,'412','pero lo del barometro se ve');
+ assert.equal(n.tripDesnivel.attrs['aria-label'],'Subido 412 metros, bajado 97 metros');
+ c.baroNativo=null;c.pintaAvance(12400);
+ assert.equal(n.tripSubido.textContent,'—');assert.equal(n.tripDesnivel.attrs['aria-label'],'Desnivel sin datos');
+});
 test('Revisión con GPT: en una recta, un punto en un vértice cae donde está, no 10 m atrás',()=>{
  const pts=rutaNorte([100,100,100,100],10);
  const {c}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});

@@ -135,10 +135,16 @@ let listaCrucesActiva=null;
 function colocaGiro(){
  if(typeof document==='undefined'||!document.querySelector)return;
  const t=$('turnHint'),m=$('map'),col=document.querySelector('#map .tools');
- if(!t||!col||t.classList.contains('hidden'))return;
+ if(!t||!m)return;
  m.classList.remove('giro-al-lado');
- const a=t.getBoundingClientRect(),b=col.getBoundingClientRect();
- if(a.top<b.bottom&&b.left<a.right)m.classList.add('giro-al-lado');
+ if(!col||t.classList.contains('hidden'))return;
+ // Que se toquen de verdad: las cuatro condiciones, no dos (revision con GPT).
+ const toca=(a,b)=>a.top<b.bottom&&b.top<a.bottom&&a.left<b.right&&b.left<a.right;
+ if(toca(t.getBoundingClientRect(),col.getBoundingClientRect())){
+  m.classList.add('giro-al-lado');
+  // Lo que se corre es lo que de verdad ocupa la columna, no un numero fijo.
+  m.style.setProperty('--giro-derecha',Math.ceil(m.getBoundingClientRect().right-col.getBoundingClientRect().left+8)+'px');
+ }
  m.style.setProperty('--turn-alto',Math.round(t.getBoundingClientRect().height+16)+'px');
 }
 if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('resize',()=>{try{colocaGiro()}catch(e){}});

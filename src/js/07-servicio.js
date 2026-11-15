@@ -358,14 +358,20 @@ function subidaSesion(P){
 }
 function pintaAlturas(fracRuta,estado){
  const tb=$('tripBox'),P=perfilDeAlturas();
- if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;for(const id of ['tripSubido','tripBajado','tripAltitud'])$(id).textContent='—';$('tripFalta').textContent='—';return}
+ // Lo subido y bajado: el barometro si lo hay, AUNQUE la ruta no tenga
+ // alturas (antes se escondia con ella; revision con GPT). Si lleva mas de
+ // BARO_VIEJO_MS sin dar una lectura, lo que enseña no avanza: va con «~».
+ const conBaro=recording&&baroNativo;
+ const ponDesnivel=(sube,baja,al)=>{
+  $('tripSubido').textContent=sube===null?'—':al+Math.round(sube);$('tripBajado').textContent=baja===null?'—':al+Math.round(baja);
+  // Para quien usa lector de pantalla, con palabras: los triangulos solos no dicen nada.
+  const d=$('tripDesnivel');if(d&&d.setAttribute)d.setAttribute('aria-label',sube===null?'Desnivel sin datos':'Subido '+(al?'unos ':'')+Math.round(sube)+' metros, bajado '+(al?'unos ':'')+Math.round(baja)+' metros');
+ };
+ if(conBaro)ponDesnivel(baroNativo.sube,baroNativo.baja,baroNativo.t&&Date.now()-baroNativo.t>BARO_VIEJO_MS?'~':'');
+ if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;if(!conBaro)ponDesnivel(null,null,'');$('tripAltitud').textContent='—';$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
- // Si el barometro lleva mas de BARO_VIEJO_MS sin dar una lectura, lo que
- // enseña no avanza: va con «~» (revision con GPT).
- if(recording&&baroNativo){const al=baroNativo.t&&Date.now()-baroNativo.t>BARO_VIEJO_MS?'~':'';$('tripSubido').textContent=al+Math.round(baroNativo.sube);$('tripBajado').textContent=al+Math.round(baroNativo.baja)}
- else if(!S){$('tripSubido').textContent='—';$('tripBajado').textContent='—'}
- else{const al=S.parcial?'~':'';$('tripSubido').textContent=al+Math.round(S.sube);$('tripBajado').textContent=al+Math.round(S.baja)}
+ if(!conBaro){if(!S)ponDesnivel(null,null,'');else ponDesnivel(S.sube,S.baja,S.parcial?'~':'')}
  const pos=fracRuta===null?null:fracRuta*P.T;
  // La altitud y el punto, solo estando en la ruta AHORA y con una posicion
  // buena: la ultima posicion buena no es la altitud de donde estas.

@@ -32,10 +32,12 @@ function pintaDespeja(){
  const b=$('despeja');if(!b)return;
  b.classList.toggle('hidden',!guiaIniciada());
  b.textContent=document.body.classList.contains('despejado')?'⌃ Mandos':'⌄ Ocultar';
+ // Y su estado, para el lector de pantalla: abiertos o no los mandos.
+ if(b.setAttribute)b.setAttribute('aria-expanded',document.body.classList.contains('despejado')?'false':'true');
  // El panel de abajo se ve mientras guia, con datos o sin ellos todavia:
  // dentro va el boton de mandos.
  const tb=$('tripBox');
- if(tb){const ver=guiaIniciada();if(ver===tb.classList.contains('hidden')){tb.classList.toggle('hidden',!ver);document.body.classList.toggle('con-panel',ver);try{map.invalidateSize()}catch(e){}}}
+ if(tb){const ver=guiaIniciada();if(ver===tb.classList.contains('hidden')){tb.classList.toggle('hidden',!ver);document.body.classList.toggle('con-panel',ver);try{map.invalidateSize()}catch(e){}try{colocaGiro()}catch(e){}}}
 }
 function actualizaDespeje(){
  const ahora=guiaIniciada();
@@ -64,7 +66,9 @@ function recordingControls(state){estadoBotonera=state;setTimeout(actualizaDespe
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
  // Los botones del panel de abajo son los mismos de la botonera, a mano.
- if($('tripPausa')){$('tripPausa').classList.toggle('hidden',state!=='recording');$('tripSigue').classList.toggle('hidden',state!=='paused');$('tripParar').classList.toggle('hidden',state!=='recording'&&state!=='paused')}
+ if($('tripPausa')){$('tripPausa').classList.toggle('hidden',state!=='recording');$('tripSigue').classList.toggle('hidden',state!=='paused');$('tripParar').classList.toggle('hidden',state!=='recording'&&state!=='paused');
+  // Y desactivados cuando lo esta el de verdad: si no, parecerian pulsables sin hacer nada.
+  $('tripPausa').disabled=!!$('recordPause').disabled;$('tripSigue').disabled=!!$('recordResume').disabled;$('tripParar').disabled=!!$('recordStop').disabled}
 }
 // Pulsan el boton de verdad: asi valen sus avisos y confirmaciones.
 if($('tripPausa')){$('tripPausa').onclick=()=>$('recordPause').click();$('tripSigue').onclick=()=>$('recordResume').click();$('tripParar').onclick=()=>$('recordStop').click()}
