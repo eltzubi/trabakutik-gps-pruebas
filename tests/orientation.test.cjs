@@ -147,8 +147,8 @@ test('La flecha sigue la rama que lleva el progreso en una ruta creada',()=>{
 
 test('La brújula cruza el norte por el lado corto y muestra cero grados',()=>{
  const c=rumbos(),caja={classList:{add(){},remove(){}}},aguja={style:{}},rotulo={};
- c.$=id=>({compass:caja,compassNeedle:aguja,compassText:rotulo})[id];
- vm.runInContext(source('const RUMBOS=','// Cargar una ruta o consultar'),c);
+ // pintaBrujula es de la 07, cerrada: se pide con require().
+ c.pintaBrujula=require('./pieza.cjs').pieza('07-servicio.js',{diferenciaRumbo:c.diferenciaRumbo,$:id=>({compass:caja,compassNeedle:aguja,compassText:rotulo})[id]}).pintaBrujula;
  c.pintaBrujula(359.6);
  assert.equal(rotulo.textContent,'N · 0°');
  c.pintaBrujula(10);

@@ -177,9 +177,11 @@ test('Quedarse sin satélites se dice en alto, una vez, y la vuelta también',()
  // suya en tests/sin_senal_gps.py, que es la que suena con la pantalla
  // apagada.
  const dicho=[];let tonos=0;
- const c={navegaNativo:false,getAudio(){},pitidos(n){tonos+=n},hablar(s){dicho.push(s)}};
- vm.createContext(c);
- vm.runInContext(source('let sinGpsAvisado=false;','function conmutaModoAudio('),c);
+ // La 07 esta cerrada: se pide con require(). Habla por la voz del navegador
+ // de mentira; los pitidos son de la 08 y aqui se cuentan.
+ const voz=()=>({cancel(){},speak(u){dicho.push(u.text)}});
+ globalThis.SpeechSynthesisUtterance=function(t){this.text=t};
+ const c=pieza('07-servicio.js',{navegaNativo:false,gpsApagadoPorTi:false,audioModo:'voz',window:{speechSynthesis:voz()},pitidos(n){tonos+=n}});
  c.avisaSinGps(false);
  assert.deepEqual(dicho,['Atención, sin señal GPS']);
  assert(tonos>0,'y suena, para cuando los avisos van en solo pitidos');
@@ -191,16 +193,12 @@ test('Quedarse sin satélites se dice en alto, una vez, y la vuelta también',()
  assert.equal(dicho.length,2,'la vuelta tampoco se repite');
  // La ubicacion apagada se dice con sus palabras: no es lo mismo que no ver
  // satelites, porque esto lo arregla el con un boton.
- const otro={navegaNativo:false,getAudio(){},pitidos(){},hablar(s){dicho.push(s)}};
- vm.createContext(otro);
- vm.runInContext(source('let sinGpsAvisado=false;','function conmutaModoAudio('),otro);
+ const otro=pieza('07-servicio.js',{navegaNativo:false,window:{speechSynthesis:voz()},pitidos(){}});
  otro.avisaSinGps(true);
  assert.match(dicho[2],/ubicación del teléfono está apagada/);
  // Si navega el servicio, los pitidos los pone el: la pagina no los duplica.
- const nativo={navegaNativo:true,getAudio(){throw Error('no debe tocar el audio')},
-   pitidos(){throw Error('no debe pitar')},hablar(){}};
- vm.createContext(nativo);
- vm.runInContext(source('let sinGpsAvisado=false;','function conmutaModoAudio('),nativo);
+ const nativo=pieza('07-servicio.js',{navegaNativo:true,window:{speechSynthesis:{cancel(){},speak(){throw Error('no debe hablar la pagina')}}},
+   pitidos(){throw Error('no debe pitar')}});
  nativo.avisaSinGps(false);
  // Y el vigilante tiene que llamarlo: sin esto la funcion estaria ahi sin que
  // nadie la use, que es justo lo que pasaba antes.
@@ -278,8 +276,7 @@ test('La herradura guarda el lado y la flecha se dibuja hacia ese lado',()=>{
   assert.equal(g.direction,lado);assert.equal(g.hacia,lado);
  }
  // Y lo que llega al dibujo es ese lado, no «derecha» por defecto.
- const c={ladoFlecha:pieza('08-cruces.js').ladoFlecha};vm.createContext(c);
- vm.runInContext(source('function flechaGiro(','// Velocidad suavizada'),c);
+ const c={ladoFlecha:pieza('08-cruces.js').ladoFlecha,flechaGiro:pieza('07-servicio.js').flechaGiro};
  assert.equal(c.ladoFlecha(izq[0],false),'izquierda');
  assert.equal(c.ladoFlecha(der[0],false),'derecha');
  // Al reves por la ruta, el lado se cambia, tambien en la herradura.
@@ -604,16 +601,12 @@ test('El número de versión sale solo en la app, y una APK vieja se nota',()=>{
  for(const [ventana,texto,oculto,quien] of casos){
   const clases=new Set(['hidden']);
   const nodo={textContent:'',classList:{add:k=>clases.add(k),remove:k=>clases.delete(k),contains:k=>clases.has(k)}};
-  const c={$:id=>(id==='appVersion'?nodo:null),window:ventana};
-  vm.createContext(c);
-  vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
+  pieza('07-servicio.js',{$:id=>(id==='appVersion'?nodo:null),window:ventana}).pintaVersion();
   assert.equal(nodo.textContent,texto,quien);
   assert.equal(clases.has('hidden'),oculto,quien);
  }
  // Y si el hueco no existe en la pagina, no revienta.
- const c={$:()=>null,window:{TrabakutikAndroid:{getAppVersion:()=>'4.9.3'}}};
- vm.createContext(c);
- vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
+ pieza('07-servicio.js',{$:()=>null,window:{TrabakutikAndroid:{getAppVersion:()=>'4.9.3'}}}).pintaVersion();
 });
 
 test('Avisa de una APK nueva comparando con la versión publicada en instalar.html',async()=>{
@@ -625,11 +618,10 @@ test('Avisa de una APK nueva comparando con la versión publicada en instalar.ht
   const nodos={appVersion:{textContent:'',classList:{add(){},remove(){}}},appUpdate:{classList:{add:k=>clases.add(k),remove:k=>clases.delete(k)}},appUpdateTexto:nodo(),appUpdateCerrar:nodo()};
   const guardado=new Map(cerrada?[['actualizacionCerrada',cerrada]]:[]);
   let pedido=null;
-  const c={$:id=>nodos[id]||null,window:{TrabakutikAndroid:{getAppVersion:()=>instalada}},
+  const c=pieza('07-servicio.js',{$:id=>nodos[id]||null,window:{TrabakutikAndroid:{getAppVersion:()=>instalada}},
    localStorage:{getItem:k=>guardado.get(k)??null,setItem:(k,v)=>guardado.set(k,v)},
-   fetch:(url,op)=>{pedido={url,op};return falla?Promise.reject(Error('sin red')):Promise.resolve({ok,text:()=>Promise.resolve('<small>versión <!--VER-->'+publicada+'<!--/VER--></small>')})}};
-  vm.createContext(c);
-  vm.runInContext(source('function pintaVersion(){',"$('despeja').onclick="),c);
+   fetch:(url,op)=>{pedido={url,op};return falla?Promise.reject(Error('sin red')):Promise.resolve({ok,text:()=>Promise.resolve('<small>versión <!--VER-->'+publicada+'<!--/VER--></small>')})}});
+  c.pintaVersion();
   await new Promise(r=>setTimeout(r,0));await new Promise(r=>setTimeout(r,0));
   return {visible:!clases.has('hidden'),texto:nodos.appUpdateTexto.textContent,pedido,cerrar:nodos.appUpdateCerrar.onclick,guardado,c};
  };
@@ -872,19 +864,21 @@ test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último 
  // El autor termino la salida y el perfil siguio diciendo «Quedan 1611 m
  // aprox.» con el GPS apagado: se borraba el dato sin repintar.
  let pintado=0;
- const c={window:{},$:()=>null,marcaAlReves(){},paintNavigationMetrics:()=>{pintado++},liveNativeMetrics:{gain:1611},liveProfileAlong:500};
- vm.createContext(c);vm.runInContext(source('function resetOffRoute(){','function updateOffRoute('),c);
+ const c=pieza('07-servicio.js',{window:{},$:()=>null,paintNavigationMetrics:()=>{pintado++},liveNativeMetrics:{gain:1611},liveProfileAlong:500});
  c.resetOffRoute();
- assert.equal(vm.runInContext('liveNativeMetrics',c),null);
+ assert.equal(c.liveNativeMetrics,null);
  assert.equal(pintado,1,'y se vuelve a pintar el texto');
 });
 function cajaTrip(extra={}){
  const nodo=()=>({textContent:'',innerHTML:'',style:{},attrs:{},setAttribute(k,v){this.attrs[k]=v},classList:{h:new Set(['hidden']),add(x){this.h.add(x)},remove(x){this.h.delete(x)},contains(x){return this.h.has(x)}}});
  const n={};const $=id=>n[id]||(n[id]=nodo());
- const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded:[],
-  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,Float64Array,Uint8Array,Map,Infinity,document:{body:nodo()},
-  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180)),...extra};
- vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
+ // La 07 esta cerrada: se pide con require() y lo de las demas va en lo global.
+ const c=pieza('07-servicio.js',{$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded:[],
+  routeCumulative:[0,39200],fmt:m=>String(m),document:{body:nodo()},map:undefined,navigationProfilePoints:undefined,faltaSubidaRuta:null,
+  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))});
+ const {sentidoRuta=1,...resto}=extra;
+ for(const [k,v] of Object.entries(resto))c[k]=v;
+ c.sentidoRuta=sentidoRuta;
  return {c,n};
 }
 // Una ruta recta hacia el norte desde (43,-2.5), con una altura por punto cada
@@ -951,10 +945,10 @@ test('Con barómetro, lo subido y bajado son los suyos, también fuera de la rut
  const pts=rutaNorte([100,150,120,200]);
  const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});
  c.recorded=andaNorte(112,333);
- vm.runInContext('baroNativo={sube:412.4,baja:96.6}',c);
+ c.baroNativo={sube:412.4,baja:96.6};
  c.pintaAvance(333);
  assert.equal(n.tripSubido.textContent,'412');assert.equal(n.tripBajado.textContent,'97');
- vm.runInContext('baroNativo=null',c);c.pintaAvance(333);
+ c.baroNativo=null;c.pintaAvance(333);
  assert.notEqual(n.tripSubido.textContent,'412','sin barometro, el perfil de la ruta');
 });
 test('Revisión con GPT: en una recta, un punto en un vértice cae donde está, no 10 m atrás',()=>{
@@ -1038,14 +1032,14 @@ test('«Hechos» es lo que has andado grabando, aunque salieras antes del princi
  // 1,5 km grabados al norte antes de llegar a la ruta, en 16 puntos (y un corte).
  const recorded=[];for(let k=0;k<=15;k++)recorded.push([43+k*100/111195,-2.5]);
  recorded.splice(8,0,null);
- const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded,Float64Array,document:{body:nodo()},
-  routeCumulative:[0,6080],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,
-  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))};
- vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
+ const c=pieza('07-servicio.js',{$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded,document:{body:nodo()},
+  routeCumulative:[0,6080],fmt:m=>String(m),navigationProfilePoints:undefined,
+  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))});
+ c.sentidoRuta=1;
  c.pintaAvance(200);
  assert.equal(n.tripHecho.textContent,'1,4','lo andado, no los 200 m de la ruta, y sin cruzar el corte');
  assert.equal(n.tripQueda.textContent,'5,9 km','lo que queda sigue siendo de la ruta');
- recorded.push([43+1600/111195,-2.5]);c.pintaAvance(300);
+ c.recorded.push([43+1600/111195,-2.5]);c.pintaAvance(300);
  assert.equal(n.tripHecho.textContent,'1,5','y suma lo nuevo');
 });
 test('Si al revés no hace falta ningún aviso, no se usan los de la ida dados la vuelta',()=>{

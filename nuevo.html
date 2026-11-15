@@ -2902,13 +2902,13 @@ function miraActualizacion(instalada){
   caja.classList.remove('hidden');
  }).catch(()=>{});
 }
-pintaVersion();
-$('despeja').onclick=()=>{
+if(typeof document!=='undefined')pintaVersion();
+if(typeof document!=='undefined')$('despeja').onclick=()=>{
  document.body.classList.toggle('despejado');
  pintaDespeja();
  try{map.invalidateSize()}catch(e){}
 };
-$('navCreated').onclick=()=>{
+if(typeof document!=='undefined')$('navCreated').onclick=()=>{
  if(!createdSavedItem)return;
  loadSaved(createdSavedItem);
 };
@@ -3260,7 +3260,7 @@ function marcaAlReves(si){
 function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
-refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;marcaAlReves(false);
+refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;if(typeof document!=='undefined')marcaAlReves(false);
  // Y se repinta: borrar el dato sin repintar dejaba en pantalla el ultimo
  // «Quedan 1611 m aprox.» con la salida ya terminada y el GPS apagado.
  if(typeof paintNavigationMetrics==='function')paintNavigationMetrics();
@@ -3384,6 +3384,12 @@ function flechaGiro(deg,dir,tam,grosor){
   '<path d="'+d+'" fill="none" stroke="url(#'+id+')" stroke-width="'+grosor+'" stroke-linecap="round"/>'+
   '<path d="M'+px.toFixed(1)+' '+py.toFixed(1)+' L'+b1x.toFixed(1)+' '+b1y.toFixed(1)+
   ' L'+b2x.toFixed(1)+' '+b2y.toFixed(1)+' Z" fill="#c8fbff"/></svg>';
+}
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
+// estado va con accesores: se lee y se escribe la variable de verdad.
+if(typeof module==='object'&&module&&module.exports){
+ module.exports={pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
+ Object.defineProperties(module.exports,{rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true}});
 }
 // HACIA DONDE SE CURVA LA FLECHA. Tambien en una herradura: antes, pasados
 // los 145 grados, el giro se quedaba en «vuelta» y el lado se perdia, asi que
