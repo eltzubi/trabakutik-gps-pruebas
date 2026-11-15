@@ -260,3 +260,29 @@ principio, yendo al revés):
   mudos todos los de detrás (la página no genera ninguno ahí).
 
 Lo prueba `tests/giros_limite.py`.
+
+## El aviso de caída (15 de noviembre de 2026)
+
+Lo pidió el autor con la idea de Garmin delante: un golpe fuerte, una cuenta
+atrás y, si nadie la para, un SOS al contacto que meta cada usuario. Lo que
+se decidió y por qué:
+
+- **30 segundos**, como Garmin. Con 10, aturdido o con guantes, es fácil no
+  llegar a cancelar, y un SOS falso asusta a quien lo recibe.
+- **Activado de serie**, pero sin contactos no arranca: no habría a quién
+  avisar. Solo funciona mientras se graba o se navega, porque lo hace el
+  servicio (con la pantalla apagada la página se duerme).
+- **Por SMS y no por correo.** Un correo sin que nadie toque nada necesita un
+  servidor de correo con su clave, y en una app instalada esa clave quedaría a
+  la vista. El SMS lo manda el propio teléfono y sale con menos cobertura que
+  los datos. WhatsApp no deja enviar sin que alguien pulse.
+- **Tres condiciones seguidas** (DetectorCaidas): ir en marcha, un golpe de 3 g
+  y quedarse quieto 8 s dentro de los 30 s siguientes. Los números son de
+  partida, sin ninguna caída real medida: el registro de golpes de la hoja SOS
+  está para ajustarlos con salidas de verdad.
+- **En los Android nuevos**, enviar SMS desde una app que no viene de Google
+  Play puede venir bloqueado: hay que permitirlo a mano («Permitir ajustes
+  restringidos»). La hoja SOS lo dice si falta el permiso.
+- Es una ayuda: no avisa al 112 y no detecta todas las caídas. Garmin dice lo
+  mismo de la suya.
+

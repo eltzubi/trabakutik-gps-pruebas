@@ -597,4 +597,5 @@ function startGPS(forRecording=false){
  // entra el siguiente punto.
  if(e&&e.code===1){if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null}
 },{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
-if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()=>window.TrabakutikAndroid.shareSos()}
+// El boton abre la hoja del SOS (abreSos, pieza 10): pedir ayuda y el aviso de caida.
+if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()=>abreSos()}

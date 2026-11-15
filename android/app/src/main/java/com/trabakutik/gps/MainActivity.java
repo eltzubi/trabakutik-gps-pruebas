@@ -94,6 +94,7 @@ public class MainActivity extends Activity {
   webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
     ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
+  if(getIntent()!=null&&getIntent().getBooleanExtra("caida",false))caidaUi.post(this::muestraCaida);
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
   else beginPermissionSetup();
  }
@@ -116,6 +117,7 @@ public class MainActivity extends Activity {
   super.onNewIntent(incoming);
   setIntent(incoming);
   handleExternalRoute(incoming);
+  if(incoming!=null&&incoming.getBooleanExtra("caida",false))muestraCaida();
  }
  void restoreGpsWeb(){
   if(web==null)return;
@@ -129,6 +131,7 @@ public class MainActivity extends Activity {
  long sosPendienteDesde=0;
  @Override protected void onResume(){
   super.onResume();
+  if(TrackingService.CAIDA_FIN!=0)caidaUi.post(this::muestraCaida);
   appEnSegundoPlano=false;
   cicloSegundoPlano++;
   if(sosPendienteDesde>0){
@@ -425,6 +428,43 @@ public class MainActivity extends Activity {
    try{return Grabaciones.borra(new File(getFilesDir(),"grabaciones"),nombre,TrackingService.ACTIVO?TrackingService.GRABANDO:null);}
    catch(Exception e){return false;}
   }
+  // EL AVISO DE CAIDA, desde la hoja del boton SOS. Lo que se guarda y lo
+  // que se puede borrar lo decide ContactosSos; la pagina solo lo enseña.
+  @JavascriptInterface public String getSosConfig(){
+   SharedPreferences p=getSharedPreferences("sos",MODE_PRIVATE);
+   boolean sms=checkSelfPermission(Manifest.permission.SEND_SMS)==PackageManager.PERMISSION_GRANTED;
+   return "{\"activo\":"+p.getBoolean("caidas_activo",true)
+    +",\"contactos\":"+ContactosSos.json(ContactosSos.lee(p.getString("contactos","")))
+    +",\"max\":"+ContactosSos.MAX+",\"permisoSms\":"+sms
+    +",\"golpes\":"+p.getInt("golpes",0)+",\"caidas\":"+p.getInt("caidas",0)+"}";
+  }
+  @JavascriptInterface public void setFallDetection(boolean activo){
+   getSharedPreferences("sos",MODE_PRIVATE).edit().putBoolean("caidas_activo",activo).apply();
+   avisaAjustesCaida();
+  }
+  @JavascriptInterface public boolean addSosContact(String nombre,String telefono){
+   SharedPreferences p=getSharedPreferences("sos",MODE_PRIVATE);
+   String nuevo=ContactosSos.anade(p.getString("contactos",""),nombre,telefono);
+   if(nuevo==null)return false;
+   p.edit().putString("contactos",nuevo).apply();
+   avisaAjustesCaida();
+   runOnUiThread(MainActivity.this::pidePermisoSms);
+   return true;
+  }
+  @JavascriptInterface public void removeSosContact(String telefono){
+   SharedPreferences p=getSharedPreferences("sos",MODE_PRIVATE);
+   p.edit().putString("contactos",ContactosSos.quita(p.getString("contactos",""),telefono)).apply();
+   avisaAjustesCaida();
+  }
+  @JavascriptInterface public void pickSosContact(){runOnUiThread(()->{
+   try{startActivityForResult(new Intent(Intent.ACTION_PICK,android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI),303);}
+   catch(ActivityNotFoundException e){Toast.makeText(MainActivity.this,"No hay agenda de contactos: escribe el número a mano.",Toast.LENGTH_LONG).show();}
+  });}
+  @JavascriptInterface public void requestSmsPermission(){runOnUiThread(MainActivity.this::pidePermisoSms);}
+  @JavascriptInterface public void testFall(){runOnUiThread(()->{
+   try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("CAIDA_PRUEBA"));}
+   catch(Exception e){Toast.makeText(MainActivity.this,"No se pudo probar el aviso de caída.",Toast.LENGTH_LONG).show();}
+  });}
   @JavascriptInterface public void clearLiveTrack(){new File(getFilesDir(),"trazado-vivo.tsv").delete();}
   /** Solo la posicion, sin el trazado. El snapshot entero devuelve los puntos
    *  cada vez que cambia el archivo, que grabando es con cada punto nuevo, y
@@ -895,8 +935,64 @@ public class MainActivity extends Activity {
   sosDialog.setOnDismissListener(dialog->sosDialog=null);
   sosDialog.show();
  }
+ private static final int SMS_PERMISSION=104;
+ void pidePermisoSms(){
+  if(checkSelfPermission(Manifest.permission.SEND_SMS)==PackageManager.PERMISSION_GRANTED)return;
+  requestPermissions(new String[]{Manifest.permission.SEND_SMS},SMS_PERMISSION);
+ }
+ // El servicio solo relee los ajustes si esta vivo; si no, los lee al arrancar.
+ void avisaAjustesCaida(){
+  if(!TrackingService.ACTIVO)return;
+  try{startService(new Intent(this,TrackingService.class).setAction("CAIDAS_AJUSTES"));}catch(Exception ignored){}
+ }
+ void sosActualizado(){
+  if(web!=null)web.evaluateJavascript("window.trabakutikSosActualizado&&window.trabakutikSosActualizado()",null);
+ }
+ // LA PANTALLA DE LA CUENTA ATRAS, encima de todo y del bloqueo. La cuenta
+ // la lleva el servicio (TrackingService.CAIDA_FIN): esto solo la enseña y
+ // manda los dos botones. Si el sistema no deja abrir la app, queda la
+ // notificacion con los mismos dos botones.
+ AlertDialog caidaDialog;
+ final Handler caidaUi=new Handler(Looper.getMainLooper());
+ void muestraCaida(){
+  if(TrackingService.CAIDA_FIN==0||caidaDialog!=null||isFinishing()||isDestroyed())return;
+  if(Build.VERSION.SDK_INT>=27){setShowWhenLocked(true);setTurnScreenOn(true);}
+  final TextView cuenta=new TextView(this);
+  cuenta.setTextSize(64);cuenta.setGravity(android.view.Gravity.CENTER);cuenta.setTextColor(0xFFE5484D);
+  final boolean prueba=TrackingService.CAIDA_PRUEBA;
+  caidaDialog=new AlertDialog.Builder(this).setTitle(prueba?"Prueba: ¿te has caído?":"¿Te has caído?")
+   .setMessage(prueba?"Es una prueba: al terminar no se enviará nada.":"Si no respondes, al acabar se envía un SOS por SMS con tu posición.")
+   .setView(cuenta).setCancelable(false)
+   .setPositiveButton("Estoy bien",(d,w)->mandaCaida("CAIDA_BIEN"))
+   .setNegativeButton(prueba?"Terminar prueba":"Enviar S.O.S. ya",(d,w)->mandaCaida("CAIDA_ENVIA")).create();
+  caidaDialog.setOnDismissListener(d->{caidaDialog=null;caidaUi.removeCallbacksAndMessages(null);});
+  caidaDialog.show();
+  caidaUi.post(new Runnable(){@Override public void run(){
+   long fin=TrackingService.CAIDA_FIN;
+   if(fin==0){if(caidaDialog!=null)caidaDialog.dismiss();return;}
+   cuenta.setText(String.valueOf(Math.max(0,(fin-SystemClock.elapsedRealtime()+999)/1000)));
+   caidaUi.postDelayed(this,250);
+  }});
+ }
+ void mandaCaida(String accion){
+  try{startService(new Intent(this,TrackingService.class).setAction(accion));}catch(Exception ignored){}
+ }
+ void contactoElegido(Intent data){
+  if(data==null||data.getData()==null)return;
+  String[] cols={android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER};
+  try(android.database.Cursor c=getContentResolver().query(data.getData(),cols,null,null,null)){
+   if(c==null||!c.moveToFirst())return;
+   String nombre=c.getString(0),tel=c.getString(1);
+   SharedPreferences p=getSharedPreferences("sos",MODE_PRIVATE);
+   String nuevo=ContactosSos.anade(p.getString("contactos",""),nombre,tel);
+   if(nuevo==null){Toast.makeText(this,ContactosSos.normaliza(tel)==null?"Ese contacto no tiene un número válido.":"Ya hay "+ContactosSos.MAX+" contactos: quita uno antes.",Toast.LENGTH_LONG).show();return;}
+   p.edit().putString("contactos",nuevo).apply();
+   avisaAjustesCaida();sosActualizado();pidePermisoSms();
+  }catch(Exception e){Toast.makeText(this,"No se pudo leer el contacto.",Toast.LENGTH_LONG).show();}
+ }
  @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){
   super.onRequestPermissionsResult(code,permissions,results);
+  if(code==SMS_PERMISSION){sosActualizado();return;}
   if(code==SOS_LOCATION_PERMISSION){
    // En algunos moviles la pantalla del permiso manda la app a segundo
    // plano, y la respuesta llega ANTES de que vuelva al frente. Ahi
@@ -955,6 +1051,6 @@ public class MainActivity extends Activity {
   }catch(Exception ignored){}
   return nombre;
  }
- @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();pendingGpx=null;return;}try{String fin=aseguraExtensionGpx(data.getData());Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();}catch(Exception e){Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}pendingGpx=null;}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null){boolean copiado=true;try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);}catch(Exception e){copiado=false;Toast.makeText(this,"No se pudo guardar",Toast.LENGTH_SHORT).show();}if(copiado){String fin;try{fin=aseguraExtensionGpx(data.getData());}catch(Exception e){fin="GPX";}Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}}}
+ @Override public void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==303){if(result==RESULT_OK)contactoElegido(data);return;}if(code==302){if(pendingFileChooser!=null){android.net.Uri[] selection=result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null;pendingFileChooser.onReceiveValue(selection);pendingFileChooser=null;}return;}if(code==201&&result==RESULT_OK&&data!=null&&pendingGpx!=null){try(java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){out.write(pendingGpx.getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception e){Toast.makeText(this,"No se pudo guardar el GPX",Toast.LENGTH_SHORT).show();pendingGpx=null;return;}try{String fin=aseguraExtensionGpx(data.getData());Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();}catch(Exception e){Toast.makeText(this,"GPX guardado",Toast.LENGTH_SHORT).show();}pendingGpx=null;}if(code==200&&result==RESULT_OK&&data!=null&&exportFile!=null){boolean copiado=true;try(java.io.InputStream in=new java.io.FileInputStream(exportFile);java.io.OutputStream out=getContentResolver().openOutputStream(data.getData())){byte[] buf=new byte[8192];int n;while((n=in.read(buf))>0)out.write(buf,0,n);}catch(Exception e){copiado=false;Toast.makeText(this,"No se pudo guardar",Toast.LENGTH_SHORT).show();}if(copiado){String fin;try{fin=aseguraExtensionGpx(data.getData());}catch(Exception e){fin="GPX";}Toast.makeText(this,"Guardado como "+fin,Toast.LENGTH_LONG).show();new File(getFilesDir(),"trazado-vivo.tsv").delete();web.evaluateJavascript("window.trabakutikNativeGpxSaved&&window.trabakutikNativeGpxSaved()",null);}}}
  @Override public void onBackPressed(){WebView current=showingGps?web:webRoutes;if(current.canGoBack())current.goBack();else if(!showingGps)showScreen(true);else super.onBackPressed();}
 }

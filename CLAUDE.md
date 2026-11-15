@@ -48,7 +48,7 @@ En este orden. Si algo falla, no se sube.
 ```
 node scripts/construye.cjs --comprueba   # src/ y nuevo.html cuadran
 node scripts/revisa-tipos.cjs            # fallos de nombre en el JavaScript
-node --test tests/*.test.cjs             # 183 pruebas
+node --test tests/*.test.cjs             # 187 pruebas
 node scripts/test-browser.cjs            # 10 bloques en Chromium de verdad
 python3 scripts/test-native-turns.py
 python3 tests/regression_tracking.py
@@ -57,6 +57,7 @@ python3 tests/silencio.py
 python3 tests/background_lifecycle.py
 python3 tests/giros_limite.py
 python3 tests/grabaciones_borrar.py
+python3 tests/caida_sos.py
 python3 tests/informe_fallo.py
 python3 scripts/test-gasto-bateria.py
 python3 scripts/test-nombre-descarga.py

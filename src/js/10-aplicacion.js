@@ -397,5 +397,67 @@ mapaGuardadoInfo().then(info=>{
  if(hayMapaGuardado)changeBase($('basemap').value);
 });
 pintaBotonMapa();
+// LA HOJA DEL BOTON SOS: pedir ayuda ahora (lo de siempre) y el AVISO DE
+// CAIDA. Lo pidio el autor el 15 de noviembre de 2026, con la idea de Garmin:
+// si te caes con fuerza mientras grabas o navegas y te quedas quieto, suena
+// una alarma; tienes 30 s para decir que estas bien y si no, sale un SMS con
+// tu posicion a tus contactos. Lo detecta y lo envia el servicio de Android
+// (DetectorCaidas, ContactosSos): aqui solo se ven y se cambian los ajustes.
+// En una APK que no lo sabe hacer, el boton hace lo de antes.
+function abreSos(){
+ const app=window.TrabakutikAndroid;
+ if(!app||typeof app.getSosConfig!=='function'){app?.shareSos?.();return}
+ $('sosDialog').classList.remove('hidden');pintaSos();
+}
+function pintaSos(){
+ const app=window.TrabakutikAndroid,caja=$('sosCuerpo');if(!caja||!app?.getSosConfig)return;
+ let c;try{c=JSON.parse(app.getSosConfig())}catch(e){return}
+ const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!=null)n.textContent=txt;return n};
+ caja.replaceChildren();
+ const ahora=el('button','sos-ahora','Pedir ayuda ahora');ahora.type='button';
+ ahora.onclick=()=>{$('sosDialog').classList.add('hidden');app.shareSos()};
+ caja.append(ahora);
+ const sec=el('div','sos-caida');
+ const cab=el('div','sos-cab'),tit=el('div');
+ tit.append(el('h3',null,'Aviso de caída'),el('small',null,c.activo?(c.contactos&&c.contactos.length?'Activado':'Activado · falta un contacto'):'Apagado'));
+ const sw=el('label','sos-interruptor'),chk=document.createElement('input');
+ chk.type='checkbox';chk.checked=!!c.activo;chk.setAttribute('role','switch');chk.setAttribute('aria-label','Aviso de caída');
+ chk.onchange=()=>{app.setFallDetection(chk.checked);pintaSos()};
+ sw.append(chk,el('span'));cab.append(tit,sw);sec.append(cab);
+ sec.append(el('p',null,'Si te caes con fuerza mientras grabas o navegas y te quedas quieto, suena una alarma. Tienes 30 s para pulsar «Estoy bien»; si no, se envía un SMS con tu posición a tus contactos. Es una ayuda: no avisa al 112 y no detecta todas las caídas.'));
+ const lista=c.contactos||[];
+ sec.append(el('div','sos-titulo','Contactos ('+lista.length+' de '+(c.max||3)+')'));
+ if(!lista.length)sec.append(el('p','sos-aviso','Sin ningún contacto no se puede avisar a nadie: añade uno.'));
+ for(const k of lista){
+  const fila=el('div','sos-contacto'),dato=el('div','sos-dato');
+  dato.append(el('b',null,k.nombre),el('small',null,k.telefono));
+  const q=el('button','sos-quitar','Quitar');q.type='button';q.setAttribute('aria-label','Quitar a '+k.nombre);
+  q.onclick=()=>{if(confirm('¿Quitar a '+k.nombre+' de los contactos del SOS?')){app.removeSosContact(k.telefono);pintaSos()}};
+  fila.append(el('div','sos-inicial',(k.nombre||'?').trim().charAt(0).toUpperCase()),dato,q);sec.append(fila);
+ }
+ if(lista.length<(c.max||3)){
+  const bot=el('div','sos-botones');
+  const agenda=el('button','sos-boton','Elegir de la agenda');agenda.type='button';agenda.onclick=()=>app.pickSosContact();
+  const mano=el('button','sos-boton','Escribir número');mano.type='button';
+  mano.onclick=()=>{
+   const nombre=prompt('Nombre del contacto','');if(nombre===null)return;
+   const tel=prompt('Teléfono de '+(nombre||'el contacto')+' (con prefijo si es de fuera)','');if(tel===null)return;
+   if(!app.addSosContact(nombre||'Contacto',tel))alert('Ese número no vale. Escribe solo cifras, con + delante si lleva prefijo.');
+   pintaSos();
+  };
+  bot.append(agenda,mano);sec.append(bot);
+ }
+ if(lista.length&&!c.permisoSms){
+  sec.append(el('p','sos-aviso','Falta el permiso para mandar SMS: sin él no se puede enviar el aviso. Si Android no te deja darlo, ve a Ajustes › Aplicaciones › Trabakutik GPS › ⋮ › Permitir ajustes restringidos.'));
+  const per=el('button','sos-boton ancho','Dar permiso de SMS');per.type='button';per.onclick=()=>app.requestSmsPermission();sec.append(per);
+ }
+ const probar=el('button','sos-boton prueba','Probar la alarma (no envía nada)');probar.type='button';
+ probar.onclick=()=>{$('sosDialog').classList.add('hidden');app.testFall()};
+ sec.append(probar);
+ sec.append(el('p','sos-registro','Registro: '+(c.golpes|0)+' golpes fuertes en marcha · '+(c.caidas|0)+' contaron como caída'));
+ caja.append(sec);
+}
+window.trabakutikSosActualizado=()=>{if(!$('sosDialog').classList.contains('hidden'))pintaSos()};
+if($('closeSos'))$('closeSos').onclick=()=>$('sosDialog').classList.add('hidden');
 })();
 

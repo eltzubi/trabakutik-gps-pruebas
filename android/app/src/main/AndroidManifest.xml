@@ -6,6 +6,14 @@
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
  <uses-permission android:name="android.permission.WAKE_LOCK"/>
+ <!-- El aviso de caida: el SMS del SOS, la vibracion de la alarma y la
+      pantalla de la cuenta atras encima del bloqueo. La telefonia no es
+      obligatoria: en una tableta sin SIM la app se instala igual y el aviso
+      de caida dice que no ha podido enviar. -->
+ <uses-permission android:name="android.permission.SEND_SMS"/>
+ <uses-permission android:name="android.permission.VIBRATE"/>
+ <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+ <uses-feature android:name="android.hardware.telephony" android:required="false"/>
  <application android:label="Trabakutik GPS" android:icon="@drawable/trabakutik_icon" android:roundIcon="@drawable/trabakutik_icon" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="false">
   <!-- Sin configChanges, cualquier giro de pantalla destruye y recrea la
        Activity: onCreate volvia a cargar nuevo.html SIN la ruta y hacia

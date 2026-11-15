@@ -11,6 +11,11 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.telephony.SmsManager;
 public class TrackingService extends Service implements LocationListener {
  LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double alongPrevio=Double.NaN,alongAcum=0;long cercaDesde=0;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final NavigationMetrics metrics=new NavigationMetrics();
@@ -58,7 +63,7 @@ public class TrackingService extends Service implements LocationListener {
   int n=0;for(File f:all)if(cierraGpxSiQuedoAbierto(f))n++;
   return n;
  }
- @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);audioModo=getSharedPreferences("tracking_live",MODE_PRIVATE).getString("audioModo","voz");arrancaVoz();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));avisoHandler.postDelayed(refrescaAviso,5000);}
+ @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);audioModo=getSharedPreferences("tracking_live",MODE_PRIVATE).getString("audioModo","voz");arrancaVoz();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));creaCanalCaida();avisoHandler.postDelayed(refrescaAviso,5000);}
  final Runnable refrescaAviso=new Runnable(){
   @Override public void run(){
    if(!active)return;
@@ -306,6 +311,17 @@ public class TrackingService extends Service implements LocationListener {
   String action=i==null?null:i.getAction();
   if(action==null){finish();return START_NOT_STICKY;}
   if("STOP".equals(action)){finish();return START_NOT_STICKY;}
+  // EL AVISO DE CAIDA. Los dos botones de la cuenta atras, la prueba y el
+  // cambio de ajustes (contactos o activado). Si el servicio solo estaba
+  // vivo para la prueba, al acabar se para (ver terminaCaida).
+  if("CAIDA_BIEN".equals(action)){terminaCaida(false);return START_NOT_STICKY;}
+  if("CAIDA_ENVIA".equals(action)){terminaCaida(true);return START_NOT_STICKY;}
+  if("CAIDA_PRUEBA".equals(action)){disparaCaida(true);return START_NOT_STICKY;}
+  if("CAIDAS_AJUSTES".equals(action)){
+   if(active){paraCaidas();arrancaCaidas();}
+   else if(!caidaEnCurso)stopSelf();
+   return START_NOT_STICKY;
+  }
   if("STOP_NAVIGATION".equals(action)){
    navigating=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;olvidaSentido();
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
@@ -371,6 +387,164 @@ public class TrackingService extends Service implements LocationListener {
   }
   return START_NOT_STICKY;
  }
+
+ // ===== EL AVISO DE CAIDA =====
+ // Lo pidio el autor el 15 de noviembre de 2026, con la idea de Garmin: un
+ // golpe fuerte estando en marcha y quedarse quieto (DetectorCaidas), una
+ // alarma con cuenta atras de 30 s, y si nadie la para, un SMS con la
+ // posicion a los contactos que haya metido el usuario (ContactosSos). Va
+ // en el servicio porque tiene que funcionar con la pantalla apagada, y solo
+ // mientras se graba o se navega. Activado de serie, pero sin contactos no
+ // arranca: no habria a quien avisar.
+ static final String CANAL_CAIDA="caida";
+ static final int NOTIF_CAIDA=7,NOTIF_CAIDA_FIN=8;
+ static final long CUENTA_MS=30_000;
+ /** Cuando acaba la cuenta atras (elapsedRealtime), 0 si no hay. La lee MainActivity. */
+ static volatile long CAIDA_FIN=0;
+ static volatile boolean CAIDA_PRUEBA=false;
+ final DetectorCaidas detectorCaidas=new DetectorCaidas();
+ SensorManager sensores;Location ultimaPosicion;
+ boolean caidaEnCurso=false,caidaPrueba=false;
+ ToneGenerator tonoCaida;
+ final Handler caidaHandler=new Handler(Looper.getMainLooper());
+ int golpesGuardados=0,caidasGuardadas=0;
+ final SensorEventListener oyenteCaida=new SensorEventListener(){
+  @Override public void onSensorChanged(SensorEvent e){
+   if(e==null||e.values==null||e.values.length<3)return;
+   boolean aviso=detectorCaidas.muestra(e.values[0],e.values[1],e.values[2],e.timestamp/1_000_000L);
+   if(detectorCaidas.golpes!=golpesGuardados||detectorCaidas.caidas!=caidasGuardadas)apuntaGolpes();
+   if(aviso)disparaCaida(false);
+  }
+  @Override public void onAccuracyChanged(Sensor s,int a){}
+ };
+ SharedPreferences prefsSos(){return getSharedPreferences("sos",MODE_PRIVATE);}
+ void creaCanalCaida(){
+  NotificationChannel c=new NotificationChannel(CANAL_CAIDA,"Aviso de caída",NotificationManager.IMPORTANCE_HIGH);
+  c.setDescription("La cuenta atrás de 30 s antes de enviar el SOS");
+  c.enableVibration(true);
+  ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);
+ }
+ void arrancaCaidas(){
+  if(sensores!=null)return;
+  if(!prefsSos().getBoolean("caidas_activo",true))return;
+  if(ContactosSos.lee(prefsSos().getString("contactos","")).isEmpty())return;
+  SensorManager sm=(SensorManager)getSystemService(SENSOR_SERVICE);
+  Sensor acel=sm==null?null:sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+  if(acel==null)return;
+  // 25 muestras por segundo (40 ms): un golpe dura decenas de milisegundos
+  // y con eso se ve; mas, gasta sin ver mas.
+  if(sm.registerListener(oyenteCaida,acel,40_000))sensores=sm;
+ }
+ void paraCaidas(){
+  if(sensores==null)return;
+  try{sensores.unregisterListener(oyenteCaida);}catch(Exception ignored){}
+  sensores=null;
+ }
+ void apuntaGolpes(){
+  SharedPreferences p=prefsSos();
+  int g=p.getInt("golpes",0)+(detectorCaidas.golpes-golpesGuardados);
+  int c=p.getInt("caidas",0)+(detectorCaidas.caidas-caidasGuardadas);
+  golpesGuardados=detectorCaidas.golpes;caidasGuardadas=detectorCaidas.caidas;
+  p.edit().putInt("golpes",g).putInt("caidas",c).apply();
+ }
+ void disparaCaida(boolean prueba){
+  if(caidaEnCurso)return;
+  caidaEnCurso=true;caidaPrueba=prueba;CAIDA_PRUEBA=prueba;
+  CAIDA_FIN=SystemClock.elapsedRealtime()+CUENTA_MS;
+  NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+  nm.cancel(NOTIF_CAIDA_FIN);
+  nm.notify(NOTIF_CAIDA,notificacionCaida());
+  caidaHandler.postDelayed(finCuentaCaida,CUENTA_MS);
+  caidaHandler.post(pitaCaida);
+  habla(prueba?"Prueba del aviso de caída":"¿Te has caído? Si estás bien, pulsa Estoy bien");
+  // La pantalla de la app, si el sistema deja abrirla desde aqui. Si no,
+  // queda la notificacion con sus dos botones.
+  try{startActivity(new Intent(this,MainActivity.class).putExtra("caida",true)
+    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP));}catch(Exception ignored){}
+ }
+ final Runnable finCuentaCaida=()->terminaCaida(true);
+ final Runnable pitaCaida=new Runnable(){@Override public void run(){
+  if(!caidaEnCurso)return;
+  try{
+   if(tonoCaida==null)tonoCaida=new ToneGenerator(AudioManager.STREAM_ALARM,100);
+   tonoCaida.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK,1200);
+  }catch(Exception ignored){}
+  try{
+   Vibrator v=(Vibrator)getSystemService(VIBRATOR_SERVICE);
+   if(v!=null)v.vibrate(VibrationEffect.createOneShot(900,VibrationEffect.DEFAULT_AMPLITUDE));
+  }catch(Exception ignored){}
+  caidaHandler.postDelayed(this,2000);
+ }};
+ void terminaCaida(boolean enviar){
+  if(!caidaEnCurso)return;
+  caidaEnCurso=false;CAIDA_FIN=0;
+  caidaHandler.removeCallbacks(finCuentaCaida);caidaHandler.removeCallbacks(pitaCaida);
+  try{if(tonoCaida!=null){tonoCaida.stopTone();tonoCaida.release();}}catch(Exception ignored){}
+  tonoCaida=null;
+  try{Vibrator v=(Vibrator)getSystemService(VIBRATOR_SERVICE);if(v!=null)v.cancel();}catch(Exception ignored){}
+  ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).cancel(NOTIF_CAIDA);
+  List<ContactosSos.Contacto> contactos=ContactosSos.lee(prefsSos().getString("contactos",""));
+  if(caidaPrueba){
+   avisoCaida(enviar?"Prueba terminada: aquí se habría enviado el SOS a "+nombres(contactos)+". No se ha enviado nada."
+     :"Prueba cancelada. No se ha enviado nada.");
+  }else if(enviar)enviaSos(contactos);
+  else avisoCaida("Aviso de caída cancelado. No se ha enviado nada.");
+  if(!active)stopSelf();
+ }
+ static String nombres(List<ContactosSos.Contacto> l){
+  if(l.isEmpty())return "nadie (no hay contactos)";
+  StringBuilder sb=new StringBuilder();
+  for(ContactosSos.Contacto c:l){if(sb.length()>0)sb.append(", ");sb.append(c.nombre());}
+  return sb.toString();
+ }
+ void enviaSos(List<ContactosSos.Contacto> contactos){
+  if(contactos.isEmpty()){avisoCaida("No se ha enviado el SOS: no hay ningún contacto.");return;}
+  if(checkSelfPermission(Manifest.permission.SEND_SMS)!=PackageManager.PERMISSION_GRANTED){
+   avisoCaida("No se ha podido enviar el SOS: la app no tiene permiso para mandar SMS. Abre la app y pulsa SOS.");return;}
+  Location p=ultimaPosicion;
+  try{if(p==null)p=manager.getLastKnownLocation(LocationManager.GPS_PROVIDER);}catch(SecurityException ignored){}
+  long seg=p==null?0:Math.max(0,(SystemClock.elapsedRealtimeNanos()-p.getElapsedRealtimeNanos())/1_000_000_000L);
+  boolean hay=p!=null&&seg<=15*60;
+  String msg=ContactosSos.mensaje(hay,hay?p.getLatitude():0,hay?p.getLongitude():0,hay&&p.hasAccuracy()?p.getAccuracy():0,seg);
+  int ok=0;
+  try{
+   SmsManager sms=Build.VERSION.SDK_INT>=31?getSystemService(SmsManager.class):SmsManager.getDefault();
+   ArrayList<String> partes=sms.divideMessage(msg);
+   for(ContactosSos.Contacto c:contactos){
+    try{sms.sendMultipartTextMessage(c.telefono(),null,partes,null,null);ok++;}
+    catch(Exception e){android.util.Log.e("TrabakutikGPS","SOS a "+c.nombre()+" no salió",e);}
+   }
+  }catch(Exception e){android.util.Log.e("TrabakutikGPS","SOS: sin SMS",e);}
+  prefsSos().edit().putLong("ultimo_sos",System.currentTimeMillis()).apply();
+  avisoCaida(ok>0?"SOS enviado por SMS a "+nombres(contactos)+(hay?" con tu posición.":", sin posición GPS reciente.")
+    :"No se ha podido enviar el SOS por SMS. Comprueba la cobertura y pide ayuda con el botón SOS.");
+ }
+ void avisoCaida(String texto){
+  Intent abre=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+  PendingIntent pa=PendingIntent.getActivity(this,44,abre,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+  ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIF_CAIDA_FIN,
+   new Notification.Builder(this,CANAL_CAIDA).setSmallIcon(android.R.drawable.ic_dialog_alert)
+    .setContentTitle("Aviso de caída").setContentText(texto).setStyle(new Notification.BigTextStyle().bigText(texto))
+    .setContentIntent(pa).setAutoCancel(true).build());
+ }
+ Notification notificacionCaida(){
+  PendingIntent bien=PendingIntent.getService(this,41,new Intent(this,TrackingService.class).setAction("CAIDA_BIEN"),
+    PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+  PendingIntent envia=PendingIntent.getService(this,42,new Intent(this,TrackingService.class).setAction("CAIDA_ENVIA"),
+    PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+  PendingIntent abre=PendingIntent.getActivity(this,43,new Intent(this,MainActivity.class).putExtra("caida",true)
+    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+  String quien=nombres(ContactosSos.lee(prefsSos().getString("contactos","")));
+  return new Notification.Builder(this,CANAL_CAIDA).setSmallIcon(android.R.drawable.ic_dialog_alert)
+   .setContentTitle(caidaPrueba?"Prueba: ¿te has caído?":"¿Te has caído?")
+   .setContentText(caidaPrueba?"Prueba: en 30 s terminará sin enviar nada.":"Si no respondes, en 30 s se envía un SOS a "+quien+".")
+   .setCategory(Notification.CATEGORY_ALARM).setOngoing(true).setAutoCancel(false)
+   .setUsesChronometer(true).setChronometerCountDown(true).setWhen(System.currentTimeMillis()+CUENTA_MS)
+   .setFullScreenIntent(abre,true).setContentIntent(abre)
+   .addAction(new Notification.Action.Builder((android.graphics.drawable.Icon)null,"Estoy bien",bien).build())
+   .addAction(new Notification.Action.Builder((android.graphics.drawable.Icon)null,caidaPrueba?"Terminar prueba":"Enviar S.O.S. ya",envia).build())
+   .build();
+ }
  void start(boolean withRecording){
   if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){stopSelf();return;}
   try {
@@ -391,6 +565,7 @@ public class TrackingService extends Service implements LocationListener {
   manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,this,Looper.getMainLooper());
   gpsArrancadoElapsed=SystemClock.elapsedRealtime();
    pideRed();
+   arrancaCaidas();
   }catch(Exception ex){finish();}
  }
  /** La red —antenas y wifi— solo esta para no quedarse a ciegas mientras el
@@ -862,6 +1037,8 @@ public class TrackingService extends Service implements LocationListener {
   if(esAntigua(l))return;
   if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
+  ultimaPosicion=l;
+  detectorCaidas.velocidad(l.hasSpeed()?l.getSpeed():Double.NaN,l.getElapsedRealtimeNanos()/1_000_000L);
   if(recording&&!pausado)bateriaFixes++;
   String liveMetrics="{}";
   if(navigating&&route.size()>1){
@@ -950,6 +1127,6 @@ public class TrackingService extends Service implements LocationListener {
   recording=false;GRABANDO=null;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).putString("gasto",gastoUltimo).apply();
  }
- void finish(){navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){paraCaidas();if(caidaEnCurso)terminaCaida(false);navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);callaYa();if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

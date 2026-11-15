@@ -12,7 +12,8 @@ class Activity {
  protected void onResume(){} protected void onStop(){}
  boolean isFinishing(){return false;} boolean isDestroyed(){return false;}
 }
-class TrackingService { static boolean ACTIVO=false; }
+class TrackingService { static boolean ACTIVO=false; static volatile long CAIDA_FIN=0; }
+class Handler { int posts=0; void post(Runnable r){posts++;} }
 class WebView {
  int paused=0,resumed=0,timersPaused=0,timersResumed=0; Consumer<String> callback;
  void evaluateJavascript(String code,Consumer<String> cb){callback=cb;}
@@ -32,6 +33,7 @@ public class BackgroundLifecycleTest extends Activity {
  static long reloj=1_000_000L;
  static class SystemClock { static long elapsedRealtime(){return reloj;} }
  void restoreGpsWeb(){}
+ Handler caidaUi=new Handler(); void muestraCaida(){}
 """ + methods + """
  static void check(boolean value){if(!value)throw new AssertionError();}
  static void check(boolean value,String s){if(!value)throw new AssertionError(s);}
