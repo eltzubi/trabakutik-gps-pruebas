@@ -6,6 +6,7 @@
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
  <uses-permission android:name="android.permission.WAKE_LOCK"/>
+ <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
  <!-- El aviso de caida: el SMS del SOS, la vibracion de la alarma y la
       pantalla de la cuenta atras encima del bloqueo. La telefonia no es
       obligatoria: en una tableta sin SIM la app se instala igual y el aviso

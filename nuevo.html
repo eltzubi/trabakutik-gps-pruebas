@@ -4899,11 +4899,32 @@ function recordingControls(state){estadoBotonera=state;setTimeout(actualizaDespe
 }
 // Pulsan el boton de verdad: asi valen sus avisos y confirmaciones.
 if($('tripPausa')){$('tripPausa').onclick=()=>$('recordPause').click();$('tripSigue').onclick=()=>$('recordResume').click();$('tripParar').onclick=()=>$('recordStop').click()}
+// QUE EL MOVIL NO CORTE LA NAVEGACION PARA AHORRAR BATERIA. Samsung corta
+// las apps en segundo plano, y con la pantalla apagada se quedarian sin sonar
+// los giros y el aviso de caida. Al empezar, si la app tiene la bateria
+// restringida, se ofrece quitarlo; como mucho una vez cada BATERIA_CADA_MS,
+// para no dar la lata a quien dice que no. Una APK vieja no lo sabe decir y
+// no se pregunta nada.
+const BATERIA_CADA_MS=7*24*3600e3;
+function compruebaBateria(ahora=Date.now()){
+ const app=window.TrabakutikAndroid;
+ if(!app||typeof app.bateriaSinRestriccion!=='function'||typeof app.pideBateriaSinRestriccion!=='function')return false;
+ let libre=true;try{libre=app.bateriaSinRestriccion()}catch(e){return false}
+ if(libre)return false;
+ let ultima=0;try{ultima=Number(localStorage.getItem('trabakutik-bateria-preguntada'))||0}catch(e){}
+ if(ahora-ultima<BATERIA_CADA_MS)return false;
+ try{localStorage.setItem('trabakutik-bateria-preguntada',String(ahora))}catch(e){}
+ if(confirm('Tu móvil puede cortar la navegación con la pantalla apagada para ahorrar batería: se quedarían sin sonar los giros y el aviso de caída.\n\n¿Dejar que Trabakutik funcione sin esa restricción?')){
+  try{app.pideBateriaSinRestriccion()}catch(e){}
+  return true;
+ }
+ return false;
+}
 $('recordStart').onclick=()=>{
  // Una ruta recién guardada sigue dibujada como borrador. Si se pulsa
  // Grabar desde Ruta, activar esa copia guardada antes del servicio.
  if(routePoints.length<2&&createdSavedItem&&sameTrack(drawPoints,createdSavedItem.points))loadSaved(createdSavedItem);
- apagadoHasta=0;pausado=false;recordingPendingSave=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice(routePoints.length>1?'Grabando y siguiendo · '+$('mapTitle').textContent:'Grabando · sin ruta activa para navegar')};
+ apagadoHasta=0;pausado=false;recordingPendingSave=false;enciendeNavegacionNativa();if(watch===null&&!fuenteNativa)startGPS(true);if(window.TrabakutikAndroid)window.TrabakutikAndroid.startRecording();recorded=[];lastBrowserRecordTime=0;lastBrowserRecordPoint=null;recording=true;if(recordLayer){map.removeLayer(recordLayer);recordLayer=null}recordingControls('recording');notice(routePoints.length>1?'Grabando y siguiendo · '+$('mapTitle').textContent:'Grabando · sin ruta activa para navegar');if(typeof setTimeout==='function')setTimeout(()=>{try{compruebaBateria()}catch(e){}},1500)};
 // En un circuito te cruzas con la salida varias veces, y parar por error
 // deja la grabacion a medias. Si queda ruta por delante, se dice cuanta.
 // La pausa detiene SOLO la grabacion. La ubicacion, los avisos de giro y el
@@ -5309,7 +5330,7 @@ if($('closeSos'))$('closeSos').onclick=()=>$('sosDialog').classList.add('hidden'
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos};
+ module.exports={compruebaBateria,pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos};
  Object.defineProperties(module.exports,{MAPA_Z_MIN:{get:()=>MAPA_Z_MIN,enumerable:true},MAPA_Z_MAX:{get:()=>MAPA_Z_MAX,enumerable:true},MAPA_MARGEN:{get:()=>MAPA_MARGEN,enumerable:true},CAPAS_GUARDABLES:{get:()=>CAPAS_GUARDABLES,enumerable:true},guiandoAntes:{get:()=>guiandoAntes,set:v=>{guiandoAntes=v},enumerable:true},pausado:{get:()=>pausado,set:v=>{pausado=v},enumerable:true},bajadaMapa:{get:()=>bajadaMapa,set:v=>{bajadaMapa=v},enumerable:true}});
 }
 })();

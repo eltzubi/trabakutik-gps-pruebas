@@ -464,6 +464,22 @@ public class MainActivity extends Activity {
   // necesitarlo: la prueba de la alarma, a proposito, no envia nada.
   @JavascriptInterface public void sendTestSms(){runOnUiThread(MainActivity.this::smsDePrueba);}
   @JavascriptInterface public void requestSmsPermission(){runOnUiThread(MainActivity.this::pidePermisoSms);}
+  // QUE ANDROID NO CORTE LA NAVEGACION PARA AHORRAR BATERIA. Samsung es de los
+  // que mas cortan las apps en segundo plano (dontkillmyapp.com), y AllTrails
+  // pide expresamente quitar esa restriccion. Si se corta el servicio, con la
+  // pantalla apagada no hay avisos de giro ni aviso de caida. La pagina lo
+  // pregunta al empezar (compruebaBateria). Buscado el 15 de noviembre de 2026.
+  @JavascriptInterface public boolean bateriaSinRestriccion(){
+   try{PowerManager pm=(PowerManager)getSystemService(POWER_SERVICE);return pm==null||pm.isIgnoringBatteryOptimizations(getPackageName());}
+   catch(Exception e){return true;}
+  }
+  @JavascriptInterface public void pideBateriaSinRestriccion(){runOnUiThread(()->{
+   try{startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,android.net.Uri.parse("package:"+getPackageName())));}
+   catch(Exception e){
+    try{startActivity(new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));}
+    catch(Exception e2){Toast.makeText(MainActivity.this,"Abre Ajustes > Aplicaciones > Trabakutik GPS > Batería y elige «Sin restricciones».",Toast.LENGTH_LONG).show();}
+   }
+  });}
   @JavascriptInterface public void testFall(){runOnUiThread(()->{
    try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("CAIDA_PRUEBA"));}
    catch(Exception e){Toast.makeText(MainActivity.this,"No se pudo probar el aviso de caída.",Toast.LENGTH_LONG).show();}
