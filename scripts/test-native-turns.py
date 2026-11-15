@@ -21,7 +21,7 @@ code='''package com.trabakutik.gps;
 import java.util.*;
 public class NativeTurnsTest {
  boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
- double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();
+ double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;

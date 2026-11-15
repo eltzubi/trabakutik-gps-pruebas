@@ -576,7 +576,7 @@ changeBase(initialBase);
 pintaOrient();
 $('orient').onclick=()=>{cursoArriba=!cursoArriba;pintaOrient();notice(!cursoArriba?'Mapa con el norte arriba':rumboMapa===null?'Mapa orientado al rumbo · girará en cuanto sepa hacia dónde vas':'Mapa orientado al rumbo');try{localStorage.setItem('trabakutik-curso-arriba',cursoArriba?'si':'no')}catch(e){}manualMapUntil=0;aplicaGiroMapa(true);pintaMandos()};
 $('basemap').value=baseMaps[initialBase]?initialBase:'osm';$('basemap').onchange=e=>changeBase(e.target.value);
-let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionsReves=[],junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null,crucesOsm=[];
+let nearbyOnly=false,nearbyOrigin=null,nearbyLast=null,nearbyCount=0,activeSavedId=null,tracks=[],layers=[],chosen=-1,mode='nav',watch=null,position=null,me=null,routePoints=[],drawPoints=[],drawSteps=[],drawMarks=[],drawLayer=null,recorded=[],recording=false,recordingPendingSave=false,recordLayer=null,audioModo="voz",junctionMarks=[],otherTracksVisible=false,alerted=false,farCount=0,onRouteSeen=false,farSince=0,audio=null,junctions=[],junctionsReves=null,junctionWarned=new Set(),junctionZoom=null,junctionActive=-1,junctionBlocked=-1,junctionZoomOnce=new Set(),autoZooming=false,routeCumulative=[],turnMarker=null,crucesOsm=[];
 const dist=(a,b)=>{const y=(a[0]-b[0])*R,x=(a[1]-b[1])*R;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(y/2)**2+Math.cos(a[0]*R)*Math.cos(b[0]*R)*Math.sin(x/2)**2)))};
 const notice=t=>{$('status').textContent=t};
 
@@ -905,7 +905,7 @@ async function loadDetailedSelected(i,request){
    // Se vacia la lista antes de mandar los puntos para que el servicio no
    // se quede ni un instante con los giros viejos sobre la linea nueva;
    // computeJunctions le manda enseguida los buenos.
-   junctions=[];junctionsReves=[];
+   junctions=[];junctionsReves=null;
    try{syncNativeRoute()}catch(e){console.warn('Ruta fina no enviada',e)}
    computeJunctions();
    updateElevation();
@@ -941,7 +941,7 @@ function selectRoute(i){
   // haya, y computeJunctions los recalcula y los vuelve a mandar detras.
   // Vaciados antes, como en loadDetailedSelected: los que hay aqui son los de
   // la ruta anterior y no pueden llegar al servicio ni un instante.
-  junctions=[];junctionsReves=[];
+  junctions=[];junctionsReves=null;
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
   aplicaCruces();
@@ -2566,7 +2566,7 @@ function loadSaved(item){
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute();resetJunctionView();
- junctions=[];junctionsReves=[];
+ junctions=[];junctionsReves=null;
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);pintaBotonMapa();
  chosen=-1;updateNativeLaunchLink();
@@ -2591,7 +2591,7 @@ function loadSaved(item){
  // Y la lista se vacia ANTES: syncNativeRoute manda tambien los giros que
  // tenga la pagina, que aqui todavia son los de la ruta anterior. Si los
  // nuevos no llegaban al servicio, se quedaba con los de otra ruta.
- junctions=[];junctionsReves=[];
+ junctions=[];junctionsReves=null;
  syncNativeRoute();
  computeJunctions();
  aplicaCruces();
@@ -2642,7 +2642,7 @@ function clearActiveRoute(){
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
  routePoints=[];chosen=-1;activeSavedId=null;updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
- junctions=[];junctionsReves=[];junctionWarned.clear();routeCumulative=[];crucesOsm=[];
+ junctions=[];junctionsReves=null;junctionWarned.clear();routeCumulative=[];crucesOsm=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
  setRouteTitle('Mapa de rutas',null);
@@ -3349,7 +3349,7 @@ function enviaGirosNativos(){
   window.TrabakutikAndroid.setJunctions(aNativo(junctions));
   // Los del sentido inverso, ya con su lado: el servicio los usa tal cual
   // yendo al reves. Una APK que no los sepa leer sigue cambiando el lado.
-  if(window.TrabakutikAndroid.setJunctionsReves)window.TrabakutikAndroid.setJunctionsReves(aNativo(junctionsReves||[]));
+  if(window.TrabakutikAndroid.setJunctionsReves&&Array.isArray(junctionsReves))window.TrabakutikAndroid.setJunctionsReves(aNativo(junctionsReves));
  }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
 }
 // EL AVISO DE UN CRUCE SALE DE LAS RAMAS DEL CRUCE, NO DE LA FORMA DEL TRACK.
@@ -3435,7 +3435,9 @@ function computeJunctions(){
  const pts=routePoints,n=pts.length;
  calculaCrucesDe();
  const ida=junctions,cum=routeCumulative,total=cum[cum.length-1]||0;
- let vuelta=[];
+ // null = sin calcular (entonces se le da la vuelta a la ida, como antes);
+ // [] = calculada y sin ningun aviso, que al reves puede pasar.
+ let vuelta=null;
  if(n>=3){
   routePoints=pts.slice().reverse();
   try{calculaCrucesDe();vuelta=junctions.map(j=>Object.assign({},j,{i:n-1-j.i,along:total-j.along,reves:true}));}
@@ -3867,7 +3869,9 @@ function junctionGuidance(p,accuracy,progress){
  // Yendo al reves, la lista calculada al reves (ver computeJunctions). Si
  // cambia la lista, lo que se estaba enseñando o ya se habia avisado era de
  // la otra: se empieza de cero.
- const lista=sentidoRuta<0&&junctionsReves.length?junctionsReves:junctions;
+ // Calculada aunque este vacia: al reves puede no hacer falta ningun aviso,
+ // y entonces no se usan los de la ida dados la vuelta.
+ const lista=sentidoRuta<0&&Array.isArray(junctionsReves)?junctionsReves:junctions;
  if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear()}
  listaCrucesActiva=lista;
  if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!lista.length||accuracy>60){

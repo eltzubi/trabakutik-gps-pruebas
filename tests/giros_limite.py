@@ -46,7 +46,7 @@ public class GirosLimiteTest {
  static class Log{static void w(String a,String b,Throwable t){}}
  static class android{static class util{static class Log{static void w(String a,String b,Throwable t){}}}}
  File dir;File getFilesDir(){return dir;}
- final ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();
+ final ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
  final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";
 ''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + metodo(' String fraseGiro(') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}

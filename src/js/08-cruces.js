@@ -235,7 +235,7 @@ function enviaGirosNativos(){
   window.TrabakutikAndroid.setJunctions(aNativo(junctions));
   // Los del sentido inverso, ya con su lado: el servicio los usa tal cual
   // yendo al reves. Una APK que no los sepa leer sigue cambiando el lado.
-  if(window.TrabakutikAndroid.setJunctionsReves)window.TrabakutikAndroid.setJunctionsReves(aNativo(junctionsReves||[]));
+  if(window.TrabakutikAndroid.setJunctionsReves&&Array.isArray(junctionsReves))window.TrabakutikAndroid.setJunctionsReves(aNativo(junctionsReves));
  }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
 }
 // EL AVISO DE UN CRUCE SALE DE LAS RAMAS DEL CRUCE, NO DE LA FORMA DEL TRACK.
@@ -321,7 +321,9 @@ function computeJunctions(){
  const pts=routePoints,n=pts.length;
  calculaCrucesDe();
  const ida=junctions,cum=routeCumulative,total=cum[cum.length-1]||0;
- let vuelta=[];
+ // null = sin calcular (entonces se le da la vuelta a la ida, como antes);
+ // [] = calculada y sin ningun aviso, que al reves puede pasar.
+ let vuelta=null;
  if(n>=3){
   routePoints=pts.slice().reverse();
   try{calculaCrucesDe();vuelta=junctions.map(j=>Object.assign({},j,{i:n-1-j.i,along:total-j.along,reves:true}));}

@@ -930,3 +930,14 @@ test('«Hechos» es lo que has andado grabando, aunque salieras antes del princi
  recorded.push([43+1600/111195,-2.5]);c.pintaAvance(300);
  assert.equal(n.tripHecho.textContent,'1,6 km hechos','y suma lo nuevo');
 });
+test('Si al revés no hace falta ningún aviso, no se usan los de la ida dados la vuelta',()=>{
+ let resets=0;
+ const c={$:()=>({classList:{add(){},remove(){}},textContent:'',innerHTML:''}),guiaIniciada:()=>true,alerted:false,sigueMoviendose:()=>true,
+  routePoints:[[0,0],[0,1]],junctions:[{i:1,along:50,point:[0,0],direction:'derecha',cruce:true}],junctionsReves:[],sentidoRuta:-1,
+  junctionWarned:new Set(),junctionActive:-1,resetJunctionView(){resets++},distanciasDeAviso:()=>[50,10,90],
+  avanzaPorLaRuta:()=>true,progressOnRoute:()=>({along:60,distance:2}),dist:()=>10,Date};
+ vm.createContext(c);vm.runInContext(source('let listaCrucesActiva=null;','function rumboDeLaRuta(progreso){'),c);
+ c.junctionGuidance([0,0],5);
+ assert.equal(c.junctionActive,-1,'no se enseña ningun giro: al reves no hay ninguno');
+});
+

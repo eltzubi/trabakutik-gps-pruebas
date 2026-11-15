@@ -132,7 +132,9 @@ function junctionGuidance(p,accuracy,progress){
  // Yendo al reves, la lista calculada al reves (ver computeJunctions). Si
  // cambia la lista, lo que se estaba enseñando o ya se habia avisado era de
  // la otra: se empieza de cero.
- const lista=sentidoRuta<0&&junctionsReves.length?junctionsReves:junctions;
+ // Calculada aunque este vacia: al reves puede no hacer falta ningun aviso,
+ // y entonces no se usan los de la ida dados la vuelta.
+ const lista=sentidoRuta<0&&Array.isArray(junctionsReves)?junctionsReves:junctions;
  if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear()}
  listaCrucesActiva=lista;
  if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!lista.length||accuracy>60){
