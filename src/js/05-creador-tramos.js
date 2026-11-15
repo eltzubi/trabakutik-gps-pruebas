@@ -59,9 +59,19 @@ async function solicitaMapaGps(coords,signal){
  const normal=respuestaMapaGps(await pideMapaGps(coords,signal,null),coords);
  // La segunda opinion (ver eligeTramosCortos). Si falla, no pasa nada: se
  // queda el normal. Solo se corta si el calculo se cancela.
+ // Con tope de SEGUNDA_MS: si no contesta, la normal ya esta y no se espera
+ // mas (lo vio la revision con GPT: sin tope, una segunda colgada dejaba al
+ // creador esperando con la ruta buena ya en la mano).
  let corto=null;
- try{corto=respuestaMapaGps(await pideMapaGps(coords,signal,{pedestrian:{shortest:true}}),coords)}
+ const SEGUNDA_MS=6000,ctl=new AbortController();
+ const corta=()=>ctl.abort();signal.addEventListener('abort',corta,{once:true});
+ let reloj=null;
+ // Carrera con un reloj: no basta con cancelar la peticion, que una que no
+ // atienda la cancelacion dejaria la espera colgada igual.
+ const tope=new Promise((_,ko)=>{reloj=setTimeout(()=>{corta();ko(Error('Sin segunda opinión'))},SEGUNDA_MS)});
+ try{corto=respuestaMapaGps(await Promise.race([pideMapaGps(coords,ctl.signal,{pedestrian:{shortest:true}}),tope]),coords)}
  catch(e){if(signal.aborted)throw e}
+ finally{clearTimeout(reloj);signal.removeEventListener('abort',corta)}
  return eligeTramosCortos(normal,corto);
 }
 async function pideMapaGps(coords,signal,opciones){

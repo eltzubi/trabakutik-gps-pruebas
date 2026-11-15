@@ -230,6 +230,16 @@ test('la segunda opinión del planificador: si falla, se queda el trazado normal
  r=await c.solicitaMapaGps([A,B],ctl.signal);
  assert(r.parts[0].every(p=>Math.abs(p[0]-43)<1e-6),'con la segunda bien, el rodeo se cambia por la recta: ahorra mas de 15 m y del 10 %');
 });
+test('si la segunda petición del planificador no contesta, se queda la normal sin esperar más',async()=>{
+ const c=creatorContext();const A=[43,-2],B=[43,-1.996];
+ c.fetch=(url,opt)=>{const body=JSON.parse(opt.body);
+  if(body.costing_options)return new Promise((ok,ko)=>{opt.signal.addEventListener('abort',()=>ko(Error('cancelada')))});
+  return Promise.resolve({ok:true,status:200,json:async()=>({trip:{locations:body.locations,legs:[{shape:codificaValhalla([A,B])}]}})})};
+ let reloj=null;c.setTimeout=(fn,ms)=>{if(ms===6000){reloj=fn;return 1}return setTimeout(fn,ms<5000?0:ms)};c.clearTimeout=()=>{};
+ const ctl=new AbortController();const prom=c.solicitaMapaGps([A,B],ctl.signal);
+ await new Promise(r=>setTimeout(r,20));assert(reloj,'se pone un tope a la segunda');reloj();
+ const r=await prom;assert.equal(r.parts[0].length,2,'la normal');
+});
 test('sin aceptar el servicio no se envían coordenadas',async()=>{
  const c=creatorContext();let sent=0;c.confirm=()=>false;c.fetch=async()=>{sent++;throw Error('no debe enviarse')};
  await c.planificaMapaGps([[43,-2],[43.001,-2]]);
