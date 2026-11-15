@@ -8,9 +8,6 @@
    del titulo y el selector de mapa, que en marcha no se tocan. El aviso de
    «al reves» se queda pero pequeño; ademas iba repetido en el recuadro y en
    el pie, y asi queda uno solo. */
-#despeja{position:absolute;z-index:742;left:50%;bottom:10px;transform:translateX(-50%);
- padding:7px 14px;border-radius:12px;background:#0d2339ed;color:#d4f7ff;
- border:1px solid #5a889b7a;font-size:11px;font-weight:700;box-shadow:0 2px 14px #0006}
 #despeja.hidden{display:none!important}
 body.despejado .bottom{display:none}
 body.despejado .info .info-top{display:none}
@@ -138,24 +135,38 @@ button{min-width:0}
 #compass b{display:inline;font-size:14px;font-weight:800;color:#a6f3ff;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;margin:0}
 #compass svg{flex:0 0 auto}
 #routeProgress{display:none!important}
-#tripBox{position:absolute;z-index:640;left:10px;bottom:calc(var(--turn-alto,0px) + 20px);width:calc(100% - 94px);max-width:340px;display:grid;grid-template-columns:1fr 1.25fr;gap:8px;font-variant-numeric:tabular-nums;pointer-events:none;color:#0d1a20}
+/* EL PANEL DE ABAJO (15 de noviembre de 2026). El autor eligio el panel
+   oscuro de lado a lado, como el de su captura y sin la foto: nombre, tres
+   columnas, el perfil ancho y los botones. Va EN EL FLUJO, debajo del mapa,
+   no flotando encima: flotando, el boton de mandos tapaba las tarjetas. Y
+   mientras se ve ocupa el sitio del perfil, que lleva dentro. */
+#tripBox{flex:none;background:#0f1a20;color:#e6edf0;border-top:1px solid #2a3d4b;padding:8px 10px 8px;display:flex;flex-direction:column;gap:6px;font-variant-numeric:tabular-nums}
 #tripBox.hidden{display:none}
-#tripBox.sin-alturas{grid-template-columns:1fr;max-width:170px}
-#tripBox.sin-alturas .trip-alt{display:none}
-#tripBox .trip-card{background:#fff;border-radius:16px;padding:9px 11px 10px;box-shadow:0 8px 22px #0006;min-width:0}
-#tripBox h3{margin:0;font-size:10px;font-weight:700;letter-spacing:.12em;color:#5b6b73;text-transform:uppercase}
-#tripBox .trip-num{font-size:26px;font-weight:800;line-height:1.05;letter-spacing:-.02em;white-space:nowrap}
-#tripBox .trip-num small{font-size:13px;font-weight:600;color:#5b6b73;margin-left:2px}
-#tripBox .trip-num.chico{font-size:20px}
-#tripBox .trip-sec{font-size:13px;color:#5b6b73;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#tripBox .trip-sec b{color:#0d1a20}
-#tripBox .trip-pista{height:5px;background:#e4eaed;border-radius:3px;margin-top:8px;position:relative}
-#tripBox .trip-pista i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#0aa6c2}
-#tripBox .trip-pista b{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:#fff;border:3px solid #0d1a20;transform:translate(-50%,-50%)}
-#tripBox .trip-pares{display:flex;justify-content:space-between;gap:6px}
-#tripBox .trip-pares > div:last-child{text-align:right}
-#tripPerfil{display:block;width:100%;height:34px;margin-top:4px}
-@media (max-width:359px){#tripBox{gap:6px;width:calc(100% - 84px)}#tripBox .trip-card{padding:8px 8px 9px}#tripBox .trip-num{font-size:22px}#tripBox .trip-num.chico{font-size:16px}#tripBox .trip-num small{font-size:11px}#tripBox h3{font-size:9px;letter-spacing:.06em}#tripBox .trip-sec{font-size:12px}}
+body.con-panel #elevationPanel{display:none!important}
+#tripBox .trip-nombre{font-size:13px;font-weight:700;color:#cfe3ec;background:#1a2a33;border-radius:10px;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tripBox .trip-tres{display:grid;grid-template-columns:1fr 1.25fr .85fr;text-align:center}
+#tripBox .trip-col{min-width:0}
+#tripBox .trip-col + .trip-col{border-left:1px solid #22323b}
+#tripBox h3{margin:0;font-size:10px;font-weight:700;letter-spacing:.12em;color:#8fa6b2;text-transform:uppercase}
+#tripBox .trip-g{font-size:22px;font-weight:800;line-height:1.15;letter-spacing:-.02em;white-space:nowrap}
+#tripBox .trip-g small{font-size:12px;font-weight:600;color:#8fa6b2;margin-left:2px}
+#tripBox .trip-g .sube{color:#5fe08a;font-size:15px}
+#tripBox .trip-g .baja{color:#ff9a7a;font-size:15px}
+#tripBox .trip-p{font-size:12px;color:#9fb3c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tripBox .trip-p b{color:#e6edf0}
+#tripBox .trip-pista{height:4px;background:#22323b;border-radius:2px;margin:4px 12px 0;overflow:hidden}
+#tripBox .trip-pista i{display:block;height:100%;background:#4fd8f0;border-radius:2px}
+#tripPerfil{display:block;width:100%;height:48px}
+#tripBox.sin-alturas #tripPerfil{display:none}
+#tripBox .trip-botones{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+#tripBox .trip-botones button{min-width:0;margin:0;padding:9px 4px;border-radius:12px;font-size:13px;font-weight:700;background:#1a2a33;color:#e6edf0;border:1px solid #2a3d4b;white-space:nowrap}
+#tripBox .trip-botones button.red{background:#c62828;border-color:#c62828;color:#fff}
+#tripBox .trip-botones button.go{background:#2e7d32;border-color:#2e7d32;color:#fff}
+#tripBox .trip-botones .hidden{display:none!important}
+body:not(.despejado) #tripBox .trip-proxy{display:none!important}
+body:not(.despejado) #tripBox .trip-botones{grid-template-columns:1fr}
+@media (max-width:359px){#tripBox .trip-g{font-size:18px}#tripBox .trip-g .sube,#tripBox .trip-g .baja{font-size:12px}#tripBox h3{font-size:9px;letter-spacing:.06em}#tripBox .trip-p{font-size:11px}}
+@media (max-height:650px){#tripPerfil{height:34px}#tripBox .trip-nombre{display:none}}
 #routeProgress b{display:inline;font-size:11px;color:#8ef0ff;font-weight:800;white-space:nowrap;overflow:visible;margin:0}
 .reverse-warn{display:block;margin-top:5px;padding:3px 7px;border-radius:7px;background:#4a2f07e6;border:1px solid #c98a2b;color:#ffd99a;font-size:10px;font-weight:700;letter-spacing:.03em;line-height:1.25}
 .turn-fila{display:flex;align-items:center;gap:13px}
@@ -409,7 +420,8 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
 #audioMode .audio-label{font-size:8px;line-height:1;font-weight:700}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="tripBox" class="hidden" aria-live="off"><div class="trip-card trip-dist"><h3>Distancia</h3><div class="trip-num"><span id="tripHecho"></span><small id="tripHechoU">km</small></div><div class="trip-sec"><span id="tripQuedaTxt">quedan </span><b id="tripQueda"></b></div><div class="trip-pista"><i id="tripBarra"></i><b id="tripPunto"></b></div></div><div class="trip-card trip-alt"><div class="trip-pares"><div><h3>Subido</h3><div class="trip-num chico"><span id="tripSubido"></span><small>m</small></div></div><div><h3>Altitud</h3><div class="trip-num chico"><span id="tripAltitud"></span><small>m</small></div></div></div><svg id="tripPerfil" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="tripHechoClip"><path id="tripHechoRect" d=""/></clipPath></defs><path id="tripPerfilArea" fill="#dff1e5"/><path id="tripPerfilHecho" fill="#16a34a" fill-opacity=".35" clip-path="url(#tripHechoClip)"/><path id="tripPerfilLinea" fill="none" stroke="#16a34a" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle id="tripPerfilPunto" r="3.5" fill="#0d1a20"/></svg><div class="trip-sec">falta <b id="tripFalta"></b></div></div></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">Actual</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<section id="tripBox" class="hidden" aria-label="Lo que llevas" aria-live="off"><div class="trip-nombre" id="tripRuta"></div><div class="trip-tres"><div class="trip-col"><h3>Distancia</h3><div class="trip-g"><span id="tripHecho"></span><small id="tripHechoU">km</small></div><div class="trip-p"><span id="tripQuedaTxt">quedan </span><b id="tripQueda"></b></div><div class="trip-pista"><i id="tripBarra"></i></div></div><div class="trip-col"><h3>Desnivel</h3><div class="trip-g"><span class="sube">▲</span><span id="tripSubido"></span> <span class="baja">▼</span><span id="tripBajado"></span></div><div class="trip-p">falta <b id="tripFalta"></b></div></div><div class="trip-col"><h3>GPS</h3><div class="trip-g" id="tripGps">—</div><div class="trip-p"><b id="tripAltitud"></b> m alt.</div></div></div><svg id="tripPerfil" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="tripHechoClip"><path id="tripHechoRect" d=""/></clipPath></defs><path id="tripPerfilArea" fill="#4fd8f0" fill-opacity=".14"/><path id="tripPerfilHecho" fill="#4fd8f0" fill-opacity=".38" clip-path="url(#tripHechoClip)"/><path id="tripPerfilLinea" fill="none" stroke="#4fd8f0" stroke-width="2" vector-effect="non-scaling-stroke"/><circle id="tripPerfilPunto" r="0" fill="#1e7bf2" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div class="trip-botones"><button type="button" id="tripPausa" class="trip-proxy">❙❙ Pausa</button><button type="button" id="tripSigue" class="trip-proxy go hidden">▶ Seguir</button><button type="button" id="tripParar" class="trip-proxy red">■ Parar</button><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos">⌄ Ocultar</button></div></section>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
  <div class="elevation-head"><strong id="elevationTitle">PERFIL DE ALTURA</strong><span id="elevationSlope">Marca dos puntos</span><button id="toggleProfile" type="button" aria-label="Plegar perfil" aria-controls="elevationSvg" aria-expanded="true">⌄</button></div>
  <div class="elevation-stats"><span id="profileDistance">0,00 km</span><span id="profileGain">↑ 0 m</span><span id="profileLoss">↓ 0 m</span></div>
@@ -1974,7 +1986,9 @@ function paintNavigationMetrics(){
  }
  if(summary.textContent!==text)summary.textContent=text;
 }
+let perfilGuardado=null;
 function navigationProfilePoints(){
+ if(chosen<0&&perfilGuardado&&perfilGuardado.compacta===routePoints&&perfilGuardado.completa.some(p=>p&&Number.isFinite(p[2])))return perfilGuardado.completa;
  if(chosen<0||!tracks[chosen]||routePoints===detailedProfilePoints&&routePoints.some(p=>Number.isFinite(p[2])))return routePoints;
  const track=tracks[chosen],slug=track.href?.replace(/\.html$/,'');
  const heights=profileHeights?.[slug];
@@ -2596,6 +2610,9 @@ function loadSaved(item){
  junctions=[];junctionsReves=null;
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);pintaBotonMapa();
+ // El perfil y las alturas, con TODOS los puntos: la copia simplificada se
+ // come una cima en mitad de una recta (navigationProfilePoints).
+ perfilGuardado={compacta:routePoints,completa:item.points};
  chosen=-1;updateNativeLaunchLink();
  if(item.imported){
   otherTracksVisible=false; // cada GPX externo abre el mapa limpio
@@ -2994,7 +3011,8 @@ function pintaAvance(along,info){
  if(!caja)return;
  const tb=$('tripBox');
  if(!guiaIniciada()||routeCumulative.length<2){
-  caja.classList.add('hidden');if(tb)tb.classList.add('hidden');faltaSubidaRuta=null;
+  caja.classList.add('hidden');faltaSubidaRuta=null;
+  if(tb&&!tb.classList.contains('hidden')){tb.classList.add('hidden');document.body.classList.remove('con-panel')}
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
@@ -3015,9 +3033,11 @@ function pintaAvance(along,info){
  if(queda!==null){$('tripQuedaTxt').textContent='quedan ';$('tripQueda').textContent=km(queda)}
  else{$('tripQuedaTxt').textContent='ruta a ';$('tripQueda').textContent=info&&Number.isFinite(info.distRuta)?km(info.distRuta):'—'}
  const frac=queda===null?0:andado!==null&&andado+queda>0?andado/(andado+queda):total>0?hechoRuta/total:0;
- $('tripBarra').style.width=(frac*100).toFixed(1)+'%';$('tripPunto').style.left=(frac*100).toFixed(1)+'%';
+ $('tripBarra').style.width=(frac*100).toFixed(1)+'%';
+ $('tripRuta').textContent=$('mapTitle')?.textContent||'';
+ if(info&&Number.isFinite(info.precision))$('tripGps').textContent='±'+Math.round(info.precision)+' m';
  pintaAlturas(conPos?along/total:null,enRuta);
- tb.classList.remove('hidden');
+ if(tb.classList.contains('hidden')){tb.classList.remove('hidden');document.body.classList.add('con-panel');try{map.invalidateSize()}catch(e){}}
 }
 // LAS ALTURAS SALEN DEL PERFIL DE LA RUTA, NO DEL GPS. La altura del GPS de
 // Android va sobre el elipsoide (unos 50 m de mas aqui), se equivoca 10-20 m
@@ -3057,11 +3077,11 @@ function alturaEnPerfil(P,x){
 }
 // El umbral de 5 m con su estado: se le van dando alturas en el orden en que
 // se andan. Un null (sin altura) corta: la siguiente vuelve a ser referencia.
-function nuevaCuenta(){return {ref:null,sube:0}}
+function nuevaCuenta(){return {ref:null,sube:0,baja:0}}
 function cuenta(c,h){
  if(h===null||!Number.isFinite(h)){c.ref=null;return}
  if(c.ref===null){c.ref=h;return}
- if(h>=c.ref+5){c.sube+=h-c.ref;c.ref=h}else if(h<=c.ref-5)c.ref=h;
+ if(h>=c.ref+5){c.sube+=h-c.ref;c.ref=h}else if(h<=c.ref-5){c.baja+=c.ref-h;c.ref=h}
 }
 // Las alturas de a a b por el perfil, EN EL ORDEN EN QUE SE ANDAN, con los
 // vertices de en medio: comparar solo las dos puntas se come la cima que hay
@@ -3106,7 +3126,7 @@ function casaEnRuta(P,q,previo){
 // donde fue. Lo andado lejos de la ruta se apunta aparte, para el «≥».
 let subSes=null;
 function subidaSesion(P){
- const vacio={sube:0,fuera:0,bins:new Uint8Array(BINS_TRIP)};
+ const vacio={sube:0,baja:0,fuera:0,bins:new Uint8Array(BINS_TRIP)};
  if(!recording||!Array.isArray(recorded))return vacio;
  const clave=q=>Array.isArray(q)?q[0].toFixed(6)+','+q[1].toFixed(6):'-';
  const primero=recorded.find(q=>Array.isArray(q));
@@ -3127,41 +3147,43 @@ function subidaSesion(P){
   S.punto=q;
  }
  S.n=recorded.length;S.ultimo=clave(recorded[S.n-1]);
- return {sube:S.c.sube,fuera:S.fuera,bins:S.bins};
+ return {sube:S.c.sube,baja:S.c.baja,fuera:S.fuera,bins:S.bins};
 }
 function pintaAlturas(fracRuta,enRuta){
  const tb=$('tripBox'),P=perfilDeAlturas();
- if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;return}
+ if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;for(const id of ['tripSubido','tripBajado','tripAltitud'])$(id).textContent='—';$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
- $('tripSubido').textContent=(S.fuera>=100?'≥':'')+'+'+Math.round(S.sube);
+ const al=S.fuera>=100?'≥':'';
+ $('tripSubido').textContent=al+Math.round(S.sube);$('tripBajado').textContent=al+Math.round(S.baja);
  const pos=fracRuta===null?null:fracRuta*P.T;
  // La altitud y el punto, solo estando en la ruta ahora: la ultima posicion
  // buena no es la altitud de donde estas.
  const altura=pos!==null&&enRuta?alturaEnPerfil(P,pos):null;
  $('tripAltitud').textContent=altura===null?'—':String(Math.round(altura));
  const falta=pos===null?null:subidaEntre(P,pos,sentidoRuta>0?P.T:0);
- $('tripFalta').textContent=falta===null?'—':'+'+Math.round(falta)+' m';
+ $('tripFalta').textContent=falta===null?'—':'▲'+Math.round(falta)+' m';
  faltaSubidaRuta=falta;
  // El perfil, en el sentido de la marcha: lo que viene, a la derecha.
- const xDe=v=>(sentidoRuta>0?v/P.T:1-v/P.T)*200;
- const y=v=>v===null?34:(32-(v-P.lo)/Math.max(30,P.hi-P.lo)*29).toFixed(1);
+ const W=300,H=48;
+ const xDe=v=>(sentidoRuta>0?v/P.T:1-v/P.T)*W;
+ const y=v=>v===null?H:(H-3-(v-P.lo)/Math.max(30,P.hi-P.lo)*(H-8)).toFixed(1);
  if(perfilTrip.dibujo!==sentidoRuta){
   const m=sentidoRuta>0?P.muestras:P.muestras.slice().reverse(),M=m.length-1;
-  const linea=m.map((v,s)=>(s?'L':'M')+(s/M*200).toFixed(1)+' '+y(v)).join(' ');
+  const linea=m.map((v,s)=>(s?'L':'M')+(s/M*W).toFixed(1)+' '+y(v)).join(' ');
   $('tripPerfilLinea').setAttribute('d',linea);
-  const area=linea+' L200 34 L0 34 Z';
+  const area=linea+' L'+W+' '+H+' L0 '+H+' Z';
   $('tripPerfilArea').setAttribute('d',area);$('tripPerfilHecho').setAttribute('d',area);
   perfilTrip.dibujo=sentidoRuta;
  }
  // Sombreado lo que de verdad has pisado, a trozos: si entras en el km 5,
  // llegas al 8 y vuelves al 6, lo del 5 al 8 sigue hecho.
- let clip='';const w=200/BINS_TRIP;
- for(let i=0;i<BINS_TRIP;i++)if(S.bins[i]){const x=sentidoRuta>0?i*w:200-(i+1)*w;clip+='M'+x.toFixed(1)+' 0h'+w.toFixed(1)+'v34h-'+w.toFixed(1)+'Z'}
+ let clip='';const w=W/BINS_TRIP;
+ for(let i=0;i<BINS_TRIP;i++)if(S.bins[i]){const x=sentidoRuta>0?i*w:W-(i+1)*w;clip+='M'+x.toFixed(1)+' 0h'+w.toFixed(1)+'v'+H+'h-'+w.toFixed(1)+'Z'}
  $('tripHechoRect').setAttribute('d',clip);
  const p=$('tripPerfilPunto');
  if(altura===null)p.setAttribute('r','0');
- else{p.setAttribute('r','3.5');p.setAttribute('cx',xDe(pos).toFixed(1));p.setAttribute('cy',y(altura))}
+ else{p.setAttribute('r','5');p.setAttribute('cx',xDe(pos).toFixed(1));p.setAttribute('cy',y(altura))}
 }
 function marcaAlReves(si){
  const c=$('reverseWarn');
@@ -4432,7 +4454,7 @@ function onFix(pos){
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
   // En la ruta solo con posicion fiable; con una mala se queda lo ultimo dicho.
-  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d});
+  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
   liveProfileAlong=guiaIniciada()&&fiable&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
    updateOffRoute(d,pos.coords.accuracy);
@@ -4722,6 +4744,10 @@ function pintaDespeja(){
  const b=$('despeja');if(!b)return;
  b.classList.toggle('hidden',!guiaIniciada());
  b.textContent=document.body.classList.contains('despejado')?'⌃ Mandos':'⌄ Ocultar';
+ // El panel de abajo se ve mientras guia, con datos o sin ellos todavia:
+ // dentro va el boton de mandos.
+ const tb=$('tripBox');
+ if(tb){const ver=guiaIniciada();if(ver===tb.classList.contains('hidden')){tb.classList.toggle('hidden',!ver);document.body.classList.toggle('con-panel',ver);try{map.invalidateSize()}catch(e){}}}
 }
 function actualizaDespeje(){
  const ahora=guiaIniciada();
@@ -4749,7 +4775,11 @@ function recordingControls(state){estadoBotonera=state;setTimeout(actualizaDespe
  $('saveRecording').classList.toggle('hidden',state!=='stopped');
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
+ // Los botones del panel de abajo son los mismos de la botonera, a mano.
+ if($('tripPausa')){$('tripPausa').classList.toggle('hidden',state!=='recording');$('tripSigue').classList.toggle('hidden',state!=='paused');$('tripParar').classList.toggle('hidden',state!=='recording'&&state!=='paused')}
 }
+// Pulsan el boton de verdad: asi valen sus avisos y confirmaciones.
+if($('tripPausa')){$('tripPausa').onclick=()=>$('recordPause').click();$('tripSigue').onclick=()=>$('recordResume').click();$('tripParar').onclick=()=>$('recordStop').click()}
 $('recordStart').onclick=()=>{
  // Una ruta recién guardada sigue dibujada como borrador. Si se pulsa
  // Grabar desde Ruta, activar esa copia guardada antes del servicio.

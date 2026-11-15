@@ -32,6 +32,10 @@ function pintaDespeja(){
  const b=$('despeja');if(!b)return;
  b.classList.toggle('hidden',!guiaIniciada());
  b.textContent=document.body.classList.contains('despejado')?'⌃ Mandos':'⌄ Ocultar';
+ // El panel de abajo se ve mientras guia, con datos o sin ellos todavia:
+ // dentro va el boton de mandos.
+ const tb=$('tripBox');
+ if(tb){const ver=guiaIniciada();if(ver===tb.classList.contains('hidden')){tb.classList.toggle('hidden',!ver);document.body.classList.toggle('con-panel',ver);try{map.invalidateSize()}catch(e){}}}
 }
 function actualizaDespeje(){
  const ahora=guiaIniciada();
@@ -59,7 +63,11 @@ function recordingControls(state){estadoBotonera=state;setTimeout(actualizaDespe
  $('saveRecording').classList.toggle('hidden',state!=='stopped');
  $('discardRecording').classList.toggle('hidden',state!=='stopped');
  $('saveRecording').disabled=state==='stopped'&&!window.TrabakutikAndroid&&recorded.length<2;
+ // Los botones del panel de abajo son los mismos de la botonera, a mano.
+ if($('tripPausa')){$('tripPausa').classList.toggle('hidden',state!=='recording');$('tripSigue').classList.toggle('hidden',state!=='paused');$('tripParar').classList.toggle('hidden',state!=='recording'&&state!=='paused')}
 }
+// Pulsan el boton de verdad: asi valen sus avisos y confirmaciones.
+if($('tripPausa')){$('tripPausa').onclick=()=>$('recordPause').click();$('tripSigue').onclick=()=>$('recordResume').click();$('tripParar').onclick=()=>$('recordStop').click()}
 $('recordStart').onclick=()=>{
  // Una ruta recién guardada sigue dibujada como borrador. Si se pulsa
  // Grabar desde Ruta, activar esa copia guardada antes del servicio.

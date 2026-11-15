@@ -499,7 +499,9 @@ function paintNavigationMetrics(){
  }
  if(summary.textContent!==text)summary.textContent=text;
 }
+let perfilGuardado=null;
 function navigationProfilePoints(){
+ if(chosen<0&&perfilGuardado&&perfilGuardado.compacta===routePoints&&perfilGuardado.completa.some(p=>p&&Number.isFinite(p[2])))return perfilGuardado.completa;
  if(chosen<0||!tracks[chosen]||routePoints===detailedProfilePoints&&routePoints.some(p=>Number.isFinite(p[2])))return routePoints;
  const track=tracks[chosen],slug=track.href?.replace(/\.html$/,'');
  const heights=profileHeights?.[slug];

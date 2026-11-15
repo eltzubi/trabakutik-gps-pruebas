@@ -173,7 +173,8 @@ function pintaAvance(along,info){
  if(!caja)return;
  const tb=$('tripBox');
  if(!guiaIniciada()||routeCumulative.length<2){
-  caja.classList.add('hidden');if(tb)tb.classList.add('hidden');faltaSubidaRuta=null;
+  caja.classList.add('hidden');faltaSubidaRuta=null;
+  if(tb&&!tb.classList.contains('hidden')){tb.classList.add('hidden');document.body.classList.remove('con-panel')}
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
@@ -194,9 +195,11 @@ function pintaAvance(along,info){
  if(queda!==null){$('tripQuedaTxt').textContent='quedan ';$('tripQueda').textContent=km(queda)}
  else{$('tripQuedaTxt').textContent='ruta a ';$('tripQueda').textContent=info&&Number.isFinite(info.distRuta)?km(info.distRuta):'—'}
  const frac=queda===null?0:andado!==null&&andado+queda>0?andado/(andado+queda):total>0?hechoRuta/total:0;
- $('tripBarra').style.width=(frac*100).toFixed(1)+'%';$('tripPunto').style.left=(frac*100).toFixed(1)+'%';
+ $('tripBarra').style.width=(frac*100).toFixed(1)+'%';
+ $('tripRuta').textContent=$('mapTitle')?.textContent||'';
+ if(info&&Number.isFinite(info.precision))$('tripGps').textContent='±'+Math.round(info.precision)+' m';
  pintaAlturas(conPos?along/total:null,enRuta);
- tb.classList.remove('hidden');
+ if(tb.classList.contains('hidden')){tb.classList.remove('hidden');document.body.classList.add('con-panel');try{map.invalidateSize()}catch(e){}}
 }
 // LAS ALTURAS SALEN DEL PERFIL DE LA RUTA, NO DEL GPS. La altura del GPS de
 // Android va sobre el elipsoide (unos 50 m de mas aqui), se equivoca 10-20 m
@@ -236,11 +239,11 @@ function alturaEnPerfil(P,x){
 }
 // El umbral de 5 m con su estado: se le van dando alturas en el orden en que
 // se andan. Un null (sin altura) corta: la siguiente vuelve a ser referencia.
-function nuevaCuenta(){return {ref:null,sube:0}}
+function nuevaCuenta(){return {ref:null,sube:0,baja:0}}
 function cuenta(c,h){
  if(h===null||!Number.isFinite(h)){c.ref=null;return}
  if(c.ref===null){c.ref=h;return}
- if(h>=c.ref+5){c.sube+=h-c.ref;c.ref=h}else if(h<=c.ref-5)c.ref=h;
+ if(h>=c.ref+5){c.sube+=h-c.ref;c.ref=h}else if(h<=c.ref-5){c.baja+=c.ref-h;c.ref=h}
 }
 // Las alturas de a a b por el perfil, EN EL ORDEN EN QUE SE ANDAN, con los
 // vertices de en medio: comparar solo las dos puntas se come la cima que hay
@@ -285,7 +288,7 @@ function casaEnRuta(P,q,previo){
 // donde fue. Lo andado lejos de la ruta se apunta aparte, para el «≥».
 let subSes=null;
 function subidaSesion(P){
- const vacio={sube:0,fuera:0,bins:new Uint8Array(BINS_TRIP)};
+ const vacio={sube:0,baja:0,fuera:0,bins:new Uint8Array(BINS_TRIP)};
  if(!recording||!Array.isArray(recorded))return vacio;
  const clave=q=>Array.isArray(q)?q[0].toFixed(6)+','+q[1].toFixed(6):'-';
  const primero=recorded.find(q=>Array.isArray(q));
@@ -306,41 +309,43 @@ function subidaSesion(P){
   S.punto=q;
  }
  S.n=recorded.length;S.ultimo=clave(recorded[S.n-1]);
- return {sube:S.c.sube,fuera:S.fuera,bins:S.bins};
+ return {sube:S.c.sube,baja:S.c.baja,fuera:S.fuera,bins:S.bins};
 }
 function pintaAlturas(fracRuta,enRuta){
  const tb=$('tripBox'),P=perfilDeAlturas();
- if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;return}
+ if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;for(const id of ['tripSubido','tripBajado','tripAltitud'])$(id).textContent='—';$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
- $('tripSubido').textContent=(S.fuera>=100?'≥':'')+'+'+Math.round(S.sube);
+ const al=S.fuera>=100?'≥':'';
+ $('tripSubido').textContent=al+Math.round(S.sube);$('tripBajado').textContent=al+Math.round(S.baja);
  const pos=fracRuta===null?null:fracRuta*P.T;
  // La altitud y el punto, solo estando en la ruta ahora: la ultima posicion
  // buena no es la altitud de donde estas.
  const altura=pos!==null&&enRuta?alturaEnPerfil(P,pos):null;
  $('tripAltitud').textContent=altura===null?'—':String(Math.round(altura));
  const falta=pos===null?null:subidaEntre(P,pos,sentidoRuta>0?P.T:0);
- $('tripFalta').textContent=falta===null?'—':'+'+Math.round(falta)+' m';
+ $('tripFalta').textContent=falta===null?'—':'▲'+Math.round(falta)+' m';
  faltaSubidaRuta=falta;
  // El perfil, en el sentido de la marcha: lo que viene, a la derecha.
- const xDe=v=>(sentidoRuta>0?v/P.T:1-v/P.T)*200;
- const y=v=>v===null?34:(32-(v-P.lo)/Math.max(30,P.hi-P.lo)*29).toFixed(1);
+ const W=300,H=48;
+ const xDe=v=>(sentidoRuta>0?v/P.T:1-v/P.T)*W;
+ const y=v=>v===null?H:(H-3-(v-P.lo)/Math.max(30,P.hi-P.lo)*(H-8)).toFixed(1);
  if(perfilTrip.dibujo!==sentidoRuta){
   const m=sentidoRuta>0?P.muestras:P.muestras.slice().reverse(),M=m.length-1;
-  const linea=m.map((v,s)=>(s?'L':'M')+(s/M*200).toFixed(1)+' '+y(v)).join(' ');
+  const linea=m.map((v,s)=>(s?'L':'M')+(s/M*W).toFixed(1)+' '+y(v)).join(' ');
   $('tripPerfilLinea').setAttribute('d',linea);
-  const area=linea+' L200 34 L0 34 Z';
+  const area=linea+' L'+W+' '+H+' L0 '+H+' Z';
   $('tripPerfilArea').setAttribute('d',area);$('tripPerfilHecho').setAttribute('d',area);
   perfilTrip.dibujo=sentidoRuta;
  }
  // Sombreado lo que de verdad has pisado, a trozos: si entras en el km 5,
  // llegas al 8 y vuelves al 6, lo del 5 al 8 sigue hecho.
- let clip='';const w=200/BINS_TRIP;
- for(let i=0;i<BINS_TRIP;i++)if(S.bins[i]){const x=sentidoRuta>0?i*w:200-(i+1)*w;clip+='M'+x.toFixed(1)+' 0h'+w.toFixed(1)+'v34h-'+w.toFixed(1)+'Z'}
+ let clip='';const w=W/BINS_TRIP;
+ for(let i=0;i<BINS_TRIP;i++)if(S.bins[i]){const x=sentidoRuta>0?i*w:W-(i+1)*w;clip+='M'+x.toFixed(1)+' 0h'+w.toFixed(1)+'v'+H+'h-'+w.toFixed(1)+'Z'}
  $('tripHechoRect').setAttribute('d',clip);
  const p=$('tripPerfilPunto');
  if(altura===null)p.setAttribute('r','0');
- else{p.setAttribute('r','3.5');p.setAttribute('cx',xDe(pos).toFixed(1));p.setAttribute('cy',y(altura))}
+ else{p.setAttribute('r','5');p.setAttribute('cx',xDe(pos).toFixed(1));p.setAttribute('cy',y(altura))}
 }
 function marcaAlReves(si){
  const c=$('reverseWarn');

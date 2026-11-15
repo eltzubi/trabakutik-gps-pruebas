@@ -530,13 +530,15 @@ test('La botonera no recupera un segundo inicio de Navegar, y el pie sigue a la 
   assert(g('navGo').has('hidden'),`Navegar visible con la guia ${active?'activa':'parada'}`);
   assert.equal(g('despeja').has('hidden'),!active,`pie de mandos con la guia ${active?'activa':'parada'}`);
   assert.equal(cuerpo.has('despejado'),active,`pantalla despejada con la guia ${active?'activa':'parada'}`);
+  assert.equal(g('tripBox').has('hidden'),!active,`panel de abajo con la guia ${active?'activa':'parada'}`);
+  assert.equal(cuerpo.has('con-panel'),active,'el panel ocupa el sitio del perfil');
  }
 });
 
 test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progreso antes de grabar',()=>{
  const calls=[],classes=new Set();
  const c={mode:'nav',routePoints:corner(140),recording:false,navegaNativo:false,gpsApagadoPorTi:false,
-  $:()=>({classList:{add:k=>classes.add(k)},innerHTML:''}),routeCumulative:[0,100],
+  $:()=>({classList:{add:k=>classes.add(k),contains:k=>classes.has(k)},innerHTML:''}),document:{body:{classList:{add(){},remove(){}}}},routeCumulative:[0,100],
   sigueMoviendose:()=>true,alerted:false,junctions:[{}],junctionsReves:[],sentidoRuta:1,junctionWarned:new Set(),junctionActive:1,
   resetJunctionView:()=>calls.push('reset-turn'),Number,
   getAudio(){throw Error('No debe activar audio')},hablar(){throw Error('No debe hablar')},pitidos(){throw Error('No debe pitar')}
@@ -870,7 +872,7 @@ function cajaTrip(extra={}){
  const nodo=()=>({textContent:'',innerHTML:'',style:{},attrs:{},setAttribute(k,v){this.attrs[k]=v},classList:{h:new Set(['hidden']),add(x){this.h.add(x)},remove(x){this.h.delete(x)},contains(x){return this.h.has(x)}}});
  const n={};const $=id=>n[id]||(n[id]=nodo());
  const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded:[],
-  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,Float64Array,Uint8Array,Map,Infinity,
+  routeCumulative:[0,39200],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,Float64Array,Uint8Array,Map,Infinity,document:{body:nodo()},
   dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180)),...extra};
  vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
  return {c,n};
@@ -913,13 +915,13 @@ test('Lo subido cuenta desde donde empiezas, no desde el principio de la ruta',(
  const num=t=>Number(t.replace(/[^\d]/g,''));
  assert(num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'subido '+n.tripSubido.textContent);
  assert(!n.tripSubido.textContent.startsWith('≥'));
- assert.equal(n.tripFalta.textContent,'+0 m');
+ assert.equal(n.tripFalta.textContent,'▲0 m');
  assert.equal(n.tripAltitud.textContent,'200');
  // Y si llegas desde fuera de la ruta, lo de fuera no suma y se dice con «≥».
  c.recorded=[...andaNorte(112,112,300).map(q=>q),[43+112/111195,-2.5+250/(111195*Math.cos(43*Math.PI/180))],...andaNorte(112,333)];
  c.recorded.unshift([43+112/111195,-2.5+500/(111195*Math.cos(43*Math.PI/180))]);
  c.pintaAvance(333);
- assert(n.tripSubido.textContent.startsWith('≥+')&&num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'lo andado lejos de la ruta no suma y se dice: '+n.tripSubido.textContent);
+ assert(n.tripSubido.textContent.startsWith('≥')&&num(n.tripSubido.textContent)>=75&&num(n.tripSubido.textContent)<=80,'lo andado lejos de la ruta no suma y se dice: '+n.tripSubido.textContent);
 });
 test('Ida y vuelta por el mismo camino: la cuenta no salta de rama',()=>{
  // Ida hacia el norte subiendo de 100 a 160 y vuelta al sur por el mismo
@@ -941,7 +943,7 @@ test('Al revés lo que falta por subir se cuenta al revés, desde donde estás',
  const pts=rutaNorte([10,4,0]);
  const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts),sentidoRuta:-1});
  c.pintaAvance(acumula(pts)[2]);
- assert.equal(n.tripFalta.textContent,'+10 m');
+ assert.equal(n.tripFalta.textContent,'▲10 m');
 });
 test('Al revés se usan los avisos calculados al revés, con su lado, sin darles la vuelta',()=>{
  // Trabakua-Mendibil al reves, 15 de noviembre de 2026: «me ha indicado a la
@@ -980,7 +982,7 @@ test('«Hechos» es lo que has andado grabando, aunque salieras antes del princi
  // 1,5 km grabados al norte antes de llegar a la ruta, en 16 puntos (y un corte).
  const recorded=[];for(let k=0;k<=15;k++)recorded.push([43+k*100/111195,-2.5]);
  recorded.splice(8,0,null);
- const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded,Float64Array,
+ const c={$,gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded,Float64Array,document:{body:nodo()},
   routeCumulative:[0,6080],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,
   dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))};
  vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);

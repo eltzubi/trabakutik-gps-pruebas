@@ -411,6 +411,9 @@ function loadSaved(item){
  junctions=[];junctionsReves=null;
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);pintaBotonMapa();
+ // El perfil y las alturas, con TODOS los puntos: la copia simplificada se
+ // come una cima en mitad de una recta (navigationProfilePoints).
+ perfilGuardado={compacta:routePoints,completa:item.points};
  chosen=-1;updateNativeLaunchLink();
  if(item.imported){
   otherTracksVisible=false; // cada GPX externo abre el mapa limpio

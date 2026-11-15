@@ -390,7 +390,7 @@ function onFix(pos){
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
   // En la ruta solo con posicion fiable; con una mala se queda lo ultimo dicho.
-  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d});
+  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
   liveProfileAlong=guiaIniciada()&&fiable&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
    updateOffRoute(d,pos.coords.accuracy);
