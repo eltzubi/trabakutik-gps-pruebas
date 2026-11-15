@@ -13,6 +13,11 @@ function source(start,end){
  assert(a>=0&&b>a,`No se encontró ${start}`);
  return html.slice(a,b);
 }
+// La 09 esta cerrada: progressOnRoute, rumboDeLaRuta, pintaPosicionGps y
+// onFix se piden con require(); lo de las demas piezas va en lo global.
+const {pieza,arranque09}=require('./pieza.cjs');
+const ayuda={R:Math.PI/180};vm.createContext(ayuda);vm.runInContext(source('const dist=(a,b)=>','\n')+';this.dist=dist;',ayuda);
+function nav(estado){return pieza('09-navegacion.js',{R:Math.PI/180,dist:ayuda.dist,window:{},...estado},arranque09())}
 function rumbos(){
  const c={R:Math.PI/180};
  vm.createContext(c);
@@ -122,7 +127,7 @@ test('El suavizado siempre devuelve un rumbo de 0 a 360',()=>{
 test('La página usa estas dos funciones y no una copia suya',()=>{
  // Si alguien vuelve a meter el cálculo dentro de onFix, estas pruebas
  // dejarían de vigilar lo que corre en el móvil. Como pasó con nuevo-qa.
- const fix=source('function onFix(pos){','function miraPosicionNativa(');
+ const fix=nav({}).onFix.toString();
  assert.match(fix,/rumboAndando\(pos\.coords,p,courseFix,lastCourse\)/);
  assert.match(fix,/suavizaRumbo\(rumboSuave,h\)/);
 });
@@ -136,7 +141,8 @@ test('La flecha sigue la rama que lleva el progreso en una ruta creada',()=>{
  const c=rumbos();
  c.routePoints=[punto(0,0),punto(0,20),punto(20,20),punto(20,0),punto(0,0)];
  c.routeCumulative=[0,20,40,60,80];c.sentidoRuta=1;
- vm.runInContext(source('function rumboDeLaRuta(progreso){','function pintaPosicionGps('),c);
+ const n=nav({routePoints:c.routePoints,routeCumulative:c.routeCumulative,sentidoRuta:1,bearingBetween:c.bearingBetween});
+ c.rumboDeLaRuta=n.rumboDeLaRuta;Object.defineProperty(c,'sentidoRuta',{set:v=>{globalThis.sentidoRuta=v},get:()=>globalThis.sentidoRuta});
  assert(vuelta(c.rumboDeLaRuta({along:19,distance:3}),0)<1);
  assert(vuelta(c.rumboDeLaRuta({along:20,distance:3}),90)<1,'gira a la derecha al entrar al siguiente tramo');
  assert(vuelta(c.rumboDeLaRuta({along:65,distance:2}),270)<1,'respeta la rama posterior cerca de la salida');
@@ -160,8 +166,7 @@ test('El marcador mantiene la misma flecha al actualizar el rumbo',()=>{
  let creados=0;
  c.me=null;c.map={};
  c.L={divIcon:o=>o,marker:()=>{creados++;return {addTo(){return this},setLatLng(){},getElement:()=>({firstElementChild:root})}}};
- vm.runInContext('let anguloFlecha=null;',c);
- vm.runInContext(source('function pintaPosicionGps(p,h){','function onFix(pos){'),c);
+ c.pintaPosicionGps=nav({anguloFlecha:null,me:null,map:c.map,L:c.L,diferenciaRumbo:c.diferenciaRumbo}).pintaPosicionGps;
  c.pintaPosicionGps(punto(0,0),350);
  c.pintaPosicionGps(punto(0,10),10);
  assert.equal(creados,1);
@@ -180,10 +185,7 @@ test('Sin lectura de rumbo nueva se conserva el dato previo solo como referencia
 
 test('El progreso no toma la vuelta antes de llegar al extremo del camino compartido',()=>{
  const route=Array.from({length:101},(_,i)=>punto(0,Math.min(i,100-i)*10));
- const c={routePoints:route,routeCumulative:route.map((_,i)=>10*i),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
- vm.createContext(c);
- vm.runInContext(source('const dist=(a,b)=>','\n'),c);
- vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);
+ const c=nav({routePoints:route,routeCumulative:route.map((_,i)=>10*i),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180});
  c.progressOnRoute(punto(0,440));
  assert(Math.abs(c.progressOnRoute(punto(0,450)).along-450)<.01);
  for(let m=460;m<=500;m+=10)c.progressOnRoute(punto(0,m));
@@ -199,9 +201,7 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  for(let s=0;s<=4*lado-90;s+=10){const t=s%lado,l=Math.floor(s/lado);
   route.push(l===0?punto(t,0):l===1?punto(lado,t):l===2?punto(lado-t,lado):punto(0,lado-t))}
  const cum=route.map((_,i)=>10*i),total=cum[cum.length-1];
- const nuevo=()=>{const c={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
-  vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
-  vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);return c};
+ const nuevo=()=>{const c=nav({routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180});return c};
  const c=nuevo();
  for(let k=route.length-20;k<route.length;k++)c.progressOnRoute(route[k]);
  const llegada=c.progressOnRoute(punto(0,0));
@@ -221,9 +221,7 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  for(let k=1;k<esq.length;k++){const [A,B]=[esq[k-1],esq[k]],n=Math.round(Math.hypot(B[0]-A[0],B[1]-A[1])/10);
   for(let q=(k===1?0:1);q<=n;q++)par.push(punto(A[0]+(B[0]-A[0])*q/n,A[1]+(B[1]-A[1])*q/n))}
  const pc=par.map((_,k)=>10*k),pt=pc[pc.length-1];
- const otro=()=>{const c={routePoints:par,routeCumulative:pc,ultimoAlong:pt-90,ultimoPuntoAlong:punto(10,0),sentidoRuta:1,R:Math.PI/180};
-  vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
-  vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);return c};
+ const otro=()=>{const c=nav({routePoints:par,routeCumulative:pc,ultimoAlong:pt-90,ultimoPuntoAlong:punto(10,0),sentidoRuta:1,R:Math.PI/180});return c};
  const e=otro();let ultimo;
  for(let x=13;x<=100;x+=3){ultimo=e.progressOnRoute(punto(x,2));if(x<50)assert(ultimo.along<pt-20,'a '+(x-10)+' m aun no se ha llegado')}
  assert(ultimo.along>pt-5,'andados los 90 m hacia la meta, se llega: '+Math.round(ultimo.along));
@@ -240,15 +238,11 @@ test('En una ruta de ida y vuelta, el tramo que va hacia donde te mueves: no se 
  // en y=300 pegado a la vuelta (x=6) y se anda hacia el norte.
  const route=[];for(let y=0;y<=1000;y+=10)route.push(punto(0,y));for(let y=1000;y>=0;y-=10)route.push(punto(8,y));
  const cum=[0];for(let k=1;k<route.length;k++)cum.push(cum[k-1]+(k===101?8:10));
- const c={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
- vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
- vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);
+ const c=nav({routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180});
  let pr;for(let y=300;y<=420;y+=10)pr=c.progressOnRoute(punto(6,y));
  assert(Math.abs(pr.along-420)<15,'va por la ida, a la altura del km 0,42: '+Math.round(pr.along));
  // Y ANDANDO, con una posicion cada metro y medio (lo que da el GPS a pie).
- const e={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
- vm.createContext(e);vm.runInContext(source('const dist=(a,b)=>','\n'),e);
- vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),e);
+ const e=nav({routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180});
  let pa;for(let y=300;y<=360;y+=1.5)pa=e.progressOnRoute(punto(6,y));
  assert(Math.abs(pa.along-360)<15,'andando tambien va por la ida: '+Math.round(pa.along));
  // Una posicion MALA lejos no tuerce el rumbo: si moviera el ancla, la
@@ -259,9 +253,7 @@ test('En una ruta de ida y vuelta, el tramo que va hacia donde te mueves: no se 
  // Y de verdad al reves en una ruta SIN tramos repetidos se sigue viendo: el
  // avance baja.
  const solo=[];for(let y=0;y<=1000;y+=10)solo.push(punto(0,y));
- const d={routePoints:solo,routeCumulative:solo.map((_,k)=>10*k),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
- vm.createContext(d);vm.runInContext(source('const dist=(a,b)=>','\n'),d);
- vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),d);
+ const d=nav({routePoints:solo,routeCumulative:solo.map((_,k)=>10*k),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180});
  const a0=d.progressOnRoute(punto(2,600)).along;let a1;for(let y=590;y>=480;y-=10)a1=d.progressOnRoute(punto(2,y)).along;
  assert(a1<a0-100,'bajando por una ruta que va hacia arriba, el avance baja: '+Math.round(a0)+' -> '+Math.round(a1));
 });

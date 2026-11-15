@@ -662,3 +662,9 @@ function startGPS(forRecording=false){
 },{enableHighAccuracy:true,maximumAge:1000,timeout:20000})}
 // El boton abre la hoja del SOS (abreSos, pieza 10): pedir ayuda y el aviso de caida.
 if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()=>abreSos()}
+// Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
+// estado va con accesores: se lee y se escribe la variable de verdad.
+if(typeof module==='object'&&module&&module.exports){
+ module.exports={progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS};
+ Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
+}

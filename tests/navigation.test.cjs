@@ -22,7 +22,7 @@ function meters(a,b){
 // todavia- se recorta aparte y se le deja en lo global, como lo comparte la
 // pagina. Su propio enviaGirosNativos y resetJunctionView corren de verdad,
 // con un puente y una pantalla de mentira.
-const {pieza}=require('./pieza.cjs');
+const {pieza,arranque09,trozo}=require('./pieza.cjs');
 const ayudas={R:Math.PI/180,dist:meters};vm.createContext(ayudas);
 vm.runInContext(source('function compactRoutePoints(','function loadSaved(item){'),ayudas);
 vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),ayudas);
@@ -202,10 +202,12 @@ test('Quedarse sin satélites se dice en alto, una vez, y la vuelta también',()
  nativo.avisaSinGps(false);
  // Y el vigilante tiene que llamarlo: sin esto la funcion estaria ahi sin que
  // nadie la use, que es justo lo que pasaba antes.
- const vigilante=source('const GUIA_CADUCA_MS=','function syncNativeRoute()');
+ // La 09 esta cerrada: se carga con require() y se mira el codigo que corre.
+ const relojes=[],p09=pieza('09-navegacion.js',{window:{}},arranque09(relojes));
+ const vigilante=relojes.find(f=>/pintaEstadoGps\(\)/.test(f.toString())).toString();
  assert.equal((vigilante.match(/avisaSinGps\(/g)||[]).length,3,
    'el vigilante avisa en los tres casos sin posición: apagada, error y caducada');
- assert.match(source('function onFix(pos){','function miraPosicionNativa('),/vuelveElGps\(\)/,
+ assert.match(p09.onFix.toString(),/vuelveElGps\(\)/,
    'y al llegar una posición se dice que ha vuelto');
 });
 test('Poner silencio calla en el acto: la frase y los pitidos ya lanzados',()=>{
@@ -293,7 +295,7 @@ test('La herradura guarda el lado y la flecha se dibuja hacia ese lado',()=>{
  // Y que la ficha de giro use ese lado y no «lado», que es el del TEXTO y
  // vale «vuelta» en las herraduras: ahi estaba el fallo. Se mira en el
  // fuente porque pintar la ficha necesita el mapa entero montado.
- const ficha=source("const lado=turn.direction==='vuelta'","$('turnDirection')");
+ const ficha=trozo(pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance,"const lado=turn.direction==='vuelta'","$('turnDirection')");
  assert.match(ficha,/const sentido=ladoFlecha\(turn,alReves\)/,
    'la flecha tiene que salir de ladoFlecha, no de la palabra del texto');
 });
@@ -571,16 +573,15 @@ test('Una ruta cargada y Mi posición no activan voz, desvíos, giros ni progres
 
 
 test('El vigilante no anuncia pérdida de GPS si solo se ha cargado una ruta',()=>{
- const notices=[],c={pintaEstadoGps(){},gpsApagadoPorTi:false,watch:null,fuenteNativa:false,recording:false,navegaNativo:false,
-  window:{TrabakutikAndroid:{getPosition(){throw Error('No debe vigilar sin GPS iniciado')}}},
-  setInterval:fn=>c.tick=fn,notice:t=>notices.push(t)};
- vm.createContext(c);vm.runInContext(source('const GUIA_CADUCA_MS=', 'function syncNativeRoute()'),c);
- c.tick();assert.deepEqual(notices,[]);
+ const notices=[],relojes=[];
+ pieza('09-navegacion.js',{pintaEstadoGps(){},gpsApagadoPorTi:false,watch:null,fuenteNativa:false,recording:false,navegaNativo:false,
+  window:{TrabakutikAndroid:{getPosition(){throw Error('No debe vigilar sin GPS iniciado')}}},notice:t=>notices.push(t)},arranque09(relojes));
+ const tick=relojes.find(f=>/pintaEstadoGps\(\)/.test(f.toString()));
+ tick();assert.deepEqual(notices,[]);
 });
 
 test('Avanzar por la ruta al revés mantiene la guía; estar quieto la caduca',()=>{
- const c={refAvance:null,refAvanceT:0,sentidoRuta:-1};vm.createContext(c);
- vm.runInContext(source('const AVANCE_MS=','const PARADO_MS='),c);
+ const c=pieza('09-navegacion.js',{refAvance:null,refAvanceT:0,sentidoRuta:-1,window:{}},arranque09());
  assert.equal(c.avanzaPorLaRuta(100,0),true);
  assert.equal(c.avanzaPorLaRuta(85,15000),true);
  assert.equal(c.avanzaPorLaRuta(70,30000),true);
@@ -855,9 +856,10 @@ test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dic
   window:{TrabakutikAndroid:{setJunctions:j=>{enviado=JSON.parse(j)}}},console};
  pieza('08-cruces.js',{junctions:c.junctions,junctionsReves:c.junctionsReves??null,window:c.window}).enviaGirosNativos();
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:1,t:1,h:1},{i:9,dir:-1,t:0,h:1},{i:14,dir:-1,t:1}]));
- const ficha=source("const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
+ const jg=pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance;
+ const ficha=trozo(jg,"const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
  assert(/turn\.retorno\?/.test(ficha)&&/curva de herradura a la/.test(ficha),'la ficha dice «curva de herradura a la …» salvo en una ida y vuelta');
- const voz=source("const giroTxt=lado==='vuelta'","// Si la primera lectura entra en fase 1");
+ const voz=trozo(jg,"const giroTxt=lado==='vuelta'","// Si la primera lectura entra en fase 1");
  assert(/turn\.retorno\?/.test(voz)&&/curva de herradura a la/.test(voz),'y la voz de la pagina tambien');
 });
 test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último «Quedan … m»',()=>{
