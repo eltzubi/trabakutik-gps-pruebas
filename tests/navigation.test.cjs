@@ -912,3 +912,21 @@ test('Las dos listas se calculan, y la del revés va al servicio aparte',()=>{
  assert.equal(JSON.stringify(ida),JSON.stringify([{i:5,dir:1,t:1}]));
  assert.equal(JSON.stringify(vuelta),JSON.stringify([{i:9,dir:-1,t:1}]));
 });
+test('«Hechos» es lo que has andado grabando, aunque salieras antes del principio de la ruta',()=>{
+ // El autor salio kilometro y medio antes del principio de la ruta y el
+ // recuadro contaba desde el principio: «hemos salido kilometro y medio mas abajo».
+ const nodo=()=>({textContent:'',innerHTML:'',classList:{add(){},remove(){},contains(){return false}}});
+ const n={routeProgress:nodo(),tripBox:nodo(),tripRuta:nodo(),tripHecho:nodo(),tripQueda:nodo(),tripTiempo:nodo(),mapTitle:{textContent:'Trabakua Mendibil'}};
+ // 1,5 km grabados al norte antes de llegar a la ruta, en 16 puntos (y un corte).
+ const recorded=[];for(let k=0;k<=15;k++)recorded.push([43+k*100/111195,-2.5]);
+ recorded.splice(8,0,null);
+ const c={$:id=>n[id],gpsApagadoPorTi:false,mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,recorded,
+  routeCumulative:[0,6080],sentidoRuta:1,fmt:m=>String(m),Date,Math,String,Number,Array,
+  dist:(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(43*Math.PI/180))};
+ vm.createContext(c);vm.runInContext(source('function guiaIniciada(){','function marcaAlReves('),c);
+ c.pintaAvance(200);
+ assert.equal(n.tripHecho.textContent,'1,5 km hechos','lo andado, no los 200 m de la ruta');
+ assert.equal(n.tripQueda.textContent,'5,9 km quedan','lo que queda sigue siendo de la ruta');
+ recorded.push([43+1600/111195,-2.5]);c.pintaAvance(300);
+ assert.equal(n.tripHecho.textContent,'1,6 km hechos','y suma lo nuevo');
+});

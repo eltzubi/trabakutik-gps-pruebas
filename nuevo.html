@@ -2924,6 +2924,26 @@ function guiaIniciada(){
 // que queda y el tiempo desde que empezaste. La linea de arriba se sigue
 // rellenando (la leen las pruebas) pero ya no se ve.
 let inicioSalida=null;
+// «HECHOS» ES LO QUE HAS ANDADO, NO DONDE ESTAS EN LA RUTA. El autor salio
+// kilometro y medio antes del principio de Trabakua-Mendibil y el recuadro
+// contaba desde el principio de la ruta: «la distancia me la esta cogiendo
+// desde el punto de inicio de la ruta, pero hemos salido kilometro y medio
+// mas abajo». Grabando, se suma el trazado grabado (la linea roja); sin
+// grabar, queda lo de antes, el avance sobre la ruta. Se suma solo lo nuevo.
+let metrosAndados={lista:null,n:0,m:0};
+function metrosGrabados(){
+ if(typeof recorded==='undefined'||!Array.isArray(recorded)||recorded.length<2)return 0;
+ const c=metrosAndados;
+ if(c.lista!==recorded||recorded.length<c.n){c.lista=recorded;c.n=0;c.m=0;c.ultimo=null}
+ for(let k=c.n;k<recorded.length;k++){
+  const q=recorded[k];
+  if(!Array.isArray(q)||!Number.isFinite(q[0]))continue;
+  if(c.ultimo)c.m+=dist(c.ultimo,q);
+  c.ultimo=q;
+ }
+ c.n=recorded.length;
+ return c.m;
+}
 function pintaAvance(along){
  const caja=$('routeProgress');
  if(!caja)return;
@@ -2944,7 +2964,8 @@ function pintaAvance(along){
  $('tripRuta').textContent=$('mapTitle')?.textContent||'';
  // Con un decimal, que en grande se lee de un vistazo: «12,4 km».
  const km=m=>m>=1000?(m/1000).toFixed(1).replace('.',',')+' km':Math.round(m)+' m';
- $('tripHecho').textContent=km(hecho)+' hechos';
+ const andado=recording?metrosGrabados():0;
+ $('tripHecho').textContent=km(andado>0?andado:hecho)+' hechos';
  $('tripQueda').textContent=km(queda)+' quedan';
  $('tripTiempo').textContent=(min>=60?Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')+' min':min+' min')+' de salida';
  tb.classList.remove('hidden');
