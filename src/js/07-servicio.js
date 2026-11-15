@@ -156,7 +156,7 @@ function pintaAvance(along){
  const tb=$('tripBox');
  if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){
   caja.classList.add('hidden');if(tb)tb.classList.add('hidden');
-  if(!guiaIniciada())inicioSalida=null;
+  if(!guiaIniciada()){inicioSalida=null;try{localStorage.removeItem('trabakutik.inicioSalida')}catch(e){}}
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
@@ -165,7 +165,13 @@ function pintaAvance(along){
  caja.innerHTML='Llevas <b>'+fmt(hecho)+'</b> \u00b7 faltan <b>'+fmt(queda)+'</b>';
  caja.classList.remove('hidden');
  if(!tb)return;
- if(inicioSalida===null)inicioSalida=Date.now();
+ // El inicio se guarda: si la pagina se recarga a mitad de salida, el tiempo
+ // sigue contando desde el principio y no vuelve a cero (revision con GPT).
+ if(inicioSalida===null){
+  let guardado=NaN;try{guardado=Number(localStorage.getItem('trabakutik.inicioSalida'))}catch(e){}
+  inicioSalida=Number.isFinite(guardado)&&guardado>0&&Date.now()-guardado<24*3600e3?guardado:Date.now();
+  try{localStorage.setItem('trabakutik.inicioSalida',String(inicioSalida))}catch(e){}
+ }
  const min=Math.max(0,Math.floor((Date.now()-inicioSalida)/60000));
  $('tripRuta').textContent=$('mapTitle')?.textContent||'';
  // Con un decimal, que en grande se lee de un vistazo: «12,4 km».

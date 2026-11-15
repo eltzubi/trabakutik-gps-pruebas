@@ -1522,9 +1522,19 @@ async function solicitaMapaGps(coords,signal){
  const normal=respuestaMapaGps(await pideMapaGps(coords,signal,null),coords);
  // La segunda opinion (ver eligeTramosCortos). Si falla, no pasa nada: se
  // queda el normal. Solo se corta si el calculo se cancela.
+ // Con tope de SEGUNDA_MS: si no contesta, la normal ya esta y no se espera
+ // mas (lo vio la revision con GPT: sin tope, una segunda colgada dejaba al
+ // creador esperando con la ruta buena ya en la mano).
  let corto=null;
- try{corto=respuestaMapaGps(await pideMapaGps(coords,signal,{pedestrian:{shortest:true}}),coords)}
+ const SEGUNDA_MS=6000,ctl=new AbortController();
+ const corta=()=>ctl.abort();signal.addEventListener('abort',corta,{once:true});
+ let reloj=null;
+ // Carrera con un reloj: no basta con cancelar la peticion, que una que no
+ // atienda la cancelacion dejaria la espera colgada igual.
+ const tope=new Promise((_,ko)=>{reloj=setTimeout(()=>{corta();ko(Error('Sin segunda opinión'))},SEGUNDA_MS)});
+ try{corto=respuestaMapaGps(await Promise.race([pideMapaGps(coords,ctl.signal,{pedestrian:{shortest:true}}),tope]),coords)}
  catch(e){if(signal.aborted)throw e}
+ finally{clearTimeout(reloj);signal.removeEventListener('abort',corta)}
  return eligeTramosCortos(normal,corto);
 }
 async function pideMapaGps(coords,signal,opciones){
@@ -2950,7 +2960,7 @@ function pintaAvance(along){
  const tb=$('tripBox');
  if(!guiaIniciada()||!Number.isFinite(along)||routeCumulative.length<2){
   caja.classList.add('hidden');if(tb)tb.classList.add('hidden');
-  if(!guiaIniciada())inicioSalida=null;
+  if(!guiaIniciada()){inicioSalida=null;try{localStorage.removeItem('trabakutik.inicioSalida')}catch(e){}}
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
@@ -2959,7 +2969,13 @@ function pintaAvance(along){
  caja.innerHTML='Llevas <b>'+fmt(hecho)+'</b> \u00b7 faltan <b>'+fmt(queda)+'</b>';
  caja.classList.remove('hidden');
  if(!tb)return;
- if(inicioSalida===null)inicioSalida=Date.now();
+ // El inicio se guarda: si la pagina se recarga a mitad de salida, el tiempo
+ // sigue contando desde el principio y no vuelve a cero (revision con GPT).
+ if(inicioSalida===null){
+  let guardado=NaN;try{guardado=Number(localStorage.getItem('trabakutik.inicioSalida'))}catch(e){}
+  inicioSalida=Number.isFinite(guardado)&&guardado>0&&Date.now()-guardado<24*3600e3?guardado:Date.now();
+  try{localStorage.setItem('trabakutik.inicioSalida',String(inicioSalida))}catch(e){}
+ }
  const min=Math.max(0,Math.floor((Date.now()-inicioSalida)/60000));
  $('tripRuta').textContent=$('mapTitle')?.textContent||'';
  // Con un decimal, que en grande se lee de un vistazo: «12,4 km».
