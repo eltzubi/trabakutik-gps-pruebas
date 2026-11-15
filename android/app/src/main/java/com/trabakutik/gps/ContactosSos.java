@@ -102,6 +102,14 @@ final class ContactosSos {
      * luego el enlace al mapa y los numeros con su precision y su edad, como
      * el SOS de siempre. Sin posicion, se dice.
      */
+    /** Lo que se dice tras enviar (EnvioSms): enviado, no ha salido, sin confirmar. */
+    static String textoEnvio(String si, String no, String duda) {
+        StringBuilder t = new StringBuilder(si.isEmpty() ? "No se ha confirmado ningún envío" : "Enviado a " + si);
+        if (!no.isEmpty()) t.append(". No ha salido a ").append(no);
+        if (!duda.isEmpty()) t.append(". Sin confirmar a ").append(duda).append(" (puede salir aún)");
+        return t.append('.').toString();
+    }
+
     /** El SMS de prueba: que se vea a la primera que NO es una emergencia. */
     static String mensajePrueba(boolean hayPosicion, double lat, double lon, double precision, long segundos) {
         String cab = "PRUEBA de Trabakutik GPS: no es una emergencia. Asi te llegaria un aviso de caida.";

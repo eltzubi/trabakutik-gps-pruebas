@@ -42,6 +42,7 @@ final class NavigationMetrics {
     private final HashSet<Event> announced = new HashSet<>();
     private double reference = Double.NaN, lastLat, lastLon, heldWalked;
     private double anclaLat = Double.NaN, anclaLon = Double.NaN, rumboAncla = Double.NaN;
+    private long anclaT = 0;
     private double motionAlong, motionLat, motionLon, movingMeters;
     private long motionTime, movingMillis, lastMovement;
     private int direction = 1;
@@ -154,10 +155,15 @@ final class NavigationMetrics {
         double predicted = reference + Math.min(step, window) * dir;
         // Desde un ancla que avanza cada RUMBO_MIN_M, no desde la posicion
         // anterior: andando hay metro y poco entre dos y el rumbo no salia.
-        if (!Double.isFinite(anclaLat)) { anclaLat = lat; anclaLon = lon; }
-        else if (meters(anclaLat, anclaLon, lat, lon) >= RUMBO_MIN_M) {
-            rumboAncla = Math.toDegrees(Math.atan2((lon - anclaLon) * scale, (lat - anclaLat) * 111195));
-            anclaLat = lat; anclaLon = lon;
+        // Solo lo mueven las posiciones fiables, y caduca al minuto.
+        long ahoraR = System.nanoTime() / 1_000_000L;
+        if (reliable) {
+            if (!Double.isFinite(anclaLat) || ahoraR - anclaT > 60_000) {
+                anclaLat = lat; anclaLon = lon; rumboAncla = Double.NaN; anclaT = ahoraR;
+            } else if (meters(anclaLat, anclaLon, lat, lon) >= RUMBO_MIN_M) {
+                rumboAncla = Math.toDegrees(Math.atan2((lon - anclaLon) * scale, (lat - anclaLat) * 111195));
+                anclaLat = lat; anclaLon = lon; anclaT = ahoraR;
+            }
         }
         double rumboMarcha = reliable ? rumboAncla : Double.NaN;
         for (int i = 1; i < distance.length; i++) {

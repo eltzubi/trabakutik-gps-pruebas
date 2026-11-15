@@ -127,6 +127,9 @@ public class NativeTurnsTest {
   NavigationMetrics.Projection pw=null;
   for(double y=300;y<=360;y+=1.5)pw=w.project(y/111195.,6/111195.,1,true);
   require(Math.abs(pw.along()-360)<15,"andando (1,5 m por posicion) tambien va por la ida: "+Math.round(pw.along()));
+  w.project(460/111195.,6/111195.,1,false);
+  NavigationMetrics.Projection pb=w.project(361/111195.,6/111195.,1,true);
+  require(Math.abs(pb.along()-361)<15,"tras una posicion mala sigue por la ida: "+Math.round(pb.along()));
  }
  static void saltoNoEsVuelta(){
   NativeTurnsTest c=new NativeTurnsTest();

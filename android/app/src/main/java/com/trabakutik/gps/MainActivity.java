@@ -436,7 +436,7 @@ public class MainActivity extends Activity {
    return "{\"activo\":"+p.getBoolean("caidas_activo",true)
     +",\"contactos\":"+ContactosSos.json(ContactosSos.lee(p.getString("contactos","")))
     +",\"max\":"+ContactosSos.MAX+",\"permisoSms\":"+sms
-    +",\"notificaciones\":"+((android.app.NotificationManager)getSystemService(NOTIFICATION_SERVICE)).areNotificationsEnabled()+",\"golpes\":"+p.getInt("golpes",0)+",\"caidas\":"+p.getInt("caidas",0)+"}";
+    +",\"notificaciones\":"+TrackingService.avisosCaidaVisibles(MainActivity.this)+",\"golpes\":"+p.getInt("golpes",0)+",\"caidas\":"+p.getInt("caidas",0)+"}";
   }
   @JavascriptInterface public void setFallDetection(boolean activo){
    getSharedPreferences("sos",MODE_PRIVATE).edit().putBoolean("caidas_activo",activo).apply();

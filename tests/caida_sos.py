@@ -105,6 +105,9 @@ public class CaidaSosTest{
   require(ContactosSos.mensaje(false,0,0,0,0).contains("Sin posicion GPS reciente"),"sin posicion se dice");
   String pr=ContactosSos.mensajePrueba(true,43.1,-2.5,5,10);
   require(pr.startsWith("PRUEBA")&&pr.contains("no es una emergencia")&&!pr.contains("NECESITO AYUDA")&&pr.chars().allMatch(ch->ch<128),"la prueba se ve que es prueba: "+pr);
+  require(ContactosSos.textoEnvio("Ama","","").equals("Enviado a Ama."),"enviado");
+  require(ContactosSos.textoEnvio("Ama","Aita","Jon").equals("Enviado a Ama. No ha salido a Aita. Sin confirmar a Jon (puede salir aún)."),ContactosSos.textoEnvio("Ama","Aita","Jon"));
+  require(ContactosSos.textoEnvio("","","Ama").startsWith("No se ha confirmado"),"sin confirmar no es enviado");
   System.out.println("OK: salta con golpe en marcha y quieto; no con bache, movil caido parado, levantarse, golpe flojo, repeticion ni si el GPS sigue en marcha; contactos y mensaje");
  }
 }'''

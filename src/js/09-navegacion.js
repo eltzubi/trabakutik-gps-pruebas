@@ -25,7 +25,7 @@
 // ventana a 60, asi que gana el de fuera por mas de MARGEN_SALTO y el sentido
 // cambia como debe.
 // En ramas superpuestas se compara el avance con el desplazamiento real.
-let anclaRumbo={p:null,ruta:null,rumbo:null};
+let anclaRumbo={p:null,ruta:null,rumbo:null,t:0};
 function progressOnRoute(p,reliable=true){
  let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity,retenido=false;
  const ref=Number.isFinite(ultimoAlong)?ultimoAlong:null;
@@ -48,12 +48,18 @@ function progressOnRoute(p,reliable=true){
  // poco y el rumbo no salia nunca (lo vio la revision con GPT: las pruebas
  // usaban pasos de 10 m). Si el ancla es de una ruta anterior, no vale.
  const RUMBO_MIN_M=8,SENTIDO_PEN=20;
- if(!anclaRumbo.p||anclaRumbo.ruta!==routePoints){anclaRumbo={p,ruta:routePoints,rumbo:null}}
- else if(dist(anclaRumbo.p,p)>=RUMBO_MIN_M){
-  anclaRumbo.rumbo=Math.atan2((p[1]-anclaRumbo.p[1])*lonScale,(p[0]-anclaRumbo.p[0])*latScale)*180/Math.PI;
-  anclaRumbo.p=p;
+ // Solo lo mueven las posiciones FIABLES (una mala lo desplazaba y el rumbo
+ // falso decidia en la siguiente buena), y caduca a RUMBO_VIDA_MS: tras una
+ // parada o un corte, no vale un rumbo de antes. Revision con GPT.
+ const RUMBO_VIDA_MS=60000,ahoraR=Date.now();
+ if(reliable){
+  if(!anclaRumbo.p||anclaRumbo.ruta!==routePoints||ahoraR-anclaRumbo.t>RUMBO_VIDA_MS){anclaRumbo={p,ruta:routePoints,rumbo:null,t:ahoraR}}
+  else if(dist(anclaRumbo.p,p)>=RUMBO_MIN_M){
+   anclaRumbo.rumbo=Math.atan2((p[1]-anclaRumbo.p[1])*lonScale,(p[0]-anclaRumbo.p[0])*latScale)*180/Math.PI;
+   anclaRumbo.p=p;anclaRumbo.t=ahoraR;
+  }
  }
- const rumboMarcha=reliable?anclaRumbo.rumbo:null;
+ const rumboMarcha=reliable&&anclaRumbo.ruta===routePoints?anclaRumbo.rumbo:null;
  let bestEf=Infinity,cercaEf=Infinity;
  for(let i=1;i<routePoints.length;i++){
   const a=routePoints[i-1],b=routePoints[i];

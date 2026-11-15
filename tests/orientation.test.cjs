@@ -251,6 +251,11 @@ test('En una ruta de ida y vuelta, el tramo que va hacia donde te mueves: no se 
  vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),e);
  let pa;for(let y=300;y<=360;y+=1.5)pa=e.progressOnRoute(punto(6,y));
  assert(Math.abs(pa.along-360)<15,'andando tambien va por la ida: '+Math.round(pa.along));
+ // Una posicion MALA lejos no tuerce el rumbo: si moviera el ancla, la
+ // siguiente buena saldria «hacia el sur» y te pondria en la vuelta.
+ e.progressOnRoute(punto(6,460),false);
+ const pb=e.progressOnRoute(punto(6,361));
+ assert(Math.abs(pb.along-361)<15,'tras una posicion mala sigue por la ida: '+Math.round(pb.along));
  // Y de verdad al reves en una ruta SIN tramos repetidos se sigue viendo: el
  // avance baja.
  const solo=[];for(let y=0;y<=1000;y+=10)solo.push(punto(0,y));

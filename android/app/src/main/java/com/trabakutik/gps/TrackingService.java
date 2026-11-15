@@ -421,6 +421,14 @@ public class TrackingService extends Service implements LocationListener {
   @Override public void onAccuracyChanged(Sensor s,int a){}
  };
  SharedPreferences prefsSos(){return getSharedPreferences("sos",MODE_PRIVATE);}
+ // Que se vean de verdad: las notificaciones de la app permitidas Y el canal
+ // del aviso de caida sin bloquear (se puede bloquear solo ese).
+ static boolean avisosCaidaVisibles(Context c){
+  NotificationManager nm=(NotificationManager)c.getSystemService(NOTIFICATION_SERVICE);
+  if(nm==null||!nm.areNotificationsEnabled())return false;
+  NotificationChannel canal=nm.getNotificationChannel(CANAL_CAIDA);
+  return canal==null||canal.getImportance()!=NotificationManager.IMPORTANCE_NONE;
+ }
  void creaCanalCaida(){
   NotificationChannel c=new NotificationChannel(CANAL_CAIDA,"Aviso de caída",NotificationManager.IMPORTANCE_HIGH);
   c.setDescription("La cuenta atrás de 30 s antes de enviar el SOS");
@@ -435,7 +443,7 @@ public class TrackingService extends Service implements LocationListener {
   // siempre en «no se ha podido enviar», y sin notificaciones no salen los
   // botones para cancelarla. La hoja SOS dice que falta (getSosConfig).
   if(checkSelfPermission(Manifest.permission.SEND_SMS)!=PackageManager.PERMISSION_GRANTED)return;
-  if(!((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).areNotificationsEnabled())return;
+  if(!avisosCaidaVisibles(this))return;
   SensorManager sm=(SensorManager)getSystemService(SENSOR_SERVICE);
   Sensor acel=sm==null?null:sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
   if(acel==null)return;
