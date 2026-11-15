@@ -351,9 +351,24 @@ se decidió y por qué:
     línea recta hasta ella.
 - **Las alturas son las del perfil de la ruta, no las del GPS.** La altura
   del GPS de Android va sobre el elipsoide (unos 50 m de más aquí), se
-  equivoca 10-20 m y el trazado del servicio ni la trae. Lo andado lejos de
-  la ruta no suma subida, y la cifra lleva «≥» delante. Lo que lo resolvería
-  es el barómetro: ver abajo.
+  equivoca 10-20 m y el trazado del servicio ni la trae. Sin barómetro, lo
+  andado lejos de la ruta no suma subida y la cifra lleva «~» delante: es una
+  estimación parcial. Al principio era «≥», y GPT lo tumbó en la segunda
+  revisión, porque prometía un mínimo que no está garantizado.
+- **Con barómetro, mandan sus cifras** (APK nueva, `AlturaBarometrica.java`).
+  Mide diferencias de presión con precisión de decímetros, también fuera de
+  la ruta, y no depende de que la página esté despierta. La altitud absoluta
+  no la da: 1 hPa de cambio de tiempo son unos 8 m. Se suaviza 10 s, se
+  cuenta con un umbral de 3 m y en pausa no cuenta. Una lectura por segundo,
+  en lotes de 10 s. Probado con trazas sintéticas en `tests/barometro.py`.
+- **Segunda revisión con GPT, sobre el código final,** y arreglado:
+  - al despertar con un trazado largo se podían dar cientos de millones de
+    vueltas; ahora 20.000 puntos tardan 46 ms en Chromium y 300 ms con la
+    CPU frenada 4x;
+  - un punto en un vértice de una recta caía 10 m por detrás;
+  - una altitud vieja se daba como actual con una posición mala;
+  - sin grabar, la barra volvía a contar desde el principio de la ruta;
+  - un tramo sin alturas se rellenaba con la altura del vecino.
 - **Las rutas guardadas e importadas usan todos sus puntos para el perfil,**
   no la copia simplificada del mapa, que se comía las cimas en mitad de una
   recta.

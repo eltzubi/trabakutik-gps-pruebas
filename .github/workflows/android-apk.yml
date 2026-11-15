@@ -139,6 +139,9 @@ jobs:
       - name: Comprobar el aviso de caida y los contactos del SOS
         working-directory: ${{ github.workspace }}
         run: python3 tests/caida_sos.py
+      - name: Comprobar lo subido y bajado con el barometro
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/barometro.py
       - name: Comprobar que una nota del mapa no borra el informe de fallo
         working-directory: ${{ github.workspace }}
         run: python3 tests/informe_fallo.py

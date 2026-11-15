@@ -430,6 +430,7 @@ window.trabakutikSyncNative=()=>{
   // Compatibilidad con APK anteriores: en el límite no sabemos si hay más.
   else if(Array.isArray(data.points))nativeTrackComplete=data.points.length<25000;
   if(typeof data.trackVersion==='string')lastNativeTrackVersion=data.trackVersion;
+  baroNativo=data.recording&&data.baro===true&&Number.isFinite(data.baroSube)&&Number.isFinite(data.baroBaja)?{sube:data.baroSube,baja:data.baroBaja}:null;
   if(data.recording&&!recordingPendingSave){
    recording=true;
    // Sin esto, el sondeo del servicio pisaba la pausa un segundo despues de

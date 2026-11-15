@@ -203,6 +203,43 @@ public class TrackingService extends Service implements LocationListener {
   try{BatteryManager bm=(BatteryManager)getSystemService(BATTERY_SERVICE);return bm!=null&&bm.isCharging();}
   catch(Exception e){return false;}
  }
+ // EL BAROMETRO, mientras se graba: lo subido y lo bajado de TU salida,
+ // tambien fuera de la ruta (AlturaBarometrica). Se pide una lectura por
+ // segundo con hasta 10 s de lote, que el chip las junta y gasta casi nada.
+ // Sin barometro no pasa nada: la pagina cuenta con el perfil de la ruta.
+ final AlturaBarometrica baro=new AlturaBarometrica();
+ SensorManager baroSm=null;long baroGuardado=0;
+ final SensorEventListener oyenteBaro=new SensorEventListener(){
+  @Override public void onSensorChanged(SensorEvent e){
+   if(e==null||e.values==null||e.values.length<1)return;
+   baro.muestra(e.values[0],e.timestamp/1_000_000L);
+   long ahora=SystemClock.elapsedRealtime();
+   if(ahora-baroGuardado>=5000){baroGuardado=ahora;guardaBaro();}
+  }
+  @Override public void onAccuracyChanged(Sensor s,int a){}
+ };
+ void guardaBaro(){
+  try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+    .putBoolean("baro",baroSm!=null&&baro.muestras>0)
+    .putFloat("baroSube",(float)baro.sube).putFloat("baroBaja",(float)baro.baja).apply();}
+  catch(Exception ignored){}
+ }
+ void arrancaBaro(){
+  paraBaro();
+  baro.reinicia();baroGuardado=0;
+  try{
+   SensorManager sm=(SensorManager)getSystemService(SENSOR_SERVICE);
+   Sensor s=sm==null?null:sm.getDefaultSensor(Sensor.TYPE_PRESSURE);
+   if(s!=null&&sm.registerListener(oyenteBaro,s,1_000_000,10_000_000))baroSm=sm;
+  }catch(Exception e){android.util.Log.w("TrabakutikGPS","Sin barometro",e);baroSm=null;}
+  guardaBaro();
+ }
+ void paraBaro(){
+  if(baroSm==null)return;
+  try{baroSm.unregisterListener(oyenteBaro);}catch(Exception ignored){}
+  guardaBaro();
+  baroSm=null;
+ }
  void arrancaBateria(){
   bateriaDesde=SystemClock.elapsedRealtime();bateriaApunte=0;bateriaFixes=0;bateriaMetros=0;
   bateriaInicio=nivelBateria();bateriaNivel=bateriaInicio;bateriaCargando=cargando();gastoUltimo="";
@@ -344,9 +381,10 @@ public class TrackingService extends Service implements LocationListener {
    }
    return START_NOT_STICKY;
   }
-  if("PAUSE".equals(action)){pausado=true;metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
+  if("PAUSE".equals(action)){pausado=true;baro.pausa();metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
   if("RESUME".equals(action)){
    pausado=false;forzarCorte=true;    // que el descanso no salga como una recta
+   baro.sigue();                     // y lo que cambie la presion en pausa no cuenta
    if(active)updateNotice();return START_NOT_STICKY;
   }
   if("STOP_RECORD".equals(action)){
@@ -637,6 +675,7 @@ public class TrackingService extends Service implements LocationListener {
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
   recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).remove("gasto").apply();
   arrancaBateria();
+  arrancaBaro();
   updateNotice();
  }
  void loadRoute(){
@@ -1156,6 +1195,7 @@ public class TrackingService extends Service implements LocationListener {
   gastoUltimo=textoGasto(SystemClock.elapsedRealtime()-bateriaDesde,gastado,bateriaMetros,bateriaFixes,bateriaCargando);
   escribeBateria("# termina · "+gastoUltimo);
   bateriaDesde=0;
+  paraBaro();
   recording=false;GRABANDO=null;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).putString("gasto",gastoUltimo).apply();
  }

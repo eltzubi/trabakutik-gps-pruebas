@@ -937,6 +937,16 @@ test('Ida y vuelta por el mismo camino: la cuenta no salta de rama',()=>{
  const sub=Number(n.tripSubido.textContent.replace(/[^\d]/g,''));
  assert(sub>=55&&sub<=60,'solo la subida de la ida: '+n.tripSubido.textContent);
 });
+test('Con barómetro, lo subido y bajado son los suyos, también fuera de la ruta',()=>{
+ const pts=rutaNorte([100,150,120,200]);
+ const {c,n}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});
+ c.recorded=andaNorte(112,333);
+ vm.runInContext('baroNativo={sube:412.4,baja:96.6}',c);
+ c.pintaAvance(333);
+ assert.equal(n.tripSubido.textContent,'412');assert.equal(n.tripBajado.textContent,'97');
+ vm.runInContext('baroNativo=null',c);c.pintaAvance(333);
+ assert.notEqual(n.tripSubido.textContent,'412','sin barometro, el perfil de la ruta');
+});
 test('Revisión con GPT: en una recta, un punto en un vértice cae donde está, no 10 m atrás',()=>{
  const pts=rutaNorte([100,100,100,100],10);
  const {c}=cajaTrip({routePoints:pts,routeCumulative:acumula(pts)});

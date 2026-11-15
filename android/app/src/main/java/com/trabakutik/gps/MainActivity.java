@@ -545,6 +545,10 @@ public class MainActivity extends Activity {
     o.put("lat",pref.getFloat("lat",0f));
     o.put("lon",pref.getFloat("lon",0f));
     o.put("accuracy",pref.getFloat("accuracy",9999));
+    // Lo subido y bajado del barometro (AlturaBarometrica), si lo hay.
+    o.put("baro",pref.getBoolean("baro",false));
+    o.put("baroSube",pref.getFloat("baroSube",0f));
+    o.put("baroBaja",pref.getFloat("baroBaja",0f));
     File f=new File(getFilesDir(),"trazado-vivo.tsv");
     String trackVersion=f.exists()?f.lastModified()+":"+f.length():"none";
     o.put("trackVersion",trackVersion);

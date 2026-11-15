@@ -324,6 +324,10 @@ function casaEnRuta(P,q,previo,alcance){
 // podido andar (mas del doble de lo movido mas 30 m) o un hueco sin alturas
 // cortan la cuenta y la marcan como PARCIAL: no se inventa por donde fue.
 let subSes=null;
+// Lo subido y bajado que mide el BAROMETRO del movil, si lo tiene: lo manda el
+// servicio con el trazado (AlturaBarometrica.java). Cubre tambien lo andado
+// fuera de la ruta, asi que cuando esta manda el, y sin «~».
+let baroNativo=null;
 function subidaSesion(P){
  if(!recording||!Array.isArray(recorded))return null;
  const clave=q=>puntoValido(q)?q[0].toFixed(6)+','+q[1].toFixed(6):'-';
@@ -356,7 +360,8 @@ function pintaAlturas(fracRuta,estado){
  if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;for(const id of ['tripSubido','tripBajado','tripAltitud'])$(id).textContent='—';$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
- if(!S){$('tripSubido').textContent='—';$('tripBajado').textContent='—'}
+ if(recording&&baroNativo){$('tripSubido').textContent=String(Math.round(baroNativo.sube));$('tripBajado').textContent=String(Math.round(baroNativo.baja))}
+ else if(!S){$('tripSubido').textContent='—';$('tripBajado').textContent='—'}
  else{const al=S.parcial?'~':'';$('tripSubido').textContent=al+Math.round(S.sube);$('tripBajado').textContent=al+Math.round(S.baja)}
  const pos=fracRuta===null?null:fracRuta*P.T;
  // La altitud y el punto, solo estando en la ruta AHORA y con una posicion
