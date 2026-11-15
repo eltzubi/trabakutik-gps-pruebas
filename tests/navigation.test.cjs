@@ -1175,3 +1175,22 @@ test('la pagina dice «ahora» dos segundos antes del cruce, como el servicio',(
  const jg=String(pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance);
  assert(jg.includes("else if(ahead<=dYa)fase='3'"),'la fase del cruce empieza en dYa, no en 0');
 });
+test('bloqueo de pantalla: se quita solo manteniendo pulsado, y al dejar de guiar',()=>{
+ const clases=new Map(),g=id=>{if(!clases.has(id))clases.set(id,new Set(['hidden']));return clases.get(id)},cuerpo=new Set();
+ const relojes=[];let guia=true;
+ const nodo=id=>({textContent:'',focus(){},setAttribute(){},classList:{add:k=>g(id).add(k),remove:k=>g(id).delete(k),contains:k=>g(id).has(k),toggle(k,on){if(on===undefined)on=!g(id).has(k);if(on)g(id).add(k);else g(id).delete(k)}}});
+ const c=pieza('10-aplicacion.js',{$:nodo,document:{body:{classList:{add:k=>cuerpo.add(k),remove:k=>cuerpo.delete(k),contains:k=>cuerpo.has(k),toggle(k,on){if(on)cuerpo.add(k);else cuerpo.delete(k)}}}},
+  setTimeout:(f,ms)=>{relojes.push({f,ms});return relojes.length},clearTimeout:n=>{if(relojes[n-1])relojes[n-1].f=null},
+  map:{invalidateSize(){}},guiaIniciada:()=>guia,colocaGiro(){}},arranque10());
+ c.bloquea();
+ assert(!g('candado').has('hidden')&&cuerpo.has('bloqueada')&&c.bloqueada,'bloqueada');
+ c.empiezaQuita();c.cancelaQuita();
+ for(const r of relojes)if(r.f)r.f();
+ assert(c.bloqueada,'una pulsacion corta no la quita');
+ relojes.length=0;c.empiezaQuita();
+ assert.equal(relojes[0].ms,1000,'hay que mantener un segundo');
+ relojes[0].f();
+ assert(!c.bloqueada&&g('candado').has('hidden')&&!cuerpo.has('bloqueada'),'manteniendo, se quita');
+ c.bloquea();guia=false;g('tripBox').delete('hidden');c.pintaDespeja();
+ assert(!c.bloqueada&&g('candado').has('hidden'),'al dejar de guiar se quita sola');
+});

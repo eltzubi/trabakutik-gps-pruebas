@@ -451,3 +451,14 @@ antes: 4 m andando, 11 m en bici a 20 km/h, 12 como mucho, y siempre por
 debajo del aviso corto (los dos pitidos). Lo mismo en el servicio
 (`avisoYa`) y en la página (cuarto valor de `distanciasDeAviso`). Lo pidió el
 autor tras leer el informe de quejas.
+
+## Bloqueo de pantalla (15 de noviembre de 2026)
+
+Después de los giros falsos, es lo que más se repite en las quejas de Komoot
+y Wikiloc: con el móvil en el bolsillo, en el manillar o con lluvia, un toque
+sin querer cambia de pantalla o pausa. El candado 🔒 del panel de abajo pone
+una capa encima de todo que se traga los toques; se quita **manteniendo
+pulsado un segundo** su botón, que un roce o una gota no hacen. El mapa, la
+ficha del giro y la voz siguen. El aviso de caída («Estoy bien») es un
+diálogo de Android, por encima de la página, y no lo tapa. Al dejar de guiar
+se quita solo. Solo página: no hace falta APK.

@@ -1,3 +1,7 @@
+// Estado del bloqueo de pantalla (ver «BLOQUEAR LA PANTALLA» mas abajo):
+// arriba, porque pintaDespeja lo lee y puede correr antes de llegar alli.
+let bloqueada=false,quitaReloj=null;
+const QUITA_MS=1000;
 // EN IPHONE NO HAY APLICACION, Y MANDAR A BAJARSELA ES UN CALLEJON SIN SALIDA:
 // lo que hay en instalar.html es un APK de Android, y un iPhone no lo puede
 // instalar -Apple solo deja instalar desde su tienda, y esto no esta ahi-.
@@ -37,7 +41,7 @@ function pintaDespeja(){
  // El panel de abajo se ve mientras guia, con datos o sin ellos todavia:
  // dentro va el boton de mandos.
  const tb=$('tripBox');
- if(tb){const ver=guiaIniciada();if(ver===tb.classList.contains('hidden')){tb.classList.toggle('hidden',!ver);document.body.classList.toggle('con-panel',ver);try{map.invalidateSize()}catch(e){}try{colocaGiro()}catch(e){}}}
+ if(tb){const ver=guiaIniciada();if(!ver&&bloqueada)desbloquea();if(ver===tb.classList.contains('hidden')){tb.classList.toggle('hidden',!ver);document.body.classList.toggle('con-panel',ver);try{map.invalidateSize()}catch(e){}try{colocaGiro()}catch(e){}}}
 }
 function actualizaDespeje(){
  const ahora=guiaIniciada();
@@ -69,6 +73,48 @@ function recordingControls(state){estadoBotonera=state;setTimeout(actualizaDespe
  if($('tripPausa')){$('tripPausa').classList.toggle('hidden',state!=='recording');$('tripSigue').classList.toggle('hidden',state!=='paused');$('tripParar').classList.toggle('hidden',state!=='recording'&&state!=='paused');
   // Y desactivados cuando lo esta el de verdad: si no, parecerian pulsables sin hacer nada.
   $('tripPausa').disabled=!!$('recordPause').disabled;$('tripSigue').disabled=!!$('recordResume').disabled;$('tripParar').disabled=!!$('recordStop').disabled}
+}
+// BLOQUEAR LA PANTALLA. Lo que mas se repite en las quejas de Komoot y
+// Wikiloc despues de los giros falsos: con el movil en el bolsillo, en el
+// manillar o bajo la lluvia, un toque sin querer cambia de pantalla o pausa
+// («It desperately needs a "lock controls" button … if a drop of sweat lands
+// on the phone screen»). Lo pidio el autor el 15 de noviembre de 2026. Una
+// capa por encima de todo se traga los toques; se quita MANTENIENDO pulsado
+// su boton QUITA_MS, que un roce o una gota no hacen. El mapa, la ficha del
+// giro y la voz siguen; el aviso de caida es un dialogo de Android, por
+// encima de la pagina, y no lo tapa. Al dejar de guiar se quita sola.
+function bloquea(){
+ const c=$('candado');if(!c)return;
+ bloqueada=true;c.classList.remove('hidden');document.body.classList.add('bloqueada');
+ try{$('candadoQuita').focus()}catch(e){}
+}
+function desbloquea(){
+ cancelaQuita();bloqueada=false;
+ const c=$('candado');if(c)c.classList.add('hidden');
+ document.body.classList.remove('bloqueada');
+}
+function empiezaQuita(e){
+ if(e&&e.preventDefault)e.preventDefault();
+ cancelaQuita();
+ const b=$('candadoQuita');if(b)b.classList.add('pulsando');
+ quitaReloj=setTimeout(()=>{quitaReloj=null;desbloquea();try{$('tripBloquea').focus()}catch(x){}},QUITA_MS);
+}
+function cancelaQuita(){
+ if(quitaReloj){clearTimeout(quitaReloj);quitaReloj=null}
+ const b=$('candadoQuita');if(b)b.classList.remove('pulsando');
+}
+if($('candado')&&typeof $('candado').addEventListener==='function'){
+ $('tripBloquea').onclick=bloquea;
+ const quita=$('candadoQuita'),capa=$('candado');
+ quita.addEventListener('pointerdown',empiezaQuita);
+ for(const ev of ['pointerup','pointercancel','pointerleave'])quita.addEventListener(ev,cancelaQuita);
+ quita.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.repeat)empiezaQuita(e)});
+ quita.addEventListener('keyup',cancelaQuita);
+ quita.addEventListener('click',e=>e.preventDefault());
+ quita.addEventListener('contextmenu',e=>e.preventDefault());
+ // Todo lo que no sea el boton de quitar se queda en la capa.
+ for(const ev of ['click','dblclick','pointerdown','touchstart','touchmove','wheel','contextmenu'])
+  capa.addEventListener(ev,e=>{if(e.target!==quita&&!(quita.contains&&quita.contains(e.target))){e.preventDefault();e.stopPropagation()}},{passive:false});
 }
 // Pulsan el boton de verdad: asi valen sus avisos y confirmaciones.
 if($('tripPausa')){$('tripPausa').onclick=()=>$('recordPause').click();$('tripSigue').onclick=()=>$('recordResume').click();$('tripParar').onclick=()=>$('recordStop').click()}
@@ -503,6 +549,6 @@ if($('closeSos'))$('closeSos').onclick=()=>$('sosDialog').classList.add('hidden'
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={compruebaBateria,pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos};
- Object.defineProperties(module.exports,{MAPA_Z_MIN:{get:()=>MAPA_Z_MIN,enumerable:true},MAPA_Z_MAX:{get:()=>MAPA_Z_MAX,enumerable:true},MAPA_MARGEN:{get:()=>MAPA_MARGEN,enumerable:true},CAPAS_GUARDABLES:{get:()=>CAPAS_GUARDABLES,enumerable:true},guiandoAntes:{get:()=>guiandoAntes,set:v=>{guiandoAntes=v},enumerable:true},pausado:{get:()=>pausado,set:v=>{pausado=v},enumerable:true},bajadaMapa:{get:()=>bajadaMapa,set:v=>{bajadaMapa=v},enumerable:true}});
+ module.exports={compruebaBateria,pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos,bloquea,desbloquea,empiezaQuita,cancelaQuita};
+ Object.defineProperties(module.exports,{MAPA_Z_MIN:{get:()=>MAPA_Z_MIN,enumerable:true},MAPA_Z_MAX:{get:()=>MAPA_Z_MAX,enumerable:true},MAPA_MARGEN:{get:()=>MAPA_MARGEN,enumerable:true},CAPAS_GUARDABLES:{get:()=>CAPAS_GUARDABLES,enumerable:true},guiandoAntes:{get:()=>guiandoAntes,set:v=>{guiandoAntes=v},enumerable:true},pausado:{get:()=>pausado,set:v=>{pausado=v},enumerable:true},bajadaMapa:{get:()=>bajadaMapa,set:v=>{bajadaMapa=v},enumerable:true},bloqueada:{get:()=>bloqueada,enumerable:true}});
 }
