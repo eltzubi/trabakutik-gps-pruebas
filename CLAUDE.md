@@ -41,6 +41,30 @@ que reordenar cambia cuándo existe cada cosa.
 No hay proyecto de reforma: cada pieza se cierra cuando haya que tocarla por
 un trabajo de verdad. Lo decidió el autor el 12 de noviembre de 2026.
 
+**Cerradas: 04, 05, 06, 07, 08, 09 y 10** (las seis últimas, el 15 de
+noviembre de 2026). **Sin cerrar: 01, 02 y 03.** Cómo es una pieza cerrada:
+
+- **Se puede leer sola**: las diez lo hacen desde que la apertura y el cierre
+  del bloque de la página (`(()=>{'use strict';` … `})();`) están en la
+  plantilla y no en la 01 y la 10. Si una frontera entre piezas cae en mitad
+  de una función, se mueve la frontera: `nuevo.html` tiene que salir
+  idéntico byte a byte (se comprueba con `cmp`).
+- **Exporta** sus funciones al final (`if(typeof module==='object'…)`, que en
+  la página no hace nada) y su estado con accesores, que leen y escriben la
+  variable de verdad.
+- **Sus pruebas la piden con `pieza()` de `tests/pieza.cjs`**: carga la pieza
+  con `require()`, le deja en `globalThis` lo que usa de las demás (en la
+  página comparten ámbito) y limpia lo que dejó la prueba anterior. Lo que
+  la pieza pone en marcha al arrancar (botones, relojes, la caché del mapa)
+  no se toca: se carga con una pantalla de mentira (`arranque09`,
+  `arranque10`). `trozo()` saca un trozo del código de una función ya
+  cargada, para las pruebas que miran el texto de la ficha o de la voz.
+- **Las pruebas de integración que cruzan varias piezas con estado
+  compartido siguen recortando** (abrir una ruta guardada, terminar la
+  salida, la ficha del giro, cerrar el círculo del creador): con piezas
+  sueltas, las variables compartidas no estarían en un solo sitio. Lo mismo
+  que ya pasaba con la 04.
+
 ## La batería, antes de cada push
 
 En este orden. Si algo falla, no se sube.
@@ -90,7 +114,7 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
 - **`setup()` de `scripts/test-browser.cjs` inyecta `window.TrabakutikAndroid`**,
   así que la página se cree dentro de la aplicación. Para probar lo que ve
   alguien desde la web, crea el contexto sin `setup()`.
-- **Las pruebas que recortan por texto** (76 rodajas) se rompen al mover una
+- **Las pruebas que recortan por texto** (51 rodajas) se rompen al mover una
   línea. Es lo que se va quitando pieza a pieza.
 
 ## Reglas permanentes del autor
