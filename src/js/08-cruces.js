@@ -331,7 +331,97 @@ function espaciaParaGiros(pts){
  for(let k=0;k<pts.length;k++)
   if(!idx.length||dist(pts[idx[idx.length-1]],pts[k])>=ESPACIO_GIROS_M)idx.push(k);
  if(idx[idx.length-1]!==pts.length-1){if(idx.length>1)idx[idx.length-1]=pts.length-1;else idx.push(pts.length-1)}
- return idx;
+ return quitaPicos(pts,idx);
+}
+// LOS PICOS DEL GPX NO SON GIROS. En el km 1,17 de Trabakua-Mendibil el GPX
+// sube 15 m a un lado y vuelve -quien lo grabo se aparto del camino- y, con
+// un nodo de cruce a menos de 25 m, salia «cruce a la derecha, 133°» en plena
+// recta. El autor, el 15 de noviembre de 2026: «solo tiene que indicar giros
+// de verdad o cruces de verdad, todo lo demas se deja sin indicar».
+// Un pico es una salida corta (PICO_TRAMO_M de camino como mucho) que se
+// aparta del eje PICO_PUNTA_M como mucho, con UNA punta en la que se da la
+// vuelta (mas de PICO_VUELTA grados) y tras la que se sigue con el mismo
+// rumbo con el que se llego (menos de PICO_SIGUE grados). Una herradura no
+// cae: sale con el rumbo contrario. Una vuelta a una manzana tampoco: no
+// tiene punta, tiene dos esquinas. Para los avisos se quitan los puntos del
+// pico; las distancias de la ruta no se tocan.
+const PICO_TRAMO_M=60,PICO_PUNTA_M=20,PICO_PUNTA_MIN_M=6,PICO_EXTRA_M=8,PICO_VUELTA=120,PICO_SIGUE=35,PICO_LEJOS_M=25,PICO_PUNTA_ANG=60;
+function quitaPicos(pts,idx){
+ const m=idx.length;if(m<5)return idx;
+ const P=k=>pts[idx[k]],cum=[0];
+ for(let k=1;k<m;k++)cum[k]=cum[k-1]+dist(P(k-1),P(k));
+ const rumbo=(a,b)=>bearingBetween(a,b);
+ const giro=(a,b)=>Math.abs(difRumbo(a,b));
+ // El primer punto a «metros» EN LINEA RECTA de k, hacia atras (-1) o hacia
+ // delante: medido por el recorrido, un baile del GPS se los come y el rumbo
+ // sale de cualquier sitio.
+ const aDistancia=(k,metros,paso)=>{
+  for(let j=k+paso;j>=0&&j<m;j+=paso)if(dist(P(j),P(k))>=metros)return P(j);
+  return null;
+ };
+ const fuera=(q,a,b)=>{
+  const kx=111195*Math.cos(a[0]*R),ky=111195;
+  const ax=(q[1]-a[1])*kx,ay=(q[0]-a[0])*ky,dx=(b[1]-a[1])*kx,dy=(b[0]-a[0])*ky,nn=dx*dx+dy*dy;
+  const t=nn?Math.max(0,Math.min(1,(ax*dx+ay*dy)/nn)):0;
+  return Math.hypot(ax-t*dx,ay-t*dy);
+ };
+ const queda=[0];
+ let a=0;
+ while(a<m-1){
+  let salto=-1;const validos=[];
+  const antes=aDistancia(a,PICO_LEJOS_M,-1);
+  for(let b=a+2;b<m&&cum[b]-cum[a]<=PICO_TRAMO_M;b++){
+   const A=P(a),B=P(b),cuerda=dist(A,B);
+   if(cum[b]-cum[a]-cuerda<PICO_EXTRA_M)continue;
+   // La punta: el punto que mas se aparta, y que no se pase de PICO_PUNTA_M.
+   let t=-1,lejos=0,ok=true;
+   for(let k=a+1;k<b;k++){const f=fuera(P(k),A,B);if(f>PICO_PUNTA_M){ok=false;break}if(f>lejos){lejos=f;t=k}}
+   // Menos de PICO_PUNTA_MIN_M es el baile del GPS parado -en un cruce, muchas
+   // veces-, no un pico: de eso ya se ocupa espaciaParaGiros, y quitarlo aqui
+   // se comia giros de verdad (medido en las 74 rutas).
+   if(!ok||t<0||lejos<PICO_PUNTA_MIN_M)continue;
+   // La punta, A UN LADO del eje y no pasado uno de sus extremos: un baile del
+   // GPS al llegar a un cruce deja la «punta» antes de A o despues de B, y
+   // tratarlo como pico se llevaba el giro de verdad (hirutxikiak, intxorta).
+   if(cuerda>=3){
+    const kx=111195*Math.cos(A[0]*R),q=P(t);
+    const u=(((q[1]-A[1])*kx)*((B[1]-A[1])*kx)+((q[0]-A[0])*111195)*((B[0]-A[0])*111195))/(cuerda*cuerda);
+    if(u<0.1||u>0.9)continue;
+   }
+   // En la punta se da la vuelta...
+   if(giro(rumbo(P(t-1),P(t)),rumbo(P(t),P(t+1)))<PICO_VUELTA)continue;
+   // ...y es una punta de verdad, estrecha: vista desde ella, la ida y la
+   // vuelta salen casi juntas (menos de PICO_PUNTA_ANG grados). En el pico de
+   // Mendibil son 50; la esquina de un giro de verdad cortada por el baile
+   // del GPS da 90 o mas (hirutxikiak, 89).
+   if(giro(rumbo(P(t),A),rumbo(P(t),B))>=PICO_PUNTA_ANG)continue;
+   // ...y una sola vez: ningun otro punto del pico se dobla asi.
+   let otra=false;
+   for(let k=a+1;k<b;k++)if(k!==t&&giro(rumbo(P(k-1),P(k)),rumbo(P(k),P(k+1)))>=PICO_VUELTA){otra=true;break}
+   if(otra)continue;
+   // Y despues se sigue por donde se iba.
+   const despues=aDistancia(b,PICO_LEJOS_M,1);
+   if(!antes||!despues)continue;
+   if(giro(rumbo(antes,A),rumbo(B,despues))>=PICO_SIGUE)continue;
+   // Y tambien de lejos, a 50 m: en un cruce donde el GPS bailo parado el
+   // giro de verdad se reparte y a 25 m parece que sigues recto.
+   const antes2=aDistancia(a,2*PICO_LEJOS_M,-1),despues2=aDistancia(b,2*PICO_LEJOS_M,1);
+   // Sin esos puntos -cerca del principio o del final- no se puede saber: el
+   // pico se deja como esta (revision con GPT).
+   if(!antes2||!despues2||giro(rumbo(antes2,A),rumbo(B,despues2))>=PICO_SIGUE)continue;
+   if(cuerda>=3&&giro(rumbo(antes,A),rumbo(A,B))>=PICO_SIGUE)continue;
+   validos.push([b,cum[b]-cum[a]-cuerda]);
+  }
+  // No el primer final que valga, sino el que cierra el pico: el de mas metros
+  // de rodeo o, con 2 m de margen, el mas cercano. Cortando en el primero se
+  // quitaba la punta y se quedaba media vuelta, otro giro falso.
+  if(validos.length){
+   const max=Math.max(...validos.map(v=>v[1]));
+   salto=validos.find(v=>v[1]>=max-2)[0];
+  }
+  if(salto>0){queda.push(salto);a=salto}else{a++;queda.push(a)}
+ }
+ return queda.map(k=>idx[k]);
 }
 function computeJunctions(){
  const pts=routePoints,n=pts.length;

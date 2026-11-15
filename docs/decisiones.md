@@ -297,3 +297,27 @@ se decidió y por qué:
   pero no imposible. Y parar la grabación durante la cuenta atrás la cancela,
   porque parar es un gesto consciente.
 
+
+## Los picos del GPX no son giros (15 de noviembre de 2026)
+
+- **Lo que pasó:** en el km 1,17 de Trabakua-Mendibil, quien grabó la ruta se
+  metió 15 m por una pista lateral, estuvo parado unos 20 s y volvió. Con un
+  cruce de OSM a 6 m, la app cantaba «izquierda» y, al revés, «derecha», yendo
+  recto. El autor: «solo tiene que indicar giros de verdad o cruces de verdad,
+  todo lo demás se deja sin indicar».
+- **Lo que se hace:** `quitaPicos` (08-cruces.js) salta, solo para calcular
+  los avisos, las salidas cortas con una sola punta estrecha de la que se
+  vuelve y tras la que se sigue con el mismo rumbo (a 25 y a 50 m). Los
+  números están en el código.
+- **Medido en las 74 rutas, ida y vuelta:** 5.922 avisos iguales, 43 quitados
+  y 7 movidos o con otro tipo. Revisados a mano los quitados en cruce o con
+  giro grande: eran picos hacia un ramal (Mendibil, Trabakua-Ondarroa,
+  Garaiurdaixa, Intxorta), picos sin cruce o herraduras falsas en sobrepasos.
+- **Lo que se paró a tiempo:** las primeras versiones se comían giros de
+  verdad donde el GPS bailó parado en el cruce (Hiru Txikiak). Lo arreglan el
+  ángulo de la punta (menos de 60°; allí da 89) y la comprobación a 50 m. Las
+  dos cosas tienen su prueba con los datos reales.
+- **El riesgo que queda, a sabiendas:** es geometría, no sabe la intención.
+  Un paso obligatorio con forma de pico de 20 m o menos, como dos senderos en
+  T a pocos metros con un obstáculo entre ellos, perdería su aviso. No ha
+  salido en ninguna de las 74 rutas. Revisado con GPT, que lo señaló.

@@ -943,6 +943,30 @@ test('Si al revés no hace falta ningún aviso, no se usan los de la ida dados l
  assert.equal(c.junctionActive,-1,'no se enseña ningun giro: al reves no hay ninguno');
 });
 
+test('Un pico del GPX hacia un ramal y de vuelta no es un giro',()=>{
+ // Trabakua-Mendibil, km 1,17: quien grabo la ruta se metio 15 m por la pista
+ // que sale al norte y volvio. Salia «izquierda» y luego «derecha» en plena
+ // recta. El autor, 15 de noviembre de 2026: «solo tiene que indicar giros de
+ // verdad o cruces de verdad». El trozo de verdad (40 puntos, en metros
+ // alrededor del pico) y los cruces de OSM de alrededor con sus ramas.
+ const ruta=[[-300.7,-225.8],[-296.1,-215.1],[-285.9,-198],[-282.7,-196.8],[-281,-192.6],[-261.9,-169.5],[-216.2,-123.8],[-190.8,-101],[-173.5,-80.9],[-171.2,-76.3],[-165.4,-45.8],[-151.1,-29.2],[-145.4,-25.2],[-130.7,-23.6],[-101.4,-25.1],[-27.1,-10],[-16.9,-5],[-7.8,-4.1],[0,0],[7.2,13.1],[7.3,6.9],[11.9,0.7],[17.7,3.8],[26.3,4.9],[37,12.8],[58.3,21.5],[63.7,26],[70.4,26],[103.6,41.1],[108.3,40.5],[120.7,45.6],[128.2,46.3],[135.5,50.7],[139.6,51.4],[142.3,54.6],[152.3,57.9],[154.8,57],[161,59.9],[173.3,59.8],[182.7,61.8]];
+ const cruces=[[-307.1,-235.5,[[30,198],[354]]],[-168.6,-77.6,[[12],[78],[210]]],[5.7,-2,[[0],[72],[252]]]];
+ const c=detector(),pts=ruta.map(q=>point(q[0],q[1])),osm=cruces.map(q=>point(q[0],q[1]).concat([q[2]]));
+ const cerca=l=>l.filter(j=>meters(pts[j.i],point(5.7,-2))<40);
+ const ida=c.detectCrudo(pts,osm);
+ assert.equal(cerca(ida).length,0,'ida: '+JSON.stringify(cerca(ida).map(t=>t.i+' '+t.direction+' '+t.angle)));
+ assert.equal(cerca(c.junctionsReves||[]).length,0,'vuelta: '+JSON.stringify(cerca(c.junctionsReves||[]).map(t=>t.direction)));
+});
+test('Un cruce de verdad donde el GPS bailo parado no se toma por un pico',()=>{
+ // Hiru Txikiak: se llega por el ramal y se coge la pista a la derecha, con el
+ // GPS bailando 10 m en el cruce. Visto desde la «punta», la llegada y la
+ // salida forman 89 grados: es una esquina, no un pico, y el aviso se queda.
+ const ruta=[[251,-88],[217.1,-91.8],[209,-91.2],[195.9,-88.6],[176.4,-78.5],[161.3,-75.3],[144.3,-60.8],[122.6,-46.1],[114.4,-46.4],[95.8,-40.6],[69.3,-38.5],[58.5,-34.9],[50.7,-35.2],[41.8,-29.7],[33.7,-27.8],[28,-22.2],[24.8,-15.1],[19.4,-9.9],[19.7,-7.7],[16.1,-4],[9.3,-6.8],[6.6,-9.6],[3.7,-3.8],[6.6,-2.3],[5.3,-0.7],[2.9,1.9],[0,0],[-2.1,1],[2.1,9.5],[6.6,26.5],[6.2,32],[1.5,36.5],[-1.4,49.8],[-11.5,67.4],[-30.6,83.5],[-35.3,93.3],[-44.3,106.2],[-61.3,117.9],[-69.5,125.8],[-87.8,137.4],[-104.4,153.6],[-125.8,163],[-148.4,182],[-164.4,190.5],[-195.2,217.2],[-200.5,220.7],[-206,221.2],[-211.4,225.5],[-220.3,229.5],[-224.8,235]];
+ const cruces=[[48.1,-32.8,[[108,288],[228]]],[-15.9,1.7,[[24,198],[162]]],[2.8,41.7,[[168,336],[204]]],[-118.8,158.5,[[114,306],[144]]],[-170.7,192.9,[[120,306],[144]]],[-245.3,250.7,[[126,324],[300]]]];
+ const c=detector(),pts=ruta.map(q=>point(q[0],q[1])),osm=cruces.map(q=>point(q[0],q[1]).concat([q[2]]));
+ const ida=c.detectCrudo(pts,osm).filter(j=>meters(pts[j.i],point(0,0))<25);
+ assert(ida.some(j=>j.cruce&&j.direction==='derecha'),'el cruce a la derecha sigue: '+JSON.stringify(ida.map(t=>t.direction)));
+});
 test('Un bailoteo del GPS de 2 m en una recta no es una herradura',()=>{
  // Trabakua-Mendibil, km 3,93: el GPX da un paso de 2,3 m a un lado y vuelve
  // 1,5 m, y salia «curva de herradura a la derecha, 171°» en plena recta. El
