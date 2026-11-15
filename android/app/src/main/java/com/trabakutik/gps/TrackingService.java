@@ -327,6 +327,16 @@ public class TrackingService extends Service implements LocationListener {
   // una herradura llegaba sin lado y en un cruce se decia «cruce, da la
   // vuelta»: en plena revuelta de carretera suena a volver atras. Lo conto el
   // autor: «me decia una vuelta en plena curva».
+  // tipo 5: ROTONDA. La pagina la cuenta como un solo cruce (lo que importa
+  // es por donde entras y por donde sales) y aqui se dice como lo pidio el
+  // autor el 15 de noviembre de 2026: «sal a la derecha». Cruzarla recto no
+  // llega nunca: ahi no se dice nada. Va antes que la herradura, que tambien
+  // es «tipo>=3».
+  if(tipo==5){
+   String r=lado==0?"en la rotonda, da la vuelta":"en la rotonda, sal a la "+(lado<0?"izquierda":"derecha");
+   if("3".equals(fase))return Character.toUpperCase(r.charAt(0))+r.substring(1)+" ahora";
+   return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+r;
+  }
   if(tipo>=3&&lado!=0){
    String h=(tipo==4?"en el cruce, curva de herradura a la ":"curva de herradura a la ")+(lado<0?"izquierda":"derecha");
    if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
@@ -796,6 +806,9 @@ public class TrackingService extends Service implements LocationListener {
     // «h»:1, curva de herradura con su lado (la pagina desde noviembre de
     // 2026): se guarda como tipo 3 si es suelta y 4 si cae en un cruce.
     if(p.optInt("h",0)==1)tipo=tipo==0?3:4;
+    // «ro»:1, rotonda (la pagina desde el 15 de noviembre de 2026): tipo 5.
+    // Una APK anterior no lo conoce y dice «cruce a la derecha», el lado bueno.
+    if(p.optInt("ro",0)==1)tipo=5;
     // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
     // la lista cuando el giro cae en ese punto, asi que un giro en el 0 no se
     // pasaria nunca y bloquearia TODOS los de detras. La pagina no genera

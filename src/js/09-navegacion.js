@@ -233,7 +233,9 @@ function junctionGuidance(p,accuracy,progress){
  // decia una vuelta en plena curva». Ahora es una curva de herradura a la
  // derecha o a la izquierda, haya cruce o no.
  const ladoHerradura=ladoFlecha(turn,alReves);
- $('turnDirection').textContent=lado==='vuelta'
+ $('turnDirection').textContent=turn.rotonda
+   ?(lado==='vuelta'?'Rotonda · da la vuelta':'Rotonda · sal a la '+lado)
+   :lado==='vuelta'
    ?(turn.retorno?(esCruce?'Cruce · da la vuelta':'Da la vuelta')
     :esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
    :turn.mantente?'Cruce · sigue por la '+lado
@@ -290,7 +292,9 @@ function junctionGuidance(p,accuracy,progress){
   junctionWarned.add(j+':'+fase);
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
-  const giroTxt=lado==='vuelta'
+  const giroTxt=turn.rotonda
+    ?(lado==='vuelta'?'en la rotonda, da la vuelta':'en la rotonda, sal a la '+lado)
+    :lado==='vuelta'
     ?(turn.retorno?(esCruce?'en el cruce, da la vuelta':'da la vuelta')
      :esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
     :turn.mantente?'en el cruce, sigue por la '+lado
@@ -304,7 +308,7 @@ function junctionGuidance(p,accuracy,progress){
   }
   if(fase!=='v')notice(fase==='3'
         ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
-        :(turn.mantente?'Cruce · sigue por la '+lado:esCruce?'Cruce':'Curva cerrada')
+        :(turn.rotonda?'Rotonda':turn.mantente?'Cruce · sigue por la '+lado:esCruce?'Cruce':'Curva cerrada')
          +' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();

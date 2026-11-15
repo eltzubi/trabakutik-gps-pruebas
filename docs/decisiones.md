@@ -437,5 +437,5 @@ cuenta (markinaurjauziak y santaeufemia pasan a 10 m de una de 28 m).
 En las 72 rutas publicadas cambian 11, todas en rotondas que cruzan; en
 aixola, galdaramiño y karabieta se cruzaba recto y se decía «derecha».
 
-Se dice «cruce a la derecha», no «en la rotonda, sal a la derecha»: eso
-pediría una frase nueva en la aplicación (APK). Está propuesto, no hecho.
+Desde la misma noche se dice «en la rotonda, sal a la derecha» (lo pidio el
+autor): la pagina manda «ro»:1 y la APK lo dice; una APK anterior dice «cruce a la derecha».

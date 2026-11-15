@@ -857,7 +857,7 @@ test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dic
  const jg=pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance;
  const ficha=trozo(jg,"const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
  assert(/turn\.retorno\?/.test(ficha)&&/curva de herradura a la/.test(ficha),'la ficha dice «curva de herradura a la …» salvo en una ida y vuelta');
- const voz=trozo(jg,"const giroTxt=lado==='vuelta'","// Si la primera lectura entra en fase 1");
+ const voz=trozo(jg,"const giroTxt=turn.rotonda","// Si la primera lectura entra en fase 1");
  assert(/turn\.retorno\?/.test(voz)&&/curva de herradura a la/.test(voz),'y la voz de la pagina tambien');
 });
 test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último «Quedan … m»',()=>{
@@ -1155,4 +1155,14 @@ test('cruces-zona.json trae las rotondas, y uno viejo sin ellas sigue valiendo',
  const z=c.descifraZona({escala:100000,dif:[4320000,-250000,10,10],rotondas:[4320000,-250000,12,5,5,20,1,1,99]});
  assert.equal(JSON.stringify(z.rotondas),JSON.stringify([[43.2,-2.5,12],[43.20005,-2.49995,20]]),'la de 99 m no es una rotonda');
  assert.equal(JSON.stringify(c.descifraZona({escala:100000,dif:[4320000,-250000,10,10]}).rotondas),'[]');
+});
+test('rotonda: el servicio recibe «ro» y la pantalla y la voz dicen «sal a la derecha»',()=>{
+ let enviado=null;
+ const w={TrabakutikAndroid:{setJunctions:j=>{enviado=JSON.parse(j)}}};
+ pieza('08-cruces.js',{junctions:[{i:5,direction:'derecha',hacia:'derecha',cruce:true,mantente:false,retorno:false,rotonda:true},
+  {i:9,direction:'vuelta',hacia:'izquierda',cruce:true,mantente:false,retorno:true,rotonda:true}],junctionsReves:null,window:w}).enviaGirosNativos();
+ assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:1,t:1,ro:1},{i:9,dir:0,t:1,ro:1}]));
+ const jg=String(pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance);
+ assert(jg.includes("'Rotonda · sal a la '+lado")&&jg.includes("'en la rotonda, sal a la '+lado"),'pantalla y voz de la pagina');
+ assert(jg.indexOf("turn.rotonda")<jg.indexOf("turn.retorno"),'la rotonda se mira antes que la vuelta');
 });

@@ -82,6 +82,13 @@ public class GirosLimiteTest {
   // 5. Sin lado solo llega una ida y vuelta por el mismo camino: ahi si.
   String retorno=t.fraseGiro(0,0,"1",50);
   require(retorno.equals("En 50 metros, da la vuelta"),retorno);
+  // 6. Rotonda: «sal a la derecha», y dar la vuelta en ella.
+  t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":1,\"t\":1,\"ro\":1},{\"i\":20,\"dir\":0,\"t\":1,\"ro\":1}]");t.loadTurns();
+  require((int)t.turns.get(0)[2]==5&&(int)t.turns.get(1)[2]==5,"rotonda=5");
+  String rot=t.fraseGiro(1,5,"1",48),rotYa=t.fraseGiro(-1,5,"3",0),rotVuelta=t.fraseGiro(0,5,"1",50);
+  require(rot.equals("En 50 metros, en la rotonda, sal a la derecha"),rot);
+  require(rotYa.equals("En la rotonda, sal a la izquierda ahora"),rotYa);
+  require(rotVuelta.equals("En 50 metros, en la rotonda, da la vuelta"),rotVuelta);
   System.out.println("OK: caben 2000 giros, por encima se vacia la lista, un giro en el punto 0 no tapa a los demas y la herradura dice su lado");
  }
 }'''

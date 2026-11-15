@@ -250,6 +250,9 @@ function enviaGirosNativos(){
    const herradura=j.direction==='vuelta'&&!j.retorno,lado=herradura?j.hacia:j.direction;
    const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
    if(herradura)o.h=1;
+   // Rotonda: «sal a la derecha» en la APK que lo sepa decir; la anterior
+   // ignora «ro» y dice «cruce a la derecha», que es el mismo lado.
+   if(j.rotonda)o.ro=1;
    return o;
   }));
   window.TrabakutikAndroid.setJunctions(aNativo(junctions));
