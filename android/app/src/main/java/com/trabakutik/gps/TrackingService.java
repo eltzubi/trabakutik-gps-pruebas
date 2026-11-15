@@ -318,6 +318,9 @@ public class TrackingService extends Service implements LocationListener {
   if("CAIDA_ENVIA".equals(action)){terminaCaida(true);return START_NOT_STICKY;}
   if("CAIDA_PRUEBA".equals(action)){disparaCaida(true);return START_NOT_STICKY;}
   if("CAIDAS_AJUSTES".equals(action)){
+   // Apagar el aviso con una cuenta atras en marcha la cancela: si no,
+   // salia el SOS igual (lo vio la revision con GPT).
+   if(caidaEnCurso&&!prefsSos().getBoolean("caidas_activo",true))terminaCaida(false);
    if(active){paraCaidas();arrancaCaidas();}
    else if(!caidaEnCurso)stopSelf();
    return START_NOT_STICKY;
@@ -428,6 +431,11 @@ public class TrackingService extends Service implements LocationListener {
   if(sensores!=null)return;
   if(!prefsSos().getBoolean("caidas_activo",true))return;
   if(ContactosSos.lee(prefsSos().getString("contactos","")).isEmpty())return;
+  // SOLO SI PUEDE FUNCIONAR: sin permiso de SMS la cuenta atras acabaria
+  // siempre en «no se ha podido enviar», y sin notificaciones no salen los
+  // botones para cancelarla. La hoja SOS dice que falta (getSosConfig).
+  if(checkSelfPermission(Manifest.permission.SEND_SMS)!=PackageManager.PERMISSION_GRANTED)return;
+  if(!((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).areNotificationsEnabled())return;
   SensorManager sm=(SensorManager)getSystemService(SENSOR_SERVICE);
   Sensor acel=sm==null?null:sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
   if(acel==null)return;
@@ -506,18 +514,14 @@ public class TrackingService extends Service implements LocationListener {
   long seg=p==null?0:Math.max(0,(SystemClock.elapsedRealtimeNanos()-p.getElapsedRealtimeNanos())/1_000_000_000L);
   boolean hay=p!=null&&seg<=15*60;
   String msg=ContactosSos.mensaje(hay,hay?p.getLatitude():0,hay?p.getLongitude():0,hay&&p.hasAccuracy()?p.getAccuracy():0,seg);
-  int ok=0;
-  try{
-   SmsManager sms=Build.VERSION.SDK_INT>=31?getSystemService(SmsManager.class):SmsManager.getDefault();
-   ArrayList<String> partes=sms.divideMessage(msg);
-   for(ContactosSos.Contacto c:contactos){
-    try{sms.sendMultipartTextMessage(c.telefono(),null,partes,null,null);ok++;}
-    catch(Exception e){android.util.Log.e("TrabakutikGPS","SOS a "+c.nombre()+" no salió",e);}
-   }
-  }catch(Exception e){android.util.Log.e("TrabakutikGPS","SOS: sin SMS",e);}
+  // Se dice primero que se esta enviando y, cuando el telefono contesta
+  // trozo a trozo (EnvioSms), a quien ha salido y a quien no.
   prefsSos().edit().putLong("ultimo_sos",System.currentTimeMillis()).apply();
-  avisoCaida(ok>0?"SOS enviado por SMS a "+nombres(contactos)+(hay?" con tu posición.":", sin posición GPS reciente.")
-    :"No se ha podido enviar el SOS por SMS. Comprueba la cobertura y pide ayuda con el botón SOS.");
+  avisoCaida("Enviando el SOS por SMS a "+nombres(contactos)+"…");
+  final boolean conPosicion=hay;
+  EnvioSms.envia(this,contactos,msg,res->avisoCaida(res.startsWith("Enviado")
+    ?"SOS: "+res+(conPosicion?" Con tu posición.":" Sin posición GPS reciente.")
+    :"No se ha podido enviar el SOS por SMS ("+res+"). Comprueba la cobertura y pide ayuda con el botón SOS."));
  }
  void avisoCaida(String texto){
   Intent abre=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -1053,7 +1057,8 @@ public class TrackingService extends Service implements LocationListener {
   if(LocationManager.GPS_PROVIDER.equals(l.getProvider())){ultimoFixGpsElapsed=SystemClock.elapsedRealtime();if(red!=null)sueltaRed();}
   actualizaVelocidad(l);
   ultimaPosicion=l;
-  detectorCaidas.velocidad(l.hasSpeed()?l.getSpeed():Double.NaN,l.getElapsedRealtimeNanos()/1_000_000L);
+  // Una velocidad de una posicion mala no arma ni descarta un golpe.
+  detectorCaidas.velocidad(l.hasSpeed()&&l.hasAccuracy()&&l.getAccuracy()<=30?l.getSpeed():Double.NaN,l.getElapsedRealtimeNanos()/1_000_000L);
   if(recording&&!pausado)bateriaFixes++;
   String liveMetrics="{}";
   if(navigating&&route.size()>1){

@@ -31,6 +31,12 @@ final class DetectorCaidas {
     static final double QUIETO_DESV = 0.6;        // m/s2: desviacion del modulo en un segundo
     static final double SIGUE_MARCHA_MS = 1.5;    // m/s tras el golpe: sigues, no te has caido
     static final long ESPERA_MS = 60_000;         // tras un aviso, no otro en este tiempo
+    // QUIETO DE VERDAD: un segundo cuenta si trae al menos MUESTRAS_MIN
+    // muestras, y un hueco de mas de HUECO_MS sin muestras vuelve a empezar la
+    // cuenta. Con una sola muestra la desviacion sale cero y parecia quieto; y
+    // pedir 25 por segundo no garantiza que lleguen (revision con GPT).
+    static final int MUESTRAS_MIN = 10;
+    static final long HUECO_MS = 1000;
 
     private long ultimoMovimiento = Long.MIN_VALUE / 2;
     private long golpeEn = -1;
@@ -39,6 +45,7 @@ final class DetectorCaidas {
     private double suma = 0, suma2 = 0;
     private int n = 0, quietos = 0;
     private long ultimoAviso = Long.MIN_VALUE / 2;
+    private long ultimaMuestra = Long.MIN_VALUE / 2;
     int golpes = 0;           // golpes fuertes estando en marcha (el registro)
     int caidas = 0;           // de ellos, los que acabaron en aviso
 
@@ -53,6 +60,7 @@ final class DetectorCaidas {
     boolean muestra(double x, double y, double z, long t) {
         double m = Math.sqrt(x * x + y * y + z * z);
         if (golpeEn < 0) {
+            ultimaMuestra = t;
             if (m >= GOLPE_G * G && t - ultimoMovimiento <= MOVIENDO_MS && t - ultimoAviso >= ESPERA_MS) {
                 golpeEn = t;
                 golpeG = m / G;
@@ -66,13 +74,16 @@ final class DetectorCaidas {
         }
         if (m / G > golpeG) golpeG = m / G;
         if (t - golpeEn > VENTANA_MS) { descarta(); return false; }
+        long antes = ultimaMuestra;
+        ultimaMuestra = t;
+        if (t - antes > HUECO_MS) { quietos = 0; segundoEn = t; suma = suma2 = 0; n = 0; return false; }
         if (t < segundoEn) return false;
         suma += m;
         suma2 += m * m;
         n++;
         if (t - segundoEn >= 1000) {
             double media = suma / n, desv = Math.sqrt(Math.max(0, suma2 / n - media * media));
-            quietos = desv <= QUIETO_DESV ? quietos + 1 : 0;
+            quietos = n >= MUESTRAS_MIN && desv <= QUIETO_DESV ? quietos + 1 : 0;
             segundoEn = t;
             suma = suma2 = 0;
             n = 0;

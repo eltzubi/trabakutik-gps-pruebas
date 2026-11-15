@@ -71,6 +71,17 @@ public class CaidaSosTest{
   tramo(d,3,0.05,4.0);
   require(!tramo(d,12,0.05,Double.NaN),"si el GPS dice que sigues a 4 m/s, no salta");
 
+  // 8. Muestras sueltas (una por segundo) tras el golpe: no prueban quietud.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);golpe(d,4.0);
+  boolean suelta=false;for(int k=0;k<15;k++){t+=1000;if(d.muestra(0,0,G,t))suelta=true;}
+  require(!suelta,"una muestra por segundo no es estar quieto");
+  // 9. Un hueco de 3 s sin muestras a mitad de la quietud vuelve a empezar la cuenta.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);golpe(d,4.0);
+  boolean h=tramo(d,6,0.05,0.0);t+=3000;h|=tramo(d,6,0.05,0.0);
+  require(!h,"6 s + hueco + 6 s no son 8 s seguidos");
+  require(tramo(d,4,0.05,0.0),"pero seguir quieto despues si cuenta");
   // CONTACTOS
   require("+34600111222".equals(ContactosSos.normaliza("+34 600 11 12 22")),"con prefijo y espacios");
   require("+34600111222".equals(ContactosSos.normaliza("0034-600-111-222")),"00 es +");

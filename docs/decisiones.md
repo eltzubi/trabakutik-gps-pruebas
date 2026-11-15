@@ -285,4 +285,15 @@ se decidió y por qué:
   restringidos»). La hoja SOS lo dice si falta el permiso.
 - Es una ayuda: no avisa al 112 y no detecta todas las caídas. Garmin dice lo
   mismo de la suya.
+- **Revisado con GPT el mismo día**, y cambiado: el SMS se da por enviado solo
+  cuando el teléfono confirma cada trozo (EnvioSms), y se dice a quién ha
+  salido y a quién no; apagar el aviso durante la cuenta atrás la cancela; el
+  detector solo se arma con permiso de SMS y notificaciones (sin ellas no
+  salen los botones para cancelar); un segundo cuenta como quieto solo con al
+  menos 10 muestras, y un hueco de más de 1 s vuelve a empezar la cuenta.
+- **Lo que queda abierto, a sabiendas:** la cuenta atrás vive en el servicio;
+  si Android matara el proceso en esos 30 s, el SOS no saldría. Es un
+  servicio en primer plano con el GPS y un wakelock, así que es improbable,
+  pero no imposible. Y parar la grabación durante la cuenta atrás la cancela,
+  porque parar es un gesto consciente.
 

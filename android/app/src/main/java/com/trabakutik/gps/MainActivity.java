@@ -436,7 +436,7 @@ public class MainActivity extends Activity {
    return "{\"activo\":"+p.getBoolean("caidas_activo",true)
     +",\"contactos\":"+ContactosSos.json(ContactosSos.lee(p.getString("contactos","")))
     +",\"max\":"+ContactosSos.MAX+",\"permisoSms\":"+sms
-    +",\"golpes\":"+p.getInt("golpes",0)+",\"caidas\":"+p.getInt("caidas",0)+"}";
+    +",\"notificaciones\":"+((android.app.NotificationManager)getSystemService(NOTIFICATION_SERVICE)).areNotificationsEnabled()+",\"golpes\":"+p.getInt("golpes",0)+",\"caidas\":"+p.getInt("caidas",0)+"}";
   }
   @JavascriptInterface public void setFallDetection(boolean activo){
    getSharedPreferences("sos",MODE_PRIVATE).edit().putBoolean("caidas_activo",activo).apply();
@@ -976,13 +976,8 @@ public class MainActivity extends Activity {
     long seg=p==null?0:Math.max(0,(SystemClock.elapsedRealtimeNanos()-p.getElapsedRealtimeNanos())/1_000_000_000L);
     boolean hay=p!=null&&seg<=15*60;
     String msg=ContactosSos.mensajePrueba(hay,hay?p.getLatitude():0,hay?p.getLongitude():0,hay&&p.hasAccuracy()?p.getAccuracy():0,seg);
-    int ok=0;
-    try{
-     android.telephony.SmsManager sms=Build.VERSION.SDK_INT>=31?getSystemService(android.telephony.SmsManager.class):android.telephony.SmsManager.getDefault();
-     java.util.ArrayList<String> partes=sms.divideMessage(msg);
-     for(ContactosSos.Contacto c:l){try{sms.sendMultipartTextMessage(c.telefono(),null,partes,null,null);ok++;}catch(Exception ignored){}}
-    }catch(Exception ignored){}
-    Toast.makeText(this,ok>0?"SMS de prueba enviado a "+quien+". Pregúntales si les ha llegado.":"No se ha podido enviar el SMS de prueba.",Toast.LENGTH_LONG).show();
+    Toast.makeText(this,"Enviando el SMS de prueba…",Toast.LENGTH_SHORT).show();
+    EnvioSms.envia(this,l,msg,res->Toast.makeText(this,res.startsWith("Enviado")?"SMS de prueba: "+res+" Pregúntales si les ha llegado.":"SMS de prueba: "+res,Toast.LENGTH_LONG).show());
    }).show();
  }
  void sosActualizado(){
@@ -1005,7 +1000,8 @@ public class MainActivity extends Activity {
    .setView(cuenta).setCancelable(false)
    .setPositiveButton("Estoy bien",(d,w)->mandaCaida("CAIDA_BIEN"))
    .setNegativeButton(prueba?"Terminar prueba":"Enviar S.O.S. ya",(d,w)->mandaCaida("CAIDA_ENVIA")).create();
-  caidaDialog.setOnDismissListener(d->{caidaDialog=null;caidaUi.removeCallbacksAndMessages(null);});
+  caidaDialog.setOnDismissListener(d->{caidaDialog=null;caidaUi.removeCallbacksAndMessages(null);
+   if(Build.VERSION.SDK_INT>=27){setShowWhenLocked(false);setTurnScreenOn(false);}});
   caidaDialog.show();
   caidaUi.post(new Runnable(){@Override public void run(){
    long fin=TrackingService.CAIDA_FIN;

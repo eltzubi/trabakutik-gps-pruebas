@@ -63,3 +63,20 @@ test('Con permiso de SMS y un contacto sale «Enviar un SMS de prueba»; sin per
  ({c,nodos}=contexto({...base,getSosConfig:()=>cfg({permisoSms:false})}));c.abreSos();
  assert(!todos(nodos.sosCuerpo).some(x=>x.textContent==='Enviar un SMS de prueba'),'sin permiso no sale');
 });
+test('Si falta la hoja en el HTML (una página vieja en la caché), el botón pide ayuda como siempre',()=>{
+ let compartido=0;const app={shareSos:()=>compartido++,getSosConfig:()=>'{}'};
+ const c={window:{TrabakutikAndroid:app},document:{createElement:()=>({})},JSON,$:()=>null,confirm:()=>true,prompt:()=>null,alert:()=>{}};
+ vm.createContext(c);vm.runInContext(source('function abreSos(){','window.trabakutikSosActualizado'),c);
+ c.abreSos();assert.equal(compartido,1);
+});
+test('La hoja dice por qué no funciona: sin permiso de SMS o sin notificaciones',()=>{
+ const base={shareSos(){},setFallDetection(){},removeSosContact(){},pickSosContact(){},addSosContact:()=>true,requestSmsPermission(){},testFall(){}};
+ let {c,nodos}=contexto({...base,getSosConfig:()=>cfg({permisoSms:false})});c.abreSos();
+ assert(todos(nodos.sosCuerpo).some(x=>x.textContent==='No funciona: falta el permiso de SMS'));
+ ({c,nodos}=contexto({...base,getSosConfig:()=>cfg({notificaciones:false})}));c.abreSos();
+ const t=todos(nodos.sosCuerpo).map(x=>x.textContent);
+ assert(t.includes('No funciona: faltan las notificaciones')&&t.some(x=>/notificaciones de la app están desactivadas/.test(x)));
+ ({c,nodos}=contexto({...base,getSosConfig:()=>cfg({notificaciones:true})}));c.abreSos();
+ assert(todos(nodos.sosCuerpo).some(x=>x.textContent==='Activado'));
+});
+

@@ -4782,7 +4782,9 @@ pintaBotonMapa();
 // En una APK que no lo sabe hacer, el boton hace lo de antes.
 function abreSos(){
  const app=window.TrabakutikAndroid;
- if(!app||typeof app.getSosConfig!=='function'){app?.shareSos?.();return}
+ // Sin la hoja (un HTML viejo en la cache) o una APK que no la sabe hacer, lo
+ // de siempre: pedir ayuda no puede depender de esto.
+ if(!app||typeof app.getSosConfig!=='function'||!$('sosDialog')||!$('sosCuerpo')){app?.shareSos?.();return}
  $('sosDialog').classList.remove('hidden');pintaSos();
 }
 function pintaSos(){
@@ -4795,7 +4797,8 @@ function pintaSos(){
  caja.append(ahora);
  const sec=el('div','sos-caida');
  const cab=el('div','sos-cab'),tit=el('div');
- tit.append(el('h3',null,'Aviso de caída'),el('small',null,c.activo?(c.contactos&&c.contactos.length?'Activado':'Activado · falta un contacto'):'Apagado'));
+ const falta=!(c.contactos&&c.contactos.length)?'falta un contacto':!c.permisoSms?'falta el permiso de SMS':c.notificaciones===false?'faltan las notificaciones':'';
+ tit.append(el('h3',null,'Aviso de caída'),el('small',null,c.activo?(falta?'No funciona: '+falta:'Activado'):'Apagado'));
  const sw=el('label','sos-interruptor'),chk=document.createElement('input');
  chk.type='checkbox';chk.checked=!!c.activo;chk.setAttribute('role','switch');chk.setAttribute('aria-label','Aviso de caída');
  chk.onchange=()=>{app.setFallDetection(chk.checked);pintaSos()};
@@ -4823,6 +4826,7 @@ function pintaSos(){
   };
   bot.append(agenda,mano);sec.append(bot);
  }
+ if(lista.length&&c.notificaciones===false)sec.append(el('p','sos-aviso','Las notificaciones de la app están desactivadas: sin ellas no salen los botones para cancelar la alarma y el aviso no se activa. Actívalas en Ajustes › Aplicaciones › Trabakutik GPS › Notificaciones.'));
  if(lista.length&&!c.permisoSms){
   sec.append(el('p','sos-aviso','Falta el permiso para mandar SMS: sin él no se puede enviar el aviso. Si Android no te deja darlo, ve a Ajustes › Aplicaciones › Trabakutik GPS › ⋮ › Permitir ajustes restringidos.'));
   const per=el('button','sos-boton ancho','Dar permiso de SMS');per.type='button';per.onclick=()=>app.requestSmsPermission();sec.append(per);
