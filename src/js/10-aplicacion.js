@@ -451,6 +451,10 @@ function pintaSos(){
   sec.append(el('p','sos-aviso','Falta el permiso para mandar SMS: sin él no se puede enviar el aviso. Si Android no te deja darlo, ve a Ajustes › Aplicaciones › Trabakutik GPS › ⋮ › Permitir ajustes restringidos.'));
   const per=el('button','sos-boton ancho','Dar permiso de SMS');per.type='button';per.onclick=()=>app.requestSmsPermission();sec.append(per);
  }
+ // Un SMS de prueba de verdad, para saber que el permiso funciona.
+ if(lista.length&&c.permisoSms&&typeof app.sendTestSms==='function'){
+  const sms=el('button','sos-boton ancho','Enviar un SMS de prueba');sms.type='button';sms.onclick=()=>app.sendTestSms();sec.append(sms);
+ }
  const probar=el('button','sos-boton prueba','Probar la alarma (no envía nada)');probar.type='button';
  probar.onclick=()=>{$('sosDialog').classList.add('hidden');app.testFall()};
  sec.append(probar);

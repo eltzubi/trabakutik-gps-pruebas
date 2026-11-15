@@ -37,6 +37,7 @@ test('La hoja enseña pedir ayuda, el interruptor, los contactos y la prueba',()
  n.find(x=>x.textContent==='Elegir de la agenda').onclick();assert(llamadas.includes('agenda'));
  n.find(x=>x.textContent==='Probar la alarma (no envía nada)').onclick();assert(llamadas.includes('prueba'));
  n.find(x=>x.textContent==='Pedir ayuda ahora').onclick();assert(llamadas.includes('sos'));
+ assert(!txt.includes('Enviar un SMS de prueba'),'sin sendTestSms (APK vieja) no sale');
 });
 test('Sin contactos lo avisa; sin permiso de SMS, también; con 3 no deja añadir más',()=>{
  const base={shareSos(){},setFallDetection(){},removeSosContact(){},pickSosContact(){},addSosContact:()=>true,requestSmsPermission(){},testFall(){}};
@@ -54,4 +55,11 @@ test('Escribir número pasa nombre y teléfono a la app',()=>{
  const {c,nodos}=contexto(app,{respuestas:['Aita','600 333 444']});c.abreSos();
  todos(nodos.sosCuerpo).find(x=>x.textContent==='Escribir número').onclick();
  assert.equal(JSON.stringify(añadidos),JSON.stringify([['Aita','600 333 444']]));
+});
+test('Con permiso de SMS y un contacto sale «Enviar un SMS de prueba»; sin permiso, no',()=>{
+ let enviado=0;const base={shareSos(){},setFallDetection(){},removeSosContact(){},pickSosContact(){},addSosContact:()=>true,requestSmsPermission(){},testFall(){},sendTestSms:()=>enviado++};
+ let {c,nodos}=contexto({...base,getSosConfig:()=>cfg()});c.abreSos();
+ const b=todos(nodos.sosCuerpo).find(x=>x.textContent==='Enviar un SMS de prueba');assert(b,'sale el boton');b.onclick();assert.equal(enviado,1);
+ ({c,nodos}=contexto({...base,getSosConfig:()=>cfg({permisoSms:false})}));c.abreSos();
+ assert(!todos(nodos.sosCuerpo).some(x=>x.textContent==='Enviar un SMS de prueba'),'sin permiso no sale');
 });

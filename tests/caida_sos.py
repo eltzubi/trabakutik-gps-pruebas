@@ -92,6 +92,8 @@ public class CaidaSosTest{
   require(m.startsWith("NECESITO AYUDA")&&m.contains("aviso automatico")&&m.contains("https://maps.google.com/?q=43.123456,-2.500000")&&m.contains("+/-9 m, hace 1 min"),m);
   require(m.chars().allMatch(c->c<128),"solo ASCII: el SMS no se parte en trozos de 70");
   require(ContactosSos.mensaje(false,0,0,0,0).contains("Sin posicion GPS reciente"),"sin posicion se dice");
+  String pr=ContactosSos.mensajePrueba(true,43.1,-2.5,5,10);
+  require(pr.startsWith("PRUEBA")&&pr.contains("no es una emergencia")&&!pr.contains("NECESITO AYUDA")&&pr.chars().allMatch(ch->ch<128),"la prueba se ve que es prueba: "+pr);
   System.out.println("OK: salta con golpe en marcha y quieto; no con bache, movil caido parado, levantarse, golpe flojo, repeticion ni si el GPS sigue en marcha; contactos y mensaje");
  }
 }'''

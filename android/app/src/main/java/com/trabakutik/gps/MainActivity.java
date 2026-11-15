@@ -460,6 +460,9 @@ public class MainActivity extends Activity {
    try{startActivityForResult(new Intent(Intent.ACTION_PICK,android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI),303);}
    catch(ActivityNotFoundException e){Toast.makeText(MainActivity.this,"No hay agenda de contactos: escribe el número a mano.",Toast.LENGTH_LONG).show();}
   });}
+  // UN SMS DE PRUEBA DE VERDAD, para saber que el permiso funciona antes de
+  // necesitarlo: la prueba de la alarma, a proposito, no envia nada.
+  @JavascriptInterface public void sendTestSms(){runOnUiThread(MainActivity.this::smsDePrueba);}
   @JavascriptInterface public void requestSmsPermission(){runOnUiThread(MainActivity.this::pidePermisoSms);}
   @JavascriptInterface public void testFall(){runOnUiThread(()->{
    try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("CAIDA_PRUEBA"));}
@@ -944,6 +947,29 @@ public class MainActivity extends Activity {
  void avisaAjustesCaida(){
   if(!TrackingService.ACTIVO)return;
   try{startService(new Intent(this,TrackingService.class).setAction("CAIDAS_AJUSTES"));}catch(Exception ignored){}
+ }
+ void smsDePrueba(){
+  java.util.List<ContactosSos.Contacto> l=ContactosSos.lee(getSharedPreferences("sos",MODE_PRIVATE).getString("contactos",""));
+  if(l.isEmpty()){Toast.makeText(this,"Añade antes un contacto.",Toast.LENGTH_LONG).show();return;}
+  if(checkSelfPermission(Manifest.permission.SEND_SMS)!=PackageManager.PERMISSION_GRANTED){pidePermisoSms();return;}
+  StringBuilder quien=new StringBuilder();
+  for(ContactosSos.Contacto c:l){if(quien.length()>0)quien.append(", ");quien.append(c.nombre());}
+  new AlertDialog.Builder(this).setTitle("SMS de prueba")
+   .setMessage("Se enviará un SMS a "+quien+" diciendo que es una PRUEBA y no una emergencia. ¿Enviar?")
+   .setNegativeButton("Cancelar",null).setPositiveButton("Enviar",(d,w)->{
+    Location p=null;
+    try{p=((LocationManager)getSystemService(LOCATION_SERVICE)).getLastKnownLocation(LocationManager.GPS_PROVIDER);}catch(Exception ignored){}
+    long seg=p==null?0:Math.max(0,(SystemClock.elapsedRealtimeNanos()-p.getElapsedRealtimeNanos())/1_000_000_000L);
+    boolean hay=p!=null&&seg<=15*60;
+    String msg=ContactosSos.mensajePrueba(hay,hay?p.getLatitude():0,hay?p.getLongitude():0,hay&&p.hasAccuracy()?p.getAccuracy():0,seg);
+    int ok=0;
+    try{
+     android.telephony.SmsManager sms=Build.VERSION.SDK_INT>=31?getSystemService(android.telephony.SmsManager.class):android.telephony.SmsManager.getDefault();
+     java.util.ArrayList<String> partes=sms.divideMessage(msg);
+     for(ContactosSos.Contacto c:l){try{sms.sendMultipartTextMessage(c.telefono(),null,partes,null,null);ok++;}catch(Exception ignored){}}
+    }catch(Exception ignored){}
+    Toast.makeText(this,ok>0?"SMS de prueba enviado a "+quien+". Pregúntales si les ha llegado.":"No se ha podido enviar el SMS de prueba.",Toast.LENGTH_LONG).show();
+   }).show();
  }
  void sosActualizado(){
   if(web!=null)web.evaluateJavascript("window.trabakutikSosActualizado&&window.trabakutikSosActualizado()",null);

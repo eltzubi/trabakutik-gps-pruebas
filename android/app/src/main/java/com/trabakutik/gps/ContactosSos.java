@@ -102,6 +102,13 @@ final class ContactosSos {
      * luego el enlace al mapa y los numeros con su precision y su edad, como
      * el SOS de siempre. Sin posicion, se dice.
      */
+    /** El SMS de prueba: que se vea a la primera que NO es una emergencia. */
+    static String mensajePrueba(boolean hayPosicion, double lat, double lon, double precision, long segundos) {
+        String cab = "PRUEBA de Trabakutik GPS: no es una emergencia. Asi te llegaria un aviso de caida.";
+        if (!hayPosicion) return cab + "\nSin posicion GPS reciente.";
+        return cab + "\n" + String.format(Locale.ROOT, "https://maps.google.com/?q=%.6f,%.6f", lat, lon);
+    }
+
     static String mensaje(boolean hayPosicion, double lat, double lon, double precision, long segundos) {
         String cab = "NECESITO AYUDA. Posible caida: aviso automatico de Trabakutik GPS, nadie lo ha cancelado en 30 s.";
         if (!hayPosicion) return cab + "\nSin posicion GPS reciente.";
