@@ -228,7 +228,7 @@ test('la segunda opinión del planificador: si falla, se queda el trazado normal
  assert.equal(r.parts[0].length,rodeo.length,'con la segunda peticion fallando, se queda el normal y no hay error');
  modo='bien';
  r=await c.solicitaMapaGps([A,B],ctl.signal);
- assert.equal(r.parts[0].length,2,'con la segunda bien, se queda la recta, que ahorra mas de 15 m y del 5 %');
+ assert(r.parts[0].every(p=>Math.abs(p[0]-43)<1e-6),'con la segunda bien, el rodeo se cambia por la recta: ahorra mas de 15 m y del 10 %');
 });
 test('sin aceptar el servicio no se envían coordenadas',async()=>{
  const c=creatorContext();let sent=0;c.confirm=()=>false;c.fetch=async()=>{sent++;throw Error('no debe enviarse')};

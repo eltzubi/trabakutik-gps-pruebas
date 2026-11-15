@@ -1373,32 +1373,70 @@ const noHayPaso=t=>{const e=Error(t);e.sinCamino=true;return e};
 // rodeo inutil: en una ruta del autor del 14 de noviembre de 2026 entraba
 // por el acceso de una casa y volvia a la carretera, 317 m donde por la
 // carretera son 296. «Siempre me lo crea asi». Se le pide tambien el camino
-// mas corto y, TRAMO A TRAMO, se queda el corto solo si ahorra de verdad: al
-// menos un AHORRO_PCT y AHORRO_M. Si no, manda el normal, que es el que sabe
-// preferir sendas a carreteras.
-// Lo que se descarto, medido sobre 70 trozos de 400 m de rutas reales:
-// encarecer las vias de servicio (service_factor) arreglaba la casa pero
-// sacaba a mundiokokoba de su camino (2 -> 35 m del track); pedir siempre el
-// mas corto mejoraba 3 y empeoraba 3. Con esta regla se coge lo bueno de los
-// dos. Y si el corto no llega o no cuadra, se queda el normal sin mas.
-const AHORRO_PCT=.05,AHORRO_M=15;
+// mas corto y se comparan los DOS RECORRIDOS TROZO A TROZO: donde se separan,
+// se queda el corto solo si ese trozo ahorra al menos AHORRO_M y AHORRO_PCT.
+// Donde coinciden, o donde el corto no ahorra de verdad, manda el normal, que
+// es el que sabe preferir sendas a carreteras.
+// Primero se comparaba el tramo entero entre dos toques, y no valia: con los
+// toques a 2 km, los 21 m del rodeo eran un 1 % y no se cambiaba nada. El
+// autor lo vio al dia siguiente con la misma casa: «igual».
+// Lo que se descarto, medido sobre trozos de rutas reales: encarecer las vias
+// de servicio (service_factor) sacaba a mundiokokoba de su camino (2 -> 35 m
+// del track); pedir siempre el mas corto mejoraba unas y empeoraba otras.
+const AHORRO_PCT=.10,AHORRO_M=15,JUNTOS_M=4;
+// Y solo un RODEO: un trozo corto (RODEO_LARGO_M como mucho) que no se
+// aparta mas de RODEO_ANCHO_M del corto. Sin esto, con tramos de 2 km, el
+// corto cambiaba caminos enteros por otro: en zaldibar se iba 224 m del bueno.
+const RODEO_LARGO_M=300,RODEO_ANCHO_M=40;
 function eligeTramosCortos(normal,corto){
  if(!corto||!normal||!Array.isArray(corto.parts)||corto.parts.length!==normal.parts.length)return normal;
- const largo=pts=>{let s=0;for(let k=1;k<pts.length;k++)s+=dist(pts[k-1],pts[k]);return s};
  let cambiados=0;
  const parts=normal.parts.map((n,i)=>{
   const c=corto.parts[i];
-  if(!Array.isArray(c)||c.length<2)return n;
-  // Tiene que empezar y acabar donde el normal, o el trazado se cortaria.
+  if(!Array.isArray(c)||c.length<2||!Array.isArray(n)||n.length<2)return n;
+  // Tienen que empezar y acabar en el mismo sitio, o el trazado se cortaria.
   if(dist(c[0],n[0])>1||dist(c[c.length-1],n[n.length-1])>1)return n;
-  const ln=largo(n),lc=largo(c);
-  if(lc<=ln*(1-AHORRO_PCT)&&ln-lc>=AHORRO_M){cambiados++;return c}
-  return n;
+  const r=empalmaCorto(n,c);
+  if(r!==n)cambiados++;
+  return r;
  });
  return cambiados?{anchors:normal.anchors,parts}:normal;
 }
+// Recorre el normal; cada trozo que se separa del corto mas de JUNTOS_M y
+// vuelve a juntarse se compara con lo que hace el corto entre esos dos puntos.
+function empalmaCorto(n,c){
+ const kx=111195*Math.cos(n[0][0]*R),ky=111195;
+ const cc=[0];for(let k=1;k<c.length;k++)cc.push(cc[k-1]+dist(c[k-1],c[k]));
+ const cn=[0];for(let k=1;k<n.length;k++)cn.push(cn[k-1]+dist(n[k-1],n[k]));
+ // Lo mas cerca que pasa el corto de p, y a que altura de su recorrido.
+ const sobreCorto=p=>{
+  let best=Infinity,along=0;
+  for(let k=1;k<c.length;k++){
+   const a=c[k-1],b=c[k],ax=(a[1]-p[1])*kx,ay=(a[0]-p[0])*ky,dx=(b[1]-a[1])*kx,dy=(b[0]-a[0])*ky,nn=dx*dx+dy*dy;
+   const t=nn?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/nn)):0,d=Math.hypot(ax+t*dx,ay+t*dy);
+   if(d<best){best=d;along=cc[k-1]+t*(cc[k]-cc[k-1])}
+  }
+  return {d:best,along};
+ };
+ const sc=n.map(sobreCorto),junto=sc.map(x=>x.d<=JUNTOS_M);
+ const out=[];let k=0,cambio=false;
+ while(k<n.length){
+  if(junto[k]||k===0){out.push(n[k]);k++;continue}
+  // Trozo separado: de b0 (ultimo junto) a b1 (primero que vuelve a juntarse).
+  const b0=k-1;let b1=k;while(b1<n.length&&!junto[b1])b1++;
+  if(b1>=n.length||!junto[b0]){for(let q=k;q<n.length&&q<b1;q++)out.push(n[q]);k=b1;continue}
+  const s0=sc[b0].along,s1=sc[b1].along,ln=cn[b1]-cn[b0],lc=s1-s0;
+  let ancho=0;for(let q=k;q<b1;q++)ancho=Math.max(ancho,sc[q].d);
+  if(lc>0&&ln<=RODEO_LARGO_M&&ancho<=RODEO_ANCHO_M&&ln-lc>=AHORRO_M&&lc<=ln*(1-AHORRO_PCT)){
+   for(let q=0;q<c.length;q++)if(cc[q]>s0+.5&&cc[q]<s1-.5)out.push(c[q]);
+   cambio=true;
+  }else for(let q=k;q<b1;q++)out.push(n[q]);
+  k=b1;
+ }
+ return cambio?out:n;
+}
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={descifraCaminos,enganchaOsm,rutaOsm,cargaCaminosOsm,descodificaValhalla,noHayPaso,RODEO_MAXIMO,eligeTramosCortos,AHORRO_PCT,AHORRO_M};
+if(typeof module==='object'&&module&&module.exports)module.exports={descifraCaminos,enganchaOsm,rutaOsm,cargaCaminosOsm,descodificaValhalla,noHayPaso,RODEO_MAXIMO,eligeTramosCortos,empalmaCorto,AHORRO_PCT,AHORRO_M,JUNTOS_M,RODEO_LARGO_M,RODEO_ANCHO_M};
 // POR QUE NO HA SALIDO EL TRAMO. Decir «no hay conexion a pie en
 // OpenStreetMap» cuando lo que pasa es que los caminos de la zona todavia se
 // estan bajando manda a buscar el fallo donde no esta: el autor se encontro
