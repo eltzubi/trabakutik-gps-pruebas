@@ -41,6 +41,7 @@ final class NavigationMetrics {
     private final List<Event> events = new ArrayList<>();
     private final HashSet<Event> announced = new HashSet<>();
     private double reference = Double.NaN, lastLat, lastLon, heldWalked;
+    private double anclaLat = Double.NaN, anclaLon = Double.NaN, rumboAncla = Double.NaN;
     private double motionAlong, motionLat, motionLon, movingMeters;
     private long motionTime, movingMillis, lastMovement;
     private int direction = 1;
@@ -54,6 +55,7 @@ final class NavigationMetrics {
         missing = new int[n + 1];
         reference = Double.NaN;
         heldWalked = 0;
+        anclaLat = Double.NaN; anclaLon = Double.NaN; rumboAncla = Double.NaN;
         resetPace();
         events.clear();
         announced.clear();
@@ -150,8 +152,14 @@ final class NavigationMetrics {
         double step = hasReference ? meters(lastLat, lastLon, lat, lon) : 0;
         double window = Math.max(25, Math.min(200, step * 2 + 15));
         double predicted = reference + Math.min(step, window) * dir;
-        double rumboMarcha = hasReference && step >= RUMBO_MIN_M
-                ? Math.toDegrees(Math.atan2((lon - lastLon) * scale, (lat - lastLat) * 111195)) : Double.NaN;
+        // Desde un ancla que avanza cada RUMBO_MIN_M, no desde la posicion
+        // anterior: andando hay metro y poco entre dos y el rumbo no salia.
+        if (!Double.isFinite(anclaLat)) { anclaLat = lat; anclaLon = lon; }
+        else if (meters(anclaLat, anclaLon, lat, lon) >= RUMBO_MIN_M) {
+            rumboAncla = Math.toDegrees(Math.atan2((lon - anclaLon) * scale, (lat - anclaLat) * 111195));
+            anclaLat = lat; anclaLon = lon;
+        }
+        double rumboMarcha = reliable ? rumboAncla : Double.NaN;
         for (int i = 1; i < distance.length; i++) {
             projectSegment(i, lat, lon, scale, segment);
             double along = segment[0], error = segment[1];

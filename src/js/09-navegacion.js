@@ -25,6 +25,7 @@
 // ventana a 60, asi que gana el de fuera por mas de MARGEN_SALTO y el sentido
 // cambia como debe.
 // En ramas superpuestas se compara el avance con el desplazamiento real.
+let anclaRumbo={p:null,ruta:null,rumbo:null};
 function progressOnRoute(p,reliable=true){
  let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity,retenido=false;
  const ref=Number.isFinite(ultimoAlong)?ultimoAlong:null;
@@ -42,10 +43,17 @@ function progressOnRoute(p,reliable=true){
  // (RUMBO_MIN_M), un tramo que va en contra de tu marcha pesa SENTIDO_PEN
  // metros mas. Con un solo tramo cerca no cambia nada: si de verdad vas al
  // reves en una ruta sin tramos repetidos, se sigue viendo.
+ // El rumbo se mide desde un ANCLA que solo avanza cada RUMBO_MIN_M, no
+ // desde la posicion anterior: andando, entre dos posiciones hay metro y
+ // poco y el rumbo no salia nunca (lo vio la revision con GPT: las pruebas
+ // usaban pasos de 10 m). Si el ancla es de una ruta anterior, no vale.
  const RUMBO_MIN_M=8,SENTIDO_PEN=20;
- let rumboMarcha=null;
- if(ultimoPuntoAlong&&step>=RUMBO_MIN_M)
-  rumboMarcha=Math.atan2((p[1]-ultimoPuntoAlong[1])*lonScale,(p[0]-ultimoPuntoAlong[0])*latScale)*180/Math.PI;
+ if(!anclaRumbo.p||anclaRumbo.ruta!==routePoints){anclaRumbo={p,ruta:routePoints,rumbo:null}}
+ else if(dist(anclaRumbo.p,p)>=RUMBO_MIN_M){
+  anclaRumbo.rumbo=Math.atan2((p[1]-anclaRumbo.p[1])*lonScale,(p[0]-anclaRumbo.p[0])*latScale)*180/Math.PI;
+  anclaRumbo.p=p;
+ }
+ const rumboMarcha=reliable?anclaRumbo.rumbo:null;
  let bestEf=Infinity,cercaEf=Infinity;
  for(let i=1;i<routePoints.length;i++){
   const a=routePoints[i-1],b=routePoints[i];

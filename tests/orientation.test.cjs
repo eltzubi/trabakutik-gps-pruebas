@@ -183,7 +183,7 @@ test('El progreso no toma la vuelta antes de llegar al extremo del camino compar
  const c={routePoints:route,routeCumulative:route.map((_,i)=>10*i),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
  vm.createContext(c);
  vm.runInContext(source('const dist=(a,b)=>','\n'),c);
- vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);
+ vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);
  c.progressOnRoute(punto(0,440));
  assert(Math.abs(c.progressOnRoute(punto(0,450)).along-450)<.01);
  for(let m=460;m<=500;m+=10)c.progressOnRoute(punto(0,m));
@@ -201,7 +201,7 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  const cum=route.map((_,i)=>10*i),total=cum[cum.length-1];
  const nuevo=()=>{const c={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
   vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
-  vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);return c};
+  vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);return c};
  const c=nuevo();
  for(let k=route.length-20;k<route.length;k++)c.progressOnRoute(route[k]);
  const llegada=c.progressOnRoute(punto(0,0));
@@ -223,7 +223,7 @@ test('Al llegar a la salida de un circuito ya recorrido, se ha terminado: no se 
  const pc=par.map((_,k)=>10*k),pt=pc[pc.length-1];
  const otro=()=>{const c={routePoints:par,routeCumulative:pc,ultimoAlong:pt-90,ultimoPuntoAlong:punto(10,0),sentidoRuta:1,R:Math.PI/180};
   vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
-  vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);return c};
+  vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);return c};
  const e=otro();let ultimo;
  for(let x=13;x<=100;x+=3){ultimo=e.progressOnRoute(punto(x,2));if(x<50)assert(ultimo.along<pt-20,'a '+(x-10)+' m aun no se ha llegado')}
  assert(ultimo.along>pt-5,'andados los 90 m hacia la meta, se llega: '+Math.round(ultimo.along));
@@ -242,15 +242,21 @@ test('En una ruta de ida y vuelta, el tramo que va hacia donde te mueves: no se 
  const cum=[0];for(let k=1;k<route.length;k++)cum.push(cum[k-1]+(k===101?8:10));
  const c={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
  vm.createContext(c);vm.runInContext(source('const dist=(a,b)=>','\n'),c);
- vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),c);
+ vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),c);
  let pr;for(let y=300;y<=420;y+=10)pr=c.progressOnRoute(punto(6,y));
  assert(Math.abs(pr.along-420)<15,'va por la ida, a la altura del km 0,42: '+Math.round(pr.along));
+ // Y ANDANDO, con una posicion cada metro y medio (lo que da el GPS a pie).
+ const e={routePoints:route,routeCumulative:cum,ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
+ vm.createContext(e);vm.runInContext(source('const dist=(a,b)=>','\n'),e);
+ vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),e);
+ let pa;for(let y=300;y<=360;y+=1.5)pa=e.progressOnRoute(punto(6,y));
+ assert(Math.abs(pa.along-360)<15,'andando tambien va por la ida: '+Math.round(pa.along));
  // Y de verdad al reves en una ruta SIN tramos repetidos se sigue viendo: el
  // avance baja.
  const solo=[];for(let y=0;y<=1000;y+=10)solo.push(punto(0,y));
  const d={routePoints:solo,routeCumulative:solo.map((_,k)=>10*k),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180};
  vm.createContext(d);vm.runInContext(source('const dist=(a,b)=>','\n'),d);
- vm.runInContext(source('function progressOnRoute(', '// Parado no hay giro'),d);
+ vm.runInContext(source('let anclaRumbo=', '// Parado no hay giro'),d);
  const a0=d.progressOnRoute(punto(2,600)).along;let a1;for(let y=590;y>=480;y-=10)a1=d.progressOnRoute(punto(2,y)).along;
  assert(a1<a0-100,'bajando por una ruta que va hacia arriba, el avance baja: '+Math.round(a0)+' -> '+Math.round(a1));
 });
