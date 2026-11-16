@@ -1204,7 +1204,8 @@ public class TrackingService extends Service implements LocationListener {
     }else metrics.pausePace();
    }else metrics.pausePace();
   }
-  if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),SystemClock.elapsedRealtime());
+  // Con la hora de la MEDIDA y la velocidad del GPS (Doppler): ver TiempoEnMarcha.
+  if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L,l.hasSpeed()?l.getSpeed():Double.NaN);
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   // Con una posicion por segundo y sin filtro de distancia, parado el GPS

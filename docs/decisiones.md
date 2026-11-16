@@ -543,3 +543,14 @@ toda la salida. Ahora sale entero 30 s al detectarse (o al volver a cambiar de
 sentido) y luego se queda en una etiqueta «⇆ Al revés» (de 33 a 15 px de
 alto). Y como la precisión del GPS ya solo sale arriba, «Posición · ±4 m» pasa
 de 10 a 13 px y semi-negrita. Lo pidió el autor con una captura.
+**Corregido el mismo día tras una revisión con GPT**: contar por distancia
+(10 m desde un ancla) fallaba en dos casos que GPT construyó y las pruebas
+confirmaron: bajo arbolado la posición salta más de 10 m estando parado y una
+parada entera podía sumar; y subiendo muy despacio podía dar cero. Ahora se
+usa la **velocidad del GPS** (Doppler), que no depende del baile de la
+posición: suavizada, empieza a contar a 0,45 m/s y para a 0,25, con un tope de
+5 s por intervalo. Sin velocidad, el método de la distancia. Y la hora es la de
+cada medida (`getElapsedRealtimeNanos`), no la de llegada: si Android entrega
+las posiciones en grupo, cuenta igual. Los saltos se miden entre posiciones
+seguidas, no contra el ancla. Pendiente: si Android reinicia el servicio a
+mitad de salida, el contador vuelve a cero.
