@@ -241,7 +241,7 @@ function junctionGuidance(p,accuracy,progress){
  // derecha o a la izquierda, haya cruce o no.
  const ladoHerradura=ladoFlecha(turn,alReves);
  $('turnDirection').textContent=turn.rotonda
-   ?(lado==='vuelta'?'Rotonda · da la vuelta':'Rotonda · sal a la '+lado)
+   ?'Rotonda · '+queRotonda(turn,lado,alReves)
    :lado==='vuelta'
    ?(turn.retorno?(esCruce?'Cruce · da la vuelta':'Da la vuelta')
     :esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
@@ -300,7 +300,7 @@ function junctionGuidance(p,accuracy,progress){
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=turn.rotonda
-    ?(lado==='vuelta'?'en la rotonda, da la vuelta':'en la rotonda, sal a la '+lado)
+    ?'en la rotonda, '+queRotonda(turn,lado,alReves)
     :lado==='vuelta'
     ?(turn.retorno?(esCruce?'en el cruce, da la vuelta':'da la vuelta')
      :esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
@@ -328,10 +328,20 @@ function junctionGuidance(p,accuracy,progress){
 // sitio exacto, la ruta, el kilometro y lo que se dijo, al momento. Sale
 // despues de pasar un aviso, mientras no te alejes AVISO_MAL_M, y se guarda
 // solo en el movil (localStorage); la lista se copia desde «Avisos marcados».
+// QUE DECIR EN UNA ROTONDA. Con el numero de la salida, «toma la segunda
+// salida» (lo pidio el autor el 16 nov 2026); sin el, como antes. El numero
+// vale en el sentido en que se calculo: yendo al reves con la lista de ida
+// (la de vuelta no siempre esta) no vale, y no se dice.
+function queRotonda(turn,lado,alReves){
+ const n=!alReves&&turn.salida&&typeof textoSalida==='function'?textoSalida(turn.salida):'';
+ if(n)return n;
+ if(turn.recto)return 'sigue recto';
+ return lado==='vuelta'?'da la vuelta':'sal a la '+lado;
+}
 function textoDeGiro(turn,alReves){
  const cambia=l=>alReves?(l==='izquierda'?'derecha':l==='derecha'?'izquierda':l):l;
  const lado=cambia(turn.direction),hacia=cambia(turn.hacia||turn.direction);
- if(turn.rotonda)return lado==='vuelta'?'Rotonda · da la vuelta':'Rotonda · sal a la '+lado;
+ if(turn.rotonda)return 'Rotonda · '+queRotonda(turn,lado,alReves);
  if(turn.direction==='vuelta')return turn.retorno?(turn.cruce!==false?'Cruce · da la vuelta':'Da la vuelta'):'Curva de herradura a la '+hacia;
  if(turn.mantente)return 'Cruce · sigue recto por la '+lado;
  return (turn.cruce!==false?'Cruce a la ':'Curva cerrada a la ')+lado;
@@ -785,7 +795,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }

@@ -54,7 +54,9 @@ public class NativeTurnsTest {
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
   checkTurns(l,metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute));
  }
+ static final String[] ORDINALES={"","primera","segunda","tercera","cuarta","quinta","sexta","séptima","octava"};
  String fraseGiro(int lado,int tipo,String fase,double ahead){return ""+lado;}
+ String fraseGiro(int lado,int tipo,String fase,double ahead,int salida){return ""+lado;}
 '''+''.join(method(m) for m in (
  ' static double coste(double ahead)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',

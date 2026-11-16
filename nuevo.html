@@ -3917,16 +3917,24 @@ function descifraZona(j){
  if(ramas)for(let i=0;i<puntos.length;i++)puntos[i].push(ramas[i]);
  // Las rotondas: centro en diferencias, como los cruces, y el radio en metros.
  // Un fichero viejo no las trae y todo sigue como antes.
- const rotondas=[];
+ const rotondas=[];let sal=null;
  if(Array.isArray(j.rotondas)&&j.rotondas.length%3===0){
   let rx=0,ry=0;
+  // Y SUS SALIDAS (desde el 16 nov 2026), en el mismo orden: el sentido de
+  // giro y los rumbos, desde el centro, de los nodos por los que se sale. Van
+  // como cuarto elemento; sin ellas la rotonda se avisa como antes, sin numero.
+  sal=Array.isArray(j.rotondas_salidas)&&j.rotondas_salidas.length*3===j.rotondas.length?j.rotondas_salidas:null;
   for(let i=0;i<j.rotondas.length;i+=3){
    rx+=j.rotondas[i];ry+=j.rotondas[i+1];
    const r=j.rotondas[i+2];
-   if(Number.isFinite(rx)&&Number.isFinite(ry)&&r>0&&r<=60)rotondas.push([rx/esc,ry/esc,r]);
+   if(!(Number.isFinite(rx)&&Number.isFinite(ry)&&r>0&&r<=60))continue;
+   const rot=[rx/esc,ry/esc,r];
+   const s=sal&&sal[i/3];
+   if(Array.isArray(s)&&s.length>1&&(s[0]===1||s[0]===-1))rot.push({sentido:s[0],salidas:s.slice(1).filter(Number.isFinite)});
+   rotondas.push(rot);
   }
  }
- return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas,rotondas};
+ return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas,rotondas,salidas:!!sal};
 }
 function bajaZona(){
  return fetch(URL_CRUCES,{cache:'default'})
@@ -3946,7 +3954,8 @@ function cargaZonaCruces(){
     // cruces hay, porque pueden coincidir.
     const cambia=zonaCruces&&(z.puntos.length!==zonaCruces.puntos.length
       ||z.fecha!==zonaCruces.fecha||!!z.ramas!==!!zonaCruces.ramas
-      ||(z.rotondas||[]).length!==(zonaCruces.rotondas||[]).length);
+      ||(z.rotondas||[]).length!==(zonaCruces.rotondas||[]).length
+      ||!!z.salidas!==!!zonaCruces.salidas);
     if(cambia){zonaCruces=z;aplicaCruces()}
    }).catch(()=>{});
   }
@@ -4019,12 +4028,21 @@ function enviaGirosNativos(){
    // Rotonda: «sal a la derecha» en la APK que lo sepa decir; la anterior
    // ignora «ro» y dice «cruce a la derecha», que es el mismo lado.
    if(j.rotonda)o.ro=1;
+   // El numero de la salida, en «rs» (16 nov 2026). Una APK anterior lo
+   // ignora y dice «sal a la derecha/izquierda», el lado bueno.
+   if(j.rotonda&&j.salida)o.rs=j.salida;
    return o;
   }));
-  window.TrabakutikAndroid.setJunctions(aNativo(junctions));
+  // Una rotonda que se cruza RECTO solo se avisa con su numero de salida, y
+  // una APK anterior no lo sabe decir: con «ro» y sin lado diria «da la
+  // vuelta». A esas no se les mandan.
+  let v='';try{v=window.TrabakutikAndroid.getAppVersion?window.TrabakutikAndroid.getAppVersion():''}catch(e){}
+  const sabeSalidas=typeof versionMayor==='function'&&versionMayor(v,APK_SIN_SALIDAS);
+  const aNativoFiltrado=lista=>aNativo(lista.filter(j=>!(j.rotonda&&j.recto&&!sabeSalidas)));
+  window.TrabakutikAndroid.setJunctions(aNativoFiltrado(junctions));
   // Los del sentido inverso, ya con su lado: el servicio los usa tal cual
   // yendo al reves. Una APK que no los sepa leer sigue cambiando el lado.
-  if(window.TrabakutikAndroid.setJunctionsReves&&Array.isArray(junctionsReves))window.TrabakutikAndroid.setJunctionsReves(aNativo(junctionsReves));
+  if(window.TrabakutikAndroid.setJunctionsReves&&Array.isArray(junctionsReves))window.TrabakutikAndroid.setJunctionsReves(aNativoFiltrado(junctionsReves));
  }catch(e){console.warn('Avisos de giro nativos no disponibles',e)}
 }
 // EL AVISO DE UN CRUCE SALE DE LAS RAMAS DEL CRUCE, NO DE LA FORMA DEL TRACK.
@@ -4535,6 +4553,34 @@ function calculaCrucesDe(){
 // no se dice nada, como en cualquier cruce que se pasa de largo; si no, UN
 // aviso a la entrada, con el lado de la salida. Da igual por que lado de la
 // isleta vaya el track: cuenta por donde entras y por donde sales.
+// EL NUMERO DE LA SALIDA. Se cuentan, en el sentido en que se gira, las
+// salidas del fichero que quedan entre la entrada de la ruta y la suya. Los
+// rumbos son desde el centro: el de entrada y el de salida, de donde la ruta
+// cruza el borde del margen (radio + 10 m), sobre la propia carretera.
+// - La salida de la ruta tiene que casar con una del fichero a menos de
+//   SAL_CASA grados; si no, no se da numero (mejor nada que una mal).
+// - Las que quedan a menos de SAL_ENTRADA de la entrada son la de la propia
+//   carretera por la que se llega (de doble sentido sale y entra por el mismo
+//   nodo): no se cuentan.
+// - Mas de SAL_MAX no se dice: nadie cuenta nueve salidas.
+var SAL_CASA=35,SAL_ENTRADA=15,SAL_MAX=8;
+// La ultima APK que no sabe decir el numero de salida («rs»).
+var APK_SIN_SALIDAS='4.9.47';
+function salidaDeRotonda(rot,rIn,rOut){
+ const S=rot&&rot[3];
+ if(!S||!Array.isArray(S.salidas)||!S.salidas.length||!Number.isFinite(rIn)||!Number.isFinite(rOut))return 0;
+ const tras=a=>S.sentido>0?((rIn-a)%360+360)%360:((a-rIn)%360+360)%360;
+ let mia=null,err=Infinity;
+ for(const a of S.salidas){const e=Math.abs(difRumbo(a,rOut));if(e<err){err=e;mia=a}}
+ if(err>SAL_CASA)return 0;
+ const hasta=tras(mia);
+ if(hasta<=SAL_ENTRADA)return 0;
+ let n=0;
+ for(const a of S.salidas){const t=tras(a);if(t>SAL_ENTRADA&&t<=hasta+.5)n++}
+ return n>=1&&n<=SAL_MAX?n:0;
+}
+var ORDINALES=['','primera','segunda','tercera','cuarta','quinta','sexta','séptima','octava'];
+function textoSalida(n){return ORDINALES[n]?'toma la '+ORDINALES[n]+' salida':''}
 function resuelveRotondas(pts){
  const ROT_MARGEN=10,ROT_DENTRO=3,ROT_BRAZO=30,ROT_RECTO=35,ROT_VUELTA=150;
  const cum=routeCumulative,n=pts.length,total=cum[n-1];
@@ -4575,11 +4621,18 @@ function resuelveRotondas(pts){
    if(mIn<8||total-mOut<8)continue;
    const antes=enMetro(Math.max(0,mIn-ROT_BRAZO)),despues=enMetro(Math.min(total,mOut+ROT_BRAZO));
    const neto=difRumbo(bearingBetween(enMetro(mOut),despues),bearingBetween(antes,enMetro(mIn)));
-   if(Math.abs(neto)<ROT_RECTO)continue;
+   // QUE SALIDA (16 nov 2026). El autor: «la primera salida, a la derecha, si
+   // la detecta; pero si es la segunda no marca, no sabe». Con las salidas
+   // del fichero se cuenta: y entonces se avisa TAMBIEN yendo recto, que es
+   // justo cuando hace falta saber cual de las salidas es la buena.
+   const salida=salidaDeRotonda(rot,bearingBetween(c,enMetro(mIn)),bearingBetween(c,enMetro(mOut)));
+   const recto=Math.abs(neto)<ROT_RECTO;
+   if(recto&&!salida)continue;
    let i=1;while(i+1<n&&cum[i+1]<=mIn)i++;
-   const lado=neto<0?'izquierda':'derecha',vuelta=Math.abs(neto)>=ROT_VUELTA;
+   const lado=neto<0?'izquierda':'derecha',vuelta=!salida&&Math.abs(neto)>=ROT_VUELTA;
    const aviso={i,point:pts[i],along:cum[i],direction:vuelta?'vuelta':lado,hacia:lado,
     angle:Math.round(Math.abs(neto)),cruce:true,mantente:false,retorno:vuelta,rotonda:true};
+   if(salida){aviso.salida=salida;if(recto)aviso.recto=true}
    let p=0;while(p<junctions.length&&junctions[p].i<i)p++;
    junctions.splice(p,0,aviso);
   }
@@ -4587,7 +4640,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }
@@ -4834,7 +4887,7 @@ function junctionGuidance(p,accuracy,progress){
  // derecha o a la izquierda, haya cruce o no.
  const ladoHerradura=ladoFlecha(turn,alReves);
  $('turnDirection').textContent=turn.rotonda
-   ?(lado==='vuelta'?'Rotonda · da la vuelta':'Rotonda · sal a la '+lado)
+   ?'Rotonda · '+queRotonda(turn,lado,alReves)
    :lado==='vuelta'
    ?(turn.retorno?(esCruce?'Cruce · da la vuelta':'Da la vuelta')
     :esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
@@ -4893,7 +4946,7 @@ function junctionGuidance(p,accuracy,progress){
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=turn.rotonda
-    ?(lado==='vuelta'?'en la rotonda, da la vuelta':'en la rotonda, sal a la '+lado)
+    ?'en la rotonda, '+queRotonda(turn,lado,alReves)
     :lado==='vuelta'
     ?(turn.retorno?(esCruce?'en el cruce, da la vuelta':'da la vuelta')
      :esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
@@ -4921,10 +4974,20 @@ function junctionGuidance(p,accuracy,progress){
 // sitio exacto, la ruta, el kilometro y lo que se dijo, al momento. Sale
 // despues de pasar un aviso, mientras no te alejes AVISO_MAL_M, y se guarda
 // solo en el movil (localStorage); la lista se copia desde «Avisos marcados».
+// QUE DECIR EN UNA ROTONDA. Con el numero de la salida, «toma la segunda
+// salida» (lo pidio el autor el 16 nov 2026); sin el, como antes. El numero
+// vale en el sentido en que se calculo: yendo al reves con la lista de ida
+// (la de vuelta no siempre esta) no vale, y no se dice.
+function queRotonda(turn,lado,alReves){
+ const n=!alReves&&turn.salida&&typeof textoSalida==='function'?textoSalida(turn.salida):'';
+ if(n)return n;
+ if(turn.recto)return 'sigue recto';
+ return lado==='vuelta'?'da la vuelta':'sal a la '+lado;
+}
 function textoDeGiro(turn,alReves){
  const cambia=l=>alReves?(l==='izquierda'?'derecha':l==='derecha'?'izquierda':l):l;
  const lado=cambia(turn.direction),hacia=cambia(turn.hacia||turn.direction);
- if(turn.rotonda)return lado==='vuelta'?'Rotonda · da la vuelta':'Rotonda · sal a la '+lado;
+ if(turn.rotonda)return 'Rotonda · '+queRotonda(turn,lado,alReves);
  if(turn.direction==='vuelta')return turn.retorno?(turn.cruce!==false?'Cruce · da la vuelta':'Da la vuelta'):'Curva de herradura a la '+hacia;
  if(turn.mantente)return 'Cruce · sigue recto por la '+lado;
  return (turn.cruce!==false?'Cruce a la ':'Curva cerrada a la ')+lado;
@@ -5378,7 +5441,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }

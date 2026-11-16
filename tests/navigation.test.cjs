@@ -1163,8 +1163,35 @@ test('rotonda: el servicio recibe «ro» y la pantalla y la voz dicen «sal a la
   {i:9,direction:'vuelta',hacia:'izquierda',cruce:true,mantente:false,retorno:true,rotonda:true}],junctionsReves:null,window:w}).enviaGirosNativos();
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:1,t:1,ro:1},{i:9,dir:0,t:1,ro:1}]));
  const jg=String(pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance);
- assert(jg.includes("'Rotonda · sal a la '+lado")&&jg.includes("'en la rotonda, sal a la '+lado"),'pantalla y voz de la pagina');
+ assert(jg.includes("'Rotonda · '+queRotonda(turn,lado,alReves)")&&jg.includes("'en la rotonda, '+queRotonda(turn,lado,alReves)"),'pantalla y voz de la pagina');
  assert(jg.indexOf("turn.rotonda")<jg.indexOf("turn.retorno"),'la rotonda se mira antes que la vuelta');
+});
+test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
+ const c=pieza('08-cruces.js');
+ // Rotonda real de recyde (km 5): antihoraria, salidas a 2, 75, 96, 165 y 243.
+ const r=[0,0,9,{sentido:1,salidas:[2,75,96,165,243]}];
+ assert.equal(c.salidaDeRotonda(r,3,233),1,'entrando por el norte, la suroeste es la primera');
+ assert.equal(c.salidaDeRotonda(r,233,3),4,'al reves, hasta el norte hay que dar casi toda la vuelta');
+ assert.equal(c.salidaDeRotonda(r,3,165),2);
+ assert.equal(c.salidaDeRotonda(r,3,320),0,'una salida que no casa con ninguna: sin numero');
+ assert.equal(c.salidaDeRotonda([0,0,9],3,233),0,'un fichero sin salidas: sin numero');
+ // La del km 6: dos calzadas; las ramas de solo entrada ya no estan en la lista.
+ const k6=[0,0,18,{sentido:1,salidas:[28,110,180,268,336]}];
+ assert.equal(c.salidaDeRotonda(k6,307,161),2,'pasa la de 268 y toma la de 180');
+ assert.equal(c.textoSalida(2),'toma la segunda salida');
+ assert.equal(c.textoSalida(9),'');
+});
+test('rotonda con numero: «rs» al servicio, y la recta solo a la APK que lo sabe decir',()=>{
+ const lista=[{i:5,direction:'derecha',hacia:'derecha',cruce:true,mantente:false,retorno:false,rotonda:true,salida:1},
+  {i:9,direction:'izquierda',hacia:'izquierda',cruce:true,mantente:false,retorno:false,rotonda:true,salida:2,recto:true}];
+ const manda=v=>{let e=null;pieza('08-cruces.js',{junctions:lista,junctionsReves:null,versionMayor:pieza('07-servicio.js').versionMayor,
+  window:{TrabakutikAndroid:{getAppVersion:()=>v,setJunctions:j=>{e=JSON.parse(j)}}}}).enviaGirosNativos();return JSON.stringify(e)};
+ assert.equal(manda('4.9.47'),JSON.stringify([{i:5,dir:1,t:1,ro:1,rs:1}]),'APK vieja: sin la recta, que diria «da la vuelta»');
+ assert.equal(manda('4.9.48'),JSON.stringify([{i:5,dir:1,t:1,ro:1,rs:1},{i:9,dir:-1,t:1,ro:1,rs:2}]));
+ const q=pieza('09-navegacion.js',{window:{},textoSalida:pieza('08-cruces.js').textoSalida},arranque09()).queRotonda;
+ assert.equal(q(lista[1],'izquierda',false),'toma la segunda salida');
+ assert.equal(q(lista[1],'derecha',true),'sigue recto','al reves con la lista de ida el numero no vale');
+ assert.equal(q({rotonda:true},'derecha',false),'sal a la derecha','sin numero, como antes');
 });
 test('la pagina dice «ahora» dos segundos antes del cruce, como el servicio',()=>{
  const c=pieza('08-cruces.js');

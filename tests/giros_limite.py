@@ -48,7 +48,7 @@ public class GirosLimiteTest {
  File dir;File getFilesDir(){return dir;}
  final ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
  final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";
-''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + metodo(' String fraseGiro(') + r'''
+''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + linea(' static final String[] ORDINALES=') + '\n' + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead,int salida)') + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead){') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  static String lista(int n,int desde){StringBuilder b=new StringBuilder("[");
   for(int i=0;i<n;i++){if(i>0)b.append(',');b.append("{\"i\":"+(desde+i)+",\"dir\":"+(i%2==0?1:-1)+",\"t\":1}");}
@@ -89,6 +89,15 @@ public class GirosLimiteTest {
   require(rot.equals("En 50 metros, en la rotonda, sal a la derecha"),rot);
   require(rotYa.equals("En la rotonda, sal a la izquierda ahora"),rotYa);
   require(rotVuelta.equals("En 50 metros, en la rotonda, da la vuelta"),rotVuelta);
+  // 6b. Con el NUMERO de la salida («rs»): «toma la segunda salida», tambien
+  //     yendo recto (lado 0), que antes diria «da la vuelta».
+  t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":-1,\"t\":1,\"ro\":1,\"rs\":2},{\"i\":20,\"dir\":1,\"t\":1,\"rs\":3}]");t.loadTurns();
+  require(t.turns.get(0).length==4&&(int)t.turns.get(0)[3]==2,"rs leido");
+  require((int)t.turns.get(1)[3]==0,"rs sin rotonda no vale");
+  String sal=t.fraseGiro(-1,5,"1",48,2),salYa=t.fraseGiro(0,5,"3",0,2),salMal=t.fraseGiro(1,5,"1",48,9);
+  require(sal.equals("En 50 metros, en la rotonda, toma la segunda salida"),sal);
+  require(salYa.equals("En la rotonda, toma la segunda salida ahora"),salYa);
+  require(salMal.equals("En 50 metros, en la rotonda, sal a la derecha"),salMal);
   // 7. «Sigue RECTO por la derecha»: con «sigue por la derecha» se entendia
   //    «gira» si justo despues salia una carretera a ese lado.
   String sigue=t.fraseGiro(1,2,"1",48),sigueYa=t.fraseGiro(-1,2,"3",0);

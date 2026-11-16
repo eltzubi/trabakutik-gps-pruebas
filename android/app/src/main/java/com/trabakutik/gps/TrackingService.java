@@ -316,7 +316,8 @@ public class TrackingService extends Service implements LocationListener {
   if(lado==0)return "";
   return " y enseguida a la "+(lado<0?"izquierda":"derecha");
  }
- String fraseGiro(int lado,int tipo,String fase,double ahead){
+ static final String[] ORDINALES={"","primera","segunda","tercera","cuarta","quinta","sexta","séptima","octava"};
+ String fraseGiro(int lado,int tipo,String fase,double ahead,int salida){
   // Lo que pidio el autor fue que le avisaran de los CRUCES, asi que la voz
   // dice si es un cruce o una curva. Y «cambio de sentido» en un sendero
   // suena a «date la vuelta», que no es lo que pasa en una herradura.
@@ -335,7 +336,10 @@ public class TrackingService extends Service implements LocationListener {
   // llega nunca: ahi no se dice nada. Va antes que la herradura, que tambien
   // es «tipo>=3».
   if(tipo==5){
-   String r=lado==0?"en la rotonda, da la vuelta":"en la rotonda, sal a la "+(lado<0?"izquierda":"derecha");
+   // Con el numero de la salida, «toma la segunda salida» (lo pidio el autor
+   // el 16 de noviembre de 2026: la segunda, yendo recto, no se decia).
+   String r=salida>=1&&salida<ORDINALES.length?"en la rotonda, toma la "+ORDINALES[salida]+" salida"
+    :lado==0?"en la rotonda, da la vuelta":"en la rotonda, sal a la "+(lado<0?"izquierda":"derecha");
    if("3".equals(fase))return Character.toUpperCase(r.charAt(0))+r.substring(1)+" ahora";
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+r;
   }
@@ -361,6 +365,8 @@ public class TrackingService extends Service implements LocationListener {
   // La distancia de VERDAD, no el umbral: decia «en 200 metros» estando a 170.
   return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+hacia;
  }
+ // Sin numero de salida: lo de siempre.
+ String fraseGiro(int lado,int tipo,String fase,double ahead){return fraseGiro(lado,tipo,fase,ahead,0);}
  boolean ubicacionActivada(){
   try{return manager.isProviderEnabled(LocationManager.GPS_PROVIDER)||manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);}
   catch(Exception ignored){return false;}
@@ -815,12 +821,16 @@ public class TrackingService extends Service implements LocationListener {
     // «ro»:1, rotonda (la pagina desde el 15 de noviembre de 2026): tipo 5.
     // Una APK anterior no lo conoce y dice «cruce a la derecha», el lado bueno.
     if(p.optInt("ro",0)==1)tipo=5;
+    // «rs»: el NUMERO DE LA SALIDA de la rotonda (la pagina desde el 16 de
+    // noviembre de 2026). Va en la cuarta casilla del giro; 0 = sin numero.
+    int salida=tipo==5?p.optInt("rs",0):0;
+    if(salida<0||salida>8)salida=0;
     // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
     // la lista cuando el giro cae en ese punto, asi que un giro en el 0 no se
     // pasaria nunca y bloquearia TODOS los de detras. La pagina no genera
     // ninguno ahi (un giro necesita un punto antes), pero un fichero raro no
     // puede dejar la ruta muda.
-    if(at>=1&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo});
+    if(at>=1&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo,salida});
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
    // avisos va de i=1 hacia arriba y solo avanza mientras el giro que toca
@@ -932,6 +942,12 @@ public class TrackingService extends Service implements LocationListener {
      if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
      if(tipo==2&&lado!=0)instruction="Sigue "+(lado<0?"izqda.":"dcha.");
      if(herradura&&lado!=0)instruction="Herradura "+(lado<0?"izqda.":"dcha.");
+     // El numero de la salida vale en el sentido en que se calculo: con la
+     // lista de ida dada la vuelta (sin la de vuelta) no, y no se dice.
+     int salida=tipo==5&&giro.length>3&&(usaReves||sentido>0)?(int)giro[3]:0;
+     // La rotonda era tipo>=3 y salia «Herradura dcha.» en la notificacion.
+     if(tipo==5)instruction=salida>=1&&salida<ORDINALES.length?"Rotonda, "+salida+".ª salida"
+      :lado==0?"Rotonda, da la vuelta":"Rotonda "+(lado<0?"izqda.":"dcha.");
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
      // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a
      // 50 m, 2 a 10 m y 3 en el propio cruce. El numero es el dato, que
@@ -951,7 +967,7 @@ public class TrackingService extends Service implements LocationListener {
        warnedTurns.add(clave);
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
        if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add((usaReves?"r":"")+mejor+":v")))
-        habla(fraseGiro(lado,tipo,fase,ahead)+giroSeguido(turns,mejor,usaReves));
+        habla(fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
       }
      }
   }

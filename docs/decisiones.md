@@ -667,3 +667,32 @@ vuelve a medir cada vez que cambia el texto. Las columnas van con `minmax(0,…)
 (1,4 / 0,9 / 1): sin eso, un rumbo largo ensanchaba su columna y apretaba las
 otras dos. El rumbo pierde el « · » («SE 134°»), que no decía nada y le quitaba
 tamaño.
+
+## Rotondas: «toma la segunda salida» (16 de noviembre de 2026)
+
+El autor: «la primera salida, a la derecha, sí la detecta; pero si es la
+segunda no marca, no sabe». Cruzar una rotonda recto no se avisaba (menos de
+35° de giro), y es justo cuando hace falta saber cuál de las salidas es.
+
+**Las salidas vienen en el fichero de cruces** (`rotondas_salidas`, lo escribe
+`make_cruces.py --rotondas` en Rutas-Mallabia): por rotonda, su sentido de giro
+y los rumbos, desde el centro, de los nodos por los que se puede SALIR. Contar
+ramas a ciegas falla: una carretera de dos calzadas llega con dos ramas, una
+solo de entrada, y se contaría dos veces. Por eso hacen falta las etiquetas de
+OSM: sentido único hacia el anillo no es salida; senderos, aceras, bidegorris y
+entradas de casas tampoco; las pistas sí. 192 rotondas, todas antihorarias.
+
+**La cuenta** (`salidaDeRotonda`, pieza 08): las salidas que hay, en el sentido
+de giro, entre la entrada de la ruta y la suya. Sin número si la salida de la
+ruta no casa con ninguna del fichero a menos de 35°, si es la misma por la que
+se entra, o si pasa de la octava. Comprobado a mano en dos rotondas de
+«recyde» contra OSM (una con dos calzadas: de 10 ramas, 5 salidas).
+
+**Lo que se dice**: «En la rotonda, toma la segunda salida», también yendo
+recto. Sin número, como antes («sal a la derecha»). La APK lo recibe en «rs»;
+una APK anterior a la 4.9.48 diría «da la vuelta» en una rotonda recta, así
+que a esas no se les mandan las rectas. Yendo al revés con la lista de ida (la
+de vuelta no siempre está), el número no vale y no se dice.
+
+De paso: la notificación decía «Herradura dcha.» en las rotondas (tipo 5 cae
+en «tipo>=3»); ahora «Rotonda, 2.ª salida».

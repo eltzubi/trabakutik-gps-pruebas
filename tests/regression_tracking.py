@@ -83,7 +83,9 @@ public class TrackingRegression {
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
   checkTurns(l,metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute));
  }
+ static final String[] ORDINALES={"","primera","segunda","tercera","cuarta","quinta","sexta","séptima","octava"};
  String fraseGiro(int lado,int tipo,String f,double a){return "";}
+ String fraseGiro(int lado,int tipo,String f,double a,int s){return "";}
  static void require(boolean condition,String message){if(!condition)throw new AssertionError(message);}
 '''+br+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+method(' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)')+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+constant+method(' boolean esAntigua(Location l)')+sos+method(' static boolean cortaTrack(boolean forzar,boolean hayAnterior,long huecoMs,double salto)')+re.search(r' static final double VEL_IMPOSIBLE=[^;]+;',src).group(0)+'''
  public static void main(String[] args)throws Exception{
