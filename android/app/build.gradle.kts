@@ -2,7 +2,7 @@ plugins { id("com.android.application") }
 android {
  namespace = "com.trabakutik.gps"
  compileSdk = 35
- defaultConfig { applicationId = "com.trabakutik.gps"; minSdk = 26; targetSdk = 35; versionCode = 95; versionName = "4.9.46" }
+ defaultConfig { applicationId = "com.trabakutik.gps"; minSdk = 26; targetSdk = 35; versionCode = 96; versionName = "4.9.47" }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
  // SIEMPRE LA MISMA FIRMA. Sin esto cada APK salia con la llave de depuracion
  // que se inventa cada maquina nueva de GitHub, y Android no deja instalar
