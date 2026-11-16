@@ -581,14 +581,17 @@ function flechaGiro(deg,dir,tam,grosor){
  const x0=Math.min(...xs)-m,y0=Math.min(...ys)-m;
  const w=Math.max(...xs)-Math.min(...xs)+m*2,h=Math.max(...ys)-Math.min(...ys)+m*2;
  const lado=Math.max(w,h),vx=x0-(lado-w)/2,vy=y0-(lado-h)/2;
- const id='fg'+Math.round(deg)+(dir>0?'d':'i');
  return '<svg viewBox="'+vx.toFixed(1)+' '+vy.toFixed(1)+' '+lado.toFixed(1)+' '+lado.toFixed(1)+
   '" width="'+tam+'" height="'+tam+'" aria-hidden="true">'+
-  '<defs><linearGradient id="'+id+'" x1="0" y1="1" x2="0" y2="0">'+
-  '<stop offset="0" stop-color="#2aa6c4"/><stop offset="1" stop-color="#c8fbff"/></linearGradient></defs>'+
-  '<path d="'+d+'" fill="none" stroke="url(#'+id+')" stroke-width="'+grosor+'" stroke-linecap="round"/>'+
+  // QUE SE VEA BIEN (lo pidio el autor con el tema nuevo): trazo macizo casi
+  // blanco con un filo oscuro debajo, en vez del degradado que nacia en un
+  // azul apagado. El filo la despega de cualquier fondo, tambien al sol.
+  '<path d="'+d+'" fill="none" stroke="#021014" stroke-width="'+(grosor+4)+'" stroke-linecap="round" stroke-linejoin="round"/>'+
   '<path d="M'+px.toFixed(1)+' '+py.toFixed(1)+' L'+b1x.toFixed(1)+' '+b1y.toFixed(1)+
-  ' L'+b2x.toFixed(1)+' '+b2y.toFixed(1)+' Z" fill="#c8fbff"/></svg>';
+  ' L'+b2x.toFixed(1)+' '+b2y.toFixed(1)+' Z" fill="#021014" stroke="#021014" stroke-width="4" stroke-linejoin="round"/>'+
+  '<path d="'+d+'" fill="none" stroke="#e9fdff" stroke-width="'+grosor+'" stroke-linecap="round" stroke-linejoin="round"/>'+
+  '<path d="M'+px.toFixed(1)+' '+py.toFixed(1)+' L'+b1x.toFixed(1)+' '+b1y.toFixed(1)+
+  ' L'+b2x.toFixed(1)+' '+b2y.toFixed(1)+' Z" fill="#e9fdff"/></svg>';
 }
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.

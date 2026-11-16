@@ -627,3 +627,24 @@ subida, y dice cuánto mide lo duro: «Rampa dura: 400 m al 44 %» (o «Media ·
 rampa de 1,3 km al 25 %»). Si el último tramo es llano o baja, vuelve el
 esfuerzo normal de la ruta. Por debajo de 360 px la letra del resumen baja a
 10 px para no pasar de dos líneas.
+
+## Tema «Neón fino» y flechas de giro macizas (16 de noviembre de 2026)
+
+El autor pidió un navegador «más futurista, moderno, un poco de luz en los
+cajones, más fino» y variedad. Se le enseñaron seis maquetas sobre mapa claro
+(cristal, neón fino, HUD, aurora, día e instrumento ámbar) y dejó la elección
+en mis manos («tú lo que creas conveniente; las flechas, que se vean bien»).
+
+Se eligió **neón fino con la raya de luz de aurora**: cajones casi negros y
+opacos, filos de 1 px y una línea de luz cian arriba de cada cajón. Descartes:
+el cristal (el desenfoque gasta batería y el botón activo desaparecía sobre
+mapa claro), el HUD (la línea pequeña de arriba no se leía), el día (deslumbra
+de noche; si acaso, un modo aparte), el ámbar (choca con el naranja de «bici»).
+Los botones activos conservan su relleno de color: es lo que mejor se ve al sol.
+
+Va en un bloque al final de los estilos de `src/nuevo.plantilla.html`: quitarlo
+devuelve el aspecto anterior.
+
+La **flecha de giro** (`flechaGiro`, pieza 07) deja el degradado que nacía en
+un azul apagado: ahora es un trazo macizo casi blanco con un filo oscuro
+debajo, que la despega de cualquier fondo.
