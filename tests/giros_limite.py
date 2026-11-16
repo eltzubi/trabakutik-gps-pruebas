@@ -89,6 +89,11 @@ public class GirosLimiteTest {
   require(rot.equals("En 50 metros, en la rotonda, sal a la derecha"),rot);
   require(rotYa.equals("En la rotonda, sal a la izquierda ahora"),rotYa);
   require(rotVuelta.equals("En 50 metros, en la rotonda, da la vuelta"),rotVuelta);
+  // 7. «Sigue RECTO por la derecha»: con «sigue por la derecha» se entendia
+  //    «gira» si justo despues salia una carretera a ese lado.
+  String sigue=t.fraseGiro(1,2,"1",48),sigueYa=t.fraseGiro(-1,2,"3",0);
+  require(sigue.equals("En 50 metros, en el cruce, sigue recto por la derecha"),sigue);
+  require(sigueYa.equals("En el cruce, sigue recto por la izquierda ahora"),sigueYa);
   System.out.println("OK: caben 2000 giros, por encima se vacia la lista, un giro en el punto 0 no tapa a los demas y la herradura dice su lado");
  }
 }'''

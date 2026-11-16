@@ -245,7 +245,7 @@ function junctionGuidance(p,accuracy,progress){
    :lado==='vuelta'
    ?(turn.retorno?(esCruce?'Cruce · da la vuelta':'Da la vuelta')
     :esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
-   :turn.mantente?'Cruce · sigue por la '+lado
+   :turn.mantente?'Cruce · sigue recto por la '+lado
    :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
  $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
    :'Giro de '+grados+'\u00b0';
@@ -304,7 +304,7 @@ function junctionGuidance(p,accuracy,progress){
     :lado==='vuelta'
     ?(turn.retorno?(esCruce?'en el cruce, da la vuelta':'da la vuelta')
      :esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
-    :turn.mantente?'en el cruce, sigue por la '+lado
+    :turn.mantente?'en el cruce, sigue recto por la '+lado
     :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.
   if(fase==='v'||fase==='3'||(fase==='1'&&!junctionWarned.has(j+':v'))){
@@ -315,7 +315,7 @@ function junctionGuidance(p,accuracy,progress){
   }
   if(fase!=='v')notice(fase==='3'
         ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
-        :(turn.rotonda?'Rotonda':turn.mantente?'Cruce · sigue por la '+lado:esCruce?'Cruce':'Curva cerrada')
+        :(turn.rotonda?'Rotonda':turn.mantente?'Cruce · sigue recto por la '+lado:esCruce?'Cruce':'Curva cerrada')
          +' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
@@ -333,7 +333,7 @@ function textoDeGiro(turn,alReves){
  const lado=cambia(turn.direction),hacia=cambia(turn.hacia||turn.direction);
  if(turn.rotonda)return lado==='vuelta'?'Rotonda · da la vuelta':'Rotonda · sal a la '+lado;
  if(turn.direction==='vuelta')return turn.retorno?(turn.cruce!==false?'Cruce · da la vuelta':'Da la vuelta'):'Curva de herradura a la '+hacia;
- if(turn.mantente)return 'Cruce · sigue por la '+lado;
+ if(turn.mantente)return 'Cruce · sigue recto por la '+lado;
  return (turn.cruce!==false?'Cruce a la ':'Curva cerrada a la ')+lado;
 }
 // SOLO PARA EL AUTOR. Lo que marque otra persona se queda en su movil y no

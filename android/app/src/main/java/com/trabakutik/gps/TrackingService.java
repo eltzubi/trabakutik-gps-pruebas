@@ -346,7 +346,11 @@ public class TrackingService extends Service implements LocationListener {
   // mismo camino: ahi si hay que dar la vuelta.
   boolean esCruce=tipo!=0;
   String hacia=tipo==2
-   ?(lado<0?"en el cruce, sigue por la izquierda":"en el cruce, sigue por la derecha")
+   // «SIGUE RECTO POR LA DERECHA» y no «sigue por la derecha»: el autor lo
+   // oyo 45 m antes de una carretera que salia a la derecha (hacia Mallabia) y
+   // se podia entender como «gira ahi». Con «recto» queda claro que no hay
+   // giro, solo coger el ramal de ese lado. Lo propuso el 16 nov 2026.
+   ?(lado<0?"en el cruce, sigue recto por la izquierda":"en el cruce, sigue recto por la derecha")
    :lado==0
    ?(esCruce?"cruce, da la vuelta":"da la vuelta")
    :esCruce?(lado<0?"cruce a la izquierda":"cruce a la derecha")

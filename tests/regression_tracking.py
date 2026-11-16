@@ -48,7 +48,7 @@ print('OK: el SOS comparte sin caducar y sobrevive al permiso en segundo plano')
 _frase=src[src.index(' String fraseGiro('):]
 _frase=_frase[:_frase.index('\n }')]
 assert 'tipo==2' in _frase, 'la voz tiene que distinguir el cruce en el que se sigue por un lado'
-assert 'sigue por la izquierda' in _frase and 'sigue por la derecha' in _frase, (
+assert 'sigue recto por la izquierda' in _frase and 'sigue recto por la derecha' in _frase, (
     'y decirlo con esas palabras, las que pidio el autor')
 _lee=src[src.index('int tipo=p.optInt("t",1);'):]
 assert 'if(tipo<0||tipo>2)tipo=1;' in _lee[:200], (

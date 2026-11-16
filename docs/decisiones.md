@@ -515,3 +515,13 @@ el reinicio borra la cuenta; y `tests/fuera_ruta_igual.py` da el mismo
 recorrido inventado al servicio (Java) y a la página y exige que pasen a
 fuera y vuelvan en el mismo segundo. Comprobado que las dos fallan si la
 página tarda 5 s en vez de 4.
+
+## «Sigue recto por la derecha» (16 de noviembre de 2026)
+
+El autor oyó «en el cruce, sigue por la derecha» 45 m antes de una carretera
+que salía a la derecha (hacia Mallabia) y se podía entender como «gira ahí».
+Propuso decirlo con «recto»: «en el cruce, sigue recto por la derecha». Queda
+claro que no hay giro, solo coger el ramal de ese lado. Vale para los 143
+avisos de este tipo de las rutas sin quitar ninguno (el de la BI-633 de
+galdaramiño se queda). Se descartó callarlos cuando hay otro cruce a ese lado
+en los 60 m siguientes: 20 avisos menos y ni siquiera pillaba su caso.
