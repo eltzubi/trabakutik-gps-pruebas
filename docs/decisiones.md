@@ -525,3 +525,13 @@ claro que no hay giro, solo coger el ramal de ese lado. Vale para los 143
 avisos de este tipo de las rutas sin quitar ninguno (el de la BI-633 de
 galdaramiño se queda). Se descartó callarlos cuando hay otro cruce a ese lado
 en los 60 m siguientes: 20 avisos menos y ni siquiera pillaba su caso.
+
+## El tiempo en movimiento, en el panel de abajo (16 de noviembre de 2026)
+
+La tercera casilla del panel decía «GPS ±4 m», que ya sale arriba
+(«Posición · ±4 m»): el autor vio el dato repetido y pidió poner ahí el tiempo
+en movimiento. Lo cuenta el servicio (`TiempoEnMarcha`), porque con la
+pantalla apagada la página se duerme: cuenta tiempo cuando te alejas 10 m del
+último punto de ancla en menos de 30 s; parado, el baile del GPS no llega a
+10 m y no suma; lo pausado tampoco. Error: unos 30 s por parada como mucho.
+Una APK anterior no lo manda y la casilla dice «—».

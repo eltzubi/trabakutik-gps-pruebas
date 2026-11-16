@@ -208,6 +208,8 @@ public class TrackingService extends Service implements LocationListener {
  // segundo con hasta 10 s de lote, que el chip las junta y gasta casi nada.
  // Sin barometro no pasa nada: la pagina cuenta con el perfil de la ruta.
  final AvisoLlegada llegada=new AvisoLlegada();
+ // El tiempo en movimiento de la salida (TiempoEnMarcha), para el panel de abajo.
+ final TiempoEnMarcha enMarcha=new TiempoEnMarcha();
  final AlturaBarometrica baro=new AlturaBarometrica();
  SensorManager baroSm=null;long baroGuardado=0,baroUltimaHora=0;
  final SensorEventListener oyenteBaro=new SensorEventListener(){
@@ -422,7 +424,7 @@ public class TrackingService extends Service implements LocationListener {
    }
    return START_NOT_STICKY;
   }
-  if("PAUSE".equals(action)){pausado=true;baro.pausa(SystemClock.elapsedRealtime());metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
+  if("PAUSE".equals(action)){pausado=true;enMarcha.pausa();baro.pausa(SystemClock.elapsedRealtime());metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
   if("RESUME".equals(action)){
    pausado=false;forzarCorte=true;    // que el descanso no salga como una recta
    baro.sigue(SystemClock.elapsedRealtime()); // lo medido en pausa no cuenta
@@ -714,7 +716,7 @@ public class TrackingService extends Service implements LocationListener {
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
-  recording=true;getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).remove("gasto").apply();
+  recording=true;enMarcha.reinicia();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).putLong("tiempoMov",0).remove("gasto").apply();
   arrancaBateria();
   arrancaBaro();
   updateNotice();
@@ -1202,7 +1204,8 @@ public class TrackingService extends Service implements LocationListener {
     }else metrics.pausePace();
    }else metrics.pausePace();
   }
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
+  if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),SystemClock.elapsedRealtime());
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   // Con una posicion por segundo y sin filtro de distancia, parado el GPS
   // deja un nido de puntos de puro ruido. Se guarda si te has movido 1,5 m

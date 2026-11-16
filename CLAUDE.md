@@ -85,6 +85,7 @@ python3 tests/caida_sos.py
 python3 tests/barometro.py
 python3 tests/llegada.py
 python3 tests/fuera_ruta_igual.py
+python3 tests/tiempo_marcha.py
 python3 tests/informe_fallo.py
 python3 scripts/test-gasto-bateria.py
 python3 scripts/test-nombre-descarga.py

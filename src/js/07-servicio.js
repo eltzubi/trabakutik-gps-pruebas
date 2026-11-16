@@ -178,7 +178,7 @@ function pintaAvance(along,info){
  const tb=$('tripBox');
  if(!guiaIniciada()||routeCumulative.length<2){
   caja.classList.add('hidden');faltaSubidaRuta=null;enRutaUltimo=false;
-  if(tb&&!tb.classList.contains('hidden')){tb.classList.add('hidden');document.body.classList.remove('con-panel');$('tripGps').textContent='—'}
+  if(tb&&!tb.classList.contains('hidden')){tb.classList.add('hidden');document.body.classList.remove('con-panel');$('tripTiempo').textContent='—'}
   return;
  }
  const total=routeCumulative[routeCumulative.length-1];
@@ -205,7 +205,9 @@ function pintaAvance(along,info){
  const frac=andado!==null&&queda!==null&&andado+queda>0?andado/(andado+queda):0;
  $('tripBarra').style.width=(frac*100).toFixed(1)+'%';
  $('tripRuta').textContent=$('mapTitle')?.textContent||'';
- $('tripGps').textContent=info&&Number.isFinite(info.precision)?'±'+Math.round(info.precision)+' m':(info?'—':$('tripGps').textContent);
+ // EL TIEMPO EN MOVIMIENTO, no la precision del GPS: esa ya sale arriba
+ // («Posicion · ±4 m») y el autor vio el dato repetido (16 nov 2026).
+ $('tripTiempo').textContent=formatoTiempo(recording?tiempoMovNativo:null);
  pintaAlturas(conPos?along/total:null,estado);
  if(tb.classList.contains('hidden')){tb.classList.remove('hidden');document.body.classList.add('con-panel');try{map.invalidateSize()}catch(e){}}
 }
@@ -406,6 +408,13 @@ function pintaAlturas(fracRuta,estado){
  if(altura===null)p.setAttribute('r','0');
  else{p.setAttribute('r','5');p.setAttribute('cx',xDe(pos).toFixed(1));p.setAttribute('cy',y(altura))}
 }
+// «1:42» (horas:minutos) o «42 min» si no llega a la hora; «—» sin dato.
+function formatoTiempo(ms){
+ if(!Number.isFinite(ms)||ms<0)return '—';
+ const min=Math.floor(ms/60000);
+ return min<60?min+' min':Math.floor(min/60)+':'+String(min%60).padStart(2,'0');
+}
+let tiempoMovNativo=null;
 function marcaAlReves(si){
  const c=$('reverseWarn');
  if(c)c.classList.toggle('hidden',!si);
@@ -569,6 +578,6 @@ function flechaGiro(deg,dir,tam,grosor){
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
- Object.defineProperties(module.exports,{rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true}});
+ module.exports={pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
+ Object.defineProperties(module.exports,{rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true},tiempoMovNativo:{get:()=>tiempoMovNativo,set:v=>{tiempoMovNativo=v},enumerable:true}});
 }

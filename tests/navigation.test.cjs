@@ -1266,3 +1266,12 @@ test('franja: vuelve a los 4 s justos, no antes ni despues; dos salidas y dos vu
  sal();ahora+=1000;c.updateOffRoute(15,5);ahora+=3000;c.updateOffRoute(15,5);
  assert.equal(c.alerted,true,'tras el reinicio la cuenta vieja no vale: 3 s no bastan');
 });
+test('el panel de abajo enseña el tiempo en movimiento, no la precision del GPS',()=>{
+ const c=pieza('07-servicio.js',{window:{}});
+ assert.equal(c.formatoTiempo(null),'—');assert.equal(c.formatoTiempo(42*60000+5000),'42 min');
+ assert.equal(c.formatoTiempo(102*60000),'1:42');assert.equal(c.formatoTiempo(60*60000),'1:00');
+ const html=fs.readFileSync(path.join(__dirname,'../src/nuevo.plantilla.html'),'utf8');
+ assert(html.includes('<h3>Tiempo</h3><div class="trip-g" id="tripTiempo">')&&!html.includes('id="tripGps"'),'la casilla es Tiempo');
+ const js=fs.readFileSync(path.join(__dirname,'../src/js/09-navegacion.js'),'utf8');
+ assert(/tiempoMovNativo=data\.recording&&Number\.isFinite\(data\.tiempoMov\)/.test(js),'lo lee de la foto del servicio');
+});

@@ -566,6 +566,7 @@ public class MainActivity extends Activity {
     o.put("baroSube",pref.getFloat("baroSube",0f));
     o.put("baroBaja",pref.getFloat("baroBaja",0f));
     o.put("baroT",pref.getLong("baroT",0L));
+    o.put("tiempoMov",pref.getLong("tiempoMov",0L));
     File f=new File(getFilesDir(),"trazado-vivo.tsv");
     String trackVersion=f.exists()?f.lastModified()+":"+f.length():"none";
     o.put("trackVersion",trackVersion);
