@@ -49,12 +49,31 @@ test('rehacer: la firma compara los tramos por identidad',()=>{
   assert.equal(c.mismaFirma(null,f({a:[],t:[]})),false);
 });
 
-test('un tramo muy empinado no sale «Fácil»',()=>{
-  const {textoEsfuerzo,pendienteBloque}=c();
-  // El tramo del autor: 1,26 km, +380 m, con un bloque al 38 %.
-  assert.equal(textoEsfuerzo(1260,380,38),'Muy empinado · hasta 38 %');
-  assert.equal(textoEsfuerzo(1260,380,12),'Esfuerzo andando: Fácil');
-  assert.equal(textoEsfuerzo(20000,1100,25),'Esfuerzo andando: Media · hasta 25 %');
-  assert.equal(pendienteBloque(250,10,60),24);
+test('un tramo muy empinado no sale «Fácil» y dice cuánto mide',()=>{
+  const {textoEsfuerzo,pendienteBloque,textoMetros}=c();
+  // El tramo del autor: 3,64 km, +453 m, 400 m de rampa con un bloque al 44 %.
+  assert.equal(textoEsfuerzo(3640,453,44,400),'Rampa dura: 400 m al 44 %');
+  assert.equal(textoEsfuerzo(1260,380,12,0),'Esfuerzo andando: Fácil');
+  assert.equal(textoEsfuerzo(20000,1100,25,1250),'Media · rampa de 1,3 km al 25 %');
+  assert.equal(textoMetros(260),'300 m');
+  assert.equal(textoMetros(40),'100 m');
+  assert.equal(pendienteBloque(250,60),24);
   assert.equal(pendienteBloque(0,0,0),0);
+});
+
+test('la rampa es la del último tramo, y solo de subida',()=>{
+  const {rampaUltimoTramo}=c();
+  // Puntos cada ~111 m hacia el norte (coordenadas ficticias).
+  const tramo=(h0,dh,n,la0)=>Array.from({length:n},(_,i)=>[la0+i*0.001,-2,h0+i*dh]);
+  const subida=tramo(100,40,5,43);           // ~444 m subiendo 160 m: 36 %
+  const llano=tramo(260,0,5,43.004).slice(1);  // sigue llano
+  const pts=subida.concat(llano);
+  // Ultimo tramo = la subida entera: rampa.
+  const r1=rampaUltimoTramo(subida,0);
+  assert(r1.pend>30&&r1.metros>300,JSON.stringify(r1));
+  // Ultimo tramo = el llano (empieza en el punto 4): sin rampa.
+  assert.deepEqual(JSON.stringify(rampaUltimoTramo(pts,4)),JSON.stringify({pend:0,metros:0}));
+  // Bajada fuerte: tampoco es rampa.
+  const baja=tramo(400,-40,5,43);
+  assert.equal(rampaUltimoTramo(baja,0).pend,0);
 });

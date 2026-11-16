@@ -317,6 +317,7 @@ body.creating-route .crea-resumen{display:flex;justify-content:space-between;ali
 #creaTiempo small,#creaEsfuerzo small{font-weight:500;color:#9fb3c0;font-size:11px}
 #creaEsfuerzo{font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px;border:1px solid #ffbd6980;background:#ffbd6926;color:#ffbd69;white-space:nowrap}
 #creaEsfuerzo:empty{display:none}
+@media(max-width:359px){#creaEsfuerzo{font-size:10px;padding:2px 6px}#creaTiempo small{font-size:10px}body.creating-route .crea-resumen{gap:6px}}
 body.creating-route .crea-botones{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
 .crea-botones button{min-height:42px;border:0;border-radius:13px;font-size:14px;font-weight:800;color:#fff;background:linear-gradient(180deg,#4a9cf2,#2176d7)}
 .crea-botones .crea-abrir{background:linear-gradient(180deg,#a9ffbd,#62e283);color:#042616}
@@ -2148,10 +2149,8 @@ function updateElevation(){
  const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
  // MIDE POR TRAMOS de unos 250 m, no sobre los totales: con los totales, una
  // ruta que alterna llano largo y repecho fuerte salia hasta media hora corta.
- let msMide=0,bloque={m:0,s:0,b:0},pendMax=0;
- // La pendiente mas fuerte de un bloque de al menos 150 m (uno mas corto, el
- // ultimo, daria picos del modelo del terreno).
- const cierraBloque=()=>{if(bloque.m>0||bloque.s>0||bloque.b>0)msMide+=tiempoMIDE(bloque.m,bloque.s,bloque.b);if(bloque.m>=150)pendMax=Math.max(pendMax,pendienteBloque(bloque.m,bloque.s,bloque.b));bloque={m:0,s:0,b:0}};
+ let msMide=0,bloque={m:0,s:0,b:0};
+ const cierraBloque=()=>{if(bloque.m>0||bloque.s>0||bloque.b>0)msMide+=tiempoMIDE(bloque.m,bloque.s,bloque.b);bloque={m:0,s:0,b:0}};
  let desnivelCalculable=false;
  for(let i=0;i<pts.length;i++){
   if(i){const dd=dist(pts[i-1],pts[i]);travelled+=dd;bloque.m+=dd}
@@ -2210,7 +2209,10 @@ function updateElevation(){
   paintNavigationMetrics();$('elevationSlope').className='';
   return;
  }
- pintaCreaResumen(travelled,up,down,desnivelCalculable,msMide,available.length<pts.length,pendMax);
+ // La rampa, SOLO del ultimo tramo marcado (con typeof: las pruebas que
+ // recortan esta funcion no traen lo demas).
+ const rampa=typeof rampaUltimoTramo==='function'&&typeof tramosGps!=='undefined'&&tramosGps.length?rampaUltimoTramo(pts,pts.length-tramosGps[tramosGps.length-1].length):null;
+ pintaCreaResumen(travelled,up,down,desnivelCalculable,msMide,available.length<pts.length,rampa?rampa.pend:0,rampa?rampa.metros:0);
  const info=$('elevationSlope');
  if(collapsed&&available.length<pts.length){
   info.textContent=desnivelCalculable?'Desnivel parcial':'Sin alturas suficientes';
@@ -2249,19 +2251,46 @@ function tiempoMIDE(m,sube,baja){const h=m/4000,v=sube/SUBIDA_MH+baja/600;return
 // de 32, asi que no se da.
 function esfuerzoAndando(m,sube){const s=m/1000+sube/50;return s<23.5?'Fácil':s<43.2?'Media':'Difícil'}
 function textoHoras(ms){const min=Math.round(ms/60000);return min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')}
-// Pendiente media de un bloque, en %: la subida o la bajada, la que pese mas.
-function pendienteBloque(m,sube,baja){return m>0?Math.max(sube,baja)/m*100:0}
+// Pendiente media (en %) de un bloque de 250 m a partir de la cual es «rampa
+// dura». Funcion y no const: se usa antes de esta linea y en pruebas que recortan.
+function pendFuerte(){return 20}
+// Pendiente media de SUBIDA de un bloque, en %. Las bajadas no son rampa.
+function pendienteBloque(m,sube){return m>0?sube/m*100:0}
+// LA RAMPA DEL ULTIMO TRAMO. El autor: «lo de la subida marca bien, pero si
+// es bajada no deberia quedarse rampa dura; o llaneando. Lo que toque». Asi
+// que se mira solo el tramo que se acaba de marcar (desde el punto `desde` de
+// pts), en bloques de 250 m; uno de menos de 150 m solo cuenta si es todo el
+// tramo (y pasa de 60 m), que si no son picos del modelo del terreno.
+function rampaUltimoTramo(pts,desde){
+ let pend=0,metros=0,b={m:0,s:0},largo=0,ult=pts[desde]&&Number.isFinite(pts[desde][2])?pts[desde][2]:null;
+ const cierra=(fin)=>{if(b.m>=150||(fin&&b.m>=60&&b.m===largo)){const p=pendienteBloque(b.m,b.s);if(p>=pendFuerte()){pend=Math.max(pend,p);metros+=b.m}}b={m:0,s:0}};
+ for(let i=Math.max(1,desde+1);i<pts.length;i++){
+  const d=metros2(pts[i-1],pts[i]);b.m+=d;largo+=d;
+  const h=Number.isFinite(pts[i][2])?pts[i][2]:null;
+  if(h!==null&&ult!==null&&h>ult)b.s+=h-ult;
+  ult=h;
+  if(b.m>=250)cierra(false);
+ }
+ cierra(true);
+ return {pend,metros};
+}
+function metros2(a,b){const k=111195,x=(b[1]-a[1])*k*Math.cos((a[0]+b[0])/2*Math.PI/180),y=(b[0]-a[0])*k;return Math.hypot(x,y)}
 // EL ESFUERZO CON UN TRAMO MUY EMPINADO. Lo pidio el autor el 16 nov 2026
 // con un tramo de 1,26 km y +380 m que salia «Facil»: «es lo peor que hay».
 // La regla km+desnivel/50 mira la ruta entera y un muro corto sale facil; con
 // un bloque de 250 m por encima del 20 % no se dice Facil.
-const PEND_FUERTE=20;
-function textoEsfuerzo(m,sube,pendMax){
+// Y DICE CUANTO MIDE LO DURO. «Muy empinado · hasta 44 %» se leia como toda
+// la ruta y el autor no sabia como tomarlo: 400 m de rampa al principio y el
+// resto llano. Ahora: «Rampa dura: 400 m al 44 %», y solo mientras el ultimo
+// tramo marcado es esa subida (ver rampaUltimoTramo).
+function textoMetros(m){return m<950?Math.max(100,Math.round(m/100)*100)+' m':(m/1000).toFixed(1).replace('.',',')+' km'}
+function textoEsfuerzo(m,sube,pendMax,duros){
  const e=esfuerzoAndando(m,sube),p=Math.round(pendMax);
- if(!(pendMax>=PEND_FUERTE))return 'Esfuerzo andando: '+e;
- return e==='Fácil'?'Muy empinado · hasta '+p+' %':'Esfuerzo andando: '+e+' · hasta '+p+' %';
+ if(!(pendMax>=pendFuerte()))return 'Esfuerzo andando: '+e;
+ const lon=textoMetros(duros>0?duros:250);
+ return e==='Fácil'?'Rampa dura: '+lon+' al '+p+' %':e+' · rampa de '+lon+' al '+p+' %';
 }
-function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial,pendMax){
+function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial,pendMax,duros){
  if(typeof $!=='function'||!$('creaTiempo'))return;
  if(!(m>=50)){$('creaTiempo').textContent='—';$('creaEsfuerzo').textContent='';return}
  if(!conDesnivel){$('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,0,0))+' <small>andando · sin datos de desnivel</small>';$('creaEsfuerzo').textContent='';return}
@@ -2270,7 +2299,7 @@ function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial,pendMax){
  // esfuerzo no se da, que saldria mas facil de lo que es.
  if(parcial){$('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · desnivel parcial</small>';$('creaEsfuerzo').textContent='';return}
  $('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · aprox.</small>';
- $('creaEsfuerzo').textContent=textoEsfuerzo(m,sube,pendMax);
+ $('creaEsfuerzo').textContent=textoEsfuerzo(m,sube,pendMax,duros);
 }
 function updateDraw(){
  drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
@@ -2379,7 +2408,7 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,textoEsfuerzo,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
 // Rehacer (ver mas abajo): arriba, porque el deshacer lo usa.
 let rehacerPila=[],firmaTrasDeshacer=null;
 // CERRAR EL CIRCULO. 52 de las 68 rutas de Trabakutik empiezan y acaban a

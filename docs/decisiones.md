@@ -616,3 +616,14 @@ pensado para un caminante medio. MIDE con 400 m/h daba 1 h 06, un 32 % más.
 Para clavar el cartel harían falta 562 m/h; se puso 550 (51 min) para no
 ajustar a un solo dato. Llano a 4 km/h y bajada a 600 m/h, como en MIDE. Si
 salen más carteles con tiempo, se recalibra con ellos.
+
+**Y la rampa es la del último tramo, y solo de subida (mismo día).** «Muy
+empinado · hasta 44 %» se quedaba puesto toda la ruta por una rampa del
+principio, aunque después se marcara llano o bajada, y se leía como si toda la
+ruta fuera durísima. El autor: «lo de la subida marca bien, pero si es bajada
+no debería quedarse rampa dura; o llaneando. Lo que toque». Ahora
+`rampaUltimoTramo` mira solo el tramo que se acaba de marcar, cuenta solo la
+subida, y dice cuánto mide lo duro: «Rampa dura: 400 m al 44 %» (o «Media ·
+rampa de 1,3 km al 25 %»). Si el último tramo es llano o baja, vuelve el
+esfuerzo normal de la ruta. Por debajo de 360 px la letra del resumen baja a
+10 px para no pasar de dos líneas.
