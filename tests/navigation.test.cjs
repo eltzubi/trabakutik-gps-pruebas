@@ -1166,6 +1166,15 @@ test('rotonda: el servicio recibe «ro» y la pantalla y la voz dicen «sal a la
  assert(jg.includes("'Rotonda · '+queRotonda(turn,lado,alReves)")&&jg.includes("'en la rotonda, '+queRotonda(turn,lado,alReves)"),'pantalla y voz de la pagina');
  assert(jg.indexOf("turn.rotonda")<jg.indexOf("turn.retorno"),'la rotonda se mira antes que la vuelta');
 });
+test('cruces de carretera con un ramal menor: la marca llega del fichero',()=>{
+ const c=pieza('08-cruces.js',{atob:t=>Buffer.from(t,'base64').toString('binary')});
+ // Tres cruces; el segundo, de carretera con un ramal menor (bit 1).
+ const z=c.descifraZona({escala:100000,dif:[4316000,-257000,100,100,100,100],ramas:'',cruces_carretera:Buffer.from([2]).toString('base64')});
+ assert.deepEqual(z.puntos.map(p=>!!p.carretera),[false,true,false]);
+ assert(z.carreteras>0,'para volver a bajar el fichero si cambia');
+ const sin=c.descifraZona({escala:100000,dif:[4316000,-257000,100,100,100,100],ramas:''});
+ assert.deepEqual(sin.puntos.map(p=>!!p.carretera),[false,false,false],'un fichero sin la marca: como antes');
+});
 test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
  const c=pieza('08-cruces.js');
  // Rotonda real de recyde (km 5): antihoraria, bocas a 2, 25, 92, 174 y 224,

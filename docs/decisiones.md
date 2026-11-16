@@ -728,3 +728,25 @@ una sola boca. Rumbos de las bocas y de la ruta, a radio+20 m del centro. Más
 de 7 bocas: sin número. 192 rotondas, 696 bocas, casi todas de 3 o 4; en las
 rutas, de 49 pasos por rotonda solo 1 queda sin número. El navegador vuelve a
 bajar el fichero si cambian las rotondas aunque no cambie cuántas hay.
+
+## Una carretera que sigue y un ramal menor: sin «sigue recto por…» (16 de noviembre de 2026)
+
+En el km 6,37 de «recyde» el navegador dijo «Cruce · sigue recto por la
+izquierda». El autor: «no hay ningún cruce; lo que se ve a la izquierda es la
+entrada a un caserío, no debería ni contar». La carretera (la BI-3321, partida
+en dos tramos en OSM justo ahí) sigue, y a la izquierda sale la entrada al
+caserío, que en OSM continúa como una pista de 639 m. El cruce quedaba a 22 m
+del punto donde se miraba la ruta, en plena curva, y por el rumbo la entrada
+(156°) se parecía más a la ruta (165°) que la carretera (180°).
+
+Lo que NO se hizo, medido: comprobar en el propio cruce todos los «sigue recto»
+quitaba 46 de 146, entre ellos horquillas de dos carreteras (km 1,4 y 4,0 de la
+misma ruta) donde el aviso sirve, como el de galdaramiño. Quitar ramales sin
+salida o entradas cortas del fichero se llevaba 47 giros de 60° o más.
+
+Lo que se hizo: el fichero marca los cruces donde sigue una carretera y sale un
+ramal menor (`cruces_carretera`, 3.739 de 26.736, con las clases de
+caminos-zona.json), y solo en esos un «sigue recto» se comprueba en el punto de
+la ruta más cercano al cruce: si ahí la ruta sigue por el mismo camino, se
+calla. En las 72 rutas quita exactamente tres avisos, los tres de ese tipo
+(recyde 6,37; intxorta 19,77; santaeufemia 15,67), y nada más.

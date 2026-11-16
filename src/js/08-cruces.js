@@ -153,6 +153,12 @@ function descifraZona(j){
  if(puntos.length<2)throw new Error('cruces-zona.json vacio');
  const ramas=descifraRamas(j.ramas,j.paso_rama||6,puntos.length);
  if(ramas)for(let i=0;i<puntos.length;i++)puntos[i].push(ramas[i]);
+ // CRUCES DE CARRETERA CON UN RAMAL MENOR (16 nov 2026): un bit por cruce,
+ // en el mismo orden. Va como propiedad del cruce, no como elemento, para no
+ // mover las ramas de sitio. Un fichero sin el campo: todo sigue como antes.
+ if(typeof j.cruces_carretera==='string'&&j.cruces_carretera){
+  try{const b=atob(j.cruces_carretera);for(let i=0;i<puntos.length;i++)if(b.charCodeAt(i>>3)&(1<<(i&7)))puntos[i].carretera=true}catch(e){}
+ }
  // Las rotondas: centro en diferencias, como los cruces, y el radio en metros.
  // Un fichero viejo no las trae y todo sigue como antes.
  const rotondas=[];let sal=null;
@@ -172,7 +178,7 @@ function descifraZona(j){
    rotondas.push(rot);
   }
  }
- return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas,rotondas,salidas:!!sal};
+ return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas,rotondas,salidas:!!sal,carreteras:typeof j.cruces_carretera==='string'?j.cruces_carretera.length:0};
 }
 function bajaZona(){
  return fetch(URL_CRUCES,{cache:'default'})
@@ -195,7 +201,8 @@ function cargaZonaCruces(){
       ||(z.rotondas||[]).length!==(zonaCruces.rotondas||[]).length
       ||!!z.salidas!==!!zonaCruces.salidas
       // Y las rotondas en si: se recuentan sus bocas sin que cambie su numero.
-      ||JSON.stringify(z.rotondas)!==JSON.stringify(zonaCruces.rotondas));
+      ||JSON.stringify(z.rotondas)!==JSON.stringify(zonaCruces.rotondas)
+      ||z.carreteras!==zonaCruces.carreteras);
     if(cambia){zonaCruces=z;aplicaCruces()}
    }).catch(()=>{});
   }
@@ -709,7 +716,23 @@ function calculaCrucesDe(){
   const cruce=!!elCruce;
   let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null;
   if(cruce){
-   const d=decideCruce(elCruce,b,giro.antes,giro.despues);
+   let d=decideCruce(elCruce,b,giro.antes,giro.despues);
+   // UNA CARRETERA QUE SIGUE Y UN RAMAL MENOR AL LADO: «sigue recto por…»
+   // solo si de verdad dejas la carretera. Lo pidio el autor en el km 6,37 de
+   // recyde: la carretera sigue y a la izquierda solo esta la entrada a un
+   // caserio, «no deberia influir en nada». El cruce quedaba a 22 m del punto
+   // donde se miraba la ruta, en plena curva, y por el rumbo la entrada se
+   // parecia mas que la carretera. En esos cruces (marcados en el fichero) se
+   // vuelve a decidir mirando la ruta en su punto mas cercano AL CRUCE, y si
+   // ahi sigue por la carretera no se dice nada. En las horquillas de dos
+   // carreteras no se toca: ahi el aviso sirve.
+   if(d&&d.mantente&&elCruce.carretera){
+    let iC=i,dC=dist(pts[i],elCruce);
+    for(let k=Math.max(1,i-40);k<Math.min(pts.length-1,i+40);k++){const e=dist(pts[k],elCruce);if(e<dC){dC=e;iC=k}}
+    const mC=Math.min(routeCumulative[iC],routeCumulative[pts.length-1]-routeCumulative[iC]);
+    const gC=iC!==i&&mC>=6?geometriaEn(iC,Math.min(VENTANA,mC)):null;
+    if(gC&&decideCruce(elCruce,pts[iC],gC.antes,gC.despues)===null)d=null;
+   }
    if(d&&d.sinRamas){
     // Fichero de cruces antiguo, sin ramas: se decide como siempre, por el
     // angulo del propio track.
