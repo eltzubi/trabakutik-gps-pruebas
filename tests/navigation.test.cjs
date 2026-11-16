@@ -1224,3 +1224,27 @@ test('«✋ Sobraba»: sale tras pasar un aviso, apunta lo dicho y el sitio, y n
  assert.equal(c.textoDeGiro(lista[0],true),'Cruce a la derecha');
  assert.equal(c.textoDeGiro(lista[1],false),'Curva cerrada a la derecha');
 });
+// LA FRANJA MUERTA (como el servicio): de vuelta al camino a 15 m del track,
+// con 5 m de precision, la pagina se quedaba «fuera de ruta» para siempre.
+test('volver y quedarse en la franja (15 m) devuelve a la ruta a los 4 s; un rebote suelto, no',()=>{
+ let ahora=1e6;const dicho=[];
+ const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:true,gpsApagadoPorTi:false,
+  alerted:false,onRouteSeen:true,farSince:0,notice:t=>dicho.push(t),Date:{now:()=>ahora}});
+ for(let k=0;k<5;k++){ahora+=1500;c.updateOffRoute(40,5)}
+ assert.equal(c.alerted,true,'fuera');
+ ahora+=1500;c.updateOffRoute(15,5);ahora+=1500;c.updateOffRoute(40,5);
+ for(let k=0;k<3;k++){ahora+=1500;c.updateOffRoute(15,5)}
+ assert.equal(c.alerted,true,'un rebote a la franja y 3 s dentro: sigue fuera');
+ for(let k=0;k<3;k++){ahora+=1500;c.updateOffRoute(15,5)}
+ assert.equal(c.alerted,false,'4 s seguidos en la franja: de vuelta');
+ assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,1,'y se dice una vez');
+ for(let k=0;k<6;k++){ahora+=1500;c.updateOffRoute(15,5)}
+ assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,1,'sin repetirlo');
+});
+test('la pagina y el servicio deciden igual el fuera de ruta (umbrales y franja)',()=>{
+ const js=fs.readFileSync(path.join(__dirname,'../src/js/07-servicio.js'),'utf8');
+ const java=fs.readFileSync(path.join(__dirname,'../android/app/src/main/java/com/trabakutik/gps/TrackingService.java'),'utf8');
+ assert(/Math\.max\(11,accuracy\+4\)/.test(js)&&/Math\.max\(11,acc\+4\)/.test(java),'cerca: 11 m o precision+4 en los dos');
+ assert(/Math\.max\(25,accuracy\+7\)/.test(js)&&/FUERA_M=25/.test(java),'lejos: 25 m o precision+7 en los dos');
+ assert(/cercaDesdePag\)>=4000|-cercaDesdePag>=4000/.test(js)&&/cercaDesde/.test(java),'la franja devuelve en los dos');
+});

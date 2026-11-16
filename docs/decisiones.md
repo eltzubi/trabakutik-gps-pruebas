@@ -498,3 +498,14 @@ móvil tocando 5 veces la versión de abajo de la app (otras 5 lo quitan; al dar
 los 5 toques avisa en la barra si ha quedado activado o no, y en ningún otro
 momento; mientras está activado, la versión lleva una ✋ al final) o,
 en la web, abriendo con `?avisos=1`. Sin activar no sale nunca.
+
+## La franja muerta del fuera de ruta, también en la página (16 de noviembre de 2026)
+
+La página daba por perdida la ruta a más de 25 m (o precisión + 7) y solo
+devolvía a menos de 11 m (o precisión + 4): entre medias, de vuelta al camino
+pero a 15 m del track, se quedaba «fuera de ruta» para siempre y sin la ficha
+de los giros. El servicio ya lo resolvía desde el 15 de noviembre; al subir el
+umbral de 15 a 25 m ese día, la franja de la página se ensanchó. Ahora, igual
+que el servicio, 4 s seguidos en la franja devuelven a la ruta. Lo encontró
+otra sesión de revisión; lo aplicó esta, con dos pruebas (las dos en rojo sin
+el arreglo), una de ellas atando los umbrales de la página y del servicio.

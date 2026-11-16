@@ -420,7 +420,7 @@ function marcaAlReves(si){
 // web va bien, y al crear una ruta y juntarla con una guardada «va fatal».
 // resetOffRoute() se llama en los cinco sitios donde se cambia de ruta y en
 // ninguno mas, asi que aqui no se repite por cada posicion.
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;onRouteSeen=false;sentidoRuta=1;
+function resetOffRoute(){alerted=false;farCount=0;farSince=0;cercaDesdePag=0;onRouteSeen=false;sentidoRuta=1;
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
 refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;if(typeof document!=='undefined')marcaAlReves(false);
@@ -438,12 +438,24 @@ function updateOffRoute(d,accuracy){
  // de cordura, y salta la lectura sin tocar la cuenta.
  if(accuracy>60)return;
  const near=d<=Math.max(11,accuracy+4);
- if(near){onRouteSeen=true;farSince=0;if(alerted){alerted=false;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}return}
+ if(near){onRouteSeen=true;farSince=0;cercaDesdePag=0;if(alerted)vuelvePagALaRuta();return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
  // 25 m y no 15, como el servicio: los demas navegadores avisan a 22-100 m y
  // con 15, bajo arbolado, avisaba sin motivo (decidido el 15 nov 2026).
  const far=d>Math.max(25,accuracy+7);
- if(!far){farSince=0;return}
+ // LA FRANJA MUERTA, como el servicio (TrackingService.checkDeviation). Entre
+ // «cerca» (11 m o precision+4) y «lejos» (25 m o precision+7) no pasaba
+ // nada: volviendo al camino y quedandote a 15 m del track -lo normal si se
+ // grabo por el otro lado de la pista- la pagina seguia «fuera de ruta» para
+ // siempre, y sin la ficha de los giros. Al subir el umbral de 15 a 25 m el
+ // 15 de noviembre la franja se ensancho. Ahora, cuatro segundos seguidos en
+ // la franja te devuelven, los mismos cuatro que hacen falta para salir: asi
+ // el baile del GPS en el borde no enciende y apaga. Lo vio otra sesion de
+ // revision el 16 de noviembre de 2026 y lo aprobo el autor.
+ if(!far){farSince=0;
+  if(alerted){if(!cercaDesdePag)cercaDesdePag=Date.now();else if(Date.now()-cercaDesdePag>=4000)vuelvePagALaRuta()}
+  return}
+ cercaDesdePag=0;
  if(!farSince)farSince=Date.now();
  // 800 ms a 1,5 s por lectura significa DOS lecturas: basta un par de
  // saltos del GPS para dar la alarma. En el bolsillo, con el cuerpo
@@ -455,7 +467,8 @@ function updateOffRoute(d,accuracy){
  // Un segundo aviso, uno solo, al minuto y a mas de 50 m (como el servicio).
  else if(alerted&&!recordadoPag&&d>=50&&Date.now()-fueraDesdePag>=60000){recordadoPag=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
-let fueraDesdePag=0,recordadoPag=false;
+let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0;
+function vuelvePagALaRuta(){alerted=false;cercaDesdePag=0;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}
 try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
 try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}
 function avisaModoAudioNativo(){
@@ -556,6 +569,6 @@ function flechaGiro(deg,dir,tam,grosor){
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
+ module.exports={pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
  Object.defineProperties(module.exports,{rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true}});
 }
