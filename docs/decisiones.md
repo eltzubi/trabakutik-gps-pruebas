@@ -696,3 +696,14 @@ de vuelta no siempre está), el número no vale y no se dice.
 
 De paso: la notificación decía «Herradura dcha.» en las rotondas (tipo 5 cae
 en «tipo>=3»); ahora «Rotonda, 2.ª salida».
+
+## Los colores de la web en el navegador (16 de noviembre de 2026)
+
+«Los colores del navegador, como la web: entre verde, naranja y blanco.» Se
+cambia el cian del tema neón por los de la web en oscuro: naranja #FF9C3B,
+verde lima #A6FF4D, blanco #F8FAFC y el fondo #020617. Rayas de luz de naranja
+a verde, cifras en blanco, rótulos en verde, lo activo en naranja (rumbo arriba,
+línea del perfil), «Voz» en verde y el botón principal («Empezar») en verde
+lima con letra oscura: es el verde de la web, no el que no le gustó. El punto
+azul de la posición y el trazado de la ruta en el mapa no cambian: son del
+mapa, no del adorno.

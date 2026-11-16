@@ -510,25 +510,25 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
    activos conservan su relleno de color, que es lo que mejor se ve al sol.
    Va todo aqui, encima de lo anterior: quitar este bloque devuelve el aspecto
    de antes. */
-:root{--neon:#2ef2ff;--neon-suave:#2ef2ff33;--caja:#05090cf2;--caja-opaca:#05090c;--filo:#1d3a45;--filo-tenue:#13262e}
+:root{--neon:#ff9c3b;--neon-suave:#ff9c3b33;--verde:#a6ff4d;--blanco:#f8fafc;--caja:#020617f2;--caja-opaca:#020617;--filo:#1e293b;--filo-tenue:#152033}
 .top{position:relative;background:var(--caja-opaca);border-bottom:1px solid var(--filo-tenue)}
-.top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,#2ef2ff99,transparent);pointer-events:none}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,#ff9c3b99,transparent);pointer-events:none}
 .info{background:var(--caja);border:1px solid var(--filo);border-radius:12px;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 8px 24px #0007}
 .info::before,.turn-hint::before,#tripBox::before,body.creating-route #elevationPanel::before{content:"";position:absolute;left:14px;right:14px;top:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--neon),transparent);box-shadow:0 0 10px var(--neon);pointer-events:none}
 .tools button{background:var(--caja)!important;border:1px solid var(--filo)!important;color:#c6f3fb!important;border-radius:12px}
 .tools button:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
-#orient[aria-pressed=true]{background:var(--neon)!important;color:#021a20!important;border-color:var(--neon)!important;box-shadow:0 0 14px #2ef2ff88}
+#orient[aria-pressed=true]{background:var(--neon)!important;color:#021a20!important;border-color:var(--neon)!important;box-shadow:0 0 14px #ff9c3b88}
 #locate.siguiendo{box-shadow:0 0 14px #187cffaa}
 .bottom{position:relative;background:var(--caja-opaca);border-top:1px solid var(--filo-tenue)}
-.bottom::before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;background:linear-gradient(90deg,transparent,#2ef2ffaa,transparent);pointer-events:none}
+.bottom::before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;background:linear-gradient(90deg,transparent,#ff9c3baa,transparent);pointer-events:none}
 .modes button{background:#0a1318;border:1px solid var(--filo);box-shadow:none;color:#a9cdda}
-.modes button[aria-pressed=true]{background:#2ef2ff1f;border-color:var(--neon);color:#bffaff;box-shadow:0 0 12px #2ef2ff40,inset 0 0 10px #2ef2ff22}
+.modes button[aria-pressed=true]{background:#ff9c3b1f;border-color:var(--neon);color:#bffaff;box-shadow:0 0 12px #ff9c3b40,inset 0 0 10px #ff9c3b22}
 .actions button{background:#0b1419;border:1px solid var(--filo);box-shadow:none}
 /* El boton principal (Empezar, Reanudar, Abrir ruta) en el cian del tema, no
    en verde: «ese verde no me gusta» (el autor). Ademas el verde es «a pie». */
-.actions .go,#tripBox .trip-botones button.go,.crea-botones .crea-abrir{background:linear-gradient(180deg,#7ff8ff,#22d6ea);color:#02181d;border-color:#9ffaff;box-shadow:0 0 16px #2ef2ff66,inset 0 1px 0 #ffffffaa}
+.actions .go,#tripBox .trip-botones button.go,.crea-botones .crea-abrir{background:linear-gradient(180deg,#7ff8ff,#22d6ea);color:#02181d;border-color:#9ffaff;box-shadow:0 0 16px #ff9c3b66,inset 0 1px 0 #ffffffaa}
 .actions .go small{color:#044552}
-.elevation-head span{color:#7ff3ff}
+.elevation-head span{color:#f8fafc}
 /* LA FICHA EN MARCHA, CIFRAS MAS GRANDES (16 nov 2026, el autor: «se podrian
    ver mas grandes, aprovechar mejor el recuadro»). En el mismo alto: menos
    relleno y menos hueco entre filas, y las cifras crecen. «Rumbo» va como los
@@ -537,7 +537,7 @@ body.despejado .info{padding:6px 10px 7px;row-gap:2px;grid-template-columns:minm
 body.despejado #compass{min-width:0}
 body.despejado #gpsState{font-size:14px}
 body.despejado #compass{justify-items:center;justify-self:stretch;column-gap:4px;grid-template-columns:auto auto;justify-content:center}
-body.despejado #compass::before{color:#6fd3e2;text-align:center;justify-self:center}
+body.despejado #compass::before{color:#a6ff4dcc;text-align:center;justify-self:center}
 body.despejado .info .ff-lab,body.despejado #compass::before{font-size:9px;letter-spacing:.1em}
 body.despejado .info .ff b{font-size:28px;line-height:1.05}
 body.despejado #compass b{font-size:23px;line-height:1.05}
@@ -554,13 +554,13 @@ body.despejado #compass svg{width:22px;height:22px}
 #tripBox .trip-pista{background:var(--filo-tenue)}
 #tripBox .trip-pista i{background:var(--neon);box-shadow:0 0 8px var(--neon)}
 .turn-hint{background:#05090cf7;border:1px solid var(--filo);border-radius:16px;box-shadow:0 10px 30px #000b}
-.turn-arrow{background:#071216;border:1px solid #2ef2ff66;box-shadow:inset 0 0 16px #2ef2ff1f,0 0 14px #2ef2ff26}
+.turn-arrow{background:#071216;border:1px solid #ff9c3b66;box-shadow:inset 0 0 16px #ff9c3b1f,0 0 14px #ff9c3b26}
 .turn-fases i{background:var(--filo-tenue)}
-.turn-fases i.on{background:var(--neon);box-shadow:0 0 10px #2ef2ff99}
+.turn-fases i.on{background:var(--neon);box-shadow:0 0 10px #ff9c3b99}
 body.creating-route #elevationPanel{background:var(--caja);border:1px solid var(--filo);border-radius:14px}
 .crea-pildora,.crea-mas{background:var(--caja);border-color:var(--filo)}
 .crea-pildora button+button{border-left-color:var(--filo-tenue)}
-.crea-mas[aria-expanded="true"]{background:#2ef2ff1f;color:#bffaff;border-color:var(--neon);box-shadow:0 0 12px #2ef2ff40}
+.crea-mas[aria-expanded="true"]{background:#ff9c3b1f;color:#bffaff;border-color:var(--neon);box-shadow:0 0 12px #ff9c3b40}
 .crea-menu{background:#070d11;border-color:var(--filo)}
 .crea-botones .crea-guardar{background:linear-gradient(180deg,#3d93f0,#1f6fd0);box-shadow:0 0 14px #3d93f040}
 /* SEGUNDA PASADA, que se note: el autor miro la primera en su movil y dijo
@@ -568,22 +568,42 @@ body.creating-route #elevationPanel{background:var(--caja);border:1px solid var(
    en cian con brillo, botones con filo de luz, la raya de arriba mas gruesa
    y los rotulos en cian tenue. */
 .info::before,.turn-hint::before,#tripBox::before,body.creating-route #elevationPanel::before{height:3px;left:10px;right:10px;box-shadow:0 0 14px var(--neon),0 0 4px var(--neon)}
-.info{border-color:#2ef2ff59;box-shadow:0 0 0 1px #000,0 0 18px #2ef2ff1f,0 8px 24px #0008}
-.info .ff b,#compass b{color:var(--neon);text-shadow:0 0 10px #2ef2ff80}
-.info .ff-lab,#tripBox h3{color:#6fd3e2}
-.info .ff{border-left-color:#2ef2ff33}
-.tools button{border-color:#2ef2ff73!important;box-shadow:0 0 10px #2ef2ff2e,inset 0 0 8px #2ef2ff14}
-#tripBox{border-top-color:#2ef2ff59}
-#tripBox .trip-g{color:#eafdff;text-shadow:0 0 12px #2ef2ff59}
-#tripBox #tripTiempo{color:var(--neon);text-shadow:0 0 12px #2ef2ff80}
-#tripBox .trip-col + .trip-col{border-left-color:#2ef2ff2e}
-#tripBox .trip-nombre{border-color:#2ef2ff40;color:#dffaff}
-#tripBox .trip-botones button{border-color:#2ef2ff4d}
-.top{border-bottom-color:#2ef2ff40}
-.top strong{text-shadow:0 0 10px #2ef2ff66}
-.turn-hint{border-color:#2ef2ff59;box-shadow:0 0 22px #2ef2ff26,0 10px 30px #000b}
-.turn-dist em{text-shadow:0 0 16px #2ef2ffa0}
-.modes button,.actions button{border-color:#2ef2ff40}
+.info{border-color:#ff9c3b59;box-shadow:0 0 0 1px #000,0 0 18px #ff9c3b1f,0 8px 24px #0008}
+.info .ff b,#compass b{color:var(--neon);text-shadow:0 0 10px #ff9c3b80}
+.info .ff-lab,#tripBox h3{color:#a6ff4dcc}
+.info .ff{border-left-color:#ff9c3b33}
+.tools button{border-color:#ff9c3b73!important;box-shadow:0 0 10px #ff9c3b2e,inset 0 0 8px #ff9c3b14}
+#tripBox{border-top-color:#ff9c3b59}
+#tripBox .trip-g{color:#eafdff;text-shadow:0 0 12px #ff9c3b59}
+#tripBox #tripTiempo{color:var(--neon);text-shadow:0 0 12px #ff9c3b80}
+#tripBox .trip-col + .trip-col{border-left-color:#ff9c3b2e}
+#tripBox .trip-nombre{border-color:#ff9c3b40;color:#dffaff}
+#tripBox .trip-botones button{border-color:#ff9c3b4d}
+.top{border-bottom-color:#ff9c3b40}
+.top strong{text-shadow:0 0 10px #ff9c3b66}
+.turn-hint{border-color:#ff9c3b59;box-shadow:0 0 22px #ff9c3b26,0 10px 30px #000b}
+.turn-dist em{text-shadow:0 0 16px #ff9c3ba0}
+.modes button,.actions button{border-color:#ff9c3b40}
+/* COLORES DE LA WEB (16 nov 2026). El autor: «los colores del navegador,
+   como la web: entre verde, naranja y blanco». Los de la web en oscuro:
+   naranja #FF9C3B, verde lima #A6FF4D, blanco #F8FAFC y fondo #020617. Las
+   rayas de luz van de naranja a verde, las cifras en blanco, los rotulos en
+   verde, lo activo en naranja y el boton principal en verde lima con letra
+   oscura. El punto azul de la posicion y el trazado de la ruta no se tocan:
+   son del mapa, no del adorno. */
+.info::before,.turn-hint::before,#tripBox::before,body.creating-route #elevationPanel::before{background:linear-gradient(90deg,transparent,var(--neon) 30%,var(--verde) 70%,transparent);box-shadow:0 0 12px #ff9c3b99}
+.top::after,.bottom::before{background:linear-gradient(90deg,transparent,#ff9c3baa,#a6ff4daa,transparent)}
+.info .ff b,#compass b,#tripBox #tripTiempo,#tripBox .trip-g{color:var(--blanco);text-shadow:none}
+.turn-dist em{color:var(--blanco);text-shadow:0 0 14px #ff9c3b66}
+.turn-copy small,.turn-rot span.on{color:var(--verde)}
+.actions .go,#tripBox .trip-botones button.go,.crea-botones .crea-abrir{background:linear-gradient(180deg,#c6ff8a,#a6ff4d);color:#0d1a05;border-color:#d4ffa6;box-shadow:0 0 16px #a6ff4d55,inset 0 1px 0 #ffffffaa}
+.actions .go small{color:#2c4a12}
+.crea-botones .crea-guardar{background:linear-gradient(180deg,#ffb066,#ff9c3b);color:#2a1300;box-shadow:0 0 14px #ff9c3b55}
+.modes button[aria-pressed=true]{background:#a6ff4d1f;border-color:var(--verde);color:#e6ffcc;box-shadow:0 0 12px #a6ff4d40,inset 0 0 10px #a6ff4d22}
+#orient[aria-pressed=true]{color:#2a1300!important}
+#audioMode[data-modo="voz"]{border-color:var(--verde)!important;color:var(--verde)!important}
+#tripPerfilLinea{stroke:var(--neon)}
+#tripPerfilArea,#tripPerfilHecho{fill:var(--neon)}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><button type="button" id="avisoMal" class="aviso-mal hidden"></button><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">OSM</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 6 L24.4 23 L20 20.2 L15.6 23 Z" fill="#4de1ff"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="ffTrackBox" class="ff"><span class="ff-lab">Al track</span><b id="ffTrack">—</b></span><span id="ffAltBox" class="ff"><span class="ff-lab">Altitud</span><b id="ffAlt">—</b></span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
