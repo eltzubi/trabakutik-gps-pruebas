@@ -115,7 +115,7 @@ function pintaBrujula(h){
  const g=(Math.round(h)%360+360)%360;
  anguloBrujula=anguloBrujula===null?h:anguloBrujula+diferenciaRumbo(anguloBrujula,h);
  $('compassNeedle').style.transform='rotate('+anguloBrujula.toFixed(1)+'deg)';
- $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' · '+g+'°';
+ $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' '+g+'°';
  caja.classList.remove('hidden');
 }
 // Cargar una ruta o consultar la ubicación no inicia la guía.

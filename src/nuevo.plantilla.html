@@ -529,6 +529,21 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
 .actions .go,#tripBox .trip-botones button.go,.crea-botones .crea-abrir{background:linear-gradient(180deg,#7ff8ff,#22d6ea);color:#02181d;border-color:#9ffaff;box-shadow:0 0 16px #2ef2ff66,inset 0 1px 0 #ffffffaa}
 .actions .go small{color:#044552}
 .elevation-head span{color:#7ff3ff}
+/* LA FICHA EN MARCHA, CIFRAS MAS GRANDES (16 nov 2026, el autor: «se podrian
+   ver mas grandes, aprovechar mejor el recuadro»). En el mismo alto: menos
+   relleno y menos hueco entre filas, y las cifras crecen. «Rumbo» va como los
+   otros dos rotulos (centrado y en cian), no en gris a la izquierda. */
+body.despejado .info{padding:6px 10px 7px;row-gap:2px;grid-template-columns:minmax(0,1.4fr) minmax(0,.9fr) minmax(0,1fr)}
+body.despejado #compass{min-width:0}
+body.despejado #gpsState{font-size:14px}
+body.despejado #compass{justify-items:center;justify-self:stretch;column-gap:4px;grid-template-columns:auto auto;justify-content:center}
+body.despejado #compass::before{color:#6fd3e2;text-align:center;justify-self:center}
+body.despejado .info .ff-lab,body.despejado #compass::before{font-size:9px;letter-spacing:.1em}
+body.despejado .info .ff b{font-size:28px;line-height:1.05}
+body.despejado #compass b{font-size:23px;line-height:1.05}
+body.despejado #compass svg{width:22px;height:22px}
+@media (max-width:389px){body.despejado .info .ff b{font-size:23px}body.despejado #compass b{font-size:18px}body.despejado #compass svg{width:18px;height:18px}body.despejado .info .ff-lab,body.despejado #compass::before{font-size:8px;letter-spacing:.06em}}
+@media (max-width:339px){body.despejado .info .ff b{font-size:19px}body.despejado #compass b{font-size:15px}}
 .actions .red{background:linear-gradient(180deg,#e2475d,#b52a3f);border-color:#ff6a7f;box-shadow:none}
 .actions .amber{border-color:#ffd089;box-shadow:none}
 .actions .blue{border-color:#5aa9ff}

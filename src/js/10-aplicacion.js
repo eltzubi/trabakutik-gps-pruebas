@@ -103,6 +103,33 @@ function cancelaQuita(){
  if(quitaReloj){clearTimeout(quitaReloj);quitaReloj=null}
  const b=$('candadoQuita');if(b)b.classList.remove('pulsando');
 }
+// LAS CIFRAS DE LA FICHA, LO MAS GRANDES QUE QUEPAN (16 nov 2026: el autor las
+// queria mas grandes). Van a 28 px, pero «46,18 km» al track o «1331 m» de
+// altitud no caben a ese tamaño en su columna: entonces se encogen lo justo,
+// de px en px, solo esa cifra. Se vuelve a medir cada vez que cambia el texto.
+const CIFRAS_FICHA=['compassText','ffTrack','ffAlt'];
+function ajustaCifras(){
+ for(const id of CIFRAS_FICHA){
+  const b=$(id);if(!b||!b.parentElement||typeof getComputedStyle!=='function')continue;
+  b.style.fontSize='';
+  // La del rumbo comparte columna con la brujula: su ancho no cuenta.
+  const caja=b.parentElement,brujula=caja.querySelector('svg');
+  const libre=()=>caja.clientWidth-(brujula?brujula.getBoundingClientRect().width+8:6);
+  // El ancho del TEXTO, no de la caja: una cifra en bloque ocupa la columna
+  // entera aunque el texto sea corto.
+  const ancho=()=>{const r=document.createRange();r.selectNodeContents(b);return r.getBoundingClientRect().width};
+  let tam=parseFloat(getComputedStyle(b).fontSize)||16,n=0;
+  while(ancho()>libre()&&tam>11&&n++<24){tam-=1;b.style.fontSize=tam+'px'}
+ }
+}
+if(typeof MutationObserver==='function'&&typeof document!=='undefined'&&$('ffAlt')){
+ let pendiente=false;
+ const pide=()=>{if(pendiente)return;pendiente=true;requestAnimationFrame(()=>{pendiente=false;ajustaCifras()})};
+ const vigila=new MutationObserver(pide);
+ for(const id of CIFRAS_FICHA){const b=$(id);if(b)vigila.observe(b,{childList:true,characterData:true,subtree:true})}
+ vigila.observe(document.body,{attributes:true,attributeFilter:['class']});
+ addEventListener('resize',pide);
+}
 if($('candado')&&typeof $('candado').addEventListener==='function'){
  $('tripBloquea').onclick=bloquea;
  const quita=$('candadoQuita'),capa=$('candado');
@@ -549,6 +576,6 @@ if($('closeSos'))$('closeSos').onclick=()=>$('sosDialog').classList.add('hidden'
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={compruebaBateria,pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos,bloquea,desbloquea,empiezaQuita,cancelaQuita};
+ module.exports={ajustaCifras,compruebaBateria,pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos,bloquea,desbloquea,empiezaQuita,cancelaQuita};
  Object.defineProperties(module.exports,{MAPA_Z_MIN:{get:()=>MAPA_Z_MIN,enumerable:true},MAPA_Z_MAX:{get:()=>MAPA_Z_MAX,enumerable:true},MAPA_MARGEN:{get:()=>MAPA_MARGEN,enumerable:true},CAPAS_GUARDABLES:{get:()=>CAPAS_GUARDABLES,enumerable:true},guiandoAntes:{get:()=>guiandoAntes,set:v=>{guiandoAntes=v},enumerable:true},pausado:{get:()=>pausado,set:v=>{pausado=v},enumerable:true},bajadaMapa:{get:()=>bajadaMapa,set:v=>{bajadaMapa=v},enumerable:true},bloqueada:{get:()=>bloqueada,enumerable:true}});
 }

@@ -529,6 +529,21 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
 .actions .go,#tripBox .trip-botones button.go,.crea-botones .crea-abrir{background:linear-gradient(180deg,#7ff8ff,#22d6ea);color:#02181d;border-color:#9ffaff;box-shadow:0 0 16px #2ef2ff66,inset 0 1px 0 #ffffffaa}
 .actions .go small{color:#044552}
 .elevation-head span{color:#7ff3ff}
+/* LA FICHA EN MARCHA, CIFRAS MAS GRANDES (16 nov 2026, el autor: «se podrian
+   ver mas grandes, aprovechar mejor el recuadro»). En el mismo alto: menos
+   relleno y menos hueco entre filas, y las cifras crecen. «Rumbo» va como los
+   otros dos rotulos (centrado y en cian), no en gris a la izquierda. */
+body.despejado .info{padding:6px 10px 7px;row-gap:2px;grid-template-columns:minmax(0,1.4fr) minmax(0,.9fr) minmax(0,1fr)}
+body.despejado #compass{min-width:0}
+body.despejado #gpsState{font-size:14px}
+body.despejado #compass{justify-items:center;justify-self:stretch;column-gap:4px;grid-template-columns:auto auto;justify-content:center}
+body.despejado #compass::before{color:#6fd3e2;text-align:center;justify-self:center}
+body.despejado .info .ff-lab,body.despejado #compass::before{font-size:9px;letter-spacing:.1em}
+body.despejado .info .ff b{font-size:28px;line-height:1.05}
+body.despejado #compass b{font-size:23px;line-height:1.05}
+body.despejado #compass svg{width:22px;height:22px}
+@media (max-width:389px){body.despejado .info .ff b{font-size:23px}body.despejado #compass b{font-size:18px}body.despejado #compass svg{width:18px;height:18px}body.despejado .info .ff-lab,body.despejado #compass::before{font-size:8px;letter-spacing:.06em}}
+@media (max-width:339px){body.despejado .info .ff b{font-size:19px}body.despejado #compass b{font-size:15px}}
 .actions .red{background:linear-gradient(180deg,#e2475d,#b52a3f);border-color:#ff6a7f;box-shadow:none}
 .actions .amber{border-color:#ffd089;box-shadow:none}
 .actions .blue{border-color:#5aa9ff}
@@ -3261,7 +3276,7 @@ function pintaBrujula(h){
  const g=(Math.round(h)%360+360)%360;
  anguloBrujula=anguloBrujula===null?h:anguloBrujula+diferenciaRumbo(anguloBrujula,h);
  $('compassNeedle').style.transform='rotate('+anguloBrujula.toFixed(1)+'deg)';
- $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' · '+g+'°';
+ $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' '+g+'°';
  caja.classList.remove('hidden');
 }
 // Cargar una ruta o consultar la ubicación no inicia la guía.
@@ -5472,6 +5487,33 @@ function cancelaQuita(){
  if(quitaReloj){clearTimeout(quitaReloj);quitaReloj=null}
  const b=$('candadoQuita');if(b)b.classList.remove('pulsando');
 }
+// LAS CIFRAS DE LA FICHA, LO MAS GRANDES QUE QUEPAN (16 nov 2026: el autor las
+// queria mas grandes). Van a 28 px, pero «46,18 km» al track o «1331 m» de
+// altitud no caben a ese tamaño en su columna: entonces se encogen lo justo,
+// de px en px, solo esa cifra. Se vuelve a medir cada vez que cambia el texto.
+const CIFRAS_FICHA=['compassText','ffTrack','ffAlt'];
+function ajustaCifras(){
+ for(const id of CIFRAS_FICHA){
+  const b=$(id);if(!b||!b.parentElement||typeof getComputedStyle!=='function')continue;
+  b.style.fontSize='';
+  // La del rumbo comparte columna con la brujula: su ancho no cuenta.
+  const caja=b.parentElement,brujula=caja.querySelector('svg');
+  const libre=()=>caja.clientWidth-(brujula?brujula.getBoundingClientRect().width+8:6);
+  // El ancho del TEXTO, no de la caja: una cifra en bloque ocupa la columna
+  // entera aunque el texto sea corto.
+  const ancho=()=>{const r=document.createRange();r.selectNodeContents(b);return r.getBoundingClientRect().width};
+  let tam=parseFloat(getComputedStyle(b).fontSize)||16,n=0;
+  while(ancho()>libre()&&tam>11&&n++<24){tam-=1;b.style.fontSize=tam+'px'}
+ }
+}
+if(typeof MutationObserver==='function'&&typeof document!=='undefined'&&$('ffAlt')){
+ let pendiente=false;
+ const pide=()=>{if(pendiente)return;pendiente=true;requestAnimationFrame(()=>{pendiente=false;ajustaCifras()})};
+ const vigila=new MutationObserver(pide);
+ for(const id of CIFRAS_FICHA){const b=$(id);if(b)vigila.observe(b,{childList:true,characterData:true,subtree:true})}
+ vigila.observe(document.body,{attributes:true,attributeFilter:['class']});
+ addEventListener('resize',pide);
+}
 if($('candado')&&typeof $('candado').addEventListener==='function'){
  $('tripBloquea').onclick=bloquea;
  const quita=$('candadoQuita'),capa=$('candado');
@@ -5918,7 +5960,7 @@ if($('closeSos'))$('closeSos').onclick=()=>$('sosDialog').classList.add('hidden'
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={compruebaBateria,pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos,bloquea,desbloquea,empiezaQuita,cancelaQuita};
+ module.exports={ajustaCifras,compruebaBateria,pintaDespeja,actualizaDespeje,pintaBotonNavegar,reconciliaBotonera,recordingControls,pausaGrabacion,avisoDeCortes,confirmaParar,pideGasto,apagaGps,teselasDeRuta,urlTesela,cacheDeMapas,mapaGuardadoInfo,borraMapaGuardado,guardaMapaRuta,puntosDelMapa,pintaBotonMapa,pintaDialogoMapa,abreDialogoMapa,abreSos,pintaSos,bloquea,desbloquea,empiezaQuita,cancelaQuita};
  Object.defineProperties(module.exports,{MAPA_Z_MIN:{get:()=>MAPA_Z_MIN,enumerable:true},MAPA_Z_MAX:{get:()=>MAPA_Z_MAX,enumerable:true},MAPA_MARGEN:{get:()=>MAPA_MARGEN,enumerable:true},CAPAS_GUARDABLES:{get:()=>CAPAS_GUARDABLES,enumerable:true},guiandoAntes:{get:()=>guiandoAntes,set:v=>{guiandoAntes=v},enumerable:true},pausado:{get:()=>pausado,set:v=>{pausado=v},enumerable:true},bajadaMapa:{get:()=>bajadaMapa,set:v=>{bajadaMapa=v},enumerable:true},bloqueada:{get:()=>bloqueada,enumerable:true}});
 }
 })();

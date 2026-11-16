@@ -653,3 +653,17 @@ debajo, que la despega de cualquier fondo.
 móvil (raya cian y cajones negros) pero era tan discreta que no se notaba.
 Ahora las cifras de la ficha y el tiempo van en cian con brillo, los rótulos en
 cian tenue, los botones con filo de luz, y la raya de arriba es de 3 px.
+
+## La ficha en marcha, con las cifras lo más grandes que quepan (16 de noviembre de 2026)
+
+«Estos datos se podrían ver más grandes; aprovechar mejor el recuadro.» Las
+tres cifras (rumbo, al track, altitud) van ahora a 28 px (23 el rumbo) en vez
+de 16-18, y la ficha **baja** de 87 a 80 px de alto: menos relleno y menos hueco
+entre filas. «Rumbo» va como los otros dos rótulos, centrado y en cian.
+
+Como «46,18 km» al track o «1331 m» de altitud no caben a 28 px en su columna,
+`ajustaCifras` (pieza 10) encoge solo esa cifra, de px en px, hasta que cabe, y
+vuelve a medir cada vez que cambia el texto. Las columnas van con `minmax(0,…)`
+(1,4 / 0,9 / 1): sin eso, un rumbo largo ensanchaba su columna y apretaba las
+otras dos. El rumbo pierde el « · » («SE 134°»), que no decía nada y le quitaba
+tamaño.
