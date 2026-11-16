@@ -494,5 +494,6 @@ kilómetros de Wikiloc con los nuestros. Con esta lista se corrigen avisos
 sobre casos seguros. Cuando deje de aportar, se quita. Solo página: sin APK.
 **Solo para el autor** (mismo día): a cualquier otro el botón no le sirve,
 porque lo que marque se queda en su móvil y no nos llega. Se activa en cada
-móvil tocando 5 veces la versión de abajo de la app (otras 5 lo quitan) o,
+móvil tocando 5 veces la versión de abajo de la app (otras 5 lo quitan; sin
+aviso en la barra, lo pidió así) o,
 en la web, abriendo con `?avisos=1`. Sin activar no sale nunca.

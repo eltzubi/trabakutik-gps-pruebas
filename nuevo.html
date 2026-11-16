@@ -4671,8 +4671,8 @@ if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $
  let toques=[];
  if($('appVersion'))$('appVersion').addEventListener('click',()=>{
   const ahora=Date.now();toques=toques.filter(t=>ahora-t<4000);toques.push(ahora);
-  if(toques.length>=5){toques=[];const si=!botonAvisosActivo();activaBotonAvisos(si);
-   try{notice(si?'Botón ✋ Sobraba activado en este móvil':'Botón ✋ Sobraba desactivado')}catch(e){}}
+  // Sin aviso en la barra: lo pidio el autor («no avises»).
+  if(toques.length>=5){toques=[];activaBotonAvisos(!botonAvisosActivo())}
  });
  pintaBotonAvisos();
 }
