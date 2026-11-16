@@ -1168,16 +1168,18 @@ test('rotonda: el servicio recibe «ro» y la pantalla y la voz dicen «sal a la
 });
 test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
  const c=pieza('08-cruces.js');
- // Rotonda real de recyde (km 5): antihoraria, salidas a 2, 75, 96, 165 y 243.
- const r=[0,0,9,{sentido:1,salidas:[2,75,96,165,243]}];
- assert.equal(c.salidaDeRotonda(r,3,233),1,'entrando por el norte, la suroeste es la primera');
- assert.equal(c.salidaDeRotonda(r,233,3),4,'al reves, hasta el norte hay que dar casi toda la vuelta');
- assert.equal(c.salidaDeRotonda(r,3,165),2);
+ // Rotonda real de recyde (km 5): antihoraria, bocas a 2, 25, 92, 174 y 224,
+ // y una calle de direccion prohibida a 242 (+360): el autor la cuenta.
+ const r=[0,0,9,{sentido:1,salidas:[2,25,92,174,224,602]}];
+ assert.equal(c.salidaDeRotonda(r,3,224),2,'entrando por el norte: la prohibida y luego la suya, la segunda');
+ assert.equal(c.salidaDeRotonda(r,3,242),2,'por la prohibida no se sale: casa con la de al lado');
+ assert.equal(c.salidaDeRotonda(r,224,3),4,'al reves, hasta el norte hay que dar casi toda la vuelta');
  assert.equal(c.salidaDeRotonda(r,3,320),0,'una salida que no casa con ninguna: sin numero');
- assert.equal(c.salidaDeRotonda([0,0,9],3,233),0,'un fichero sin salidas: sin numero');
- // La del km 6: dos calzadas; las ramas de solo entrada ya no estan en la lista.
- const k6=[0,0,18,{sentido:1,salidas:[28,110,180,268,336]}];
- assert.equal(c.salidaDeRotonda(k6,307,161),2,'pasa la de 268 y toma la de 180');
+ assert.equal(c.salidaDeRotonda([0,0,9],3,224),0,'un fichero sin bocas: sin numero');
+ assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[1,50,100,150,200,250,300,330]}],3,200),0,'mas de 7 bocas: sin numero');
+ // La del km 6: cinco carreteras de dos calzadas, una boca cada una.
+ const k6=[0,0,18,{sentido:1,salidas:[10,75,155,244,310]}];
+ assert.equal(c.salidaDeRotonda(k6,307,161),2,'pasa la de 244 y toma la de 155');
  assert.equal(c.textoSalida(2),'toma la segunda salida');
  assert.equal(c.textoSalida(9),'');
 });

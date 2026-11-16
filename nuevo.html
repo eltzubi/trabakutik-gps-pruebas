@@ -3989,7 +3989,9 @@ function cargaZonaCruces(){
     const cambia=zonaCruces&&(z.puntos.length!==zonaCruces.puntos.length
       ||z.fecha!==zonaCruces.fecha||!!z.ramas!==!!zonaCruces.ramas
       ||(z.rotondas||[]).length!==(zonaCruces.rotondas||[]).length
-      ||!!z.salidas!==!!zonaCruces.salidas);
+      ||!!z.salidas!==!!zonaCruces.salidas
+      // Y las rotondas en si: se recuentan sus bocas sin que cambie su numero.
+      ||JSON.stringify(z.rotondas)!==JSON.stringify(zonaCruces.rotondas));
     if(cambia){zonaCruces=z;aplicaCruces()}
    }).catch(()=>{});
   }
@@ -4588,29 +4590,32 @@ function calculaCrucesDe(){
 // aviso a la entrada, con el lado de la salida. Da igual por que lado de la
 // isleta vaya el track: cuenta por donde entras y por donde sales.
 // EL NUMERO DE LA SALIDA. Se cuentan, en el sentido en que se gira, las
-// salidas del fichero que quedan entre la entrada de la ruta y la suya. Los
-// rumbos son desde el centro: el de entrada y el de salida, de donde la ruta
-// cruza el borde del margen (radio + 10 m), sobre la propia carretera.
-// - La salida de la ruta tiene que casar con una del fichero a menos de
-//   SAL_CASA grados; si no, no se da numero (mejor nada que una mal).
-// - Las que quedan a menos de SAL_ENTRADA de la entrada son la de la propia
-//   carretera por la que se llega (de doble sentido sale y entra por el mismo
-//   nodo): no se cuentan.
-// - Mas de SAL_MAX no se dice: nadie cuenta nueve salidas.
-var SAL_CASA=35,SAL_ENTRADA=15,SAL_MAX=8;
+// BOCAS del fichero que quedan entre la entrada de la ruta y la suya: todas
+// las que se ven, tambien las prohibidas (vienen con 360 grados de mas). Lo
+// dejo claro el autor en la rotonda del km 5 de recyde: la primera calle a la
+// derecha es de direccion prohibida, «seria la segunda». Los rumbos son desde
+// el centro y a radio+20 m, como los del fichero.
+// - La salida de la ruta tiene que casar con una boca por la que se pueda
+//   salir a menos de SAL_CASA grados; si no, no se da numero.
+// - Las que quedan a menos de SAL_ENTRADA de la entrada son la propia
+//   carretera por la que se llega: no se cuentan.
+// - Con mas de SAL_BOCAS bocas (rotondas grandes de varios anillos) el
+//   recuento es dudoso, y pasada la SAL_MAX nadie cuenta: sin numero.
+var SAL_CASA=35,SAL_ENTRADA=15,SAL_MAX=6,SAL_BOCAS=7;
 // La ultima APK que no sabe decir el numero de salida («rs»).
 var APK_SIN_SALIDAS='4.9.47';
 function salidaDeRotonda(rot,rIn,rOut){
  const S=rot&&rot[3];
- if(!S||!Array.isArray(S.salidas)||!S.salidas.length||!Number.isFinite(rIn)||!Number.isFinite(rOut))return 0;
+ if(!S||!Array.isArray(S.salidas)||!S.salidas.length||S.salidas.length>SAL_BOCAS||!Number.isFinite(rIn)||!Number.isFinite(rOut))return 0;
+ const bocas=S.salidas.map(a=>({r:a%360,libre:a<360}));
  const tras=a=>S.sentido>0?((rIn-a)%360+360)%360:((a-rIn)%360+360)%360;
  let mia=null,err=Infinity;
- for(const a of S.salidas){const e=Math.abs(difRumbo(a,rOut));if(e<err){err=e;mia=a}}
- if(err>SAL_CASA)return 0;
- const hasta=tras(mia);
+ for(const b of bocas)if(b.libre){const e=Math.abs(difRumbo(b.r,rOut));if(e<err){err=e;mia=b}}
+ if(!mia||err>SAL_CASA)return 0;
+ const hasta=tras(mia.r);
  if(hasta<=SAL_ENTRADA)return 0;
  let n=0;
- for(const a of S.salidas){const t=tras(a);if(t>SAL_ENTRADA&&t<=hasta+.5)n++}
+ for(const b of bocas){const t=tras(b.r);if(t>SAL_ENTRADA&&t<=hasta+.5)n++}
  return n>=1&&n<=SAL_MAX?n:0;
 }
 var ORDINALES=['','primera','segunda','tercera','cuarta','quinta','sexta','séptima','octava'];
@@ -4659,7 +4664,10 @@ function resuelveRotondas(pts){
    // la detecta; pero si es la segunda no marca, no sabe». Con las salidas
    // del fichero se cuenta: y entonces se avisa TAMBIEN yendo recto, que es
    // justo cuando hace falta saber cual de las salidas es la buena.
-   const salida=salidaDeRotonda(rot,bearingBetween(c,enMetro(mIn)),bearingBetween(c,enMetro(mOut)));
+   // La entrada y la salida, donde la ruta esta a radio+20 m del centro (como
+   // las bocas del fichero); si no llega a alejarse tanto, en el borde.
+   const lejos=rot[2]+20,aLejos=(m0,paso)=>{for(let m=m0,k=0;k<90&&m>=0&&m<=total;k++,m+=paso)if(dist(enMetro(m),c)>=lejos)return enMetro(m);return enMetro(m0)};
+   const salida=salidaDeRotonda(rot,bearingBetween(c,aLejos(mIn,-1)),bearingBetween(c,aLejos(mOut,1)));
    const recto=Math.abs(neto)<ROT_RECTO;
    if(recto&&!salida)continue;
    let i=1;while(i+1<n&&cum[i+1]<=mIn)i++;

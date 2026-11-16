@@ -715,3 +715,16 @@ La rosa de la ficha en marcha pasa de 22 a 40 px (32 por debajo de 390), con la
 aguja naranja, más larga y con borde oscuro. El rumbo va en letras grandes
 («SE») y los grados al lado, en pequeño y en gris. La rosa ocupa las dos filas
 (rótulo y cifra) para no añadir alto: la ficha mide 83 px a 390 de ancho.
+
+**Corrección del mismo día: se cuentan las BOCAS, como las ve una persona.**
+En la rotonda del km 5 de «recyde» la página decía «toma la primera salida» y
+el autor: «esa es dirección prohibida, sería la segunda». La calle prohibida ni
+toca el anillo: desemboca en la carretera de salida a 13 m del borde. Así que
+el fichero lleva ahora todas las bocas que se ven (las prohibidas con +360: se
+cuentan, pero por ellas no se sale), también las calles que desembocan cerca en
+una vía de doble sentido pegada al anillo; y una carretera de dos calzadas
+(misma referencia o nombre, hasta 90° entre la de entrada y la de salida) es
+una sola boca. Rumbos de las bocas y de la ruta, a radio+20 m del centro. Más
+de 7 bocas: sin número. 192 rotondas, 696 bocas, casi todas de 3 o 4; en las
+rutas, de 49 pasos por rotonda solo 1 queda sin número. El navegador vuelve a
+bajar el fichero si cambian las rotondas aunque no cambie cuántas hay.
