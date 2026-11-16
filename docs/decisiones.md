@@ -554,3 +554,14 @@ cada medida (`getElapsedRealtimeNanos`), no la de llegada: si Android entrega
 las posiciones en grupo, cuenta igual. Los saltos se miden entre posiciones
 seguidas, no contra el ancla. Pendiente: si Android reinicia el servicio a
 mitad de salida, el contador vuelve a cero.
+
+## La ficha de arriba, en tres columnas (16 de noviembre de 2026)
+
+En marcha, la ficha tenía el lado derecho vacío. Se compararon cuatro opciones
+dibujadas (artifact «Ficha del navegador») con la condición del autor de no
+ocupar más que antes, y eligió la B: arriba «Posición · ±6 m» y el «⇆ Al
+revés»; debajo tres columnas, rumbo con su brújula, distancia al track y
+altitud. Medida: 79-83 px de alto frente a 120 de antes (118 los 30 s en que
+el «al revés» sale entero, en su propia línea). El punto rojo de «grabando» ya
+no va delante de cada número: lo marca el borde rojo de la ficha. Fuera de la
+marcha la ficha no cambia.

@@ -370,7 +370,7 @@ function pintaAlturas(fracRuta,estado){
   const d=$('tripDesnivel');if(d&&d.setAttribute)d.setAttribute('aria-label',sube===null?'Desnivel sin datos':'Subido '+(al?'unos ':'')+Math.round(sube)+' metros, bajado '+(al?'unos ':'')+Math.round(baja)+' metros');
  };
  if(conBaro)ponDesnivel(baroNativo.sube,baroNativo.baja,baroNativo.t&&Date.now()-baroNativo.t>BARO_VIEJO_MS?'~':'');
- if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;if(!conBaro)ponDesnivel(null,null,'');$('tripAltitud').textContent='—';$('tripFalta').textContent='—';return}
+ if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;if(!conBaro)ponDesnivel(null,null,'');$('tripAltitud').textContent='—';if($('ffAlt'))$('ffAlt').textContent='—';$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
  if(!conBaro){if(!S)ponDesnivel(null,null,'');else ponDesnivel(S.sube,S.baja,S.parcial?'~':'')}
@@ -379,6 +379,7 @@ function pintaAlturas(fracRuta,estado){
  // buena: la ultima posicion buena no es la altitud de donde estas.
  const altura=pos!==null&&estado==='ruta'?alturaEnPerfil(P,pos):null;
  $('tripAltitud').textContent=altura===null?'—':String(Math.round(altura));
+ if($('ffAlt'))$('ffAlt').textContent=altura===null?'—':Math.round(altura)+' m';
  // Lo que falta, desde la ultima posicion buena en la ruta; fuera de ella se
  // deja lo ultimo dicho, que salirse unos metros no cambia lo que queda.
  if(pos!==null&&estado==='ruta'){

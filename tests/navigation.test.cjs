@@ -1287,3 +1287,10 @@ test('«al revés»: entero 30 s y luego una etiqueta pequeña; si cambia de sen
  c.marcaAlReves(false);assert(n.classList.contains('hidden'));
  c.marcaAlReves(true);assert(!n.classList.contains('breve')&&/AL REVÉS/.test(n.textContent),'al volver a ir al reves, entero otra vez');
 });
+test('la ficha en marcha va en tres columnas (rumbo, al track, altitud) y se rellenan',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../src/nuevo.plantilla.html'),'utf8');
+ assert(html.includes('id="ffTrack"')&&html.includes('id="ffAlt"'),'las dos casillas nuevas');
+ assert(/\.info \.ff\{display:none\}/.test(html)&&/body\.despejado \.info \.ff\{display:flex/.test(html),'solo en marcha');
+ const n9=fs.readFileSync(path.join(__dirname,'../src/js/09-navegacion.js'),'utf8'),n7=fs.readFileSync(path.join(__dirname,'../src/js/07-servicio.js'),'utf8');
+ assert(n9.includes("$('ffTrack').textContent=fmt(d)")&&n7.includes("$('ffAlt').textContent=altura===null?'—':Math.round(altura)+' m'"),'se rellenan');
+});

@@ -520,6 +520,7 @@ function onFix(pos){
   // ficha del cruce: asi no va un fix por detras.
   const d=closestMeters(p,routePoints);
   $('distance').textContent='A '+fmt(d)+' del track';
+  if($('ffTrack'))$('ffTrack').textContent=fmt(d);
   // En la ruta solo con posicion fiable; con una mala se queda lo ultimo dicho.
   pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
   liveProfileAlong=guiaIniciada()&&fiable&&progreso.distance<=30?progreso.along:null;
@@ -700,7 +701,7 @@ setInterval(()=>{
  }
  if(ubicacionApagada){
   if(junctionActive>=0)resetJunctionView();
-  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+  if(routePoints.length>1){$('distance').textContent='Sin posición reciente del GPS';if($('ffTrack'))$('ffTrack').textContent='—'}
   const mensaje='Ubicación del teléfono apagada · actívala para recibir posición GPS';
   if($('status').textContent!==mensaje)notice(mensaje);
   avisaSinGps(true);
@@ -708,7 +709,7 @@ setInterval(()=>{
  }
  if(ultimoErrorGps!==null){
   if(junctionActive>=0)resetJunctionView();
-  if(routePoints.length>1)$('distance').textContent='Sin posición reciente del GPS';
+  if(routePoints.length>1){$('distance').textContent='Sin posición reciente del GPS';if($('ffTrack'))$('ffTrack').textContent='—'}
   if($('status').textContent!==ultimoErrorGpsText)notice(ultimoErrorGpsText);
   avisaSinGps(false);
   return;
