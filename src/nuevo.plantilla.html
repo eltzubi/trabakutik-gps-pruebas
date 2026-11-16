@@ -524,7 +524,11 @@ body.creating-route #plannerStatus:not(.hidden){display:block;position:absolute;
 .modes button{background:#0a1318;border:1px solid var(--filo);box-shadow:none;color:#a9cdda}
 .modes button[aria-pressed=true]{background:#2ef2ff1f;border-color:var(--neon);color:#bffaff;box-shadow:0 0 12px #2ef2ff40,inset 0 0 10px #2ef2ff22}
 .actions button{background:#0b1419;border:1px solid var(--filo);box-shadow:none}
-.actions .go{background:linear-gradient(180deg,#2fbf5f,#1f8f45);border-color:#45d677}
+/* El boton principal (Empezar, Reanudar, Abrir ruta) en el cian del tema, no
+   en verde: «ese verde no me gusta» (el autor). Ademas el verde es «a pie». */
+.actions .go,#tripBox .trip-botones button.go,.crea-botones .crea-abrir{background:linear-gradient(180deg,#7ff8ff,#22d6ea);color:#02181d;border-color:#9ffaff;box-shadow:0 0 16px #2ef2ff66,inset 0 1px 0 #ffffffaa}
+.actions .go small{color:#044552}
+.elevation-head span{color:#7ff3ff}
 .actions .red{background:linear-gradient(180deg,#e2475d,#b52a3f);border-color:#ff6a7f;box-shadow:none}
 .actions .amber{border-color:#ffd089;box-shadow:none}
 .actions .blue{border-color:#5aa9ff}
