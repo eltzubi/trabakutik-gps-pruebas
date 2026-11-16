@@ -415,9 +415,23 @@ function formatoTiempo(ms){
  return min<60?min+' min':Math.floor(min/60)+':'+String(min%60).padStart(2,'0');
 }
 let tiempoMovNativo=null;
+// «AL REVES», GRANDE SOLO AL PRINCIPIO. El aviso entero tapaba mapa toda la
+// salida; lo dijo el autor el 16 de noviembre de 2026: «una vez que este unos
+// minutos deberia reducirse». Sale entero ALREVES_MS al detectarse (o al
+// volver a cambiar de sentido) y luego se queda en una etiqueta pequeña.
+const ALREVES_MS=30000,ALREVES_LARGO='\u21C6 La est\u00e1s haciendo AL REV\u00c9S \u00b7 los giros van corregidos',ALREVES_CORTO='\u21C6 Al rev\u00e9s';
+let alRevesReloj=null;
 function marcaAlReves(si){
- const c=$('reverseWarn');
- if(c)c.classList.toggle('hidden',!si);
+ if(typeof $!=='function')return;
+ const c=$('reverseWarn');if(!c)return;
+ const seVeia=!c.classList.contains('hidden');
+ c.classList.toggle('hidden',!si);
+ if(!si){c.classList.remove('breve');if(alRevesReloj){clearTimeout(alRevesReloj);alRevesReloj=null}return}
+ if(seVeia)return;                       // se llama con cada posicion
+ c.classList.remove('breve');c.textContent=ALREVES_LARGO;
+ if(typeof setTimeout!=='function')return;
+ if(alRevesReloj)clearTimeout(alRevesReloj);
+ alRevesReloj=setTimeout(()=>{alRevesReloj=null;c.classList.add('breve');c.textContent=ALREVES_CORTO},ALREVES_MS);
 }
 // Y SE LE DICE AL SERVICIO. Esto faltaba y es el fallo de «me dice derecha
 // cuando es izquierda» al encadenar rutas. setSentido solo se llamaba cuando

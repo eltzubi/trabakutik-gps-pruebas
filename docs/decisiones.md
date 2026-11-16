@@ -535,3 +535,11 @@ pantalla apagada la página se duerme: cuenta tiempo cuando te alejas 10 m del
 último punto de ancla en menos de 30 s; parado, el baile del GPS no llega a
 10 m y no suma; lo pausado tampoco. Error: unos 30 s por parada como mucho.
 Una APK anterior no lo manda y la casilla dice «—».
+
+## «Al revés» grande solo 30 s; la precisión de arriba, más grande (16 de noviembre de 2026)
+
+El aviso «La estás haciendo AL REVÉS · los giros van corregidos» tapaba mapa
+toda la salida. Ahora sale entero 30 s al detectarse (o al volver a cambiar de
+sentido) y luego se queda en una etiqueta «⇆ Al revés» (de 33 a 15 px de
+alto). Y como la precisión del GPS ya solo sale arriba, «Posición · ±4 m» pasa
+de 10 a 13 px y semi-negrita. Lo pidió el autor con una captura.

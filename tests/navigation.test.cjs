@@ -1275,3 +1275,15 @@ test('el panel de abajo enseña el tiempo en movimiento, no la precision del GPS
  const js=fs.readFileSync(path.join(__dirname,'../src/js/09-navegacion.js'),'utf8');
  assert(/tiempoMovNativo=data\.recording&&Number\.isFinite\(data\.tiempoMov\)/.test(js),'lo lee de la foto del servicio');
 });
+test('«al revés»: entero 30 s y luego una etiqueta pequeña; si cambia de sentido, entero otra vez',()=>{
+ const relojes=[];const n={classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}},textContent:''};
+ const c=pieza('07-servicio.js',{window:{},$:id=>id==='reverseWarn'?n:null,setTimeout:(f,ms)=>{relojes.push({f,ms});return relojes.length},clearTimeout:i=>{if(relojes[i-1])relojes[i-1].f=null}});
+ c.marcaAlReves(true);
+ assert(!n.classList.contains('hidden')&&!n.classList.contains('breve')&&/AL REVÉS/.test(n.textContent),'entero');
+ for(let k=0;k<5;k++)c.marcaAlReves(true);
+ assert.equal(relojes.filter(r=>r.f).length,1,'con cada posicion no se reinicia la cuenta');assert.equal(relojes[0].ms,30000);
+ relojes[0].f();
+ assert(n.classList.contains('breve')&&n.textContent==='⇆ Al revés','a los 30 s, pequeño');
+ c.marcaAlReves(false);assert(n.classList.contains('hidden'));
+ c.marcaAlReves(true);assert(!n.classList.contains('breve')&&/AL REVÉS/.test(n.textContent),'al volver a ir al reves, entero otra vez');
+});
