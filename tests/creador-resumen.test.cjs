@@ -17,15 +17,17 @@ test('los puntos van con letras: A…Z, y luego AA, AB…',()=>{
   assert.equal(letraPunto(52),'BA');
 });
 
-test('MIDE: el mayor de horizontal y vertical mas la mitad del menor',()=>{
+test('MIDE con subida a 550 m/h: el mayor de horizontal y vertical mas la mitad del menor',()=>{
   const {tiempoMIDE,textoHoras}=c();
-  // 17,27 km, +596, -532: 4,32 h en horizontal, 2,38 en vertical -> 5 h 30.
-  assert.equal(textoHoras(tiempoMIDE(17270,596,532)),'5 h 30');
+  // El cartel de la subida a Zengotitagane: 1,26 km, +380 m, «50 min».
+  assert.equal(textoHoras(tiempoMIDE(1260,380,0)),'51 min');
+  // 17,27 km, +596, -532: 4,32 h en horizontal, 1,97 en vertical -> 5 h 18.
+  assert.equal(textoHoras(tiempoMIDE(17270,596,532)),'5 h 18');
   // Llano: 4 km/h.
   assert.equal(textoHoras(tiempoMIDE(4000,0,0)),'1 h 00');
   assert.equal(textoHoras(tiempoMIDE(600,0,0)),'9 min');
-  // Cuando manda el desnivel: 2 km con 800 m de subida -> 2 h + 0,25 h.
-  assert.equal(textoHoras(tiempoMIDE(2000,800,0)),'2 h 15');
+  // Cuando manda el desnivel: 2 km con 800 m de subida -> 1,45 h + 0,25 h.
+  assert.equal(textoHoras(tiempoMIDE(2000,800,0)),'1 h 42');
 });
 
 test('esfuerzo andando: km + desnivel/50, cortes en 23,5 y 43,2',()=>{

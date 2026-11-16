@@ -585,8 +585,9 @@ pon rehacer»):
   primera versión el dibujo veía la firma vieja y dos deshacer seguidos
   perdían el primero (lo encontró la revisión de GPT; ahora hay prueba).
 - **Puntos con letras** (A, B, C… y AA tras la Z), no con números.
-- **Abajo**, en el panel: «≈ 5 h 30 andando · aprox.» por el método MIDE
-  (4 km/h en llano, 400 m/h subiendo, 600 m/h bajando; el mayor de los dos
+- **Abajo**, en el panel: «≈ 5 h 18 andando · aprox.» por el método MIDE
+  (4 km/h en llano, 600 m/h bajando y subiendo a 550 m/h en vez de los 400 de
+  MIDE: ver «Un tramo muy empinado…» más abajo; el mayor de los dos
   tiempos más la mitad del menor), **aplicado por bloques de unos 250 m y
   sumado**, no sobre los totales: con los totales, 4 km llanos más 1 km con
   800 m de subida daban 2 h 37 en vez de 3 h 07. Punto a punto tampoco: el
@@ -609,8 +610,9 @@ la ruta entera, y un muro corto da un número pequeño. Ahora, si algún bloque 
 bajando, en vez de «Fácil» sale «Muy empinado · hasta N %»; si el esfuerzo era
 Media o Difícil se queda, con «· hasta N %» detrás.
 
-El tiempo MIDE de ese tramo (1 h 06) él lo hizo en 50 min. No se ha tocado: MIDE
-es para un caminante medio (400 m/h de subida) y el autor anda un 20-60 % más
-rápido (medido en sus caminatas con tiempos: garaikanala, garaiurdaixa,
-mendibil). Las demás rutas «a pie» con tiempos de la web son carreras o bici y
-no valen para calibrar.
+**Corrección del mismo día: la subida va a 550 m/h, no a 400.** Los 50 min no
+eran del autor (él lo hace en 35): son los del **cartel oficial** de abajo,
+pensado para un caminante medio. MIDE con 400 m/h daba 1 h 06, un 32 % más.
+Para clavar el cartel harían falta 562 m/h; se puso 550 (51 min) para no
+ajustar a un solo dato. Llano a 4 km/h y bajada a 600 m/h, como en MIDE. Si
+salen más carteles con tiempo, se recalibra con ellos.
