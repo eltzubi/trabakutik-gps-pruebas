@@ -565,3 +565,5 @@ altitud. Medida: 79-83 px de alto frente a 120 de antes (118 los 30 s en que
 el «al revés» sale entero, en su propia línea). El punto rojo de «grabando» ya
 no va delante de cada número: lo marca el borde rojo de la ficha. Fuera de la
 marcha la ficha no cambia.
+Y abajo, bajo el tiempo, «en marcha» en lugar de la altitud, que ya sale
+arriba (el dato se sigue calculando, escondido, por las pruebas y por si vuelve).
