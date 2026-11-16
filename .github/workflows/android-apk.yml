@@ -145,6 +145,9 @@ jobs:
       - name: Comprobar el aviso de llegada al final de la ruta
         working-directory: ${{ github.workspace }}
         run: python3 tests/llegada.py
+      - name: Comprobar que la pagina y el servicio deciden igual el fuera de ruta
+        working-directory: ${{ github.workspace }}
+        run: python3 tests/fuera_ruta_igual.py
       - name: Comprobar que una nota del mapa no borra el informe de fallo
         working-directory: ${{ github.workspace }}
         run: python3 tests/informe_fallo.py

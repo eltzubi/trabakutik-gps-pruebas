@@ -1237,7 +1237,7 @@ test('volver y quedarse en la franja (15 m) devuelve a la ruta a los 4 s; un reb
  assert.equal(c.alerted,true,'un rebote a la franja y 3 s dentro: sigue fuera');
  for(let k=0;k<3;k++){ahora+=1500;c.updateOffRoute(15,5)}
  assert.equal(c.alerted,false,'4 s seguidos en la franja: de vuelta');
- assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,1,'y se dice una vez');
+ assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,1,'y se escribe una vez (la voz, con navegaNativo, la pone el servicio)');
  for(let k=0;k<6;k++){ahora+=1500;c.updateOffRoute(15,5)}
  assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,1,'sin repetirlo');
 });
@@ -1247,4 +1247,22 @@ test('la pagina y el servicio deciden igual el fuera de ruta (umbrales y franja)
  assert(/Math\.max\(11,accuracy\+4\)/.test(js)&&/Math\.max\(11,acc\+4\)/.test(java),'cerca: 11 m o precision+4 en los dos');
  assert(/Math\.max\(25,accuracy\+7\)/.test(js)&&/FUERA_M=25/.test(java),'lejos: 25 m o precision+7 en los dos');
  assert(/cercaDesdePag\)>=4000|-cercaDesdePag>=4000/.test(js)&&/cercaDesde/.test(java),'la franja devuelve en los dos');
+});
+// El segundo exacto (revision con GPT): a los 3,999 s sigue fuera y a los 4 s
+// justos vuelve; y salir y volver dos veces, y reiniciar con la cuenta en marcha.
+test('franja: vuelve a los 4 s justos, no antes ni despues; dos salidas y dos vueltas; el reinicio borra la cuenta',()=>{
+ let ahora=1e6;const dicho=[];
+ const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:true,gpsApagadoPorTi:false,
+  $:()=>null,paintNavigationMetrics(){},alerted:false,onRouteSeen:true,farSince:0,notice:t=>dicho.push(t),Date:{now:()=>ahora}});
+ const sal=()=>{for(let k=0;k<5;k++){ahora+=1000;c.updateOffRoute(40,5)}assert.equal(c.alerted,true,'fuera')};
+ const vuelve=()=>{ahora+=1000;c.updateOffRoute(15,5);const t0=ahora;
+  ahora=t0+3999;c.updateOffRoute(15,5);assert.equal(c.alerted,true,'a los 3,999 s sigue fuera');
+  ahora=t0+4000;c.updateOffRoute(15,5);assert.equal(c.alerted,false,'a los 4 s justos, en ruta')};
+ sal();vuelve();sal();vuelve();
+ assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,2,'dos vueltas, dos avisos');
+ assert.equal(dicho.filter(t=>t.startsWith('Fuera del recorrido')).length,2,'dos salidas, dos avisos');
+ // Reiniciar (ruta nueva) con la cuenta de la franja a medias: empieza de cero.
+ sal();ahora+=1000;c.updateOffRoute(15,5);c.resetOffRoute();c.onRouteSeen=true;
+ sal();ahora+=1000;c.updateOffRoute(15,5);ahora+=3000;c.updateOffRoute(15,5);
+ assert.equal(c.alerted,true,'tras el reinicio la cuenta vieja no vale: 3 s no bastan');
 });

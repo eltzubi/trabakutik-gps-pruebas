@@ -509,3 +509,9 @@ umbral de 15 a 25 m ese día, la franja de la página se ensanchó. Ahora, igual
 que el servicio, 4 s seguidos en la franja devuelven a la ruta. Lo encontró
 otra sesión de revisión; lo aplicó esta, con dos pruebas (las dos en rojo sin
 el arreglo), una de ellas atando los umbrales de la página y del servicio.
+**Pruebas reforzadas** (mismo día, tras una revisión con GPT): la franja
+vuelve a los 4 s justos (a 3,999 s sigue fuera); dos salidas y dos vueltas;
+el reinicio borra la cuenta; y `tests/fuera_ruta_igual.py` da el mismo
+recorrido inventado al servicio (Java) y a la página y exige que pasen a
+fuera y vuelvan en el mismo segundo. Comprobado que las dos fallan si la
+página tarda 5 s en vez de 4.
