@@ -518,7 +518,14 @@ async function setup(context) {
     await creator.click('#creaDeshacer');
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2);
     // Rehacer devuelve el tramo quitado sin pedirlo otra vez al motor.
+    // Dos deshacer seguidos y dos rehacer: el segundo deshacer no puede tirar
+    // lo que guardo el primero (fallo que encontro la revision de GPT).
+    await creator.click('#creaDeshacer');
+    assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),1);
     await creator.waitForFunction(()=>!document.querySelector('#creaRehacer').disabled);
+    await creator.click('#creaRehacer');
+    await creator.waitForFunction(()=>window.__creator.anclasGps.length===2);
+    assert(!(await creator.locator('#creaRehacer').isDisabled()),'queda el segundo por rehacer');
     await creator.click('#creaRehacer');
     await creator.waitForFunction(()=>window.__creator.anclasGps.length===3);
     assert.deepEqual(await creator.locator('.gps-dot').allTextContents(),['A','B','C']);

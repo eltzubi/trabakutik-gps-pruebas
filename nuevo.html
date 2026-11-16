@@ -2146,21 +2146,27 @@ function updateElevation(){
   return;
  }
  const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
+ // MIDE POR TRAMOS de unos 250 m, no sobre los totales: con los totales, una
+ // ruta que alterna llano largo y repecho fuerte salia hasta media hora corta.
+ let msMide=0,bloque={m:0,s:0,b:0};
+ const cierraBloque=()=>{if(bloque.m>0||bloque.s>0||bloque.b>0)msMide+=tiempoMIDE(bloque.m,bloque.s,bloque.b);bloque={m:0,s:0,b:0}};
  let desnivelCalculable=false;
  for(let i=0;i<pts.length;i++){
-  if(i)travelled+=dist(pts[i-1],pts[i]);
+  if(i){const dd=dist(pts[i-1],pts[i]);travelled+=dd;bloque.m+=dd}
   const elevation=Number.isFinite(pts[i][2])?pts[i][2]:null;
   if(elevation!==null){
    if(lastElev!==null){
     desnivelCalculable=true;
     const delta=elevation-lastElev;
     // Evitar sumar ruido centimétrico entre puntos interpolados.
-    if(delta>0)up+=delta;else down-=delta;
+    if(delta>0){up+=delta;bloque.s+=delta}else{down-=delta;bloque.b-=delta}
    }
    lastElev=elevation;lastKnown=elevation;
   }else{lastElev=null}
   samples.push({d:travelled,h:elevation});
+  if(bloque.m>=250)cierraBloque();
  }
+ cierraBloque();
  // EL DESNIVEL, CONTADO IGUAL EN TODA LA PANTALLA. En navegacion se sumaba
  // cada metro de un punto al siguiente -ruido del GPS incluido- mientras que
  // «Ruta propia» (elevationText) usa un umbral de 5 m: dos cifras distintas
@@ -2202,7 +2208,7 @@ function updateElevation(){
   paintNavigationMetrics();$('elevationSlope').className='';
   return;
  }
- pintaCreaResumen(travelled,up,down,desnivelCalculable);
+ pintaCreaResumen(travelled,up,down,desnivelCalculable,msMide,available.length<pts.length);
  const info=$('elevationSlope');
  if(collapsed&&available.length<pts.length){
   info.textContent=desnivelCalculable?'Desnivel parcial':'Sin alturas suficientes';
@@ -2236,11 +2242,15 @@ function tiempoMIDE(m,sube,baja){const h=m/4000,v=sube/400+baja/600;return (Math
 // de 32, asi que no se da.
 function esfuerzoAndando(m,sube){const s=m/1000+sube/50;return s<23.5?'Fácil':s<43.2?'Media':'Difícil'}
 function textoHoras(ms){const min=Math.round(ms/60000);return min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')}
-function pintaCreaResumen(m,sube,baja,conDesnivel){
+function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial){
  if(typeof $!=='function'||!$('creaTiempo'))return;
  if(!(m>=50)){$('creaTiempo').textContent='—';$('creaEsfuerzo').textContent='';return}
- if(!conDesnivel){$('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,0,0))+' <small>andando · sin desnivel</small>';$('creaEsfuerzo').textContent='';return}
- $('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,sube,baja))+' <small>andando · aprox.</small>';
+ if(!conDesnivel){$('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,0,0))+' <small>andando · sin datos de desnivel</small>';$('creaEsfuerzo').textContent='';return}
+ const ms=Number.isFinite(msMide)?msMide:tiempoMIDE(m,sube,baja);
+ // Con alturas a medias el desnivel se queda corto: el tiempo se avisa y el
+ // esfuerzo no se da, que saldria mas facil de lo que es.
+ if(parcial){$('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · desnivel parcial</small>';$('creaEsfuerzo').textContent='';return}
+ $('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · aprox.</small>';
  $('creaEsfuerzo').innerHTML='Esfuerzo andando: '+esfuerzoAndando(m,sube);
 }
 function updateDraw(){
@@ -2352,7 +2362,7 @@ if(typeof map!=='undefined')map.on('click',e=>{
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
 if(typeof module==='object'&&module&&module.exports)module.exports={letraPunto,tiempoMIDE,esfuerzoAndando,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
 // Rehacer (ver mas abajo): arriba, porque el deshacer lo usa.
-let rehacerPila=[],firmaTrasDeshacer='';
+let rehacerPila=[],firmaTrasDeshacer=null;
 // CERRAR EL CIRCULO. 52 de las 68 rutas de Trabakutik empiezan y acaban a
 // menos de 100 m: el circuito es lo normal, y hasta ahora habia que volver al
 // punto de partida a toques. El nodo repetido al final es a proposito: asi se
@@ -2480,34 +2490,42 @@ async function mueveAnclaMapa(i,lat,lon){
 }
 $('cerrarCirculo').onclick=cierraCirculoGps;
 $('idaVuelta').onclick=idaYVueltaGps;
-$('undo').onclick=()=>{if(calculandoMapaGps){cancelaMapaGps();updateDraw();estadoMapaGps('Cálculo cancelado.');return}cancelaMapaGps();if(!anclasGps.length)return;const a=anclasGps.pop(),t=tramosGps.pop();updateDraw();
+$('undo').onclick=()=>{if(calculandoMapaGps){cancelaMapaGps();updateDraw();estadoMapaGps('Cálculo cancelado.');return}cancelaMapaGps();if(!anclasGps.length)return;const a=anclasGps.pop(),t=tramosGps.pop();
+ // La pila y la firma, ANTES de dibujar: updateDraw comprueba la firma y, si
+ // fuera la vieja, vaciaria la pila (dos deshacer seguidos perdian el primero).
  // (con typeof: las pruebas que recortan este manejador no traen el rehacer)
- if(typeof rehacerPila!=='undefined'){rehacerPila.push([a,t]);firmaTrasDeshacer=firmaTrazado();sincronizaCrea()}
+ if(typeof rehacerPila!=='undefined'){rehacerPila.push([a,t]);firmaTrasDeshacer=firmaTrazado()}
+ updateDraw();
  notice('Último tramo deshecho')};
 // REHACER. Lo pidio el autor el 16 nov 2026. Devuelve lo ultimo que se
 // deshizo; en cuanto el trazado cambia de otra forma (un punto nuevo, mover
 // uno, cerrar el circulo, borrar…) ya no hay nada que rehacer, como en
 // cualquier editor: se nota porque el trazado no es el que dejo el deshacer.
-function firmaTrazado(){return anclasGps.join(',')+'|'+tramosGps.map(t=>t&&t.length).join(',')}
+// La firma son los propios tramos, por identidad: mover un punto, cerrar el
+// circulo o la ida y vuelta crean tramos nuevos, asi que cualquier cambio se nota.
+function firmaTrazado(){return {a:anclasGps.slice(),t:tramosGps.slice()}}
+function mismaFirma(x,y){return !!x&&!!y&&x.a.length===y.a.length&&x.t.length===y.t.length&&x.a.every((v,i)=>v===y.a[i])&&x.t.every((v,i)=>v===y.t[i])}
 function puedeRehacer(){
  if(!rehacerPila.length)return false;
- if(firmaTrazado()!==firmaTrasDeshacer){rehacerPila=[];return false}
+ if(!mismaFirma(firmaTrazado(),firmaTrasDeshacer)){rehacerPila=[];return false}
  return true;
 }
 function rehaceGps(){
  if(calculandoMapaGps||!puedeRehacer())return;
- const [a,t]=rehacerPila.pop();anclasGps.push(a);tramosGps.push(t);updateDraw();
- firmaTrasDeshacer=firmaTrazado();sincronizaCrea();notice('Tramo rehecho');
+ const [a,t]=rehacerPila.pop();anclasGps.push(a);tramosGps.push(t);
+ firmaTrasDeshacer=firmaTrazado();updateDraw();sincronizaCrea();notice('Tramo rehecho');
 }
 // Los mandos nuevos copian el estado de los de siempre (que siguen haciendo el
 // trabajo, escondidos): activos o no, visibles o no.
 function sincronizaCrea(){
  if(typeof $!=='function'||!$('creaDeshacer'))return;
  $('creaDeshacer').disabled=!!$('undo').disabled;
- $('creaRehacer').disabled=!puedeRehacer();
+ $('creaRehacer').disabled=!puedeRehacer()||(typeof calculandoMapaGps!=='undefined'&&calculandoMapaGps);
  $('creaBorrar').disabled=!!$('clearCreated').disabled;
  $('creaCirculo').classList.toggle('hidden',$('cerrarCirculo').classList.contains('hidden'));
  $('creaIdaVuelta').classList.toggle('hidden',$('idaVuelta').classList.contains('hidden'));
+ $('creaCirculo').disabled=!!$('cerrarCirculo').disabled;
+ $('creaIdaVuelta').disabled=!!$('idaVuelta').disabled;
  $('creaGuardar').disabled=!!$('saveCreated').disabled;
  $('creaAbrir').disabled=!!$('navCreated').disabled;
  $('creaAbrir').classList.toggle('hidden',$('navCreated').classList.contains('hidden'));
@@ -3006,7 +3024,7 @@ $('saveCreated').onclick=()=>{
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={firmaTrazado,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
+ module.exports={firmaTrazado,mismaFirma,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
  Object.defineProperties(module.exports,{rehacerPila:{get:()=>rehacerPila,set:v=>{rehacerPila=v},enumerable:true},firmaTrasDeshacer:{get:()=>firmaTrasDeshacer,set:v=>{firmaTrasDeshacer=v},enumerable:true},savedFromDialog:{get:()=>savedFromDialog,set:v=>{savedFromDialog=v},enumerable:true},pendingSave:{get:()=>pendingSave,set:v=>{pendingSave=v},enumerable:true},estadoBotonera:{get:()=>estadoBotonera,set:v=>{estadoBotonera=v},enumerable:true},ultimoVozEstado:{get:()=>ultimoVozEstado,set:v=>{ultimoVozEstado=v},enumerable:true},rutasListas:{get:()=>rutasListas,set:v=>{rutasListas=v},enumerable:true},ultimoParoNativo:{get:()=>ultimoParoNativo,set:v=>{ultimoParoNativo=v},enumerable:true},giraNativo:{get:()=>giraNativo,set:v=>{giraNativo=v},enumerable:true},savedLine:{get:()=>savedLine,set:v=>{savedLine=v},enumerable:true}});
 }
 // EL NUMERO DE VERSION, ABAJO. Lo pidio el autor: hasta ahora, para saber si

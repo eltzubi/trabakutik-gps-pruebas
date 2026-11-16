@@ -574,21 +574,27 @@ function updateElevation(){
   return;
  }
  const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
+ // MIDE POR TRAMOS de unos 250 m, no sobre los totales: con los totales, una
+ // ruta que alterna llano largo y repecho fuerte salia hasta media hora corta.
+ let msMide=0,bloque={m:0,s:0,b:0};
+ const cierraBloque=()=>{if(bloque.m>0||bloque.s>0||bloque.b>0)msMide+=tiempoMIDE(bloque.m,bloque.s,bloque.b);bloque={m:0,s:0,b:0}};
  let desnivelCalculable=false;
  for(let i=0;i<pts.length;i++){
-  if(i)travelled+=dist(pts[i-1],pts[i]);
+  if(i){const dd=dist(pts[i-1],pts[i]);travelled+=dd;bloque.m+=dd}
   const elevation=Number.isFinite(pts[i][2])?pts[i][2]:null;
   if(elevation!==null){
    if(lastElev!==null){
     desnivelCalculable=true;
     const delta=elevation-lastElev;
     // Evitar sumar ruido centimétrico entre puntos interpolados.
-    if(delta>0)up+=delta;else down-=delta;
+    if(delta>0){up+=delta;bloque.s+=delta}else{down-=delta;bloque.b-=delta}
    }
    lastElev=elevation;lastKnown=elevation;
   }else{lastElev=null}
   samples.push({d:travelled,h:elevation});
+  if(bloque.m>=250)cierraBloque();
  }
+ cierraBloque();
  // EL DESNIVEL, CONTADO IGUAL EN TODA LA PANTALLA. En navegacion se sumaba
  // cada metro de un punto al siguiente -ruido del GPS incluido- mientras que
  // «Ruta propia» (elevationText) usa un umbral de 5 m: dos cifras distintas
@@ -630,7 +636,7 @@ function updateElevation(){
   paintNavigationMetrics();$('elevationSlope').className='';
   return;
  }
- pintaCreaResumen(travelled,up,down,desnivelCalculable);
+ pintaCreaResumen(travelled,up,down,desnivelCalculable,msMide,available.length<pts.length);
  const info=$('elevationSlope');
  if(collapsed&&available.length<pts.length){
   info.textContent=desnivelCalculable?'Desnivel parcial':'Sin alturas suficientes';
@@ -664,11 +670,15 @@ function tiempoMIDE(m,sube,baja){const h=m/4000,v=sube/400+baja/600;return (Math
 // de 32, asi que no se da.
 function esfuerzoAndando(m,sube){const s=m/1000+sube/50;return s<23.5?'Fácil':s<43.2?'Media':'Difícil'}
 function textoHoras(ms){const min=Math.round(ms/60000);return min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')}
-function pintaCreaResumen(m,sube,baja,conDesnivel){
+function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial){
  if(typeof $!=='function'||!$('creaTiempo'))return;
  if(!(m>=50)){$('creaTiempo').textContent='—';$('creaEsfuerzo').textContent='';return}
- if(!conDesnivel){$('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,0,0))+' <small>andando · sin desnivel</small>';$('creaEsfuerzo').textContent='';return}
- $('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,sube,baja))+' <small>andando · aprox.</small>';
+ if(!conDesnivel){$('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,0,0))+' <small>andando · sin datos de desnivel</small>';$('creaEsfuerzo').textContent='';return}
+ const ms=Number.isFinite(msMide)?msMide:tiempoMIDE(m,sube,baja);
+ // Con alturas a medias el desnivel se queda corto: el tiempo se avisa y el
+ // esfuerzo no se da, que saldria mas facil de lo que es.
+ if(parcial){$('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · desnivel parcial</small>';$('creaEsfuerzo').textContent='';return}
+ $('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · aprox.</small>';
  $('creaEsfuerzo').innerHTML='Esfuerzo andando: '+esfuerzoAndando(m,sube);
 }
 function updateDraw(){

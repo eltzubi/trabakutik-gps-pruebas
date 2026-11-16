@@ -35,3 +35,14 @@ test('esfuerzo andando: km + desnivel/50, cortes en 23,5 y 43,2',()=>{
   assert.equal(esfuerzoAndando(20000,1100),'Media');     // 42
   assert.equal(esfuerzoAndando(20000,1160),'Difícil');   // 43,2
 });
+
+test('rehacer: la firma compara los tramos por identidad',()=>{
+  const {pieza:pz}=require('./pieza.cjs');
+  const c=pz('06-creador-formas.js',{anclasGps:[],tramosGps:[]},require('./pieza.cjs').arranque10());
+  const t1=[1,2],t2=[2,3];
+  const f=x=>({a:x.a,t:x.t});
+  assert.equal(c.mismaFirma(f({a:[1,2],t:[t1,t2]}),f({a:[1,2],t:[t1,t2]})),true);
+  // Mismos nodos y misma longitud, pero otro tramo (recalculado): distinta.
+  assert.equal(c.mismaFirma(f({a:[1,2],t:[t1,[2,3]]}),f({a:[1,2],t:[t1,t2]})),false);
+  assert.equal(c.mismaFirma(null,f({a:[],t:[]})),false);
+});

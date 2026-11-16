@@ -580,11 +580,19 @@ pon rehacer»):
   mismo.
 - **Rehacer** devuelve el tramo quitado tal cual, sin pedirlo otra vez al
   motor. Se vacía en cuanto el trazado cambia por otro lado (punto nuevo,
-  arrastre, cerrar, ida y vuelta): lo detecta una firma de anclas y longitudes.
+  arrastre, cerrar, ida y vuelta): la firma son los propios tramos, comparados
+  por identidad. **La pila y la firma se actualizan antes de dibujar**: en la
+  primera versión el dibujo veía la firma vieja y dos deshacer seguidos
+  perdían el primero (lo encontró la revisión de GPT; ahora hay prueba).
 - **Puntos con letras** (A, B, C… y AA tras la Z), no con números.
 - **Abajo**, en el panel: «≈ 5 h 30 andando · aprox.» por el método MIDE
   (4 km/h en llano, 400 m/h subiendo, 600 m/h bajando; el mayor de los dos
-  tiempos más la mitad del menor) y «Esfuerzo andando», con la regla que mejor
+  tiempos más la mitad del menor), **aplicado por bloques de unos 250 m y
+  sumado**, no sobre los totales: con los totales, 4 km llanos más 1 km con
+  800 m de subida daban 2 h 37 en vez de 3 h 07. Punto a punto tampoco: el
+  ruido de 1 m del modelo en llano inflaría el tiempo hasta un 50 %. Con
+  alturas a medias dice «desnivel parcial» y no da esfuerzo, que saldría más
+  fácil de lo que es y «Esfuerzo andando», con la regla que mejor
   reproduce el que el autor puso a mano en la web (km + desnivel/50; cortes en
   23,5 y 43,2; acierta 34 de 38 rutas a pie). Debajo, Guardar y Abrir ruta.
 - **En bici no se da tiempo ni esfuerzo**: no hay tiempos de bici de

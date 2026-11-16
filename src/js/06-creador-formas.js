@@ -1,5 +1,5 @@
 // Rehacer (ver mas abajo): arriba, porque el deshacer lo usa.
-let rehacerPila=[],firmaTrasDeshacer='';
+let rehacerPila=[],firmaTrasDeshacer=null;
 // CERRAR EL CIRCULO. 52 de las 68 rutas de Trabakutik empiezan y acaban a
 // menos de 100 m: el circuito es lo normal, y hasta ahora habia que volver al
 // punto de partida a toques. El nodo repetido al final es a proposito: asi se
@@ -127,34 +127,42 @@ async function mueveAnclaMapa(i,lat,lon){
 }
 $('cerrarCirculo').onclick=cierraCirculoGps;
 $('idaVuelta').onclick=idaYVueltaGps;
-$('undo').onclick=()=>{if(calculandoMapaGps){cancelaMapaGps();updateDraw();estadoMapaGps('Cálculo cancelado.');return}cancelaMapaGps();if(!anclasGps.length)return;const a=anclasGps.pop(),t=tramosGps.pop();updateDraw();
+$('undo').onclick=()=>{if(calculandoMapaGps){cancelaMapaGps();updateDraw();estadoMapaGps('Cálculo cancelado.');return}cancelaMapaGps();if(!anclasGps.length)return;const a=anclasGps.pop(),t=tramosGps.pop();
+ // La pila y la firma, ANTES de dibujar: updateDraw comprueba la firma y, si
+ // fuera la vieja, vaciaria la pila (dos deshacer seguidos perdian el primero).
  // (con typeof: las pruebas que recortan este manejador no traen el rehacer)
- if(typeof rehacerPila!=='undefined'){rehacerPila.push([a,t]);firmaTrasDeshacer=firmaTrazado();sincronizaCrea()}
+ if(typeof rehacerPila!=='undefined'){rehacerPila.push([a,t]);firmaTrasDeshacer=firmaTrazado()}
+ updateDraw();
  notice('Último tramo deshecho')};
 // REHACER. Lo pidio el autor el 16 nov 2026. Devuelve lo ultimo que se
 // deshizo; en cuanto el trazado cambia de otra forma (un punto nuevo, mover
 // uno, cerrar el circulo, borrar…) ya no hay nada que rehacer, como en
 // cualquier editor: se nota porque el trazado no es el que dejo el deshacer.
-function firmaTrazado(){return anclasGps.join(',')+'|'+tramosGps.map(t=>t&&t.length).join(',')}
+// La firma son los propios tramos, por identidad: mover un punto, cerrar el
+// circulo o la ida y vuelta crean tramos nuevos, asi que cualquier cambio se nota.
+function firmaTrazado(){return {a:anclasGps.slice(),t:tramosGps.slice()}}
+function mismaFirma(x,y){return !!x&&!!y&&x.a.length===y.a.length&&x.t.length===y.t.length&&x.a.every((v,i)=>v===y.a[i])&&x.t.every((v,i)=>v===y.t[i])}
 function puedeRehacer(){
  if(!rehacerPila.length)return false;
- if(firmaTrazado()!==firmaTrasDeshacer){rehacerPila=[];return false}
+ if(!mismaFirma(firmaTrazado(),firmaTrasDeshacer)){rehacerPila=[];return false}
  return true;
 }
 function rehaceGps(){
  if(calculandoMapaGps||!puedeRehacer())return;
- const [a,t]=rehacerPila.pop();anclasGps.push(a);tramosGps.push(t);updateDraw();
- firmaTrasDeshacer=firmaTrazado();sincronizaCrea();notice('Tramo rehecho');
+ const [a,t]=rehacerPila.pop();anclasGps.push(a);tramosGps.push(t);
+ firmaTrasDeshacer=firmaTrazado();updateDraw();sincronizaCrea();notice('Tramo rehecho');
 }
 // Los mandos nuevos copian el estado de los de siempre (que siguen haciendo el
 // trabajo, escondidos): activos o no, visibles o no.
 function sincronizaCrea(){
  if(typeof $!=='function'||!$('creaDeshacer'))return;
  $('creaDeshacer').disabled=!!$('undo').disabled;
- $('creaRehacer').disabled=!puedeRehacer();
+ $('creaRehacer').disabled=!puedeRehacer()||(typeof calculandoMapaGps!=='undefined'&&calculandoMapaGps);
  $('creaBorrar').disabled=!!$('clearCreated').disabled;
  $('creaCirculo').classList.toggle('hidden',$('cerrarCirculo').classList.contains('hidden'));
  $('creaIdaVuelta').classList.toggle('hidden',$('idaVuelta').classList.contains('hidden'));
+ $('creaCirculo').disabled=!!$('cerrarCirculo').disabled;
+ $('creaIdaVuelta').disabled=!!$('idaVuelta').disabled;
  $('creaGuardar').disabled=!!$('saveCreated').disabled;
  $('creaAbrir').disabled=!!$('navCreated').disabled;
  $('creaAbrir').classList.toggle('hidden',$('navCreated').classList.contains('hidden'));
@@ -653,6 +661,6 @@ $('saveCreated').onclick=()=>{
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={firmaTrazado,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
+ module.exports={firmaTrazado,mismaFirma,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
  Object.defineProperties(module.exports,{rehacerPila:{get:()=>rehacerPila,set:v=>{rehacerPila=v},enumerable:true},firmaTrasDeshacer:{get:()=>firmaTrasDeshacer,set:v=>{firmaTrasDeshacer=v},enumerable:true},savedFromDialog:{get:()=>savedFromDialog,set:v=>{savedFromDialog=v},enumerable:true},pendingSave:{get:()=>pendingSave,set:v=>{pendingSave=v},enumerable:true},estadoBotonera:{get:()=>estadoBotonera,set:v=>{estadoBotonera=v},enumerable:true},ultimoVozEstado:{get:()=>ultimoVozEstado,set:v=>{ultimoVozEstado=v},enumerable:true},rutasListas:{get:()=>rutasListas,set:v=>{rutasListas=v},enumerable:true},ultimoParoNativo:{get:()=>ultimoParoNativo,set:v=>{ultimoParoNativo=v},enumerable:true},giraNativo:{get:()=>giraNativo,set:v=>{giraNativo=v},enumerable:true},savedLine:{get:()=>savedLine,set:v=>{savedLine=v},enumerable:true}});
 }
