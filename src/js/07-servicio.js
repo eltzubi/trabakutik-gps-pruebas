@@ -115,7 +115,9 @@ function pintaBrujula(h){
  const g=(Math.round(h)%360+360)%360;
  anguloBrujula=anguloBrujula===null?h:anguloBrujula+diferenciaRumbo(anguloBrujula,h);
  $('compassNeedle').style.transform='rotate('+anguloBrujula.toFixed(1)+'deg)';
- $('compassText').textContent=RUMBOS[Math.round(g/45)%8]+' '+g+'°';
+ // El rumbo en grande y los grados en pequeño (lo pidio el autor: «una
+ // brujula mas grande indicando la flecha, y menos grados»).
+ $('compassText').innerHTML=RUMBOS[Math.round(g/45)%8]+'<small>'+g+'°</small>';
  caja.classList.remove('hidden');
 }
 // Cargar una ruta o consultar la ubicación no inicia la guía.

@@ -156,7 +156,7 @@ test('La brújula cruza el norte por el lado corto y muestra cero grados',()=>{
  // pintaBrujula es de la 07, cerrada: se pide con require().
  c.pintaBrujula=require('./pieza.cjs').pieza('07-servicio.js',{diferenciaRumbo:c.diferenciaRumbo,$:id=>({compass:caja,compassNeedle:aguja,compassText:rotulo})[id]}).pintaBrujula;
  c.pintaBrujula(359.6);
- assert.equal(rotulo.textContent,'N 0°');
+ assert.equal(rotulo.innerHTML,'N<small>0°</small>');
  c.pintaBrujula(10);
  assert.equal(aguja.style.transform,'rotate(370.0deg)');
 });

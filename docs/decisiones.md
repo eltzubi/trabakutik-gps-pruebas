@@ -707,3 +707,11 @@ línea del perfil), «Voz» en verde y el botón principal («Empezar») en verd
 lima con letra oscura: es el verde de la web, no el que no le gustó. El punto
 azul de la posición y el trazado de la ruta en el mapa no cambian: son del
 mapa, no del adorno.
+
+## La brújula, grande, y los grados en pequeño (16 de noviembre de 2026)
+
+«Arriba prefiero una brújula más grande indicando la flecha, y menos grados.»
+La rosa de la ficha en marcha pasa de 22 a 40 px (32 por debajo de 390), con la
+aguja naranja, más larga y con borde oscuro. El rumbo va en letras grandes
+(«SE») y los grados al lado, en pequeño y en gris. La rosa ocupa las dos filas
+(rótulo y cifra) para no añadir alto: la ficha mide 83 px a 390 de ancho.
