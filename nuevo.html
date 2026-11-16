@@ -601,6 +601,8 @@ body.creating-route #elevationPanel{background:var(--caja);border:1px solid var(
 .crea-botones .crea-guardar{background:linear-gradient(180deg,#ffb066,#ff9c3b);color:#2a1300;box-shadow:0 0 14px #ff9c3b55}
 .modes button[aria-pressed=true]{background:#a6ff4d1f;border-color:var(--verde);color:#e6ffcc;box-shadow:0 0 12px #a6ff4d40,inset 0 0 10px #a6ff4d22}
 #orient[aria-pressed=true]{color:#2a1300!important}
+#tripBox .trip-nombre.con-ficha{cursor:pointer;text-decoration:underline;text-decoration-color:#ff9c3b80;text-underline-offset:3px}
+#tripBox .trip-nombre.con-ficha::after{content:' ↗';color:var(--neon)}
 #audioMode[data-modo="voz"]{border-color:var(--verde)!important;color:var(--verde)!important}
 #tripPerfilLinea{stroke:var(--neon)}
 #tripPerfilArea,#tripPerfilHecho{fill:var(--neon)}
@@ -1033,6 +1035,16 @@ $('mapTitle').onclick=()=>{
  // La app Android intercepta el enlace y conserva el navegador GPS abierto.
  window.location.href='https://trabakutik.com/'+href;
 };
+// EL NOMBRE DEL PANEL DE ABAJO TAMBIEN ABRE LA FICHA (16 nov 2026). El
+// autor: «al pulsar en los titulos de las rutas, si estan en la web, deberian
+// mandar a la pagina de su ruta». En marcha la ficha de arriba esconde su
+// titulo y el unico nombre a la vista es el de abajo. Hace lo mismo que el de
+// arriba; sin ficha publicada (ruta propia, GPX), no hace nada.
+if($('tripRuta')){
+ const abre=()=>{if(!$('mapTitle').disabled)$('mapTitle').click()};
+ $('tripRuta').onclick=abre;
+ $('tripRuta').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abre()}};
+}
 function getTrackLayer(i){
  if(!layers[i]&&tracks[i])layers[i]=L.polyline(tracks[i].points.map(p=>[p[0],p[1]]),{
   color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?7:4.5,
@@ -3400,6 +3412,8 @@ function pintaAvance(along,info){
  const frac=andado!==null&&queda!==null&&andado+queda>0?andado/(andado+queda):0;
  $('tripBarra').style.width=(frac*100).toFixed(1)+'%';
  $('tripRuta').textContent=$('mapTitle')?.textContent||'';
+ // Con ficha en la web, el nombre se puede pulsar (lo abre 03-rutas).
+ {const t=$('mapTitle'),f=!!t&&!t.disabled,r=$('tripRuta');if(r.classList&&r.classList.toggle)r.classList.toggle('con-ficha',f);if(typeof r.setAttribute==='function'){r.setAttribute('role',f?'link':'heading');r.setAttribute('tabindex',f?'0':'-1');if(f)r.setAttribute('aria-label','Ver ficha de '+t.textContent);else if(typeof r.removeAttribute==='function')r.removeAttribute('aria-label')}}
  // EL TIEMPO EN MOVIMIENTO, no la precision del GPS: esa ya sale arriba
  // («Posicion · ±4 m») y el autor vio el dato repetido (16 nov 2026).
  $('tripTiempo').textContent=formatoTiempo(recording?tiempoMovNativo:null);

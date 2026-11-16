@@ -750,3 +750,13 @@ caminos-zona.json), y solo en esos un «sigue recto» se comprueba en el punto d
 la ruta más cercano al cruce: si ahí la ruta sigue por el mismo camino, se
 calla. En las 72 rutas quita exactamente tres avisos, los tres de ese tipo
 (recyde 6,37; intxorta 19,77; santaeufemia 15,67), y nada más.
+
+## El nombre de la ruta del panel de abajo abre su ficha (17 de noviembre de 2026)
+
+«Al pulsar en los títulos de las rutas, si están en la web, deberían mandar a la
+página de su ruta.» Fuera de la marcha ya lo hacía el título de la ficha de
+arriba; en marcha ese título se esconde y el único nombre a la vista es el del
+panel de abajo, que no hacía nada. Ahora hace lo mismo (pulsa el de arriba) y
+lleva «↗» y subrayado naranja cuando la ruta tiene ficha; una ruta propia o un
+GPX importado no tienen y no hacen nada. Con el candado puesto no se puede
+pulsar por accidente.

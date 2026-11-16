@@ -130,6 +130,16 @@ $('mapTitle').onclick=()=>{
  // La app Android intercepta el enlace y conserva el navegador GPS abierto.
  window.location.href='https://trabakutik.com/'+href;
 };
+// EL NOMBRE DEL PANEL DE ABAJO TAMBIEN ABRE LA FICHA (16 nov 2026). El
+// autor: «al pulsar en los titulos de las rutas, si estan en la web, deberian
+// mandar a la pagina de su ruta». En marcha la ficha de arriba esconde su
+// titulo y el unico nombre a la vista es el de abajo. Hace lo mismo que el de
+// arriba; sin ficha publicada (ruta propia, GPX), no hace nada.
+if($('tripRuta')){
+ const abre=()=>{if(!$('mapTitle').disabled)$('mapTitle').click()};
+ $('tripRuta').onclick=abre;
+ $('tripRuta').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abre()}};
+}
 function getTrackLayer(i){
  if(!layers[i]&&tracks[i])layers[i]=L.polyline(tracks[i].points.map(p=>[p[0],p[1]]),{
   color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?7:4.5,

@@ -207,6 +207,8 @@ function pintaAvance(along,info){
  const frac=andado!==null&&queda!==null&&andado+queda>0?andado/(andado+queda):0;
  $('tripBarra').style.width=(frac*100).toFixed(1)+'%';
  $('tripRuta').textContent=$('mapTitle')?.textContent||'';
+ // Con ficha en la web, el nombre se puede pulsar (lo abre 03-rutas).
+ {const t=$('mapTitle'),f=!!t&&!t.disabled,r=$('tripRuta');if(r.classList&&r.classList.toggle)r.classList.toggle('con-ficha',f);if(typeof r.setAttribute==='function'){r.setAttribute('role',f?'link':'heading');r.setAttribute('tabindex',f?'0':'-1');if(f)r.setAttribute('aria-label','Ver ficha de '+t.textContent);else if(typeof r.removeAttribute==='function')r.removeAttribute('aria-label')}}
  // EL TIEMPO EN MOVIMIENTO, no la precision del GPS: esa ya sale arriba
  // («Posicion · ±4 m») y el autor vio el dato repetido (16 nov 2026).
  $('tripTiempo').textContent=formatoTiempo(recording?tiempoMovNativo:null);
