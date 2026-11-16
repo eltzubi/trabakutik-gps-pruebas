@@ -36,11 +36,16 @@ interface Window {
 function corre(orden,args){return execFileSync(orden,args,{cwd:dir,encoding:'utf8'})}
 let salida='';
 try{
- try{corre('tsc',['--version'])}catch(e){corre('npx',['-y','typescript@5.6.3','--version'])}
+ try{corre('tsc',['--version'])}catch(e){corre('npx',['-y','-p','typescript@5.6.3','tsc','--version'])}
 }catch(e){console.error('No hay TypeScript y no se ha podido bajar: '+e.message);process.exit(1)}
 let cual='tsc';
 try{corre('tsc',['--version'])}catch(e){cual='npx'}
-const antes=cual==='npx'?['-y','typescript@5.6.3']:[];
+// «-p typescript tsc» y no «typescript» a secas: el paquete se llama
+// typescript pero su programa es tsc, y «npx typescript» falla siempre con
+// «could not determine executable to run». Asi estuvo fallando en GitHub en
+// todas las subidas del 15 y 16 de noviembre de 2026 sin que se notara aqui,
+// donde tsc ya esta instalado.
+const antes=cual==='npx'?['-y','-p','typescript@5.6.3','tsc']:[];
 try{
  corre(cual,[...antes,'--noEmit','--allowJs','--checkJs','--noImplicitAny','false',
    '--strictNullChecks','false','--target','es2022','--lib','es2022,dom',
