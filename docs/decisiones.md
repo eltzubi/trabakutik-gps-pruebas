@@ -496,5 +496,5 @@ sobre casos seguros. Cuando deje de aportar, se quita. Solo página: sin APK.
 porque lo que marque se queda en su móvil y no nos llega. Se activa en cada
 móvil tocando 5 veces la versión de abajo de la app (otras 5 lo quitan; al dar
 los 5 toques avisa en la barra si ha quedado activado o no, y en ningún otro
-momento) o,
+momento; mientras está activado, la versión lleva una ✋ al final) o,
 en la web, abriendo con `?avisos=1`. Sin activar no sale nunca.

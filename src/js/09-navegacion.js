@@ -384,6 +384,10 @@ function pintaBotonAvisos(){
  if(typeof $!=='function')return;const b=$('avisosMarcados');if(!b)return;
  const n=avisosMarcados().length;
  b.classList.toggle('hidden',!n||!botonAvisosActivo());b.textContent='✋ Avisos marcados ('+n+')';
+ // Y una manita al final de la version mientras este activado: se ve de un
+ // vistazo sin ningun aviso (lo pidio el autor). Va por clase y no por texto
+ // porque pintaVersion reescribe el texto de la version.
+ const v=$('appVersion');if(v&&v.classList)v.classList.toggle('con-mano',botonAvisosActivo());
 }
 function textoAvisos(){
  return avisosMarcados().map(a=>(a.ruta||'Ruta')+' · km '+(+a.km).toFixed(2).replace('.',',')+(a.sentido<0?' (al revés)':'')
