@@ -4292,7 +4292,7 @@ let anclaRumbo={p:null,ruta:null,rumbo:null,t:0};
 // «✋ Sobraba» (ver mas abajo): arriba, porque junctionGuidance lo usa y puede
 // correr antes de llegar a esas lineas.
 let avisoMarcable=null,avisoMarcadoJ=-1,avisoMarcadoLista=null;
-const AVISOS_MAL='avisos-mal',AVISO_MAL_M=250;
+const AVISOS_MAL='avisos-mal',AVISO_MAL_M=250,AVISOS_ACTIVO='avisos-mal-activo';
 function progressOnRoute(p,reliable=true){
  let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity,retenido=false;
  const ref=Number.isFinite(ultimoAlong)?ultimoAlong:null;
@@ -4599,6 +4599,16 @@ function textoDeGiro(turn,alReves){
  if(turn.mantente)return 'Cruce · sigue por la '+lado;
  return (turn.cruce!==false?'Cruce a la ':'Curva cerrada a la ')+lado;
 }
+// SOLO PARA EL AUTOR. Lo que marque otra persona se queda en su movil y no
+// nos llega a nadie, asi que a los demas el boton solo les estorbaria. Se
+// activa en cada movil: dentro de la app, tocando 5 veces la version de
+// abajo; en la web, abriendo con ?avisos=1 (?avisos=0 lo quita). Lo decidio
+// el autor el 16 de noviembre de 2026: «dejalo solo para mi».
+function botonAvisosActivo(){try{return localStorage.getItem(AVISOS_ACTIVO)==='1'}catch(e){return false}}
+function activaBotonAvisos(si){
+ try{if(si)localStorage.setItem(AVISOS_ACTIVO,'1');else localStorage.removeItem(AVISOS_ACTIVO)}catch(e){}
+ pintaAvisoMal();pintaBotonAvisos();
+}
 function avisosMarcados(){
  try{const l=JSON.parse(localStorage.getItem(AVISOS_MAL)||'[]');return Array.isArray(l)?l:[]}catch(e){return []}
 }
@@ -4617,7 +4627,7 @@ function buscaAvisoMarcable(lista,progress){
 }
 function pintaAvisoMal(){
  if(typeof $!=='function')return;const b=$('avisoMal');if(!b)return;
- const ver=!!avisoMarcable&&!(avisoMarcadoJ===avisoMarcable.j&&avisoMarcadoLista===avisoMarcable.lista)&&junctionActive<0;
+ const ver=botonAvisosActivo()&&!!avisoMarcable&&!(avisoMarcadoJ===avisoMarcable.j&&avisoMarcadoLista===avisoMarcable.lista)&&junctionActive<0;
  b.classList.toggle('hidden',!ver);
  if(ver)b.textContent='✋ Sobraba: «'+avisoMarcable.texto+'»';
 }
@@ -4636,7 +4646,7 @@ function marcaAvisoMal(){
 function pintaBotonAvisos(){
  if(typeof $!=='function')return;const b=$('avisosMarcados');if(!b)return;
  const n=avisosMarcados().length;
- b.classList.toggle('hidden',!n);b.textContent='✋ Avisos marcados ('+n+')';
+ b.classList.toggle('hidden',!n||!botonAvisosActivo());b.textContent='✋ Avisos marcados ('+n+')';
 }
 function textoAvisos(){
  return avisosMarcados().map(a=>(a.ruta||'Ruta')+' · km '+(+a.km).toFixed(2).replace('.',',')+(a.sentido<0?' (al revés)':'')
@@ -4655,6 +4665,14 @@ if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $
   if(!confirm('¿Borrar la lista de avisos marcados?'))return;
   try{localStorage.removeItem(AVISOS_MAL)}catch(e){}
   $('avisosTexto').value='';pintaBotonAvisos();$('avisosEstado').textContent='Lista borrada';
+ });
+ // Activarlo: ?avisos=1 en la web; 5 toques seguidos en la version, en la app.
+ try{const q=new URLSearchParams(location.search).get('avisos');if(q==='1')activaBotonAvisos(true);else if(q==='0')activaBotonAvisos(false)}catch(e){}
+ let toques=[];
+ if($('appVersion'))$('appVersion').addEventListener('click',()=>{
+  const ahora=Date.now();toques=toques.filter(t=>ahora-t<4000);toques.push(ahora);
+  if(toques.length>=5){toques=[];const si=!botonAvisosActivo();activaBotonAvisos(si);
+   try{notice(si?'Botón ✋ Sobraba activado en este móvil':'Botón ✋ Sobraba desactivado')}catch(e){}}
  });
  pintaBotonAvisos();
 }
@@ -5020,7 +5038,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }

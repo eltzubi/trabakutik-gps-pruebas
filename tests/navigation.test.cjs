@@ -1201,6 +1201,11 @@ test('«✋ Sobraba»: sale tras pasar un aviso, apunta lo dicho y el sitio, y n
  const c=pieza('09-navegacion.js',{window:{},$:nodo,localStorage:{getItem:k=>almacen[k]??null,setItem:(k,v)=>{almacen[k]=v},removeItem:k=>{delete almacen[k]}},
   notice:t=>avisos.push(t),junctionActive:-1,sentidoRuta:1,junctions:[]},arranque09());
  const lista=[{along:1000,point:[43.2,-2.5],direction:'izquierda',hacia:'izquierda',cruce:true,angle:79},{along:3000,point:[43.21,-2.51],direction:'derecha',cruce:false,angle:140}];
+ // Sin activar en este movil, no sale nunca: es solo para el autor.
+ c.buscaAvisoMarcable(lista,{along:1040});
+ assert(nodo('avisoMal').classList.contains('hidden'),'sin activar no sale');
+ c.activaBotonAvisos(true);assert(c.botonAvisosActivo());
+ c.avisoMarcable=null;
  c.buscaAvisoMarcable(lista,{along:990});
  assert(nodo('avisoMal').classList.contains('hidden'),'antes del cruce no sale');
  c.buscaAvisoMarcable(lista,{along:1040});
