@@ -576,8 +576,10 @@ function updateElevation(){
  const samples=[];let travelled=0,up=0,down=0,lastKnown=null,lastElev=null;
  // MIDE POR TRAMOS de unos 250 m, no sobre los totales: con los totales, una
  // ruta que alterna llano largo y repecho fuerte salia hasta media hora corta.
- let msMide=0,bloque={m:0,s:0,b:0};
- const cierraBloque=()=>{if(bloque.m>0||bloque.s>0||bloque.b>0)msMide+=tiempoMIDE(bloque.m,bloque.s,bloque.b);bloque={m:0,s:0,b:0}};
+ let msMide=0,bloque={m:0,s:0,b:0},pendMax=0;
+ // La pendiente mas fuerte de un bloque de al menos 150 m (uno mas corto, el
+ // ultimo, daria picos del modelo del terreno).
+ const cierraBloque=()=>{if(bloque.m>0||bloque.s>0||bloque.b>0)msMide+=tiempoMIDE(bloque.m,bloque.s,bloque.b);if(bloque.m>=150)pendMax=Math.max(pendMax,pendienteBloque(bloque.m,bloque.s,bloque.b));bloque={m:0,s:0,b:0}};
  let desnivelCalculable=false;
  for(let i=0;i<pts.length;i++){
   if(i){const dd=dist(pts[i-1],pts[i]);travelled+=dd;bloque.m+=dd}
@@ -636,7 +638,7 @@ function updateElevation(){
   paintNavigationMetrics();$('elevationSlope').className='';
   return;
  }
- pintaCreaResumen(travelled,up,down,desnivelCalculable,msMide,available.length<pts.length);
+ pintaCreaResumen(travelled,up,down,desnivelCalculable,msMide,available.length<pts.length,pendMax);
  const info=$('elevationSlope');
  if(collapsed&&available.length<pts.length){
   info.textContent=desnivelCalculable?'Desnivel parcial':'Sin alturas suficientes';
@@ -670,7 +672,19 @@ function tiempoMIDE(m,sube,baja){const h=m/4000,v=sube/400+baja/600;return (Math
 // de 32, asi que no se da.
 function esfuerzoAndando(m,sube){const s=m/1000+sube/50;return s<23.5?'Fácil':s<43.2?'Media':'Difícil'}
 function textoHoras(ms){const min=Math.round(ms/60000);return min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')}
-function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial){
+// Pendiente media de un bloque, en %: la subida o la bajada, la que pese mas.
+function pendienteBloque(m,sube,baja){return m>0?Math.max(sube,baja)/m*100:0}
+// EL ESFUERZO CON UN TRAMO MUY EMPINADO. Lo pidio el autor el 16 nov 2026
+// con un tramo de 1,26 km y +380 m que salia «Facil»: «es lo peor que hay».
+// La regla km+desnivel/50 mira la ruta entera y un muro corto sale facil; con
+// un bloque de 250 m por encima del 20 % no se dice Facil.
+const PEND_FUERTE=20;
+function textoEsfuerzo(m,sube,pendMax){
+ const e=esfuerzoAndando(m,sube),p=Math.round(pendMax);
+ if(!(pendMax>=PEND_FUERTE))return 'Esfuerzo andando: '+e;
+ return e==='Fácil'?'Muy empinado · hasta '+p+' %':'Esfuerzo andando: '+e+' · hasta '+p+' %';
+}
+function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial,pendMax){
  if(typeof $!=='function'||!$('creaTiempo'))return;
  if(!(m>=50)){$('creaTiempo').textContent='—';$('creaEsfuerzo').textContent='';return}
  if(!conDesnivel){$('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,0,0))+' <small>andando · sin datos de desnivel</small>';$('creaEsfuerzo').textContent='';return}
@@ -679,7 +693,7 @@ function pintaCreaResumen(m,sube,baja,conDesnivel,msMide,parcial){
  // esfuerzo no se da, que saldria mas facil de lo que es.
  if(parcial){$('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · desnivel parcial</small>';$('creaEsfuerzo').textContent='';return}
  $('creaTiempo').innerHTML='≈ '+textoHoras(ms)+' <small>andando · aprox.</small>';
- $('creaEsfuerzo').innerHTML='Esfuerzo andando: '+esfuerzoAndando(m,sube);
+ $('creaEsfuerzo').textContent=textoEsfuerzo(m,sube,pendMax);
 }
 function updateDraw(){
  drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
@@ -788,4 +802,4 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={letraPunto,tiempoMIDE,esfuerzoAndando,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,textoEsfuerzo,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};

@@ -46,3 +46,13 @@ test('rehacer: la firma compara los tramos por identidad',()=>{
   assert.equal(c.mismaFirma(f({a:[1,2],t:[t1,[2,3]]}),f({a:[1,2],t:[t1,t2]})),false);
   assert.equal(c.mismaFirma(null,f({a:[],t:[]})),false);
 });
+
+test('un tramo muy empinado no sale «Fácil»',()=>{
+  const {textoEsfuerzo,pendienteBloque}=c();
+  // El tramo del autor: 1,26 km, +380 m, con un bloque al 38 %.
+  assert.equal(textoEsfuerzo(1260,380,38),'Muy empinado · hasta 38 %');
+  assert.equal(textoEsfuerzo(1260,380,12),'Esfuerzo andando: Fácil');
+  assert.equal(textoEsfuerzo(20000,1100,25),'Esfuerzo andando: Media · hasta 25 %');
+  assert.equal(pendienteBloque(250,10,60),24);
+  assert.equal(pendienteBloque(0,0,0),0);
+});

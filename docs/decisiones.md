@@ -599,3 +599,18 @@ pon rehacer»):
   referencia, y la regla del esfuerzo acertaba 21 de 32 en bici.
 - El panel crece 78 px para que quepan las dos filas; a cambio desaparece la
   fila de botones que iba encima. Sin ningún tramo, esas filas no salen.
+
+## Un tramo muy empinado no sale «Fácil» (16 de noviembre de 2026)
+
+El autor dibujó 1,26 km con +380 m (un bloque al 42 %) y el creador dijo
+«Esfuerzo andando: Fácil»: «es lo peor que hay». La regla km+desnivel/50 mira
+la ruta entera, y un muro corto da un número pequeño. Ahora, si algún bloque de
+250 m (de al menos 150 m) pasa del 20 % de pendiente media, subiendo o
+bajando, en vez de «Fácil» sale «Muy empinado · hasta N %»; si el esfuerzo era
+Media o Difícil se queda, con «· hasta N %» detrás.
+
+El tiempo MIDE de ese tramo (1 h 06) él lo hizo en 50 min. No se ha tocado: MIDE
+es para un caminante medio (400 m/h de subida) y el autor anda un 20-60 % más
+rápido (medido en sus caminatas con tiempos: garaikanala, garaiurdaixa,
+mendibil). Las demás rutas «a pie» con tiempos de la web son carreras o bici y
+no valen para calibrar.
