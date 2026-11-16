@@ -567,3 +567,27 @@ no va delante de cada número: lo marca el borde rojo de la ficha. Fuera de la
 marcha la ficha no cambia.
 Y abajo, bajo el tiempo, «en marcha» en lugar de la altitud, que ya sale
 arriba (el dato se sigue calculando, escondido, por las pruebas y por si vuelve).
+
+## El creador, con mandos compactos, rehacer y tiempo andando (16 de noviembre de 2026)
+
+Lo eligió el autor sobre una maqueta inspirada en Outdooractive («Me gusta y
+pon rehacer»):
+
+- **Arriba a la izquierda**, una pastilla con deshacer ↶ y **rehacer ↷** (que
+  antes no existía) y un ⋮ con Cerrar el círculo, Ida y vuelta y Borrar todo.
+  La fila vieja de botones (`#createActions`) sigue en el HTML, escondida: los
+  mandos nuevos pulsan los de siempre, así que no hay dos caminos para lo
+  mismo.
+- **Rehacer** devuelve el tramo quitado tal cual, sin pedirlo otra vez al
+  motor. Se vacía en cuanto el trazado cambia por otro lado (punto nuevo,
+  arrastre, cerrar, ida y vuelta): lo detecta una firma de anclas y longitudes.
+- **Puntos con letras** (A, B, C… y AA tras la Z), no con números.
+- **Abajo**, en el panel: «≈ 5 h 30 andando · aprox.» por el método MIDE
+  (4 km/h en llano, 400 m/h subiendo, 600 m/h bajando; el mayor de los dos
+  tiempos más la mitad del menor) y «Esfuerzo andando», con la regla que mejor
+  reproduce el que el autor puso a mano en la web (km + desnivel/50; cortes en
+  23,5 y 43,2; acierta 34 de 38 rutas a pie). Debajo, Guardar y Abrir ruta.
+- **En bici no se da tiempo ni esfuerzo**: no hay tiempos de bici de
+  referencia, y la regla del esfuerzo acertaba 21 de 32 en bici.
+- El panel crece 78 px para que quepan las dos filas; a cambio desaparece la
+  fila de botones que iba encima. Sin ningún tramo, esas filas no salen.

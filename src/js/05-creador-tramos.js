@@ -560,6 +560,7 @@ function updateElevation(){
   $('elevationEnd').style.display='none';
   const total=pts.reduce((sum,p,i)=>sum+(i?dist(pts[i-1],p):0),0);
   $('profileDistance').textContent=profileDistanceText(total,creating);$('profileGain').textContent='↑ —';$('profileLoss').textContent='↓ —';
+  if(creating)pintaCreaResumen(total,0,0,false);
   $('elevationSlope').textContent=pts.length>=2?'Sin alturas suficientes':pts.length?'Marca el siguiente punto':'Marca el inicio';
   $('elevationSlope').className='';
   $('profileLow').textContent=available.length?'Altura inicial '+Math.round(available[0][2])+' m':'Sin alturas todavía';
@@ -629,6 +630,7 @@ function updateElevation(){
   paintNavigationMetrics();$('elevationSlope').className='';
   return;
  }
+ pintaCreaResumen(travelled,up,down,desnivelCalculable);
  const info=$('elevationSlope');
  if(collapsed&&available.length<pts.length){
   info.textContent=desnivelCalculable?'Desnivel parcial':'Sin alturas suficientes';
@@ -651,6 +653,24 @@ function updateElevation(){
  }else{info.textContent='Pendiente sin datos';info.className=''}
 }
 
+function letraPunto(i){let s='';i++;while(i>0){const r=(i-1)%26;s=String.fromCharCode(65+r)+s;i=Math.floor((i-1)/26)}return s}
+// EL TIEMPO ANDANDO, POR EL METODO MIDE de las federaciones de montaña: 4 km/h
+// en llano, 400 m/h subiendo y 600 m/h bajando; el mayor de los dos tiempos
+// mas la mitad del menor. En bici no: depende demasiado de la asistencia.
+function tiempoMIDE(m,sube,baja){const h=m/4000,v=sube/400+baja/600;return (Math.max(h,v)+Math.min(h,v)/2)*3600000}
+// EL ESFUERZO ANDANDO, con la regla que mejor reproduce el que el autor puso a
+// mano en las 38 rutas a pie de la web: km + desnivel/50; menos de 23,5 Facil,
+// menos de 43,2 Media, si no Dificil (acierta 34 de 38). En bici acertaba 21
+// de 32, asi que no se da.
+function esfuerzoAndando(m,sube){const s=m/1000+sube/50;return s<23.5?'Fácil':s<43.2?'Media':'Difícil'}
+function textoHoras(ms){const min=Math.round(ms/60000);return min<60?min+' min':Math.floor(min/60)+' h '+String(min%60).padStart(2,'0')}
+function pintaCreaResumen(m,sube,baja,conDesnivel){
+ if(typeof $!=='function'||!$('creaTiempo'))return;
+ if(!(m>=50)){$('creaTiempo').textContent='—';$('creaEsfuerzo').textContent='';return}
+ if(!conDesnivel){$('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,0,0))+' <small>andando · sin desnivel</small>';$('creaEsfuerzo').textContent='';return}
+ $('creaTiempo').innerHTML='≈ '+textoHoras(tiempoMIDE(m,sube,baja))+' <small>andando · aprox.</small>';
+ $('creaEsfuerzo').innerHTML='Esfuerzo andando: '+esfuerzoAndando(m,sube);
+}
 function updateDraw(){
  drawMarks.forEach(m=>map.removeLayer(m));drawMarks=[];
  junctionMarks.forEach(m=>map.removeLayer(m));junctionMarks=[];
@@ -677,7 +697,9 @@ function updateDraw(){
   if(cerradoGps&&i===anclasGps.length-1)return;
   const p=redGps.nodos[id];
   const inicio=i===0, destino=!inicio&&!cerradoGps&&i===anclasGps.length-1;
-  const numero=i+1;
+  // LETRAS Y NO NUMEROS (A, B, C…): se habla de ellos -«arrastra la C»- y
+  // el orden se ve de un vistazo. Pasada la Z, AA, AB…
+  const numero=letraPunto(i);
   const tipo=inicio?(cerradoGps?'Inicio y destino':'Inicio'):destino?'Destino':'Punto';
   const mk=L.marker([p[0],p[1]],{draggable:true,autoPan:true,keyboard:false,title:tipo+' · '+numero,
     icon:L.divIcon({
@@ -697,6 +719,9 @@ function updateDraw(){
  $('navCreated').classList.add('hidden');
  $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2&&drawPoints.length<2);
  updateElevation();
+ // Los mandos nuevos del creador (pieza 06): rehacer deja de valer en cuanto
+ // el trazado cambia, aunque ningun boton de siempre cambie de estado.
+ if(typeof sincronizaCrea==='function')sincronizaCrea();
 }
 if(typeof map!=='undefined')map.on('click',e=>{
  if(mode!=='create')return;
@@ -753,4 +778,4 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={letraPunto,tiempoMIDE,esfuerzoAndando,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};

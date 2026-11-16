@@ -460,8 +460,14 @@ async function setup(context) {
     assert(await creator.evaluate(()=>window.__creator.drawPoints.length>=4),'conserva la curva del motor');
     assert(!(await creator.locator('#elevationSvg').isVisible()),'el gráfico arranca plegado al crear');
     assert(await creator.locator('.elevation-stats').isVisible(),'el resumen queda visible con el gráfico plegado');
-    assert.deepEqual(await creator.locator('.gps-dot').allTextContents(),['1','2']);
-    assert.equal(await creator.locator('.gps-dot.es-destino').textContent(),'2');
+    assert.deepEqual(await creator.locator('.gps-dot').allTextContents(),['A','B']);
+    assert.equal(await creator.locator('.gps-dot.es-destino').textContent(),'B');
+    // Mandos nuevos: los originales quedan escondidos y se manejan desde aqui.
+    assert(await creator.locator('#creaDeshacer').isVisible()&&await creator.locator('#creaMas').isVisible());
+    assert(!(await creator.locator('#createActions').isVisible()),'la fila vieja no se ve');
+    assert.match(await creator.locator('#creaTiempo').textContent(),/andando/);
+    assert.match(await creator.locator('#creaEsfuerzo').textContent(),/Esfuerzo/);
+    assert(await creator.locator('#creaRehacer').isDisabled(),'sin nada que rehacer');
     await creator.click('#toggleProfile');
     assert(await creator.locator('#elevationSvg').isVisible(),'el perfil de senderos nuevos se puede desplegar');
     await creator.click('#toggleProfile');
@@ -478,7 +484,7 @@ async function setup(context) {
       .test(document.querySelector('#plannerStatus').textContent));
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2,'un error no añade rectas');
     failPlanner=false;
-    await creator.click('#saveCreated');await creator.click('#saveToMine');
+    await creator.click('#creaGuardar');await creator.click('#saveToMine');
     assert(await creator.locator('#navigateSavedFromDialog').isVisible());
     await creator.click('#closeSave');
     await creator.click('#modeNav');await creator.click('#savedRoutes');
@@ -502,15 +508,31 @@ async function setup(context) {
     }
     await creator.setViewportSize({width:390,height:844});
     await creator.screenshot({path:path.join(root,'.test-artifacts/creador-unificado-390.png')});
-    await creator.click('#undo');
+    await creator.click('#creaMas');
+    await creator.screenshot({path:path.join(root,'.test-artifacts/creador-menu-390.png')});
+    await creator.keyboard.press('Escape');
+    assert(!(await creator.locator('#creaMenu').isVisible()),'Escape cierra el menu');
+    await creator.setViewportSize({width:320,height:640});
+    await creator.screenshot({path:path.join(root,'.test-artifacts/creador-unificado-320.png')});
+    await creator.setViewportSize({width:390,height:844});
+    await creator.click('#creaDeshacer');
+    assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2);
+    // Rehacer devuelve el tramo quitado sin pedirlo otra vez al motor.
+    await creator.waitForFunction(()=>!document.querySelector('#creaRehacer').disabled);
+    await creator.click('#creaRehacer');
+    await creator.waitForFunction(()=>window.__creator.anclasGps.length===3);
+    assert.deepEqual(await creator.locator('.gps-dot').allTextContents(),['A','B','C']);
+    assert(await creator.locator('#creaRehacer').isDisabled());
+    await creator.click('#creaDeshacer');
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.length),2);
     await creator.evaluate(()=>window.__creator.mueveAnclaGps(0,43.0101,-2.0101));
     await creator.waitForFunction(()=>window.__creator.drawPoints[0]?.[0]===43.0101&&!document.querySelector('#saveCreated').disabled);
-    await creator.click('#cerrarCirculo');
+    await creator.click('#creaMas');await creator.click('#creaCirculo');
+    assert(!(await creator.locator('#creaMenu').isVisible()),'el menu se cierra al elegir');
     await creator.waitForFunction(()=>{const c=window.__creator;return c.anclasGps.length===3&&c.anclasGps.at(-1)===c.anclasGps[0]&&!document.querySelector('#saveCreated').disabled});
-    await creator.click('#undo');await creator.click('#idaVuelta');
+    await creator.click('#creaDeshacer');await creator.click('#creaMas');await creator.click('#creaIdaVuelta');
     assert.equal(await creator.evaluate(()=>window.__creator.anclasGps.at(-1)===window.__creator.anclasGps[0]),true);
-    await creator.click('#saveCreated');await creator.click('#saveToMine');
+    await creator.click('#creaGuardar');await creator.click('#saveToMine');
     await creator.reload();await creator.click('#savedRoutes');
     await creator.getByRole('button',{name:/Ruta personal de prueba/}).click();
     assert.deepEqual(await creator.evaluate(()=>window.__creator.routePoints[0].slice(0,2)),[43.0101,-2.0101]);
