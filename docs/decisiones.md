@@ -648,3 +648,8 @@ devuelve el aspecto anterior.
 La **flecha de giro** (`flechaGiro`, pieza 07) deja el degradado que nacía en
 un azul apagado: ahora es un trazo macizo casi blanco con un filo oscuro
 debajo, que la despega de cualquier fondo.
+
+**Segunda pasada, el mismo día: «no veo cambios».** La primera estaba en su
+móvil (raya cian y cajones negros) pero era tan discreta que no se notaba.
+Ahora las cifras de la ficha y el tiempo van en cian con brillo, los rótulos en
+cian tenue, los botones con filo de luz, y la raya de arriba es de 3 px.
