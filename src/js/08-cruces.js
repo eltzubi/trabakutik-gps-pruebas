@@ -187,6 +187,7 @@ function descifraZona(j){
   try{
    const b=atob(clases),dos=typeof j.ramas_clase2==='string';let o=0;
    const lee=()=>{const v=dos?(b.charCodeAt(o>>2)>>((o&3)*2))&3:b.charCodeAt(o)&3;o++;return v};
+   // 0 camino, 1 carretera, 2 calle, 3 sin salida (una entrada).
    for(const p of puntos){const g=p[2];if(!Array.isArray(g))continue;const c=[];for(const grupo of g)for(let k=0;k<grupo.length;k++)c.push(lee());p.clases=c}
    if(dos?((o+3)>>2)!==b.length:o!==b.length)for(const p of puntos)delete p.clases;
   }catch(e){for(const p of puntos)delete p.clases}
@@ -376,7 +377,7 @@ function distARuta(q,linea){
  return m;
 }
 // La rama cuyo punto a 25 m queda pegado al trozo de ruta, si esta claro.
-var CURVA_CALLE=75,GIRO_CALLE_M=100,GEO_PEGADA=12,GEO_MARGEN=6,GEO_DE_FRENTE=10,FRENTE_M=40,GEO_HORQUILLA=40,CRUCE_GIRO_CALLE=45;
+var CURVA_CALLE=100,GIRO_CALLE_M=100,GEO_PEGADA=12,GEO_MARGEN=6,GEO_DE_FRENTE=10,FRENTE_M=40,GEO_HORQUILLA=40,CRUCE_GIRO_CALLE=45;
 function eligePorForma(lista,linea){
  let mejor=null,dm=Infinity,segunda=Infinity;
  for(const x of lista){const d=distARuta(x.lejos,linea);if(d<dm){segunda=dm;dm=d;mejor=x}else if(d<segunda)segunda=d}
@@ -430,7 +431,12 @@ function decideCrucePorCalle(cruce,ramas,ruta){
   // recta frente a otro (revision con GPT: con la llegada torciendo, la mas
   // recta frente a 100 m no es la que esta de frente a 40).
   const mia=Math.abs(difRumbo(rumboDe(m),llega));
-  const deFrente=ramas.some(x=>{if(x===a||x===m)return false;const f=Math.abs(difRumbo(rumboDe(x),llega));return f<90&&f<mia+GEO_DE_FRENTE});
+  // Una ENTRADA SIN SALIDA (clase 3: se acaba antes de 300 m) no cuenta: es
+  // como la de un caserio, que no confunde a nadie. Lo explico el autor en el
+  // fronton de Eltzubi: «sale una subidita a una entrada del fronton, como
+  // cualquier entrada o caserio, que normalmente no se cuenta»; en OSM esa era
+  // una calle residencial de 236 m y por eso contaba.
+  const deFrente=ramas.some(x=>{if(x===a||x===m||x.clase===3)return false;const f=Math.abs(difRumbo(rumboDe(x),llega));return f<90&&f<mia+GEO_DE_FRENTE});
   const cercaH=difRumbo(bearingBetween(nodo,ruta.despues[ruta.despues.length-1]),bearingBetween(ruta.antes[0],nodo));
   // Una revuelta muy cerrada en tu misma via no es un cruce, pero tampoco se
   // calla: «curva cerrada» (exigente 36,48: 127 grados).
@@ -446,7 +452,7 @@ function decideCrucePorCalle(cruce,ramas,ruta){
   // si ahi tuerce, «sigue la carretera» a ese lado; si casi no tuerce, es una
   // horquilla: «sigue recto por» el lado de tu rama frente a la de frente.
   if(Math.abs(cerca)<CRUCE_RECTO){
-   let f=null;for(const x of ramas)if(x!==a&&x!==m&&(!f||Math.abs(difRumbo(rumboDe(x),llega))<Math.abs(difRumbo(rumboDe(f),llega))))f=x;
+   let f=null;for(const x of ramas)if(x!==a&&x!==m&&x.clase!==3&&(!f||Math.abs(difRumbo(rumboDe(x),llega))<Math.abs(difRumbo(rumboDe(f),llega))))f=x;
    return {grados:Math.round(Math.abs(desvio)),lado:difRumbo(rumboDe(m),rumboDe(f))<0?'izquierda':'derecha',mantente:true,porCalle:true};
   }
   return {grados:Math.round(Math.abs(cerca)),lado:cerca<0?'izquierda':'derecha',mantente:false,sigue:true,via:m.clase|0,porCalle:true};

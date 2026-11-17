@@ -1044,3 +1044,20 @@ rutas guardadas (ya hubo una vez «No hay espacio para guardar la ruta»). Va
 compacto: la forma solo de los cruces que la tienen, marcados con un bit por
 cruce (`ramas_con_forma`), y la clase en 2 bits por rama (`ramas_clase2`).
 **428 KB**, y los avisos de las 76 rutas salen idénticos con los dos formatos.
+
+**Las entradas sin salida no cuentan (17 nov, tarde).** El autor volvió a oír
+aviso en la curva del frontón, bajando, y explicó lo que hay: «a la izquierda
+sale una subidita a una entrada del frontón, como cualquier entrada o caserío,
+que normalmente no se cuenta». En OSM esa entrada era una calle residencial
+de 236 m que se acaba ahí. Ahora cada rama trae si es **sin salida** (clase 3:
+por ella no se llega a 300 m de red, `SIN_SALIDA_M` en el generador), y una
+rama sin salida no cuenta como «de frente». La casa del km 14,79 de recyde
+(107 m) tampoco cuenta; la calle del 4,49 sí (sigue más de 400 m). Y la curva
+de tu misma vía solo se avisa como «curva cerrada» de 100° para arriba
+(`CURVA_CALLE`).
+
+Controles: el frontón calla en los dos sentidos; recyde 4,49 «sigue la
+carretera»; 12,92 y 14,79 pasan a «curva cerrada» (127° y 107°), con su lado;
+el resto igual. Lado: nuevo 193, viejo 17. De 849 giros reales de 90° o más,
+9 sin aviso a menos de 70 m: todos curvas de la misma vía entre 95° y 110° sin
+otra salida de verdad, que es el caso del frontón.
