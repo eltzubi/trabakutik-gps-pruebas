@@ -823,6 +823,13 @@ conexión), en su propio hilo porque leer el modelo puede tardar, y la manda a
 la página con su error y su hora. En un Android anterior no se da: mejor «—»
 que 50 m de error.
 
-**Pendiente de decidir por el autor:** el GPX que graba el servicio escribe
-`<ele>` con `getAltitude()`, o sea sobre el elipsoide: las grabaciones salen
-unos 50 m altas. Se le ha propuesto escribir la altitud sobre el mar.
+**Y el GPX grabado, también sobre el mar** («haz lo que sea correcto»). El
+servicio escribía `<ele>` con `getAltitude()`, sobre el elipsoide: las
+grabaciones salían unos 50 m altas. Ahora resta la ondulación del geoide
+(elipsoide menos mar), sacada de la última conversión: cambia unos metros en
+decenas de km, así que no hace falta convertir cada punto. Hasta tenerla, el
+primer segundo, los puntos van sin `<ele>` antes que con una equivocada. En un
+Android anterior al 14 se graba como siempre: no hay modelo del geoide en el
+móvil y no se inventa una cifra. Las grabaciones antiguas siguen 50 m altas.
+La ficha no cambia: sobre la ruta manda el perfil (más estable que el GPS,
+que baila 10-20 m) y fuera de ella el GPS.

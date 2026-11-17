@@ -220,6 +220,23 @@ public class TrackingService extends Service implements LocationListener {
  final java.util.concurrent.ExecutorService hiloAltura=java.util.concurrent.Executors.newSingleThreadExecutor();
  Object conversorAltura=null;
  volatile double altMar=Double.NaN; volatile float altError=-1f; volatile long altTiempo=0;
+ // La diferencia elipsoide - nivel del mar (la «ondulacion del geoide»).
+ // Cambia muy despacio (unos metros en decenas de km), asi que se saca de la
+ // ultima conversion y se resta a cada punto del GPX sin esperar a convertirlo.
+ volatile double ondulacion=Double.NaN;
+ // EL <ele> DEL GPX, SOBRE EL NIVEL DEL MAR (17 nov 2026). Antes se escribia
+ // getAltitude(), sobre el elipsoide: las grabaciones salian unos 50 m altas
+ // (un pico de 800 se veia de 850 en Wikiloc o Strava). En Android 14 o
+ // posterior se resta la ondulacion; hasta tenerla (el primer segundo), el
+ // punto va sin altura antes que con una equivocada. En un Android anterior
+ // no hay modelo del geoide en el movil y se graba como siempre.
+ String eleGpx(Location l){
+  if(!l.hasAltitude())return "";
+  if(Build.VERSION.SDK_INT<34)return String.valueOf(l.getAltitude());
+  double n=ondulacion;
+  if(Double.isNaN(n))return "";
+  return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-n);
+ }
  void convierteAltura(Location l){
   if(!l.hasAltitude()||Build.VERSION.SDK_INT<34)return;
   final Location copia=new Location(l);
@@ -229,6 +246,7 @@ public class TrackingService extends Service implements LocationListener {
     ((android.location.altitude.AltitudeConverter)conversorAltura).addMslAltitudeToLocation(TrackingService.this,copia);
     if(copia.hasMslAltitude()){
      altMar=copia.getMslAltitudeMeters();
+     ondulacion=copia.getAltitude()-altMar;
      altError=copia.hasMslAltitudeAccuracy()?copia.getMslAltitudeAccuracyMeters():(copia.hasVerticalAccuracy()?copia.getVerticalAccuracyMeters():-1f);
      altTiempo=copia.getTime();
     }
@@ -1263,7 +1281,8 @@ public class TrackingService extends Service implements LocationListener {
    boolean corta=cortaTrack(forzarCorte,lastRecordedTime>0,l.getTime()-lastRecordedTime,
      Double.isFinite(lastRecordedLat)?l.distanceTo(makePreviousLocation()):0);
    if(corta&&lastRecordedTime>0)w.write("</trkseg><trkseg>\n");
-   w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(l.hasAltitude()?"<ele>"+l.getAltitude()+"</ele>":"")+"<time>"+time+"</time></trkpt>\n");
+   String ele=eleGpx(l);
+   w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(ele.isEmpty()?"":"<ele>"+ele+"</ele>")+"<time>"+time+"</time></trkpt>\n");
    // El MISMO corte que el GPX, «corta», y no una copia de la condicion sin
    // forzarCorte. Al reanudar una pausa se enciende forzarCorte: el GPX abria
    // tramo nuevo y el trazado de la pantalla no, asi que si parabas y seguias
