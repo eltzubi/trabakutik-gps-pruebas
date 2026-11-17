@@ -228,6 +228,8 @@ public class TrackingService extends Service implements LocationListener {
  static final class Altura{final double mar,ondulacion;final float error;final long tiempo;Altura(double m,double o,float e,long t){mar=m;ondulacion=o;error=e;tiempo=t;}}
  volatile Altura ultimaAltura=null;
  volatile boolean conversorRoto=false;
+ // 0 sin decidir, 1 corregido, 2 en bruto: el del GPX de la grabacion en curso.
+ final java.util.concurrent.atomic.AtomicInteger modoEle=new java.util.concurrent.atomic.AtomicInteger(0);
  long primerIntentoAltura=0;
  final java.util.concurrent.atomic.AtomicBoolean convirtiendo=new java.util.concurrent.atomic.AtomicBoolean(false);
  // EL <ele> DEL GPX, SOBRE EL NIVEL DEL MAR (17 nov 2026). Antes se escribia
@@ -240,15 +242,21 @@ public class TrackingService extends Service implements LocationListener {
  String eleGpx(Location l){
   if(!l.hasAltitude())return "";
   if(Build.VERSION.SDK_INT<34)return String.valueOf(l.getAltitude());
-  // Con una ondulacion ya conocida se sigue usando aunque fallen las
-  // siguientes conversiones: cambia unos metros en decenas de km, y pasar a la
-  // altura en bruto a mitad metia un escalon de 50 m en el track (revision con
-  // GPT). En bruto solo si nunca la hubo: entonces todo el GPX igual.
+  // EL MODO SE DECIDE UNA VEZ POR GRABACION (revision con GPT, rondas 2 y 3):
+  // o todo el GPX corregido o todo en bruto, sin escalones de 50 m. Corregido
+  // en cuanto hay una ondulacion (y se sigue usando la ultima aunque fallen
+  // las siguientes: cambia unos metros en decenas de km); en bruto si el
+  // conversor falla o tarda mas de 30 s antes de dar la primera. Una
+  // conversion que llegue despues de decidir «en bruto» ya no lo cambia.
   Altura a=ultimaAltura;
-  if(a!=null)return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-a.ondulacion);
-  if(conversorRoto)return String.valueOf(l.getAltitude());
-  if(a==null)return "";
-  return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-a.ondulacion);
+  if(modoEle.get()==0){
+   if(a!=null)modoEle.compareAndSet(0,1);
+   else if(conversorRoto)modoEle.compareAndSet(0,2);
+  }
+  int m=modoEle.get();
+  if(m==2)return String.valueOf(l.getAltitude());
+  if(m==1&&a!=null)return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-a.ondulacion);
+  return "";   // aun sin decidir (el primer segundo): sin altura antes que equivocada
  }
  void convierteAltura(Location l){
   if(!l.hasAltitude()||Build.VERSION.SDK_INT<34||(conversorRoto&&ultimaAltura==null))return;
@@ -781,7 +789,7 @@ public class TrackingService extends Service implements LocationListener {
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
-  recording=true;enMarcha.reinicia();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).putLong("tiempoMov",0).remove("gasto").apply();
+  recording=true;enMarcha.reinicia();modoEle.set(0);getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).putLong("tiempoMov",0).remove("gasto").apply();
   arrancaBateria();
   arrancaBaro();
   updateNotice();

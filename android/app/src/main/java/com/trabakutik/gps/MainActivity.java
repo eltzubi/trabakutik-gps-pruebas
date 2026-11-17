@@ -166,7 +166,9 @@ public class MainActivity extends Activity {
   web.evaluateJavascript(js,v->{
    if(id!=gpxId)return;          // ya hay otro GPX: este no lo borra
    gpxEnCurso=false;
-   if("\"ok\"".equals(v)){gpxEntrante=null;nombreGpxEntrante=null;gpxIntentHecho=true;}
+   // Solo marca el intent como hecho si esta entrega es la de la peticion
+   // VIGENTE: una confirmacion de A no puede consumir un B que aun se lee.
+   if("\"ok\"".equals(v)){gpxEntrante=null;nombreGpxEntrante=null;if(id==gpxPeticion)gpxIntentHecho=true;}
   });
  }
  void handleExternalRoute(Intent incoming){

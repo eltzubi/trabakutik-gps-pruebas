@@ -61,7 +61,7 @@ def method(signature, source=src):
   depth+=(source[i]=='{')-(source[i]=='}');i+=1
  return source[a:i]
 br=method(' void beginRecording()').replace('try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}','')
-br=re.sub(r'recording=true;(?:enMarcha\.reinicia\(\);)?getSharedPreferences.*?updateNotice\(\);','recording=true;',br,flags=re.S)
+br=re.sub(r'recording=true;(?:enMarcha\.reinicia\(\);)?(?:modoEle\.set\(0\);)?getSharedPreferences.*?updateNotice\(\);','recording=true;',br,flags=re.S)
 activity=(production/'MainActivity.java').read_text()
 sos=method(' private static boolean usableSosLocation(Location location)',activity)
 constant=re.search(r' static final long MAX_EDAD_FIX_NS=[^;]+;',src).group(0)

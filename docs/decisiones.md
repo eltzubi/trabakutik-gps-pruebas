@@ -886,3 +886,15 @@ queda dicha.
   de km); en bruto solo si nunca la hubo, y entonces todo el GPX igual.
 - **Rotonda recta al revés sin lista de vuelta:** la página manda «rr» y la APK
   se calla si no tiene número, en vez de decir «sal a la izquierda» en una recta.
+
+**Tercera ronda (mismo día):**
+- **El modo de la altitud del GPX se decide una vez por grabación** (`modoEle`):
+  corregido en cuanto hay una ondulación, en bruto si el conversor falla o
+  tarda más de 30 s antes de dar la primera. Una conversión que llegue después
+  de decidir «en bruto» ya no lo cambia: sin escalones ni en un sentido ni en
+  otro. Se reinicia al empezar cada grabación.
+- **La confirmación de un GPX solo marca como hecho el intent vigente:** la
+  respuesta de A no puede consumir un B que todavía se está leyendo.
+- Residual reconocido: una salida de rotonda por un sendero (que no se modela
+  como boca) puede casar con una carretera próxima; la duda simétrica no lo
+  detecta porque falta la rama.
