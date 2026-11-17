@@ -1082,3 +1082,31 @@ de OSM; lo que cambia es lo que se dice:**
 
 En la aplicación (APK nueva) y en la página. El campo `sg` se sigue enviando y
 guardando como tipo 6, por si un día hace falta distinguirlo otra vez.
+
+## El creador rodea las rotondas por la derecha (17 de noviembre de 2026)
+
+El autor: «tengo que crear bien los puntos de entrada y salida de la rotonda,
+ya que si no me marca incluso por el lado contrario… vamos siempre por la
+derecha», y «en bici también debería respetar las normas». El planificador
+del creador calcula **a pie** (Valhalla `pedestrian`), y a pie una rotonda se
+rodea por el lado más corto. **Medido en 8 rotondas de la zona con un giro a
+la izquierda: en 6 Valhalla la recorría a contramano.**
+
+No se cambió a la bici para todo: en las calles de sentido único da rodeos
+del doble (ver `URL_PLANIFICADOR` en la pieza 04). Se corrige solo la
+rotonda: `rotondasPorLaDerecha` (pieza 05) mira cada tramo calculado, por
+Valhalla o por los caminos guardados, contra las 192 rotondas de
+`cruces-zona.json` (centro, radio y sentido de giro, todas al revés que el
+reloj). Si el tramo entra en el anillo (radio + 6 m) y lo recorre en el
+sentido contrario al de la rotonda, ese trozo se cambia por el arco que va
+en su sentido, de la misma entrada a la misma salida. En las 6 medidas queda
+al revés que el reloj y con 20-135 m más, que es la vuelta de verdad.
+
+Lo que no toca, a propósito:
+- un punto marcado **dentro** de la rotonda (el tramo empieza o acaba ahí);
+- un camino que la rodea **por fuera** del anillo: en las otras 2 de las 8
+  Valhalla iba por una acera a 25-31 m del centro o por otra calle a más de
+  45 m. Corregir eso sería inventarse un arco donde hay otra vía.
+
+Las rotondas se esperan como mucho 2,5 s antes de calcular, y solo si aún no
+están cargadas.

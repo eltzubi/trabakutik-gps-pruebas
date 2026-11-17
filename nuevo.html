@@ -1728,9 +1728,72 @@ function planLocalMapa(coords){
   let largo=0;
   for(let k=1;k<tramo.length;k++)largo+=dist(tramo[k-1],tramo[k]);
   if(largo>Math.max(400,dist(coords[i-1],coords[i])*RODEO_MAXIMO))return null;
-  parts.push(tramo);
+  parts.push(rotondasPorLaDerecha(tramo,rotondasDelCreador()));
  }
  return {anchors:[parts[0][0],...parts.map(p=>p[p.length-1])],parts};
+}
+// LAS ROTONDAS, SIEMPRE POR LA DERECHA (17 nov 2026). Lo pidio el autor:
+// «crear la rotonda por el lado que toca; vamos siempre por la derecha», y
+// «en bici tambien hay que respetar las normas». El planificador calcula a
+// pie, y a pie una rotonda se rodea por donde sea mas corto: para girar a la
+// izquierda iba por el lado contrario, y luego las indicaciones salian mal.
+// No se pasa a la bici para todo (en las calles de sentido unico da rodeos del
+// doble, ver URL_PLANIFICADOR): se corrige solo el trozo de la rotonda. Si el
+// camino la recorre al reves de su giro (cruces-zona.json trae centro, radio
+// y sentido de las 192 de la zona), ese trozo se cambia por el arco que va en
+// su sentido, de la misma entrada a la misma salida. Un punto marcado DENTRO
+// de la rotonda no se toca: lo ha puesto el autor.
+const ROTONDA_MARGEN=6,ROTONDA_GIRO_MIN=15,ROTONDA_PASO=4;
+function rotondasDelCreador(){
+ try{return typeof zonaCruces!=='undefined'&&zonaCruces&&Array.isArray(zonaCruces.rotondas)?zonaCruces.rotondas:[]}
+ catch(e){return []}
+}
+// Que esten cargadas antes de calcular, sin esperar mas de un par de segundos.
+// Devuelve null si no hay nada que esperar: un await de mas cambia el orden
+// en que se cancela un calculo.
+function esperaRotondas(){
+ try{
+  if(typeof cargaZonaCruces!=='function')return null;
+  if(typeof zonaCruces!=='undefined'&&zonaCruces)return null;
+  return Promise.race([cargaZonaCruces().catch(()=>null),new Promise(ok=>setTimeout(ok,2500))]);
+ }catch(e){return null}
+}
+function rumboDesde(c,p){return (Math.atan2((p[1]-c[1])*Math.cos(c[0]*Math.PI/180),p[0]-c[0])*180/Math.PI+360)%360}
+function difRumboCreador(a,b){let d=(a-b)%360;if(d>=180)d-=360;if(d<-180)d+=360;return d}
+function rotondasPorLaDerecha(pts,rotondas){
+ if(!Array.isArray(pts)||pts.length<3||!rotondas||!rotondas.length)return pts;
+ let out=pts;
+ for(const rot of rotondas){
+  const c=[rot[0],rot[1]],r=rot[2],sentido=rot[3]&&rot[3].sentido===-1?-1:1;
+  // Lejos de esta rotonda: nada que mirar.
+  if(!out.some(p=>dist(p,c)<=r+ROTONDA_MARGEN))continue;
+  const nuevo=[];let i=0;
+  while(i<out.length){
+   if(dist(out[i],c)>r+ROTONDA_MARGEN){nuevo.push(out[i]);i++;continue}
+   let j=i;while(j+1<out.length&&dist(out[j+1],c)<=r+ROTONDA_MARGEN)j++;
+   // El trozo i..j esta dentro. Si empieza o acaba el tramo ahi dentro (un
+   // punto marcado en la rotonda), se deja como esta.
+   if(i===0||j===out.length-1){for(let k=i;k<=j;k++)nuevo.push(out[k]);i=j+1;continue}
+   let giro=0;for(let k=i+1;k<=j;k++)giro+=difRumboCreador(rumboDesde(c,out[k]),rumboDesde(c,out[k-1]));
+   // Al reves que el reloj es rumbo DECRECIENTE: giro negativo con sentido 1.
+   const alReves=Math.abs(giro)>=ROTONDA_GIRO_MIN&&Math.sign(giro)===sentido;
+   if(!alReves){for(let k=i;k<=j;k++)nuevo.push(out[k]);i=j+1;continue}
+   const e=out[i],x=out[j],bE=rumboDesde(c,e),bX=rumboDesde(c,x);
+   const R=Math.max(3,(dist(e,c)+dist(x,c))/2);
+   // Lo que hay que girar en el sentido de la rotonda (siempre de 0 a 360).
+   const vuelta=sentido>0?((bE-bX)%360+360)%360:((bX-bE)%360+360)%360;
+   const n=Math.max(2,Math.ceil(R*vuelta*Math.PI/180/ROTONDA_PASO));
+   nuevo.push(e);
+   for(let k=1;k<n;k++){
+    const b=(bE-sentido*vuelta*k/n)*Math.PI/180;
+    nuevo.push([c[0]+R*Math.cos(b)/111195,c[1]+R*Math.sin(b)/(111195*Math.cos(c[0]*Math.PI/180))]);
+   }
+   nuevo.push(x);
+   i=j+1;
+  }
+  out=nuevo;
+ }
+ return out;
 }
 function respuestaMapaGps(data,solicitados){
  const viaje=data&&data.trip;
@@ -1744,7 +1807,7 @@ function respuestaMapaGps(data,solicitados){
   for(const p of pts)if(!coordenadaMapaGps(p))throw Error('El recorrido contiene coordenadas inválidas.');
   let largo=0;for(let k=1;k<pts.length;k++)largo+=dist(pts[k-1],pts[k]);
   if(largo>Math.max(400,dist(solicitados[i],solicitados[i+1])*RODEO_MAXIMO))throw noHayPaso(sinCamino);
-  return pts;
+  return rotondasPorLaDerecha(pts,rotondasDelCreador());
  });
  if(!parts.length)throw Error('La respuesta del planificador está incompleta.');
  // Valhalla devuelve en «locations» los puntos que le has pedido, no los que
@@ -1960,6 +2023,7 @@ async function planificaTramoMapa(desde,hasta){
  $('saveCreated').disabled=true;estadoMapaGps('Calculando tramo…');
  const timer=setTimeout(()=>controller.abort(),30000);
  try{
+  {const espera=esperaRotondas();if(espera)await espera}
   const result=await solicitaMapaGps([desde,hasta],controller.signal);
   if(version!==calculoMapaGps)return;
   try{await alturasTerrenoGps(result,controller.signal);}catch(e){}
@@ -2000,6 +2064,7 @@ async function planificaMapaGps(coords){
  $('saveCreated').disabled=true;estadoMapaGps('Calculando recorrido…');
  const timer=setTimeout(()=>controller.abort(),30000);
  try{
+  {const espera=esperaRotondas();if(espera)await espera}
   const result=await solicitaMapaGps(coords,controller.signal);
   if(version!==calculoMapaGps)return;
   aplicaMapaGps(result);$('saveCreated').disabled=true;estadoMapaGps('Calculando desnivel…');
@@ -2537,7 +2602,7 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
 // Rehacer (ver mas abajo): arriba, porque el deshacer lo usa.
 let rehacerPila=[],firmaTrasDeshacer=null;
 // CERRAR EL CIRCULO. 52 de las 68 rutas de Trabakutik empiezan y acaban a
