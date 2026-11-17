@@ -1042,6 +1042,16 @@ test('Al revés se usan los avisos calculados al revés, con su lado, sin darles
  c.junctionGuidance(point(0,0),5);
  assert.equal(n.turnDirection&&n.turnDirection.textContent,'Cruce a la derecha','el lado de la lista al reves, tal cual');
 });
+test('la flecha del mapa apunta en el sentido en que se llega al cruce',()=>{
+ const R=Math.PI/180;
+ const c=pieza('09-navegacion.js',{window:{},dist:(a,b)=>Math.hypot(a[0]-b[0],(a[1]-b[1])*Math.cos(a[0]*R))*111195,
+  bearingBetween:(a,b)=>((Math.atan2((b[1]-a[1])*Math.cos(a[0]*R),b[0]-a[0])/R)+360)%360,
+  routePoints:[[43.0,-2.0],[42.9999,-2.0],[42.9998,-2.0],[42.9997,-2.0],[42.9996,-2.0]]},arranque09());
+ // La ruta baja hacia el sur: de ida se llega con rumbo 180, al reves con 0.
+ assert(Math.abs(c.rumboDeLlegada(3,1)-180)<1);
+ assert(Math.abs(c.rumboDeLlegada(1,-1))<1||Math.abs(c.rumboDeLlegada(1,-1)-360)<1);
+ assert(Number.isNaN(c.rumboDeLlegada(0,1)),'sin nada antes: sin girar');
+});
 test('Las dos listas se calculan, y la del revés va al servicio aparte',()=>{
  let ida=null,vuelta=null;
  const c={junctions:[{i:5,direction:'derecha',cruce:true}],junctionsReves:[{i:9,direction:'izquierda',cruce:true,reves:true}],

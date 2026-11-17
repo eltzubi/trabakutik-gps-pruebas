@@ -217,6 +217,7 @@ function junctionGuidance(p,accuracy,progress){
  $('turnArrow').innerHTML=flechaGiro(gradosFlecha,sentido,62,11);
  if(!turnMarker||turnMarker.options.turnIndex!==j){
   if(turnMarker)map.removeLayer(turnMarker);
+  const llegada=rumboDeLlegada(turn.i,sentidoRuta<0?-1:1);
   const sign=L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],
    // LA FLECHA DEL MAPA ERA UN BORRON. Media 24 px dentro de un circulo de 38
   // y con un trazo de 13: a 147 grados no se distinguia la forma del giro. Lo
@@ -224,7 +225,13 @@ function junctionGuidance(p,accuracy,progress){
   // abajo, la grande, le parece perfecta, y la diferencia es justo esa: alli
   // la flecha tiene sitio. Ahora ocupa 30 px con un trazo de 10, que llena el
   // circulo sin salirse. El circulo no crece: taparia mas mapa.
-  html:'<div class="map-turn-sign">'+flechaGiro(gradosFlecha,sentido,30,10)+'</div>'});
+  // LA FLECHA DEL MAPA, EN EL SENTIDO EN QUE SE LLEGA AL CRUCE. Se dibuja
+  // «hacia arriba» y el marcador gira con el mapa: con el mapa orientado a la
+  // marcha y yendo hacia el sur salia dada la vuelta (lo vio el autor el 17
+  // nov 2026, km 6,37 de recyde). Se gira el rumbo con el que se llega -de un
+  // punto unos 15 m antes, en el sentido de la marcha-, asi apunta bien con el
+  // norte arriba y con el mapa girado.
+  html:'<div class="map-turn-sign"'+(Number.isFinite(llegada)?' style="transform:rotate('+llegada.toFixed(0)+'deg)"':'')+'>'+flechaGiro(gradosFlecha,sentido,30,10)+'</div>'});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
  // Un cruce y una curva de herradura no son lo mismo y no se dicen igual:
@@ -332,6 +339,14 @@ function junctionGuidance(p,accuracy,progress){
 // salida» (lo pidio el autor el 16 nov 2026); sin el, como antes. El numero
 // vale en el sentido en que se calculo: yendo al reves con la lista de ida
 // (la de vuelta no siempre esta) no vale, y no se dice.
+// El rumbo con el que se llega al punto i de la ruta, yendo en el sentido
+// «paso» (1 de ida, -1 al reves): desde el punto que queda unos 15 m antes.
+function rumboDeLlegada(i,paso){
+ if(typeof bearingBetween!=='function'||typeof dist!=='function'||!Array.isArray(routePoints)||!routePoints[i])return NaN;
+ let k=i,d=0;
+ while(d<15){const j=k-paso;if(j<0||j>=routePoints.length)break;d+=dist(routePoints[j],routePoints[k]);k=j}
+ return k===i?NaN:bearingBetween(routePoints[k],routePoints[i]);
+}
 function queRotonda(turn,lado,alReves){
  const n=!alReves&&turn.salida&&typeof textoSalida==='function'?textoSalida(turn.salida):'';
  if(n)return n;
@@ -795,7 +810,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }

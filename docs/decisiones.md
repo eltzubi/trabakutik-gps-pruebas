@@ -760,3 +760,15 @@ panel de abajo, que no hacía nada. Ahora hace lo mismo (pulsa el de arriba) y
 lleva «↗» y subrayado naranja cuando la ruta tiene ficha; una ruta propia o un
 GPX importado no tienen y no hacen nada. Con el candado puesto no se puede
 pulsar por accidente.
+
+## La flecha del cruce en el mapa, en el sentido de la marcha (17 de noviembre de 2026)
+
+El autor, con una captura del km 6,37 de recyde: «¿por qué la flecha de arriba
+está mirando al revés?». La flecha pequeña del mapa se dibujaba siempre «hacia
+arriba», en el marcador, y el marcador gira con el mapa: con el mapa orientado
+a la marcha y yendo hacia el sur (172°) quedaba dada la vuelta. Ahora el
+marcador se gira con el rumbo con el que se llega al cruce (desde un punto unos
+15 m antes, en el sentido de la marcha, también yendo al revés): con el mapa
+girado apunta hacia arriba, y con el norte arriba apunta hacia donde se va.
+La flecha grande de la ficha de abajo no cambia: esa va en la pantalla, no en
+el mapa.
