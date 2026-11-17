@@ -94,6 +94,7 @@ public class MainActivity extends Activity {
   webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
     ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
+  if(b!=null)gpxUriHecho=b.getString("gpx_hecho");
   recibeGpx(getIntent());
   if(getIntent()!=null&&getIntent().getBooleanExtra("caida",false))caidaUi.post(this::muestraCaida);
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
@@ -104,14 +105,20 @@ public class MainActivity extends Activity {
   if (web != null && web.getUrl() != null) out.putString("url_gps", web.getUrl());
   if (webRoutes != null && webRoutes.getUrl() != null) out.putString("url_web", webRoutes.getUrl());
   out.putBoolean("ver_gps", showingGps);
+  if(gpxUriHecho!=null)out.putString("gpx_hecho",gpxUriHecho);
  }
  // UN GPX ABIERTO CON LA APP (Abrir con / Compartir), desde el 17 de
- // noviembre de 2026. Se lee aqui -el permiso de lectura viene con el
- // intent- y se le pasa a la pagina, que lo importa como el boton de «Mis
- // rutas» y con sus mismas comprobaciones. Si la pagina aun no ha cargado, se
- // guarda y se entrega en onPageFinished.
- String gpxEntrante=null,nombreGpxEntrante=null;
+ // noviembre de 2026. Se le pasa a la pagina, que lo importa como el boton de
+ // «Mis rutas» y con sus mismas comprobaciones.
+ // Revision con GPT: la lectura va en su propio hilo (un proveedor en la nube
+ // puede tardar o colgarse y congelaria la app); cada GPX lleva su numero y
+ // solo se da por entregado el suyo; no se manda dos veces mientras una
+ // entrega esta en curso; y un intent ya importado no se vuelve a importar si
+ // Android recrea la pantalla (se recuerda su URI).
+ String gpxEntrante=null,nombreGpxEntrante=null,gpxUriHecho=null;
+ int gpxPeticion=0,gpxId=0; boolean gpxEnCurso=false;
  static final int GPX_MAX=4*1024*1024;
+ final java.util.concurrent.ExecutorService hiloGpx=java.util.concurrent.Executors.newSingleThreadExecutor();
  @SuppressWarnings("deprecation")
  void recibeGpx(Intent in){
   if(in==null)return;
@@ -121,28 +128,42 @@ public class MainActivity extends Activity {
   if(uri==null)return;
   String esquema=uri.getScheme();
   if(!"content".equals(esquema)&&!"file".equals(esquema))return;
-  String nombre=null;
-  try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
-   if(c!=null&&c.moveToFirst())nombre=c.getString(0);
-  }catch(Exception ignored){}
-  if(nombre==null)nombre=uri.getLastPathSegment();
-  byte[] datos;
-  try(java.io.InputStream is=getContentResolver().openInputStream(uri)){
-   if(is==null)throw new java.io.IOException("sin datos");
-   java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();
-   byte[] buf=new byte[16384];int n,total=0;
-   while((n=is.read(buf))>0){total+=n;if(total>GPX_MAX){Toast.makeText(this,"El GPX ocupa más de 4 MB",Toast.LENGTH_LONG).show();return;}out.write(buf,0,n);}
-   datos=out.toByteArray();
-  }catch(Exception e){Toast.makeText(this,"No se pudo abrir el GPX",Toast.LENGTH_LONG).show();return;}
-  gpxEntrante=new String(datos,java.nio.charset.StandardCharsets.UTF_8);
-  nombreGpxEntrante=nombre==null?"ruta.gpx":nombre;
-  showScreen(true);
-  entregaGpx();
+  if(uri.toString().equals(gpxUriHecho))return;
+  gpxUriHecho=uri.toString();
+  final android.net.Uri u=uri;final int id=++gpxPeticion;
+  hiloGpx.execute(()->{
+   String nombre=null,texto=null,error=null;
+   try(android.database.Cursor c=getContentResolver().query(u,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
+    if(c!=null&&c.moveToFirst())nombre=c.getString(0);
+   }catch(Exception ignored){}
+   if(nombre==null)nombre=u.getLastPathSegment();
+   try(java.io.InputStream is=getContentResolver().openInputStream(u)){
+    if(is==null)throw new java.io.IOException("sin datos");
+    java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();
+    byte[] buf=new byte[16384];int n,total=0;
+    while((n=is.read(buf))>0){total+=n;if(total>GPX_MAX){error="El GPX ocupa más de 4 MB";break;}out.write(buf,0,n);}
+    if(error==null)texto=new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
+   }catch(Exception e){error="No se pudo abrir el GPX";}
+   final String t=texto,nom=nombre==null?"ruta.gpx":nombre,err=error;
+   runOnUiThread(()->{
+    if(id!=gpxPeticion)return;   // llego otro despues: manda el ultimo
+    if(err!=null){Toast.makeText(this,err,Toast.LENGTH_LONG).show();return;}
+    gpxEntrante=t;nombreGpxEntrante=nom;gpxId=id;gpxEnCurso=false;
+    showScreen(true);
+    entregaGpx();
+   });
+  });
  }
  void entregaGpx(){
-  if(web==null||gpxEntrante==null)return;
+  if(web==null||gpxEntrante==null||gpxEnCurso)return;
+  gpxEnCurso=true;
+  final int id=gpxId;
   String js="window.trabakutikImportaGpx?(window.trabakutikImportaGpx("+org.json.JSONObject.quote(gpxEntrante)+","+org.json.JSONObject.quote(nombreGpxEntrante)+"),'ok'):'no'";
-  web.evaluateJavascript(js,v->{if("\"ok\"".equals(v)){gpxEntrante=null;nombreGpxEntrante=null;}});
+  web.evaluateJavascript(js,v->{
+   if(id!=gpxId)return;          // ya hay otro GPX: este no lo borra
+   gpxEnCurso=false;
+   if("\"ok\"".equals(v)){gpxEntrante=null;nombreGpxEntrante=null;}
+  });
  }
  void handleExternalRoute(Intent incoming){
   if(incoming==null||incoming.getData()==null)return;

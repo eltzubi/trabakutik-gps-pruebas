@@ -853,8 +853,17 @@ recargó). Comprobado cada punto contra el código y los datos antes de tocar:
   a 40 puntos: en un lazo podía coger otra pasada.
 - **La flecha del mapa** se rehace también si cambia la lista (ida o vuelta).
 
-Lo de la app (leer el GPX fuera del hilo principal, entregas a la página sin
-carreras, altitud coherente y cola acotada) va aparte, con APK nueva.
+Y en la app (APK aparte):
+
+- **El GPX se lee en su propio hilo:** un proveedor en la nube puede tardar o
+  colgarse, y leyendo en el hilo principal congelaba la app.
+- **Entrega a la página sin carreras:** cada GPX lleva su número y solo se da
+  por entregado el suyo, no se manda dos veces mientras una entrega está en
+  curso, y un intent ya importado no se reimporta si Android recrea la
+  pantalla (se guarda su URI en el estado).
+- **La altitud como un solo dato:** altura, error, hora y ondulación en un
+  objeto que no cambia y se lee una vez; como mucho una conversión en marcha;
+  si el conversor falla o en 30 s no da ninguna, el GPX se graba como antes.
 
 Lo que NO se cambió: la invertida «salida delante» que el crítico puso de
 ejemplo no se da con circulación por la derecha salvo en esas 3 parejas; y el

@@ -219,39 +219,49 @@ public class TrackingService extends Service implements LocationListener {
  // En un Android anterior no se da: mejor «—» que 50 m de error.
  final java.util.concurrent.ExecutorService hiloAltura=java.util.concurrent.Executors.newSingleThreadExecutor();
  Object conversorAltura=null;
- volatile double altMar=Double.NaN; volatile float altError=-1f; volatile long altTiempo=0;
- // La diferencia elipsoide - nivel del mar (la «ondulacion del geoide»).
- // Cambia muy despacio (unos metros en decenas de km), asi que se saca de la
- // ultima conversion y se resta a cada punto del GPX sin esperar a convertirlo.
- volatile double ondulacion=Double.NaN;
+ // Revision con GPT: la altura sobre el mar, su error, su hora y la
+ // ondulacion del geoide (elipsoide menos mar) van JUNTOS en un objeto que no
+ // cambia -antes, sueltos, podian mezclar una altura nueva con el error de la
+ // anterior-; como mucho UNA conversion en marcha -antes se encolaba una por
+ // posicion, sin limite-; y si el conversor falla, o en 30 s no ha dado
+ // ninguna, el GPX se graba como antes en vez de quedarse sin alturas.
+ static final class Altura{final double mar,ondulacion;final float error;final long tiempo;Altura(double m,double o,float e,long t){mar=m;ondulacion=o;error=e;tiempo=t;}}
+ volatile Altura ultimaAltura=null;
+ volatile boolean conversorRoto=false;
+ long primerIntentoAltura=0;
+ final java.util.concurrent.atomic.AtomicBoolean convirtiendo=new java.util.concurrent.atomic.AtomicBoolean(false);
  // EL <ele> DEL GPX, SOBRE EL NIVEL DEL MAR (17 nov 2026). Antes se escribia
  // getAltitude(), sobre el elipsoide: las grabaciones salian unos 50 m altas
- // (un pico de 800 se veia de 850 en Wikiloc o Strava). En Android 14 o
- // posterior se resta la ondulacion; hasta tenerla (el primer segundo), el
- // punto va sin altura antes que con una equivocada. En un Android anterior
- // no hay modelo del geoide en el movil y se graba como siempre.
+ // (un pico de 800 se veia de 850 en Wikiloc o Strava). La ondulacion cambia
+ // unos metros en decenas de km: se resta la de la ultima conversion. Hasta
+ // tenerla (el primer segundo), el punto va sin altura antes que con una
+ // equivocada. En un Android anterior al 14, o con el conversor roto, como
+ // siempre: no hay modelo del geoide y no se inventa una cifra.
  String eleGpx(Location l){
   if(!l.hasAltitude())return "";
-  if(Build.VERSION.SDK_INT<34)return String.valueOf(l.getAltitude());
-  double n=ondulacion;
-  if(Double.isNaN(n))return "";
-  return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-n);
+  if(Build.VERSION.SDK_INT<34||conversorRoto)return String.valueOf(l.getAltitude());
+  Altura a=ultimaAltura;
+  if(a==null)return "";
+  return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-a.ondulacion);
  }
  void convierteAltura(Location l){
-  if(!l.hasAltitude()||Build.VERSION.SDK_INT<34)return;
+  if(!l.hasAltitude()||Build.VERSION.SDK_INT<34||conversorRoto)return;
+  if(primerIntentoAltura==0)primerIntentoAltura=SystemClock.elapsedRealtime();
+  if(ultimaAltura==null&&SystemClock.elapsedRealtime()-primerIntentoAltura>30_000L){conversorRoto=true;return;}
+  if(!convirtiendo.compareAndSet(false,true))return;
   final Location copia=new Location(l);
   try{hiloAltura.execute(()->{
    try{
     if(conversorAltura==null)conversorAltura=new android.location.altitude.AltitudeConverter();
     ((android.location.altitude.AltitudeConverter)conversorAltura).addMslAltitudeToLocation(TrackingService.this,copia);
     if(copia.hasMslAltitude()){
-     altMar=copia.getMslAltitudeMeters();
-     ondulacion=copia.getAltitude()-altMar;
-     altError=copia.hasMslAltitudeAccuracy()?copia.getMslAltitudeAccuracyMeters():(copia.hasVerticalAccuracy()?copia.getVerticalAccuracyMeters():-1f);
-     altTiempo=copia.getTime();
+     double mar=copia.getMslAltitudeMeters();
+     float err=copia.hasMslAltitudeAccuracy()?copia.getMslAltitudeAccuracyMeters():(copia.hasVerticalAccuracy()?copia.getVerticalAccuracyMeters():-1f);
+     ultimaAltura=new Altura(mar,copia.getAltitude()-mar,err,copia.getTime());
     }
-   }catch(Throwable ignored){}
-  });}catch(Exception ignored){}
+   }catch(Throwable t){conversorRoto=true;}
+   finally{convirtiendo.set(false);}
+  });}catch(Exception e){convirtiendo.set(false);}
  }
  final AlturaBarometrica baro=new AlturaBarometrica();
  SensorManager baroSm=null;long baroGuardado=0,baroUltimaHora=0;
@@ -1266,7 +1276,8 @@ public class TrackingService extends Service implements LocationListener {
   // Con la hora de la MEDIDA y la velocidad del GPS (Doppler): ver TiempoEnMarcha.
   if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L,l.hasSpeed()?l.getSpeed():Double.NaN);
   convierteAltura(l);
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",Double.isNaN(altMar)?-9999f:(float)altMar).putFloat("altError",altError).putLong("altTiempo",altTiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
+  final Altura alt=ultimaAltura;  // una sola lectura: altura, error y hora de la misma muestra
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",alt==null?-9999f:(float)alt.mar).putFloat("altError",alt==null?-1f:alt.error).putLong("altTiempo",alt==null?0L:alt.tiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   // Con una posicion por segundo y sin filtro de distancia, parado el GPS
   // deja un nido de puntos de puro ruido. Se guarda si te has movido 1,5 m
