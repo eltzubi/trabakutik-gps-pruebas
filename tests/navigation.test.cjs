@@ -1401,3 +1401,19 @@ test('El fichero de cruces compacto (forma solo donde la hay, clase en 2 bits) s
  assert.equal(JSON.stringify(A.puntos.map(p=>p.clases)),JSON.stringify(B.puntos.map(p=>p.clases)));
  assert.equal(JSON.stringify(B.puntos[0].clases),'[1,1,2]');
 });
+test('Tu carretera sale a la izquierda y luego curva a la derecha: el aviso dice izquierda, y cuenta desde el cruce (revision con GPT)',()=>{
+ const c=detector();
+ // Llega del oeste; en el cruce tu carretera sale 35 grados a la izquierda,
+ // de frente (al este) sigue otra, y a 30 m la tuya curva fuerte a la derecha.
+ const pts=[];for(let m=150;m>0;m-=5)pts.push(tramo(180,m));pts.push(point(0,0));
+ for(let m=5;m<=30;m+=5)pts.push(tramo(35,m));
+ const codo=tramo(35,30);const tras=(deg,l)=>[codo[0]+l*Math.sin(deg*Math.PI/180)/111195,codo[1]+l*Math.cos(deg*Math.PI/180)/(111195*Math.cos(43.2*Math.PI/180))];
+ for(let m=5;m<=120;m+=5)pts.push(tras(-70,m));
+ const p=[43.2,-2.5,[[270,55],[90]]];p.lejos=[tramo(180,25),tramo(35,25),tramo(0,25)];p.clases=[1,1,1];
+ const j=c.detectCrudo(pts,[p]).slice();
+ const enCruce=j.filter(x=>x.cruce!==false);
+ assert.equal(enCruce.length,1,JSON.stringify(j));
+ assert.equal(enCruce[0].direction,'izquierda','sale a la izquierda: lo de despues no cambia el lado');
+ // Y el aviso esta en el propio cruce (el punto 0,0 de la ruta), no antes.
+ assert(meters(enCruce[0].point,point(0,0))<1,'el aviso cuenta desde el cruce: '+meters(enCruce[0].point,point(0,0)));
+});

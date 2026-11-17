@@ -1110,3 +1110,37 @@ Lo que no toca, a propósito:
 
 Las rotondas se esperan como mucho 2,5 s antes de calcular, y solo si aún no
 están cargadas.
+
+## Revisión de ChatGPT (17 nov, noche): el lado sale del cruce, y el aviso cuenta desde él
+
+El autor pasó el trabajo del día a ChatGPT, que encontró dos fallos de verdad
+y los reprodujo con un cruce simulado:
+
+1. **El lado del «gira» salía de la ruta hasta 60 m después del cruce.** Si
+   tu carretera sale 35° a la izquierda, de frente sigue otra, y a los pocos
+   metros la tuya curva a la derecha, decía «derecha». Ahora el lado sale de
+   **cómo se separa tu rama de la de frente en el cruce**, las dos medidas
+   desde como llegas (de −180 a 180, para que no dé la vuelta pasados 180°:
+   con una resta de rumbos a secas, una revuelta de 130° a la derecha salía
+   «izquierda»). Cuánto giras: tu rama a 25 m frente a la llegada; menos de
+   25° es «sigue recto por», más es «gira».
+2. **El aviso se contaba desde el punto donde más se dobla la ruta**, que
+   puede quedar 25 m antes del nodo. Ahora, si lo decide un cruce, el aviso va
+   en el punto de la ruta más cercano a su nodo (mediana: 20 m más adelante).
+   La lista se ordena después por la ruta.
+
+Y un tercero que salió al probar el suyo: **la rama se reconocía contra todo
+el trozo de 60 m de ruta**, y una curva de después del cruce podía pasar cerca
+de la otra rama y dejarlo en duda; en duda se decidía a la antigua, que daba
+el lado contrario. Ahora se compara con el punto de la ruta a 25 m del cruce,
+que es donde se mide cada rama.
+
+Medido: los controles igual; lado contra el giro real del trazado, nuevo 222
+y viejo 17; de 849 giros reales de 90° o más, los mismos 8 sin aviso cerca.
+El caso de ChatGPT queda como prueba (`navigation.test.cjs`): falla con el
+código anterior y pasa con este.
+
+Sobre su duda de la APK 4.9.55 con el fichero compacto: el fichero lo lee la
+página, no la APK, y la página con el lector compacto se publicó antes que el
+fichero. Una página vieja en caché lo detecta (no cuadran los bytes), descarta
+la forma y decide a la antigua; no se rompe.

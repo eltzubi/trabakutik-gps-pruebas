@@ -378,9 +378,12 @@ function distARuta(q,linea){
 }
 // La rama cuyo punto a 25 m queda pegado al trozo de ruta, si esta claro.
 var CURVA_CALLE=100,GIRO_CALLE_M=100,GEO_PEGADA=12,GEO_MARGEN=6,GEO_DE_FRENTE=10,FRENTE_M=40,GEO_HORQUILLA=40,CRUCE_GIRO_CALLE=45;
-function eligePorForma(lista,linea){
+// Con «punto» (la ruta a 25 m del cruce, donde se mide cada rama) se compara
+// con ese punto y no con todo el trozo: una curva de despues del cruce podia
+// pasar cerca de la otra rama y dejarlo en duda (revision con GPT).
+function eligePorForma(lista,linea,punto){
  let mejor=null,dm=Infinity,segunda=Infinity;
- for(const x of lista){const d=distARuta(x.lejos,linea);if(d<dm){segunda=dm;dm=d;mejor=x}else if(d<segunda)segunda=d}
+ for(const x of lista){const d=punto?dist(x.lejos,punto):distARuta(x.lejos,linea);if(d<dm){segunda=dm;dm=d;mejor=x}else if(d<segunda)segunda=d}
  return mejor&&dm<=GEO_PEGADA&&segunda-dm>=GEO_MARGEN?mejor:null;
 }
 // EL CRUCE VISTO POR LA CALLE (17 nov 2026). Con las ramas agrupadas por
@@ -399,8 +402,8 @@ function decideCrucePorCalle(cruce,ramas,ruta){
  if(!ruta||!Array.isArray(cruce.lejos)||cruce.lejos.length!==ramas.length)return undefined;
  ramas.forEach((x,k)=>{x.lejos=cruce.lejos[k];x.clase=Array.isArray(cruce.clases)?cruce.clases[k]:0});
  if(ramas.some(x=>!x.lejos))return undefined;
- const a=eligePorForma(ramas,ruta.antes);if(!a)return undefined;
- const m=eligePorForma(ramas.filter(x=>x!==a),ruta.despues);if(!m)return undefined;
+ const a=eligePorForma(ramas,ruta.antes,ruta.a25);if(!a)return undefined;
+ const m=eligePorForma(ramas.filter(x=>x!==a),ruta.despues,ruta.d25);if(!m)return undefined;
  const nodo=[cruce[0],cruce[1]],rumboDe=x=>bearingBetween(nodo,x.lejos);
  // El rumbo con el que LLEGAS, de la ruta 60 m antes del cruce, no de la rama
  // a 25 m: si la carretera ya viene torciendo, a 25 m parece que sigue recta.
@@ -442,20 +445,20 @@ function decideCrucePorCalle(cruce,ramas,ruta){
   // calla: «curva cerrada» (exigente 36,48: 127 grados).
   if(!deFrente&&Math.abs(cercaH)>=CURVA_CALLE)return {curva:true,grados:Math.round(Math.abs(cercaH)),lado:cercaH<0?'izquierda':'derecha',porCalle:true};
   if(!deFrente)return null;
-  // El LADO, de lo que hace la ruta a 60 m del cruce: a 100 m entra a veces
-  // la curva de antes o la de despues y da la vuelta al signo (medido: seis
-  // «sigue» al lado contrario del giro real en las rutas de la web).
-  const cerca=cercaH;
-  // Hay una rama de frente, asi que hay que decir algo (revision con GPT:
-  // seguir tu via no quita que puedas equivocarte de rama). Lo que haga la
-  // ruta JUNTO al cruce (60 m) manda sobre lo de 100 m, que puede ser una ese:
-  // si ahi tuerce, «sigue la carretera» a ese lado; si casi no tuerce, es una
-  // horquilla: «sigue recto por» el lado de tu rama frente a la de frente.
-  if(Math.abs(cerca)<CRUCE_RECTO){
-   let f=null;for(const x of ramas)if(x!==a&&x!==m&&x.clase!==3&&(!f||Math.abs(difRumbo(rumboDe(x),llega))<Math.abs(difRumbo(rumboDe(f),llega))))f=x;
-   return {grados:Math.round(Math.abs(desvio)),lado:difRumbo(rumboDe(m),rumboDe(f))<0?'izquierda':'derecha',mantente:true,porCalle:true};
-  }
-  return {grados:Math.round(Math.abs(cerca)),lado:cerca<0?'izquierda':'derecha',mantente:false,sigue:true,via:m.clase|0,porCalle:true};
+  // EL LADO SALE DE COMO SE SEPARA TU RAMA DE LA DE FRENTE, EN EL CRUCE
+  // (revision con GPT, 17 nov 2026, tarde): antes salia de lo que hacia la
+  // ruta hasta 60 m despues, y si tu camino sale 35 grados a la izquierda y a
+  // los pocos metros curva a la derecha, decia «derecha». Lo que pase despues
+  // del cruce no cambia por donde hay que salir de el. Cuanto giras, de tu
+  // rama a 25 m frente a como llegas: poco es «sigue recto por», mucho «gira».
+  let f=null;for(const x of ramas)if(x!==a&&x!==m&&x.clase!==3&&(!f||Math.abs(difRumbo(rumboDe(x),llega))<Math.abs(difRumbo(rumboDe(f),llega))))f=x;
+  // Las dos medidas desde COMO LLEGAS (de -180 a 180, de izquierda a
+  // derecha): restar los dos rumbos sin mas da la vuelta pasados 180 grados, y
+  // una revuelta de 130 a la derecha con la otra rama a la izquierda salia
+  // «izquierda».
+  const lado=difRumbo(rumboDe(m),llega)<difRumbo(rumboDe(f),llega)?'izquierda':'derecha';
+  if(mia<CRUCE_RECTO)return {grados:Math.round(mia),lado,mantente:true,porCalle:true};
+  return {grados:Math.round(mia),lado,mantente:false,sigue:true,via:m.clase|0,porCalle:true};
  }
  // Dos ramas casi juntas (una horquilla): «sigue recto por la izquierda o la
  // derecha», con el lado de la tuya frente a la otra.
@@ -863,17 +866,20 @@ function calculaCrucesDe(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null;
   if(cruce){
    // El trozo de ruta de 60 m antes y despues del CRUCE (cortado en el punto
    // de la ruta mas cercano a su nodo y empalmado en el nodo), para reconocer
    // las ramas por su forma.
    let iN=i,dN=dist(pts[i],elCruce);
+   // (iNodo se fija al final de esta busqueda: es el punto de la ruta mas
+   // cercano al nodo del cruce, desde donde se cuenta el aviso.)
    for(let k=i-1;k>=1&&routeCumulative[i]-routeCumulative[k]<=40;k--){const e=dist(pts[k],elCruce);if(e<dN){dN=e;iN=k}}
    for(let k=i+1;k<pts.length-1&&routeCumulative[k]-routeCumulative[i]<=40;k++){const e=dist(pts[k],elCruce);if(e<dN){dN=e;iN=k}}
    // EXACTOS, no al vertice: con los puntos espaciados la ventana de «60 m»
    // se quedaba en 26 m y una herradura de 127 grados medía 69 (revision con
    // GPT). Los extremos se interpolan sobre la ruta.
+   iNodo=iN;
    const enRuta=d=>{
     const objetivo=routeCumulative[iN]+d;
     if(objetivo<=0)return pts[0];
@@ -891,6 +897,7 @@ function calculaCrucesDe(){
    ruta.antes.push([elCruce[0],elCruce[1]]);ruta.despues.unshift([elCruce[0],elCruce[1]]);
    // Y donde estabas y donde estaras a GIRO_CALLE_M (cuanto tuerce la calle
    // que llevas) y a FRENTE_M antes (con que rumbo llegas al cruce).
+   ruta.a25=enRuta(-25);ruta.d25=enRuta(25);
    ruta.desde=enRuta(-GIRO_CALLE_M);ruta.hasta=enRuta(GIRO_CALLE_M);ruta.llegada=enRuta(-FRENTE_M);
    let d=decideCruce(elCruce,b,giro.antes,giro.despues,ruta);
    // EL LADO DE UN CRUCE, MEDIDO EN EL CRUCE (17 nov 2026). Si hay que avisar
@@ -1002,9 +1009,18 @@ function calculaCrucesDe(){
   // por encima de lo que se acaba de andar (a menos de RETORNO_M), no es una
   // curva: es volver por el mismo camino, y ahi no hay lado que decir.
   const retorno=direction==='vuelta'&&vuelvePorLoAndado(i);
-  junctions.push(Object.assign({i,point:b,along:routeCumulative[i],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{}));
+  // EL AVISO SE CUENTA DESDE EL CRUCE (revision con GPT, 17 nov 2026): el
+  // punto donde mas se dobla la ruta puede quedar 25 m antes del nodo, y desde
+  // ahi «en 10 metros» se decia con el cruce a 35. Si lo ha decidido un cruce,
+  // el aviso va en el punto de la ruta mas cercano a su nodo.
+  const ultimo=junctions[junctions.length-1];
+  const iA=cruceAvisado&&iNodo!=null&&iNodo!==i&&(!ultimo||iNodo>ultimo.i)?iNodo:i;
+  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{}));
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
+ // Al contar desde el cruce, un aviso puede haber quedado por delante del
+ // siguiente: en orden de la ruta, que es como los recorre la aplicacion.
+ junctions.sort((p,q)=>p.i-q.i);
  if(crucesOsm.length&&rotondasOsm.length)resuelveRotondas(pts);
 }
 // UNA ROTONDA ES UN CRUCE, NO DOS. El autor cruzo una rotonda siguiendo recto
