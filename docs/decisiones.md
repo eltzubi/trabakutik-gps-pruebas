@@ -942,3 +942,24 @@ número de avisos no cambia (2.993), cambia el lado en 46, y juzgados con el
 giro real de la ruta medido en el cruce (45 m) aciertan 29 ahora frente a 3
 antes (5 casi rectos, sin juez). Antes de esto se midió decidir también SI
 avisar en el cruce, y se callaba giros reales: descartado.
+
+## El «cruce» del frontón (Eibar-Eltzubi 15,98): no se puede callar sin perder giros
+
+Curva de la BI-3302 con una calle que la cruza; las ramas del cruce no casan
+con la ruta y se avisa por lo cerrada que es la curva (56°). Probado, sobre
+todas las rutas y con los controles del autor (recyde 4,49, 12,92 y 14,79,
+giros reales):
+
+- Si las ramas no casan, decidir en el cruce con 20 m y callar si sigue por el
+  mismo camino: callaba el frontón (y recyde 17,10) pero también 4,49 y 14,79.
+- Lo mismo solo en cruces de carretera con ramal menor: igual, 15 quitados con
+  esos dos controles dentro.
+- Callar solo si además ninguna otra rama va más recta: 227 quitados, controles
+  dentro.
+
+Juzgados contra OSM, los 15 del segundo intento siguen todos por la misma
+carretera, también los controles: en 4,49, 12,92 y 14,79 la carretera tuerce
+en el cruce y el autor los vive como giros. Con lo que guarda el fichero de
+cruces no se distingue «la carretera hace una curva» de «la carretera tuerce
+en un cruce y de frente sigue otra calle». Hace falta saber qué calle de OSM es
+cada rama y cuál sigue recto de verdad.
