@@ -230,6 +230,23 @@ public class NativeTurnsTest {
   int chicos=0;
   for(int m=0;m<=300;m+=50)if(mr.nextNotice(m,1)!=null)chicos++;
   require(chicos==0,"un repecho de 36 m no es una subida");
+  // UNA SUBIDA LARGA Y TENDIDA (17 nov 2026): 4 km al 6%, como de Eibar a
+  // Elgeta, nunca llega al 10% en 200 m y no se decia. Ahora si, una vez.
+  ArrayList<double[]> tendida=new ArrayList<>();
+  for(int m=0;m<=4000;m+=10)tendida.add(new double[]{m/111195.,0,100+m*.06});
+  NavigationMetrics mte=new NavigationMetrics();
+  mte.configure(tendida,Collections.emptyList());
+  ArrayList<String> tend=new ArrayList<>();
+  for(int m=0;m<=4000;m+=50){NavigationMetrics.Notice av=mte.nextNotice(m,1);if(av!=null)tend.add(av.text());}
+  require(tend.size()==1,"una subida larga y tendida se avisa una vez (salieron "+tend.size()+")");
+  require(tend.get(0).startsWith("Empieza una subida de 4,0 kil"),tend.get(0));
+  // Y un llano que sube poco (2%) sigue sin ser una subida.
+  ArrayList<double[]> llano=new ArrayList<>();
+  for(int m=0;m<=4000;m+=10)llano.add(new double[]{m/111195.,0,100+m*.02});
+  NavigationMetrics mll=new NavigationMetrics();
+  mll.configure(llano,Collections.emptyList());
+  int enLlano=0;for(int m=0;m<=4000;m+=50)if(mll.nextNotice(m,1)!=null)enLlano++;
+  require(enLlano==0,"un 2% no es una subida");
   // UNA SUBIDA QUE EMPIEZA JUNTO A UN CRUCE. Mientras se canta un giro no se
   // piden avisos, y si los 100 m de antes de la subida caian todos en la
   // ventana del giro, pasado el arranque ya no se ofrecia y no se decia nunca.

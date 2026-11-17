@@ -1144,3 +1144,18 @@ Sobre su duda de la APK 4.9.55 con el fichero compacto: el fichero lo lee la
 página, no la APK, y la página con el lector compacto se publicó antes que el
 fichero. Una página vieja en caché lo detecta (no cuadran los bytes), descarta
 la forma y decide a la antigua; no se rompe.
+
+## Las subidas largas y tendidas también se avisan (17 de noviembre de 2026)
+
+El autor subió de Eibar a Elgeta y no oyó ningún aviso de subida, y de
+Mallabia a Osma o de Berriz a Trabakua sí. La regla solo empezaba una subida
+si en los próximos 200 m se subía el 10 %: esas dos cuestas pasan de sobra y
+la de Elgeta, larga pero tendida, no. Ahora también empieza si en el próximo
+kilómetro se sube el 5 % (`CLIMB_LONG_LENGTH`, `CLIMB_LONG_GRADE` en
+`NavigationMetrics`). Lo demás igual: se sigue hasta la cima, un aviso por
+subida, y hace falta subir 60 m o medir 600.
+
+Simulado sobre las 72 rutas: de 241 avisos de subida a 261. Muchas que ya se
+avisaban pasan a avisarse donde empiezan de verdad, con su largo y su
+desnivel enteros. Prueba nueva en `test-native-turns.py`: 4 km al 6 % se
+avisan una vez; un 2 % no.

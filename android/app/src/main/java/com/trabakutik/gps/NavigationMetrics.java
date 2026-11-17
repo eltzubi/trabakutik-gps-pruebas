@@ -25,6 +25,13 @@ final class NavigationMetrics {
     // metros o medir CLIMB_MIN_LENGTH. Si algun dia sobran o faltan avisos,
     // esos dos numeros son el dial.
     private static final double CLIMB_DROP = 25, CLIMB_MIN_GAIN = 60, CLIMB_MIN_LENGTH = 600;
+    // LAS SUBIDAS LARGAS Y TENDIDAS TAMBIEN (17 nov 2026). El autor subio de
+    // Eibar a Elgeta y no oyo nada, y de Mallabia a Osma o de Berriz a
+    // Trabakua si: esas pasan del 10% en 200 m y la de Elgeta no, que es larga
+    // pero tendida. Ahora tambien empieza una subida si en el proximo kilometro
+    // se sube el 5%. Medido en las 72 rutas: de 241 avisos a 261, y muchas
+    // subidas que ya se avisaban pasan a avisarse donde empiezan de verdad.
+    private static final double CLIMB_LONG_LENGTH = 1000, CLIMB_LONG_GRADE = .05;
     private static final double WATER_NOTICE = 150, WATER_OFFSET = 30;
     private static final double CLIMB_LATE = 60;
     private static final double UMBRAL_DESNIVEL = 5, CIERRE_M = 300;
@@ -88,7 +95,10 @@ final class NavigationMetrics {
                 double from = distance[i], to = from + dir * CLIMB_LENGTH;
                 double grade = to < 0 || to > total() || !hasHeights(from, to)
                         ? Double.NaN : (height(to) - height(from)) / CLIMB_LENGTH;
-                if (!(grade + 1e-9 >= CLIMB_GRADE)) { i += dir; continue; }
+                double toLong = from + dir * CLIMB_LONG_LENGTH;
+                double gradeLong = toLong < 0 || toLong > total() || !hasHeights(from, toLong)
+                        ? Double.NaN : (height(toLong) - height(from)) / CLIMB_LONG_LENGTH;
+                if (!(grade + 1e-9 >= CLIMB_GRADE) && !(gradeLong + 1e-9 >= CLIMB_LONG_GRADE)) { i += dir; continue; }
                 // Hasta la cima: se acaba al perder CLIMB_DROP desde lo mas alto.
                 int top = i;
                 double highest = heightAt(i);
