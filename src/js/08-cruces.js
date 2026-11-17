@@ -382,9 +382,17 @@ var CURVA_CALLE=100,GIRO_CALLE_M=100,GEO_PEGADA=12,GEO_MARGEN=6,GEO_DE_FRENTE=10
 // con ese punto y no con todo el trozo: una curva de despues del cruce podia
 // pasar cerca de la otra rama y dejarlo en duda (revision con GPT).
 function eligePorForma(lista,linea,punto){
- let mejor=null,dm=Infinity,segunda=Infinity;
- for(const x of lista){const d=punto?dist(x.lejos,punto):distARuta(x.lejos,linea);if(d<dm){segunda=dm;dm=d;mejor=x}else if(d<segunda)segunda=d}
- return mejor&&dm<=GEO_PEGADA&&segunda-dm>=GEO_MARGEN?mejor:null;
+ const prueba=medida=>{
+  let mejor=null,dm=Infinity,segunda=Infinity;
+  for(const x of lista){const d=medida(x);if(d<dm){segunda=dm;dm=d;mejor=x}else if(d<segunda)segunda=d}
+  return mejor&&dm<=GEO_PEGADA&&segunda-dm>=GEO_MARGEN?mejor:null;
+ };
+ if(!punto)return prueba(x=>distARuta(x.lejos,linea));
+ // Con el punto de la ruta a 25 m. Se probo, si no quedaba claro, a mirar los
+ // primeros 40 m de ruta: en las marañas de cruces (Zaldibar, exigente 8,19)
+ // esos 40 m pasan junto a otras ramas y salian lados al reves; medido, el
+ // juez del trazado bajaba de 220 a 214. Si no esta claro, se decide como antes.
+ return prueba(x=>dist(x.lejos,punto));
 }
 // EL CRUCE VISTO POR LA CALLE (17 nov 2026). Con las ramas agrupadas por
 // CALLE (referencia o nombre de OSM; sin nombre, la via y su continuacion en
@@ -457,7 +465,12 @@ function decideCrucePorCalle(cruce,ramas,ruta){
   // una revuelta de 130 a la derecha con la otra rama a la izquierda salia
   // «izquierda».
   const lado=difRumbo(rumboDe(m),llega)<difRumbo(rumboDe(f),llega)?'izquierda':'derecha';
-  if(mia<CRUCE_RECTO)return {grados:Math.round(mia),lado,mantente:true,porCalle:true};
+  // Y si las dos van casi juntas (menos de GEO_HORQUILLA entre ellas), es una
+  // horquilla aunque la tuya tuerza: «sigue recto por» el lado de la tuya.
+  // Dos caminos a 30 y 10 grados a la izquierda con «gira a la izquierda»
+  // no dicen cual coger.
+  const juntas=Math.abs(difRumbo(rumboDe(m),llega)-difRumbo(rumboDe(f),llega))<GEO_HORQUILLA;
+  if(mia<CRUCE_RECTO||juntas)return {grados:Math.round(mia),lado,mantente:true,porCalle:true};
   return {grados:Math.round(mia),lado,mantente:false,sigue:true,via:m.clase|0,porCalle:true};
  }
  // Dos ramas casi juntas (una horquilla): «sigue recto por la izquierda o la

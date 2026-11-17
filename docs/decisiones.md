@@ -1159,3 +1159,33 @@ Simulado sobre las 72 rutas: de 241 avisos de subida a 261. Muchas que ya se
 avisaban pasan a avisarse donde empiezan de verdad, con su largo y su
 desnivel enteros. Prueba nueva en `test-native-turns.py`: 4 km al 6 % se
 avisan una vez; un 2 % no.
+
+## Batería de cruces difíciles (17 nov 2026, noche)
+
+Después de que ChatGPT encontrara el fallo del lado, el autor pidió «nivel
+dios». Se hizo lo que faltaba: **casos construidos para romper la regla, no
+para confirmarla**, en `tests/cruces-dificiles.test.cjs` (17 casos). Cada uno
+se pasó también contra el código de antes de la revisión, para comprobar que
+la prueba de verdad detecta el fallo.
+
+Lo que salió y se cambió:
+- **Dos caminos casi juntos hacia el mismo lado** (el tuyo 30° a la
+  izquierda, otra calle 10°) decían «gira a la izquierda», que no dice cuál
+  coger. En tu misma vía, si la rama de frente va a menos de 40° de la tuya,
+  ahora es «sigue recto por» el lado de la tuya.
+
+Lo que se probó, se midió en las rutas de verdad y **se quitó**:
+- **Reconocer la rama con los primeros 40 m de ruta** cuando el punto a 25 m
+  no basta (pensado para GPX con puntos muy separados). En las marañas de
+  cruces (Zaldibar, exigente 8,19) esos 40 m pasan junto a otras ramas: el
+  juez del trazado bajaba de 220 a 214 y salían lados al revés.
+- **Usar el primer tramo de la rama** cuando tuerce más de 30° antes de los
+  25 m (una rama que sale a la izquierda y revuelve a la derecha a los 15 m).
+  Arreglaba esos casos de mentira, pero en las rutas se comía dos giros que sí
+  sonaban (argineta 11,5 e intxorta 12,73). Queda como límite conocido, dicho
+  en la cabecera de la batería.
+
+La lección, otra vez: un caso de mentira que falla no justifica un cambio si
+en las rutas de verdad empeora. Resultado final: controles igual; lado contra
+el giro real del trazado, nuevo 220 y viejo 17; giros reales de 90° o más sin
+aviso cerca, 8 de 849, los mismos de antes.
