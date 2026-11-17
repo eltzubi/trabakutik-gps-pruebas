@@ -856,9 +856,9 @@ test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dic
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:1,t:1,h:1},{i:9,dir:-1,t:0,h:1},{i:14,dir:-1,t:1}]));
  const jg=pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance;
  const ficha=trozo(jg,"const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
- assert(/turn\.retorno\?/.test(ficha)&&/curva de herradura a la/.test(ficha),'la ficha dice «curva de herradura a la …» salvo en una ida y vuelta');
+ assert(/turn\.retorno\?/.test(ficha)&&/curva de herradura a la/i.test(ficha),'la ficha dice «curva de herradura a la …» salvo en una ida y vuelta');
  const voz=trozo(jg,"const giroTxt=turn.rotonda","// Si la primera lectura entra en fase 1");
- assert(/turn\.retorno\?/.test(voz)&&/curva de herradura a la/.test(voz),'y la voz de la pagina tambien');
+ assert(/turn\.retorno\?/.test(voz)&&/curva de herradura a la/i.test(voz),'y la voz de la pagina tambien');
 });
 test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último «Quedan … m»',()=>{
  // El autor termino la salida y el perfil siguio diciendo «Quedan 1611 m
@@ -1040,7 +1040,7 @@ test('Al revés se usan los avisos calculados al revés, con su lado, sin darles
  c.ladoFlecha=pieza('08-cruces.js').ladoFlecha;
  vm.runInContext(source('let listaCrucesActiva=null;','function rumboDeLaRuta(progreso){'),c);
  c.junctionGuidance(point(0,0),5);
- assert.equal(n.turnDirection&&n.turnDirection.textContent,'Cruce a la derecha','el lado de la lista al reves, tal cual');
+ assert.equal(n.turnDirection&&n.turnDirection.textContent,'Gira a la derecha','el lado de la lista al reves, tal cual');
 });
 test('la flecha del mapa apunta en el sentido en que se llega al cruce',()=>{
  const R=Math.PI/180;
@@ -1264,18 +1264,18 @@ test('«✋ Sobraba»: sale tras pasar un aviso, apunta lo dicho y el sitio, y n
  assert(nodo('avisoMal').classList.contains('hidden'),'antes del cruce no sale');
  c.buscaAvisoMarcable(lista,{along:1040});
  assert(!nodo('avisoMal').classList.contains('hidden'),'pasado el cruce, sale');
- assert.equal(nodo('avisoMal').textContent,'✋ Sobraba: «Cruce a la izquierda»');
+ assert.equal(nodo('avisoMal').textContent,'✋ Sobraba: «Gira a la izquierda»');
  c.marcaAvisoMal();
  const l=JSON.parse(almacen['avisos-mal']);
- assert.equal(l.length,1);assert.equal(l[0].ruta,'Asuntza bira por Aginaga');assert.equal(l[0].km,1);assert.equal(l[0].dicho,'Cruce a la izquierda');
+ assert.equal(l.length,1);assert.equal(l[0].ruta,'Asuntza bira por Aginaga');assert.equal(l[0].km,1);assert.equal(l[0].dicho,'Gira a la izquierda');
  assert(nodo('avisoMal').classList.contains('hidden'),'apuntado, se esconde');
  c.buscaAvisoMarcable(lista,{along:1100});
  assert(nodo('avisoMal').classList.contains('hidden'),'y no vuelve a salir para el mismo');
  c.buscaAvisoMarcable(lista,{along:1400});
  assert.equal(c.avisoMarcable,null,'lejos ya no se ofrece');
- assert(/Asuntza bira por Aginaga · km 1,00 · «Cruce a la izquierda» sobraba · 43.2,-2.5/.test(c.textoAvisos()),c.textoAvisos());
+ assert(/Asuntza bira por Aginaga · km 1,00 · «Gira a la izquierda» sobraba · 43.2,-2.5/.test(c.textoAvisos()),c.textoAvisos());
  // al reves con la lista de la ida, el lado se cambia
- assert.equal(c.textoDeGiro(lista[0],true),'Cruce a la derecha');
+ assert.equal(c.textoDeGiro(lista[0],true),'Gira a la derecha');
  assert.equal(c.textoDeGiro(lista[1],false),'Curva cerrada a la derecha');
 });
 // LA FRANJA MUERTA (como el servicio): de vuelta al camino a 15 m del track,

@@ -415,12 +415,14 @@ public class TrackingService extends Service implements LocationListener {
   if(tipo==6&&lado!=0){
    // Sigues por la misma via y tuerce donde sale otra de frente: no es
    // «cruce a la izquierda», que suena a dejarla (el autor, 17 nov 2026).
-   String h="sigue "+(salida==1?"la carretera":salida==2?"la calle":"el camino")+" a la "+(lado<0?"izquierda":"derecha");
+   // Desde el mismo dia se dice «gira»: las frases dicen que hacer, no que
+   // hay (lo pidio el autor). La clase de via se sigue guardando.
+   String h="gira a la "+(lado<0?"izquierda":"derecha");
    if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+h;
   }
   if((tipo==3||tipo==4)&&lado!=0){
-   String h=(tipo==4?"en el cruce, curva de herradura a la ":"curva de herradura a la ")+(lado<0?"izquierda":"derecha");
+   String h="curva de herradura a la "+(lado<0?"izquierda":"derecha");
    if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+h;
   }
@@ -432,10 +434,14 @@ public class TrackingService extends Service implements LocationListener {
    // oyo 45 m antes de una carretera que salia a la derecha (hacia Mallabia) y
    // se podia entender como «gira ahi». Con «recto» queda claro que no hay
    // giro, solo coger el ramal de ese lado. Lo propuso el 16 nov 2026.
-   ?(lado<0?"en el cruce, sigue recto por la izquierda":"en el cruce, sigue recto por la derecha")
+   ?(lado<0?"sigue recto por la izquierda":"sigue recto por la derecha")
    :lado==0
-   ?(esCruce?"cruce, da la vuelta":"da la vuelta")
-   :esCruce?(lado<0?"cruce a la izquierda":"cruce a la derecha")
+   ?"da la vuelta"
+   // «GIRA», NO «CRUCE» (17 nov 2026). El autor: «se quita la palabra cruce
+   // y se deja en todo gira a la derecha, gira a la izquierda o sigue recto;
+   // asi no hay equivocacion». Donde la pagina ve un cruce de verdad se dice
+   // que hacer; en una curva suelta, «curva cerrada».
+   :esCruce?(lado<0?"gira a la izquierda":"gira a la derecha")
            :(lado<0?"curva cerrada a la izquierda":"curva cerrada a la derecha");
   if("3".equals(fase))return Character.toUpperCase(hacia.charAt(0))+hacia.substring(1)+" ahora";
   // La distancia de VERDAD, no el umbral: decia «en 200 metros» estando a 170.
@@ -1024,7 +1030,7 @@ public class TrackingService extends Service implements LocationListener {
      String instruction=lado<0?"Izquierda":lado>0?"Derecha":esCruce?"Da la vuelta":"Herradura";
      if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
      if(tipo==2&&lado!=0)instruction="Sigue "+(lado<0?"izqda.":"dcha.");
-     if(tipo==6&&lado!=0)instruction="Sigue la via "+(lado<0?"izqda.":"dcha.");
+
      if(herradura&&lado!=0)instruction="Herradura "+(lado<0?"izqda.":"dcha.");
      // El numero de la salida vale en el sentido en que se calculo: con la
      // lista de ida dada la vuelta (sin la de vuelta) no, y no se dice.

@@ -1061,3 +1061,24 @@ carretera»; 12,92 y 14,79 pasan a «curva cerrada» (127° y 107°), con su lad
 el resto igual. Lado: nuevo 193, viejo 17. De 849 giros reales de 90° o más,
 9 sin aviso a menos de 70 m: todos curvas de la misma vía entre 95° y 110° sin
 otra salida de verdad, que es el caso del frontón.
+
+## «Gira», no «cruce»: las frases dicen qué hacer (17 de noviembre de 2026)
+
+Lo propuso el autor: «se quita la palabra cruce y se deja en todo gira a la
+derecha, gira a la izquierda o sigue recto; así no hay equivocación». Se
+discutió la otra mitad de su idea, seguir solo el track «sin mirar lo que hay
+alrededor», y no se hizo: avisaría en todas las curvas (el frontón, recyde
+17,10, la universidad) y callaría en las horquillas suaves de dos pistas,
+donde el track va casi recto. **Cuándo hablar lo siguen decidiendo los cruces
+de OSM; lo que cambia es lo que se dice:**
+
+| antes | ahora |
+|---|---|
+| «cruce a la izquierda» | «gira a la izquierda» |
+| «en el cruce, sigue recto por la izquierda» | «sigue recto por la izquierda» |
+| «sigue la carretera a la izquierda» | «gira a la izquierda» |
+| «en el cruce, curva de herradura…» / «cruce, da la vuelta» | «curva de herradura…» / «da la vuelta» |
+| «curva cerrada…» y las rotondas | igual |
+
+En la aplicación (APK nueva) y en la página. El campo `sg` se sigue enviando y
+guardando como tipo 6, por si un día hace falta distinguirlo otra vez.

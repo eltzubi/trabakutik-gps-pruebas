@@ -75,9 +75,9 @@ public class GirosLimiteTest {
   t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":1,\"t\":1,\"h\":1},{\"i\":20,\"dir\":-1,\"t\":0,\"h\":1},{\"i\":30,\"dir\":1,\"t\":1}]");t.loadTurns();
   require((int)t.turns.get(0)[2]==4&&(int)t.turns.get(1)[2]==3&&(int)t.turns.get(2)[2]==1,"herradura en cruce=4, suelta=3, cruce normal=1");
   String enCruce=t.fraseGiro(1,4,"1",48),suelta=t.fraseGiro(-1,3,"3",0),normal=t.fraseGiro(1,1,"1",50);
-  require(enCruce.equals("En 50 metros, en el cruce, curva de herradura a la derecha"),enCruce);
+  require(enCruce.equals("En 50 metros, curva de herradura a la derecha"),enCruce);
   require(suelta.equals("Curva de herradura a la izquierda ahora"),suelta);
-  require(normal.equals("En 50 metros, cruce a la derecha"),normal);
+  require(normal.equals("En 50 metros, gira a la derecha"),normal);
   require(!enCruce.contains("da la vuelta")&&!suelta.contains("da la vuelta"),"nunca «da la vuelta»");
   // 5. Sin lado solo llega una ida y vuelta por el mismo camino: ahi si.
   String retorno=t.fraseGiro(0,0,"1",50);
@@ -103,8 +103,8 @@ public class GirosLimiteTest {
   // 7. «Sigue RECTO por la derecha»: con «sigue por la derecha» se entendia
   //    «gira» si justo despues salia una carretera a ese lado.
   String sigue=t.fraseGiro(1,2,"1",48),sigueYa=t.fraseGiro(-1,2,"3",0);
-  require(sigue.equals("En 50 metros, en el cruce, sigue recto por la derecha"),sigue);
-  require(sigueYa.equals("En el cruce, sigue recto por la izquierda ahora"),sigueYa);
+  require(sigue.equals("En 50 metros, sigue recto por la derecha"),sigue);
+  require(sigueYa.equals("Sigue recto por la izquierda ahora"),sigueYa);
   // 8. «Sigue la carretera a la izquierda» (sg, 17 nov 2026): sigues la misma
   //    via, que tuerce en un cruce. Tipo 6 y la via en la cuarta casilla. En
   //    una herradura o una rotonda no cuenta.
@@ -114,9 +114,9 @@ public class GirosLimiteTest {
   require((int)t.turns.get(2)[2]==5,"una rotonda sigue siendo rotonda");
   require((int)t.turns.get(3)[2]==1,"un sg raro no cambia nada");
   String via=t.fraseGiro(-1,6,"1",48,1),camino=t.fraseGiro(1,6,"3",0,3),calle=t.fraseGiro(1,6,"1",50,2);
-  require(via.equals("En 50 metros, sigue la carretera a la izquierda"),via);
-  require(camino.equals("Sigue el camino a la derecha ahora"),camino);
-  require(calle.equals("En 50 metros, sigue la calle a la derecha"),calle);
+  require(via.equals("En 50 metros, gira a la izquierda"),via);
+  require(camino.equals("Gira a la derecha ahora"),camino);
+  require(calle.equals("En 50 metros, gira a la derecha"),calle);
   System.out.println("OK: caben 2000 giros, por encima se vacia la lista, un giro en el punto 0 no tapa a los demas y la herradura dice su lado");
  }
 }'''
