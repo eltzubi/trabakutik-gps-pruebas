@@ -898,3 +898,29 @@ queda dicha.
 - Residual reconocido: una salida de rotonda por un sendero (que no se modela
   como boca) puede casar con una carretera próxima; la duda simétrica no lo
   detecta porque falta la rama.
+
+## Decidir la rama por la forma del camino: probado y NO subido (17 de noviembre de 2026)
+
+Para las marcas de «cruce» donde solo hay una carretera en curva con una calle
+al lado (recyde 17,10 y 6,41; Eibar-Eltzubi 10,04 y 15,98), se probó guardar
+por cada rama un punto a 25 m por su camino (sacado de caminos-zona.json,
+siguiendo el camino más recto a través de los cruces: 89 % de las ramas) y
+elegir la rama de llegada y la de salida por cuál tiene ese punto pegado a la
+ruta. Casos de control del autor, que tienen que seguir sonando: recyde 4,49,
+12,92 y 14,79 (giros reales) y las horquillas 1,4 y 4,0.
+
+- **Decidiéndolo todo por la forma:** callaba 2 de las 4 marcas, pero en los
+  avisos que cambiaban de lado acertaba peor que el método de siempre (8 contra
+  15, juzgado por hacia dónde gira la propia ruta). Descartado.
+- **Usando la forma solo para callar:** callaba las mismas 2 sin tocar los
+  controles, pero quitaba 317 avisos y, juzgados contra OSM, entre ellos había
+  giros de verdad (trabakuadeba 8,59 de la GI-3950 a una pista; zaldibar 12,46;
+  iruzubieta 4,90; urko 14,48, el ramal de la BI-2301). Descartado.
+
+La causa de fondo: la forma de caminos-zona.json está simplificada y
+contraída (sin identidad de vía), y a 25 m dos ramas que se separan poco no se
+distinguen. Lo que sí funcionó como juez fue mirar en OSM, con la geometría
+real, si la vía de antes y la de después del cruce son la misma (mismo id o
+mismo nombre/ref). Si se retoma, el camino es ese: guardar por rama la vía de
+OSM a la que pertenece y su nombre/ref (no solo un punto), y medirlo contra los
+controles y contra el juez antes de subir nada.
