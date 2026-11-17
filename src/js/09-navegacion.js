@@ -217,7 +217,12 @@ function junctionGuidance(p,accuracy,progress){
  $('turnArrow').innerHTML=flechaGiro(gradosFlecha,sentido,62,11);
  if(!turnMarker||turnMarker.options.turnIndex!==j){
   if(turnMarker)map.removeLayer(turnMarker);
-  const sign=L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],
+  // UNA MINIATURA DE LA GRANDE (17 nov 2026): «las flechas pequeñas no se
+  // distinguen bien, son feas; las grandes bien». La pequeña tenia el trazo
+  // casi el doble de grueso en proporcion (10 de 30 px; la grande, 11 de 62)
+  // y se emborronaba. Ahora 38 px y 7,5 de trazo en un cuadro de 44, como la
+  // grande en pequeño.
+  const sign=L.divIcon({className:'',iconSize:[44,44],iconAnchor:[22,22],
    // LA FLECHA DEL MAPA ERA UN BORRON. Media 24 px dentro de un circulo de 38
   // y con un trazo de 13: a 147 grados no se distinguia la forma del giro. Lo
   // dijo el autor: «no sé qué sea un giro, por muy cerrado que sea». La de
@@ -343,7 +348,7 @@ function junctionGuidance(p,accuracy,progress){
 // con el mapa girado, apunta hacia arriba en la pantalla.
 function signoDelGiro(turn,gradosFlecha,sentido){
  const llegada=rumboDeLlegada(turn.i,typeof sentidoRuta!=='undefined'&&sentidoRuta<0?-1:1);
- return '<div class="map-turn-sign"'+(Number.isFinite(llegada)?' style="transform:rotate('+llegada.toFixed(0)+'deg)"':'')+'>'+flechaGiro(gradosFlecha,sentido,30,10)+'</div>';
+ return '<div class="map-turn-sign"'+(Number.isFinite(llegada)?' style="transform:rotate('+llegada.toFixed(0)+'deg)"':'')+'>'+flechaGiro(gradosFlecha,sentido,38,7.5)+'</div>';
 }
 // El rumbo con el que se llega al punto i de la ruta, yendo en el sentido
 // «paso» (1 de ida, -1 al reves): desde el punto que queda unos 15 m antes.

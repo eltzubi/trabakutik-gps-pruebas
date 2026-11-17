@@ -779,3 +779,12 @@ ruta recta hacia el sur, mapa girado con la marcha, y se mide con
 el mapa girado, hacia abajo con el norte arriba. Comprobado que sin el arreglo
 falla (la flecha bajaba 20 px). La flecha se pinta en `signoDelGiro`, aparte,
 para poder probarla.
+
+## La flecha pequeña del mapa, una miniatura de la grande (17 de noviembre de 2026)
+
+«Esas flechas pequeñas aún así no se distinguen bien las formas, son feas; las
+grandes, bien.» La pequeña medía 30 px con trazo 10 (un tercio de su tamaño) y
+la grande 62 con trazo 11 (un sexto): proporcionalmente casi el doble de gorda,
+y se emborronaba. Ahora 38 px con trazo 7,5 en un cuadro de 44, oscuro, con
+esquinas redondeadas y borde naranja: la grande en pequeño. Comparadas las dos
+a la vista con giros de 22, 60, 95, 147 y 170 grados.
