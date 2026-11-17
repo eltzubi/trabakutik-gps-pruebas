@@ -263,7 +263,11 @@ def _read_stream(response):
         if kind in ("response.completed", "response.incomplete", "response.failed"):
             final = event.get("response")
         elif kind == "error":
-            raise DuelError("OpenAI reported an error in the stream. No automatic retry was made.")
+            # El detalle (codigo y mensaje de OpenAI) ayuda a saber si es falta
+            # de saldo, un modelo no disponible o un fallo suyo. Se recorta.
+            err = event.get("error") if isinstance(event.get("error"), dict) else event
+            detalle = " ".join(str(err.get(k, ""))[:200] for k in ("code", "type", "message") if err.get(k))
+            raise DuelError("OpenAI reported an error in the stream" + (" (" + detalle + ")" if detalle else "") + ". No automatic retry was made.")
     if final is None:
         raise DuelError("OpenAI stream ended without a final response; billing is unknown. No automatic retry was made.")
     return final
