@@ -924,3 +924,21 @@ real, si la vía de antes y la de después del cruce son la misma (mismo id o
 mismo nombre/ref). Si se retoma, el camino es ese: guardar por rama la vía de
 OSM a la que pertenece y su nombre/ref (no solo un punto), y medirlo contra los
 controles y contra el juez antes de subir nada.
+
+## El lado de un cruce, comprobado en el propio cruce (17 de noviembre de 2026)
+
+En la vuelta de Eibar-Eltzubi, entrando a Areitio, el navegador dijo «cruce a
+la izquierda» y había que ir a la derecha (la ruta gira 37° en 30 m y 79° en
+50 m). Por la mañana, en la ida, ese mismo cruce salió bien. La causa: el lado
+se decidía con 12 m de ruta alrededor del punto donde más se dobla, y a la
+vuelta ese punto cayó 19 m antes del cruce, donde la carretera todavía torcía
+a la izquierda. El autor: «las curvas me dan igual; me preocupan los cruces».
+
+Ahora, si hay que avisar lo sigue decidiendo lo de siempre (así no se pierde
+ningún giro: los controles de recyde 4,49, 12,92, 14,79 y las horquillas 1,4 y
+4,0 suenan igual), pero el LADO se comprueba mirando la ruta en su punto más
+cercano al nodo del cruce, con 20 m a cada lado. Medido en todas las rutas: el
+número de avisos no cambia (2.993), cambia el lado en 46, y juzgados con el
+giro real de la ruta medido en el cruce (45 m) aciertan 29 ahora frente a 3
+antes (5 casi rectos, sin juez). Antes de esto se midió decidir también SI
+avisar en el cruce, y se callaba giros reales: descartado.

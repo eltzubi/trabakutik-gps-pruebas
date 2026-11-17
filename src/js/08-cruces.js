@@ -320,6 +320,8 @@ function enviaGirosNativos(){
 // a los 1.952 de antes -uno cada 820-. La ruta con mas es hirutxikiak, con
 // 88; el servicio de Android admite hasta 2000 por ruta (GIROS_MAX).
 const CRUCE_RECTO=25;
+// Ventana con la que se comprueba el lado de un cruce en el propio cruce.
+var LADO_VENTANA=20;
 function difRumbo(a,b){let d=(a-b)%360;if(d>=180)d-=360;if(d<-180)d+=360;return d}
 function decideCruce(cruce,centro,antes,despues){
  const RAMA_ENCAJA=45;
@@ -718,6 +720,23 @@ function calculaCrucesDe(){
   let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null;
   if(cruce){
    let d=decideCruce(elCruce,b,giro.antes,giro.despues);
+   // EL LADO DE UN CRUCE, MEDIDO EN EL CRUCE (17 nov 2026). Si hay que avisar
+   // lo decide lo de siempre; el LADO se comprueba mirando la ruta en su punto
+   // mas cercano al nodo del cruce, con LADO_VENTANA m a cada lado. El punto
+   // donde la ruta mas se dobla puede quedar a 20 m del cruce, y en la vuelta
+   // de Eibar-Eltzubi, entrando a Areitio, ahi la carretera aun torcia a la
+   // izquierda: dijo «izquierda» y era a la derecha. Medido sobre todas las
+   // rutas: el numero de avisos no cambia, cambia el lado en 46, y juzgados con
+   // el giro real de la ruta en el cruce aciertan 29 ahora frente a 3 antes.
+   if(d&&!d.sinRamas){
+    let iC=i,dC=dist(pts[i],elCruce);
+    for(let k=i-1;k>=1&&routeCumulative[i]-routeCumulative[k]<=40;k--){const e=dist(pts[k],elCruce);if(e<dC){dC=e;iC=k}}
+    for(let k=i+1;k<pts.length-1&&routeCumulative[k]-routeCumulative[i]<=40;k++){const e=dist(pts[k],elCruce);if(e<dC){dC=e;iC=k}}
+    const mC=Math.min(routeCumulative[iC],routeCumulative[pts.length-1]-routeCumulative[iC]);
+    const gC=mC>=6?geometriaEn(iC,Math.min(LADO_VENTANA,mC)):null;
+    const dN=gC?decideCruce(elCruce,pts[iC],gC.antes,gC.despues):null;
+    if(dN&&!dN.sinRamas&&dN.lado!==d.lado&&dN.mantente===d.mantente)d=Object.assign({},d,{lado:dN.lado});
+   }
    // UNA CARRETERA QUE SIGUE Y UN RAMAL MENOR AL LADO: «sigue recto por…»
    // solo si de verdad dejas la carretera. Lo pidio el autor en el km 6,37 de
    // recyde: la carretera sigue y a la izquierda solo esta la entrada a un
