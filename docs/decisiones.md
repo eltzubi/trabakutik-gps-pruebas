@@ -1037,3 +1037,10 @@ el lado bueno.
 
 Lo que no se toca: fuera de los recuadros bajados los cruces son los de antes,
 sin forma ni clase, y allí se decide como siempre.
+
+**El tamaño del fichero.** Con la forma de todas las ramas pasaba de 313 a
+637 KB, y el navegador lo guarda en el almacenamiento del móvil junto a las
+rutas guardadas (ya hubo una vez «No hay espacio para guardar la ruta»). Va
+compacto: la forma solo de los cruces que la tienen, marcados con un bit por
+cruce (`ramas_con_forma`), y la clase en 2 bits por rama (`ramas_clase2`).
+**428 KB**, y los avisos de las 76 rutas salen idénticos con los dos formatos.

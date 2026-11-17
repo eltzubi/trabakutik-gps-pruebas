@@ -1387,3 +1387,17 @@ test('Una revuelta muy cerrada en tu misma via se dice como curva, no como cruce
  assert.equal(j.length,1,JSON.stringify(j));
  assert.equal(j[0].cruce,false);assert.equal(j[0].direction,'izquierda');assert.ok(!j[0].sigue);
 });
+test('El fichero de cruces compacto (forma solo donde la hay, clase en 2 bits) se lee igual que el largo',()=>{
+ const c=pieza('08-cruces.js',{R:Math.PI/180,atob:s=>Buffer.from(s,'base64').toString('binary')});
+ const b64=a=>Buffer.from(a).toString('base64');
+ // Dos cruces de tres ramas: el primero con forma, el segundo sin ella.
+ const base={escala:100000,paso_rama:6,dif:[4320000,-250000,10,10],ramas:b64([0,15|64,30|128,0,15,30|128])};
+ const largo=Object.assign({},base,{ramas_lejos:b64([1,2,3,4,5,6,0,0,0,0,0,0]),ramas_clase:b64([1,1,2,0,0,0])});
+ const corto=Object.assign({},base,{ramas_con_forma:b64([1]),ramas_lejos:b64([1,2,3,4,5,6]),ramas_clase2:b64([1|1<<2|2<<4,0])});
+ const A=c.descifraZona(largo),B=c.descifraZona(corto);
+ assert.equal(JSON.stringify(A.puntos[0].lejos),JSON.stringify(B.puntos[0].lejos));
+ assert.ok(B.puntos[0].lejos.every(Boolean));
+ assert.equal(B.puntos[1].lejos,undefined);
+ assert.equal(JSON.stringify(A.puntos.map(p=>p.clases)),JSON.stringify(B.puntos.map(p=>p.clases)));
+ assert.equal(JSON.stringify(B.puntos[0].clases),'[1,1,2]');
+});

@@ -161,8 +161,13 @@ function descifraZona(j){
   try{
    const b=atob(j.ramas_lejos),esc2=esc;let o=0;
    const s8=v=>v>127?v-256:v;
-   for(const p of puntos){
+   // Compacto (17 nov 2026): con «ramas_con_forma», un bit por cruce dice si
+   // ese cruce trae forma; los que no, ni la llevan en el fichero.
+   const bits=typeof j.ramas_con_forma==='string'?atob(j.ramas_con_forma):null;
+   for(let n=0;n<puntos.length;n++){
+    const p=puntos[n];
     const g=p[2];if(!Array.isArray(g))continue;
+    if(bits&&!(bits.charCodeAt(n>>3)&(1<<(n&7))))continue;
     const lejos=[];
     for(const grupo of g)for(let k=0;k<grupo.length;k++){
      const la=s8(b.charCodeAt(o)),lo=s8(b.charCodeAt(o+1));o+=2;
@@ -176,11 +181,14 @@ function descifraZona(j){
  // LA CLASE DE CADA RAMA (17 nov 2026): 1 carretera, 2 calle, 0 camino. Un
  // byte por rama, en el mismo orden. Solo sirve para decir «sigue la
  // carretera», «la calle» o «el camino».
- if(ramas&&typeof j.ramas_clase==='string'&&j.ramas_clase){
+ // En «ramas_clase2» van 4 por byte (2 bits cada una).
+ const clases=typeof j.ramas_clase2==='string'?j.ramas_clase2:typeof j.ramas_clase==='string'?j.ramas_clase:'';
+ if(ramas&&clases){
   try{
-   const b=atob(j.ramas_clase);let o=0;
-   for(const p of puntos){const g=p[2];if(!Array.isArray(g))continue;const c=[];for(const grupo of g)for(let k=0;k<grupo.length;k++)c.push(b.charCodeAt(o++)&3);p.clases=c}
-   if(o!==b.length)for(const p of puntos)delete p.clases;
+   const b=atob(clases),dos=typeof j.ramas_clase2==='string';let o=0;
+   const lee=()=>{const v=dos?(b.charCodeAt(o>>2)>>((o&3)*2))&3:b.charCodeAt(o)&3;o++;return v};
+   for(const p of puntos){const g=p[2];if(!Array.isArray(g))continue;const c=[];for(const grupo of g)for(let k=0;k<grupo.length;k++)c.push(lee());p.clases=c}
+   if(dos?((o+3)>>2)!==b.length:o!==b.length)for(const p of puntos)delete p.clases;
   }catch(e){for(const p of puntos)delete p.clases}
  }
  // CRUCES DE CARRETERA CON UN RAMAL MENOR (16 nov 2026): un bit por cruce,
