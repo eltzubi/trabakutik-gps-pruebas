@@ -210,6 +210,31 @@ public class TrackingService extends Service implements LocationListener {
  final AvisoLlegada llegada=new AvisoLlegada();
  // El tiempo en movimiento de la salida (TiempoEnMarcha), para el panel de abajo.
  final TiempoEnMarcha enMarcha=new TiempoEnMarcha();
+ // LA ALTITUD DEL GPS, SOBRE EL NIVEL DEL MAR (17 nov 2026). El autor, a
+ // 157 m de la ruta y con satelites: «no me marca la altitud». La ficha la
+ // sacaba solo del perfil de la ruta. getAltitude() es sobre el ELIPSOIDE,
+ // no sobre el mar: aqui da unos 50 m de mas. Android 14 trae un modelo del
+ // geoide sin conexion (AltitudeConverter); la conversion lee ese modelo y
+ // puede tardar, asi que va en su propio hilo y la pagina recibe la ultima.
+ // En un Android anterior no se da: mejor «—» que 50 m de error.
+ final java.util.concurrent.ExecutorService hiloAltura=java.util.concurrent.Executors.newSingleThreadExecutor();
+ Object conversorAltura=null;
+ volatile double altMar=Double.NaN; volatile float altError=-1f; volatile long altTiempo=0;
+ void convierteAltura(Location l){
+  if(!l.hasAltitude()||Build.VERSION.SDK_INT<34)return;
+  final Location copia=new Location(l);
+  try{hiloAltura.execute(()->{
+   try{
+    if(conversorAltura==null)conversorAltura=new android.location.altitude.AltitudeConverter();
+    ((android.location.altitude.AltitudeConverter)conversorAltura).addMslAltitudeToLocation(TrackingService.this,copia);
+    if(copia.hasMslAltitude()){
+     altMar=copia.getMslAltitudeMeters();
+     altError=copia.hasMslAltitudeAccuracy()?copia.getMslAltitudeAccuracyMeters():(copia.hasVerticalAccuracy()?copia.getVerticalAccuracyMeters():-1f);
+     altTiempo=copia.getTime();
+    }
+   }catch(Throwable ignored){}
+  });}catch(Exception ignored){}
+ }
  final AlturaBarometrica baro=new AlturaBarometrica();
  SensorManager baroSm=null;long baroGuardado=0,baroUltimaHora=0;
  final SensorEventListener oyenteBaro=new SensorEventListener(){
@@ -1222,7 +1247,8 @@ public class TrackingService extends Service implements LocationListener {
   }
   // Con la hora de la MEDIDA y la velocidad del GPS (Doppler): ver TiempoEnMarcha.
   if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L,l.hasSpeed()?l.getSpeed():Double.NaN);
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
+  convierteAltura(l);
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",Double.isNaN(altMar)?-9999f:(float)altMar).putFloat("altError",altError).putLong("altTiempo",altTiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   // Con una posicion por segundo y sin filtro de distancia, parado el GPS
   // deja un nido de puntos de puro ruido. Se guarda si te has movido 1,5 m
@@ -1294,5 +1320,5 @@ public class TrackingService extends Service implements LocationListener {
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).putString("gasto",gastoUltimo).apply();
  }
  void finish(){paraCaidas();if(caidaEnCurso)terminaCaida(false);navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
- @Override public void onDestroy(){avisoHandler.removeCallbacks(refrescaAviso);callaYa();if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
+ @Override public void onDestroy(){try{hiloAltura.shutdownNow();}catch(Exception ignored){}avisoHandler.removeCallbacks(refrescaAviso);callaYa();if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

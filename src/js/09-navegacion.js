@@ -668,6 +668,8 @@ function miraPosicionNativa(){
  try{d=JSON.parse(window.TrabakutikAndroid.getPosition()||'{}')}catch(e){return}
  ubicacionVisualGps=typeof d.locationEnabled==='boolean'?d.locationEnabled:null;
  pintaEstadoGps();
+ // La altitud del GPS sobre el mar (APK 4.9.50 en adelante; las anteriores no la mandan).
+ if(typeof altGpsNativa!=='undefined')altGpsNativa=Number.isFinite(d.alt)&&d.alt>-9000?{v:d.alt,error:Number(d.altError),t:Number(d.altTiempo)}:null;
  if(!d.active){
   navegaNativo=false;
 

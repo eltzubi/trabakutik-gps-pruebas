@@ -577,6 +577,11 @@ public class MainActivity extends Activity {
     o.put("time",pref.getLong("time",0));
     o.put("bearing",pref.getFloat("bearing",-1f));
     o.put("speed",pref.getFloat("speed",-1f));
+    // Altitud del GPS sobre el nivel del mar, su error y de cuando es (ver
+    // TrackingService.convierteAltura). -9999 = no hay.
+    o.put("alt",pref.getFloat("altMar",-9999f));
+    o.put("altError",pref.getFloat("altError",-1f));
+    o.put("altTiempo",pref.getLong("altTiempo",0L));
     if(pref.getBoolean("guiando",false)){
      try{o.put("metrics",new org.json.JSONObject(pref.getString("metrics","{}")));}
      catch(org.json.JSONException ignored){}

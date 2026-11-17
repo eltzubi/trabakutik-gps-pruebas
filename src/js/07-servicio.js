@@ -334,6 +334,17 @@ let subSes=null;
 // servicio con el trazado (AlturaBarometrica.java). Cubre tambien lo andado
 // fuera de la ruta, asi que cuando esta manda el, y sin «~».
 let baroNativo=null;
+// La altitud del GPS que manda la app, ya sobre el nivel del mar: {v,error,t}
+// o null. Se enseña solo FUERA de la ruta (dentro manda el perfil) y solo si
+// es buena: error de ALT_GPS_ERROR m o menos y de hace menos de ALT_GPS_VIEJA.
+let altGpsNativa=null;
+const ALT_GPS_ERROR=25,ALT_GPS_VIEJA=15000;
+function altitudGps(ahora){
+ const a=altGpsNativa;
+ if(!a||!Number.isFinite(a.v)||a.v<-500||!(a.error>0&&a.error<=ALT_GPS_ERROR))return null;
+ if(!(a.t>0)||(ahora||Date.now())-a.t>ALT_GPS_VIEJA)return null;
+ return a.v;
+}
 const BARO_VIEJO_MS=90000;
 function subidaSesion(P){
  if(!recording||!Array.isArray(recorded))return null;
@@ -374,7 +385,7 @@ function pintaAlturas(fracRuta,estado){
   const d=$('tripDesnivel');if(d&&d.setAttribute)d.setAttribute('aria-label',sube===null?'Desnivel sin datos':'Subido '+(al?'unos ':'')+Math.round(sube)+' metros, bajado '+(al?'unos ':'')+Math.round(baja)+' metros');
  };
  if(conBaro)ponDesnivel(baroNativo.sube,baroNativo.baja,baroNativo.t&&Date.now()-baroNativo.t>BARO_VIEJO_MS?'~':'');
- if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;if(!conBaro)ponDesnivel(null,null,'');$('tripAltitud').textContent='—';if($('ffAlt'))$('ffAlt').textContent='—';$('tripFalta').textContent='—';return}
+ if(!P){tb.classList.add('sin-alturas');faltaSubidaRuta=null;if(!conBaro)ponDesnivel(null,null,'');{const g=altitudGps();$('tripAltitud').textContent=g===null?'—':'≈'+Math.round(g);if($('ffAlt'))$('ffAlt').textContent=g===null?'—':'≈'+Math.round(g)+' m'}$('tripFalta').textContent='—';return}
  tb.classList.remove('sin-alturas');
  const S=subidaSesion(P);
  if(!conBaro){if(!S)ponDesnivel(null,null,'');else ponDesnivel(S.sube,S.baja,S.parcial?'~':'')}
@@ -382,8 +393,10 @@ function pintaAlturas(fracRuta,estado){
  // La altitud y el punto, solo estando en la ruta AHORA y con una posicion
  // buena: la ultima posicion buena no es la altitud de donde estas.
  const altura=pos!==null&&estado==='ruta'?alturaEnPerfil(P,pos):null;
- $('tripAltitud').textContent=altura===null?'—':String(Math.round(altura));
- if($('ffAlt'))$('ffAlt').textContent=altura===null?'—':Math.round(altura)+' m';
+ // Fuera de la ruta, la del GPS con «≈» (lo pidio el autor el 17 nov 2026).
+ const gps=altura===null?altitudGps():null;
+ $('tripAltitud').textContent=altura!==null?String(Math.round(altura)):gps!==null?'≈'+Math.round(gps):'—';
+ if($('ffAlt'))$('ffAlt').textContent=altura!==null?Math.round(altura)+' m':gps!==null?'≈'+Math.round(gps)+' m':'—';
  // Lo que falta, desde la ultima posicion buena en la ruta; fuera de ella se
  // deja lo ultimo dicho, que salirse unos metros no cambia lo que queda.
  if(pos!==null&&estado==='ruta'){
@@ -600,6 +613,6 @@ function flechaGiro(deg,dir,tam,grosor){
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
- Object.defineProperties(module.exports,{rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true},tiempoMovNativo:{get:()=>tiempoMovNativo,set:v=>{tiempoMovNativo=v},enumerable:true}});
+ module.exports={altitudGps,pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
+ Object.defineProperties(module.exports,{altGpsNativa:{get:()=>altGpsNativa,set:v=>{altGpsNativa=v},enumerable:true},rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true},tiempoMovNativo:{get:()=>tiempoMovNativo,set:v=>{tiempoMovNativo=v},enumerable:true}});
 }

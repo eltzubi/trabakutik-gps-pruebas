@@ -808,3 +808,21 @@ directamente.»
 - En la página, el botón de «Mis rutas» y esta entrada pasan por la misma
   función (`importaTextoGpx`, pieza 06), con las mismas comprobaciones; desde
   fuera se abre directamente como ruta activa y queda guardada en Mis rutas.
+
+## La altitud fuera de la ruta, del GPS y sobre el nivel del mar (17 de noviembre de 2026)
+
+El autor, a 157 m de la ruta y con satélites: la ficha no le daba la altitud.
+La altitud de la ficha salía solo del perfil de la ruta en el punto donde se
+está, y solo estando sobre ella. Ahora, fuera de la ruta, sale la del GPS con
+«≈» si es buena (error de 25 m o menos, de hace menos de 15 s).
+
+La del GPS no vale tal cual: `Location.getAltitude()` es sobre el ELIPSOIDE
+WGS84, no sobre el mar, y aquí da unos 50 m de más. El servicio la convierte
+con `AltitudeConverter` (Android 14 en adelante, modelo del geoide sin
+conexión), en su propio hilo porque leer el modelo puede tardar, y la manda a
+la página con su error y su hora. En un Android anterior no se da: mejor «—»
+que 50 m de error.
+
+**Pendiente de decidir por el autor:** el GPX que graba el servicio escribe
+`<ele>` con `getAltitude()`, o sea sobre el elipsoide: las grabaciones salen
+unos 50 m altas. Se le ha propuesto escribir la altitud sobre el mar.

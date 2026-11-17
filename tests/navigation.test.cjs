@@ -1340,5 +1340,13 @@ test('la ficha en marcha va en tres columnas (rumbo, al track, altitud) y se rel
  assert(html.includes('id="ffTrack"')&&html.includes('id="ffAlt"'),'las dos casillas nuevas');
  assert(/\.info \.ff\{display:none\}/.test(html)&&/body\.despejado \.info \.ff\{display:flex/.test(html),'solo en marcha');
  const n9=fs.readFileSync(path.join(__dirname,'../src/js/09-navegacion.js'),'utf8'),n7=fs.readFileSync(path.join(__dirname,'../src/js/07-servicio.js'),'utf8');
- assert(n9.includes("$('ffTrack').textContent=fmt(d)")&&n7.includes("$('ffAlt').textContent=altura===null?'—':Math.round(altura)+' m'"),'se rellenan');
+ assert(n9.includes("$('ffTrack').textContent=fmt(d)")&&n7.includes("if($('ffAlt'))$('ffAlt').textContent=altura!==null?Math.round(altura)+' m'"),'se rellenan');
+});
+test('fuera de la ruta, la altitud del GPS (sobre el mar) solo si es buena y reciente',()=>{
+ const c=pieza('07-servicio.js'),ahora=1e12;
+ c.altGpsNativa=null;assert.equal(c.altitudGps(ahora),null,'sin dato de la app');
+ c.altGpsNativa={v:168.4,error:8,t:ahora-2000};assert.equal(c.altitudGps(ahora),168.4);
+ c.altGpsNativa={v:168.4,error:40,t:ahora-2000};assert.equal(c.altitudGps(ahora),null,'con 40 m de error, no');
+ c.altGpsNativa={v:168.4,error:8,t:ahora-60000};assert.equal(c.altitudGps(ahora),null,'de hace un minuto, no');
+ c.altGpsNativa={v:-9999,error:8,t:ahora};assert.equal(c.altitudGps(ahora),null,'la app dice que no hay');
 });
