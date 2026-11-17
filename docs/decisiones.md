@@ -963,3 +963,77 @@ en el cruce y el autor los vive como giros. Con lo que guarda el fichero de
 cruces no se distingue «la carretera hace una curva» de «la carretera tuerce
 en un cruce y de frente sigue otra calle». Hace falta saber qué calle de OSM es
 cada rama y cuál sigue recto de verdad.
+
+## «Sigue la carretera a la izquierda»: la misma vía que tuerce en un cruce (17 de noviembre de 2026)
+
+Resuelve la nota anterior. Los cruces se rehicieron con **todas las vías de
+OSM y su geometría** en los recuadros por los que pasan las rutas
+(`scripts/make_cruces_calles.py` en la web). Cada rama trae ahora su **calle**
+(ref o nombre; sin nombre, la vía y su continuación en línea del mismo tipo),
+un **punto a 25 m por su propia geometría** (`ramas_lejos`) y su **clase**
+(`ramas_clase`: carretera, calle o camino).
+
+**Lo que se vio con eso, y por qué no basta con callar.** En los cinco
+controles del autor sigues por la MISMA vía, y en los cinco esa vía tuerce en
+un cruce. Lo que sale de frente iba justo al revés de lo esperable: en recyde
+14,79 (giro de verdad, según el autor) de frente solo hay la entrada de una
+casa de 107 m; en el frontón (sobra, según él) una calle de 236 m. Ni la clase,
+ni a dónde lleva, ni el ángulo los separan sin ajustar los números a esos cinco.
+
+**Lo que hacen los navegadores de coche** (OSRM, Valhalla, Waze) no es
+callar o avisar: distinguen «cambia de vía» de «sigue la tuya, que tuerce» y
+dicen «continúa por…». Se hizo lo mismo, sin nombres de sitios (los avisos no
+los dicen): **«sigue la carretera / la calle / el camino a la izquierda»**. El
+autor lo aprobó («me vale»).
+
+La regla, en `decideCrucePorCalle` (pieza 08), tras tres rondas de revisión
+con GPT:
+
+- La rama de llegada y la de salida se reconocen por la forma (su punto a 25 m
+  pegado a la ruta, con margen). Si no está claro, se decide como antes.
+- Las ventanas de ruta se cortan a **distancia exacta, interpolando**: por
+  vértices, en exigente 36,48 la de «60 m» medía 26 m y una herradura de 127°
+  salía de 69°.
+- **Misma vía**: hay «rama de frente» si alguna otra va casi tan de frente
+  como la tuya (10° de tolerancia, `GEO_DE_FRENTE`) contra el rumbo de
+  llegada de los últimos 40 m (`FRENTE_M`), y a menos de 90°. Medido a
+  distancias exactas, la ventaja de la de enfrente es +8° en recyde 4,49
+  (avisar) y −29° en el 17,10 (callar); a 100 m eran +24 y +34, al revés. **Los
+  40 m y los 10° se eligieron mirando estos controles**: no es una validación
+  independiente.
+  - Con rama de frente nunca se calla. Si la ruta tuerce 25° o más a 60 m,
+    «sigue la vía» a ese lado; si casi no tuerce, es una horquilla: «sigue
+    recto por» el lado de tu rama frente a la de frente.
+  - Sin rama de frente: si a 60 m revuelve 75° o más (`CURVA_CALLE`), «curva
+    cerrada»; si no, nada.
+- Cambio de vía con dos ramas a menos de 40° (una horquilla): «sigue recto
+  por», con el lado de la tuya frente a la otra. Si no, como antes.
+- No hay filtro de avisos repetidos para «sigue»: el que había juntaba dos
+  cruces a menos de 60 m del mismo lado y podía comerse una segunda horquilla
+  distinta. Sin él salen 7 avisos de más en 72 rutas.
+
+A la aplicación va como `sg` (1 carretera, 2 calle, 3 camino) y el servicio lo
+guarda como tipo 6. Una APK anterior lo ignora y dice «cruce a la izquierda»,
+el lado bueno.
+
+**Medido sobre las 72 rutas y las dos del autor:**
+
+- Controles: recyde 4,49, 12,92 y 14,79 → «sigue la carretera» con su lado;
+  el frontón a la vuelta → «sigue la carretera» y **a la ida «curva cerrada a
+  la izquierda» (92°)**, ya no «cruce»; recyde 17,10 y 6,41 y la universidad
+  (Eltzubi 10,04) callan; Areitio (Eltzubi al revés 4,53) sigue «derecha»; la
+  horquilla de 1,40 igual.
+- Lado (solo izquierda/derecha, sin los «sigue recto por»), juzgado con el giro
+  real del trazado a 20 y 40 m: **acierta el nuevo en 197 y el viejo en 17**
+  (19 dudosos).
+- De 849 avisos viejos con giro real de 90° o más, queda **1** sin ningún aviso
+  a menos de 70 m (artetaberanoarandono 5,92).
+- Avisos 2993 → 3158: 541 «sigue la vía», 387 curvas, y unos 160 «sigue recto
+  por» nuevos, casi todos horquillas de dos pistas en el monte donde antes no
+  se decía nada.
+- Recyde 4,03 pasa de «sigue recto por la derecha» a **por la izquierda**: el
+  ramal (primary_link) sale por la izquierda de la BI-633 a 25, 49 y 90 m. Hay
+  que confirmarlo en el sitio.
+
+Lo que no se toca: fuera de los recuadros bajados los cruces son los de antes,
+sin forma ni clase, y allí se decide como siempre.

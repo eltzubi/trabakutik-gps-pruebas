@@ -258,6 +258,7 @@ function junctionGuidance(p,accuracy,progress){
    :lado==='vuelta'
    ?(turn.retorno?(esCruce?'Cruce · da la vuelta':'Da la vuelta')
     :esCruce?'Cruce · curva de herradura a la '+ladoHerradura:'Curva de herradura a la '+ladoHerradura)
+   :turn.sigue?'Sigue '+queVia(turn)+' a la '+lado
    :turn.mantente?'Cruce · sigue recto por la '+lado
    :(esCruce?'Cruce a la '+lado:'Curva cerrada a la '+lado);
  $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
@@ -317,6 +318,7 @@ function junctionGuidance(p,accuracy,progress){
     :lado==='vuelta'
     ?(turn.retorno?(esCruce?'en el cruce, da la vuelta':'da la vuelta')
      :esCruce?'en el cruce, curva de herradura a la '+ladoHerradura:'curva de herradura a la '+ladoHerradura)
+    :turn.sigue?'sigue '+queVia(turn)+' a la '+lado
     :turn.mantente?'en el cruce, sigue recto por la '+lado
     :(esCruce?'cruce a la '+lado:'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.
@@ -328,7 +330,7 @@ function junctionGuidance(p,accuracy,progress){
   }
   if(fase!=='v')notice(fase==='3'
         ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
-        :(turn.rotonda?'Rotonda':turn.mantente?'Cruce · sigue recto por la '+lado:esCruce?'Cruce':'Curva cerrada')
+        :(turn.rotonda?'Rotonda':turn.sigue?'Sigue '+queVia(turn)+' a la '+lado:turn.mantente?'Cruce · sigue recto por la '+lado:esCruce?'Cruce':'Curva cerrada')
          +' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
@@ -366,11 +368,17 @@ function queRotonda(turn,lado,alReves){
  if(turn.recto)return 'sigue recto';
  return lado==='vuelta'?'da la vuelta':'sal a la '+lado;
 }
+// SIGUES LA MISMA VIA Y TUERCE EN UN CRUCE (17 nov 2026): «sigue la
+// carretera a la izquierda», no «cruce a la izquierda». La palabra sale de la
+// clase de la via en OSM: carretera, calle o, en el monte, camino. Nunca su
+// nombre (los avisos no dicen nombres de sitios).
+function queVia(turn){return turn.via===1?'la carretera':turn.via===2?'la calle':'el camino'}
 function textoDeGiro(turn,alReves){
  const cambia=l=>alReves?(l==='izquierda'?'derecha':l==='derecha'?'izquierda':l):l;
  const lado=cambia(turn.direction),hacia=cambia(turn.hacia||turn.direction);
  if(turn.rotonda)return 'Rotonda · '+queRotonda(turn,lado,alReves);
  if(turn.direction==='vuelta')return turn.retorno?(turn.cruce!==false?'Cruce · da la vuelta':'Da la vuelta'):'Curva de herradura a la '+hacia;
+ if(turn.sigue)return 'Sigue '+queVia(turn)+' a la '+lado;
  if(turn.mantente)return 'Cruce · sigue recto por la '+lado;
  return (turn.cruce!==false?'Cruce a la ':'Curva cerrada a la ')+lado;
 }

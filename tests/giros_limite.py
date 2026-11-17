@@ -105,6 +105,18 @@ public class GirosLimiteTest {
   String sigue=t.fraseGiro(1,2,"1",48),sigueYa=t.fraseGiro(-1,2,"3",0);
   require(sigue.equals("En 50 metros, en el cruce, sigue recto por la derecha"),sigue);
   require(sigueYa.equals("En el cruce, sigue recto por la izquierda ahora"),sigueYa);
+  // 8. «Sigue la carretera a la izquierda» (sg, 17 nov 2026): sigues la misma
+  //    via, que tuerce en un cruce. Tipo 6 y la via en la cuarta casilla. En
+  //    una herradura o una rotonda no cuenta.
+  t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":-1,\"t\":1,\"sg\":1},{\"i\":20,\"dir\":1,\"t\":1,\"sg\":3},{\"i\":30,\"dir\":1,\"t\":1,\"sg\":2,\"ro\":1},{\"i\":40,\"dir\":1,\"t\":1,\"sg\":9}]");t.loadTurns();
+  require((int)t.turns.get(0)[2]==6&&(int)t.turns.get(0)[3]==1,"sg=1: tipo 6, carretera");
+  require((int)t.turns.get(1)[2]==6&&(int)t.turns.get(1)[3]==3,"sg=3: tipo 6, camino");
+  require((int)t.turns.get(2)[2]==5,"una rotonda sigue siendo rotonda");
+  require((int)t.turns.get(3)[2]==1,"un sg raro no cambia nada");
+  String via=t.fraseGiro(-1,6,"1",48,1),camino=t.fraseGiro(1,6,"3",0,3),calle=t.fraseGiro(1,6,"1",50,2);
+  require(via.equals("En 50 metros, sigue la carretera a la izquierda"),via);
+  require(camino.equals("Sigue el camino a la derecha ahora"),camino);
+  require(calle.equals("En 50 metros, sigue la calle a la derecha"),calle);
   System.out.println("OK: caben 2000 giros, por encima se vacia la lista, un giro en el punto 0 no tapa a los demas y la herradura dice su lado");
  }
 }'''

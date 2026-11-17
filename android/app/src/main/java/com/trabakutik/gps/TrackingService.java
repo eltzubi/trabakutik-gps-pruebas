@@ -397,6 +397,8 @@ public class TrackingService extends Service implements LocationListener {
   // una herradura llegaba sin lado y en un cruce se decia «cruce, da la
   // vuelta»: en plena revuelta de carretera suena a volver atras. Lo conto el
   // autor: «me decia una vuelta en plena curva».
+  // tipo 6: SIGUE LA MISMA VIA, que tuerce en un cruce; «salida» trae la
+  // clase de via (1 carretera, 2 calle, 3 camino).
   // tipo 5: ROTONDA. La pagina la cuenta como un solo cruce (lo que importa
   // es por donde entras y por donde sales) y aqui se dice como lo pidio el
   // autor el 15 de noviembre de 2026: «sal a la derecha». Cruzarla recto no
@@ -410,7 +412,14 @@ public class TrackingService extends Service implements LocationListener {
    if("3".equals(fase))return Character.toUpperCase(r.charAt(0))+r.substring(1)+" ahora";
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+r;
   }
-  if(tipo>=3&&lado!=0){
+  if(tipo==6&&lado!=0){
+   // Sigues por la misma via y tuerce donde sale otra de frente: no es
+   // «cruce a la izquierda», que suena a dejarla (el autor, 17 nov 2026).
+   String h="sigue "+(salida==1?"la carretera":salida==2?"la calle":"el camino")+" a la "+(lado<0?"izquierda":"derecha");
+   if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
+   return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+h;
+  }
+  if((tipo==3||tipo==4)&&lado!=0){
    String h=(tipo==4?"en el cruce, curva de herradura a la ":"curva de herradura a la ")+(lado<0?"izquierda":"derecha");
    if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+h;
@@ -892,6 +901,11 @@ public class TrackingService extends Service implements LocationListener {
     // noviembre de 2026). Va en la cuarta casilla del giro; 0 = sin numero.
     int salida=tipo==5?p.optInt("rs",0):0;
     if(salida<0||salida>8)salida=0;
+    // «sg»: SIGUE LA MISMA VIA, que tuerce en un cruce (la pagina desde el 17
+    // de noviembre de 2026): tipo 6, y en la casilla de la salida la via:
+    // 1 carretera, 2 calle, 3 camino. «Sigue la carretera a la izquierda».
+    int sg=p.optInt("sg",0);
+    if((tipo==1||tipo==2)&&sg>=1&&sg<=3){tipo=6;salida=sg;}
     // «rr»:1, esa rotonda se cruza recto (solo llega con numero).
     int recta=tipo==5&&p.optInt("rr",0)==1?1:0;
     // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
@@ -1002,18 +1016,21 @@ public class TrackingService extends Service implements LocationListener {
      double[] giro=turns.get(mejor);
      int d=(int)giro[1];
      int tipo=giro.length<3?1:(int)giro[2];
-     boolean herradura=tipo>=3;
-     boolean esCruce=tipo==1||tipo==2||tipo==4;
+     boolean herradura=tipo==3||tipo==4;
+     boolean esCruce=tipo==1||tipo==2||tipo==4||tipo==6;
      // Al reves, lo que se grabo como derecha es izquierda... salvo con la
      // lista calculada al reves, que ya trae el lado de quien va al reves.
      int lado=usaReves?d:d*sentido;
      String instruction=lado<0?"Izquierda":lado>0?"Derecha":esCruce?"Da la vuelta":"Herradura";
      if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
      if(tipo==2&&lado!=0)instruction="Sigue "+(lado<0?"izqda.":"dcha.");
+     if(tipo==6&&lado!=0)instruction="Sigue la via "+(lado<0?"izqda.":"dcha.");
      if(herradura&&lado!=0)instruction="Herradura "+(lado<0?"izqda.":"dcha.");
      // El numero de la salida vale en el sentido en que se calculo: con la
      // lista de ida dada la vuelta (sin la de vuelta) no, y no se dice.
      int salida=tipo==5&&giro.length>3&&(usaReves||sentido>0)?(int)giro[3]:0;
+     // En el tipo 6 esa casilla es la clase de via, que vale en los dos sentidos.
+     if(tipo==6)salida=giro.length>3?(int)giro[3]:3;
      // La rotonda era tipo>=3 y salia «Herradura dcha.» en la notificacion.
      if(tipo==5)instruction=salida>=1&&salida<ORDINALES.length?"Rotonda, "+salida+".ª salida"
       :lado==0?"Rotonda, da la vuelta":"Rotonda "+(lado<0?"izqda.":"dcha.");

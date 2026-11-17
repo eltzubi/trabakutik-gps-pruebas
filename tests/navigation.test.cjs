@@ -1356,3 +1356,34 @@ test('fuera de la ruta, la altitud del GPS (sobre el mar) solo si es buena y rec
  c.altGpsNativa={v:168.4,error:8,t:ahora-60000};assert.equal(c.altitudGps(ahora),null,'de hace un minuto, no');
  c.altGpsNativa={v:-9999,error:8,t:ahora};assert.equal(c.altitudGps(ahora),null,'la app dice que no hay');
 });
+test('Sigues la misma via y tuerce donde de frente sale otra: «sigue la carretera», no «cruce» (17 nov 2026)',()=>{
+ const c=detector();
+ // Llega del oeste y la carretera tuerce 60 grados a la izquierda en el cruce.
+ const pts=[];for(let m=150;m>0;m-=5)pts.push(tramo(180,m));pts.push(point(0,0));for(let m=5;m<=150;m+=5)pts.push(tramo(60,m));
+ const cruce=(otra,lejosOtra,clases)=>{const p=[43.2,-2.5,[[270,30],[otra]]];p.lejos=[tramo(180,25),tramo(60,25),lejosOtra];p.clases=clases;return p};
+ // De frente (al este) sigue otra calle: aviso «sigue», con la via de la tuya.
+ const carretera=c.detectCrudo(pts,[cruce(90,tramo(0,25),[1,1,2])]).slice();
+ // La otra rama sale hacia atras (al sur): nada va mas recto que tu via, y
+ // en una curva de 60 grados no hay nada que decir.
+ const atras=c.detectCrudo(pts,[cruce(180,tramo(-90,25),[1,1,0])]).slice();
+ // En el monte, la via es un camino.
+ const monte=c.detectCrudo(pts,[cruce(90,tramo(0,25),[0,0,0])]).slice();
+ assert.equal(carretera.length,1,JSON.stringify(carretera));
+ assert.equal(carretera[0].sigue,true);assert.equal(carretera[0].via,1);assert.equal(carretera[0].direction,'izquierda');
+ assert.equal(atras.length,0,JSON.stringify(atras));
+ assert.equal(monte[0].via,0);
+ // Lo que va a la aplicacion: sg=1 carretera, sg=3 camino.
+ const envia=j=>{let e=null;pieza('08-cruces.js',{junctions:j,junctionsReves:null,window:{TrabakutikAndroid:{setJunctions(s){e=JSON.parse(s)},setJunctionsReves(){}}}}).enviaGirosNativos();return e};
+ const e1=envia(carretera),e3=envia(monte);
+ assert.equal(e1[0].sg,1);assert.equal(e1[0].dir,-1);
+ assert.equal(e3[0].sg,3);
+});
+test('Una revuelta muy cerrada en tu misma via se dice como curva, no como cruce, y no se calla (17 nov 2026)',()=>{
+ const c=detector();
+ // Llega del oeste y la misma via revuelve 130 grados a la izquierda; la otra rama sale al sur.
+ const pts=[];for(let m=150;m>0;m-=5)pts.push(tramo(180,m));pts.push(point(0,0));for(let m=5;m<=150;m+=5)pts.push(tramo(130,m));
+ const p=[43.2,-2.5,[[270,320],[180]]];p.lejos=[tramo(180,25),tramo(130,25),tramo(-90,25)];p.clases=[1,1,0];
+ const j=c.detectCrudo(pts,[p]).slice();
+ assert.equal(j.length,1,JSON.stringify(j));
+ assert.equal(j[0].cruce,false);assert.equal(j[0].direction,'izquierda');assert.ok(!j[0].sigue);
+});
