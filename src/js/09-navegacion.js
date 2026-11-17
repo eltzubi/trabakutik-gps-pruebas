@@ -217,7 +217,6 @@ function junctionGuidance(p,accuracy,progress){
  $('turnArrow').innerHTML=flechaGiro(gradosFlecha,sentido,62,11);
  if(!turnMarker||turnMarker.options.turnIndex!==j){
   if(turnMarker)map.removeLayer(turnMarker);
-  const llegada=rumboDeLlegada(turn.i,sentidoRuta<0?-1:1);
   const sign=L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],
    // LA FLECHA DEL MAPA ERA UN BORRON. Media 24 px dentro de un circulo de 38
   // y con un trazo de 13: a 147 grados no se distinguia la forma del giro. Lo
@@ -231,7 +230,7 @@ function junctionGuidance(p,accuracy,progress){
   // nov 2026, km 6,37 de recyde). Se gira el rumbo con el que se llega -de un
   // punto unos 15 m antes, en el sentido de la marcha-, asi apunta bien con el
   // norte arriba y con el mapa girado.
-  html:'<div class="map-turn-sign"'+(Number.isFinite(llegada)?' style="transform:rotate('+llegada.toFixed(0)+'deg)"':'')+'>'+flechaGiro(gradosFlecha,sentido,30,10)+'</div>'});
+  html:signoDelGiro(turn,gradosFlecha,sentido)});
   turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
  }
  // Un cruce y una curva de herradura no son lo mismo y no se dicen igual:
@@ -339,6 +338,13 @@ function junctionGuidance(p,accuracy,progress){
 // salida» (lo pidio el autor el 16 nov 2026); sin el, como antes. El numero
 // vale en el sentido en que se calculo: yendo al reves con la lista de ida
 // (la de vuelta no siempre esta) no vale, y no se dice.
+// La flecha pequeña del mapa, girada con el rumbo de llegada (ver el
+// comentario de junctionGuidance). Aparte para poder probar en Chromium que,
+// con el mapa girado, apunta hacia arriba en la pantalla.
+function signoDelGiro(turn,gradosFlecha,sentido){
+ const llegada=rumboDeLlegada(turn.i,typeof sentidoRuta!=='undefined'&&sentidoRuta<0?-1:1);
+ return '<div class="map-turn-sign"'+(Number.isFinite(llegada)?' style="transform:rotate('+llegada.toFixed(0)+'deg)"':'')+'>'+flechaGiro(gradosFlecha,sentido,30,10)+'</div>';
+}
 // El rumbo con el que se llega al punto i de la ruta, yendo en el sentido
 // «paso» (1 de ida, -1 al reves): desde el punto que queda unos 15 m antes.
 function rumboDeLlegada(i,paso){
@@ -810,7 +816,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }

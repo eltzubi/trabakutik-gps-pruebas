@@ -547,6 +547,44 @@ async function setup(context) {
     assert.deepEqual(creatorErrors,[],'errores del creador');
     await personal.close();
     console.log('PASS Chromium: creador único sin selector ni aviso fijo, perfil, 4 anchos, deshacer, arrastrar, cerrar, ida y vuelta y guardar/reabrir con alturas');
+    // LA FLECHA DEL CRUCE EN EL MAPA, EN LA PANTALLA. El 17 nov 2026 el autor la
+    // vio dada la vuelta: ruta hacia el sur y el mapa girado con la marcha. La
+    // prueba de la cuenta no basta: aqui se mide hacia donde apunta de verdad
+    // el dibujo, con el giro del mapa y el del marcador juntos.
+    {
+      const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+      await ctx.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/,r=>r.fulfill({status:404,body:''}));
+      await ctx.route('**/nuevo.html',async route=>{
+        const source=fs.readFileSync(path.join(root,'nuevo.html'),'utf8');
+        const end='\n})();\n</script>';
+        const bridge=`window.__giro={map,signoDelGiro,ruta(v){routePoints=v},
+          orienta(h){cursoArriba=!!h;rumboMapa=h||null;manualMapUntil=0;aplicaGiroMapa(true)}};`;
+        await route.fulfill({contentType:'text/html',body:source.replace(end,'\n'+bridge+end)});
+      });
+      const p=await ctx.newPage();const errores=[];p.on('pageerror',e=>errores.push(e.message));
+      await p.goto(base+'nuevo.html');
+      await p.waitForFunction(()=>window.__giro);
+      // Una ruta recta que baja hacia el sur (coordenadas ficticias), y un
+      // «sigue por la izquierda» de 20 grados en su punto 10.
+      const mide=async rumbo=>p.evaluate(rumbo=>{
+        const g=window.__giro,pts=[];for(let k=0;k<20;k++)pts.push([43.01-k*0.0002,-2.01]);
+        g.ruta(pts);
+        document.querySelectorAll('.prueba-giro').forEach(e=>e.remove());
+        const icono=L.divIcon({className:'prueba-giro',iconSize:[34,34],iconAnchor:[17,17],html:g.signoDelGiro({i:10},20,-1)});
+        L.marker(pts[10],{icon:icono}).addTo(g.map);g.map.setView(pts[10],17,{animate:false});
+        g.orienta(rumbo);
+        const linea=document.querySelector('.prueba-giro svg path');
+        const m=linea.getScreenCTM(),pt=(q)=>{const a=linea.getPointAtLength(q);return new DOMPoint(a.x,a.y).matrixTransform(m)};
+        const cola=pt(0),punta=pt(linea.getTotalLength());
+        return {sube:cola.y-punta.y,lado:punta.x-cola.x};
+      },rumbo);
+      const girado=await mide(180),norte=await mide(0);
+      assert(girado.sube>10,'con el mapa girado hacia el sur, la flecha apunta hacia arriba: '+JSON.stringify(girado));
+      assert(norte.sube<-10,'con el norte arriba, la flecha apunta hacia abajo, hacia el sur: '+JSON.stringify(norte));
+      assert.deepEqual(errores,[],'errores de la pagina');
+      await ctx.close();
+      console.log('PASS Chromium: la flecha del cruce en el mapa apunta en el sentido de la marcha, girado y con el norte arriba');
+    }
     const offline = await browser.newContext();
     await setup(offline);
     const p = await offline.newPage();

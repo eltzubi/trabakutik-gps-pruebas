@@ -772,3 +772,10 @@ marcador se gira con el rumbo con el que se llega al cruce (desde un punto unos
 girado apunta hacia arriba, y con el norte arriba apunta hacia donde se va.
 La flecha grande de la ficha de abajo no cambia: esa va en la pantalla, no en
 el mapa.
+
+**Y una prueba en Chromium que lo mira en la pantalla** (`scripts/test-browser.cjs`):
+ruta recta hacia el sur, mapa girado con la marcha, y se mide con
+`getScreenCTM` hacia dónde va el trazo de la flecha pequeña: hacia arriba con
+el mapa girado, hacia abajo con el norte arriba. Comprobado que sin el arreglo
+falla (la flecha bajaba 20 px). La flecha se pinta en `signoDelGiro`, aparte,
+para poder probarla.
