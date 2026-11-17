@@ -178,7 +178,7 @@ function descifraZona(j){
    rotondas.push(rot);
   }
  }
- return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas,rotondas,salidas:!!sal,carreteras:typeof j.cruces_carretera==='string'?j.cruces_carretera.length:0};
+ return {bbox:Array.isArray(j.bbox)?j.bbox:null,fecha:j.fecha_osm||'',puntos,ramas:!!ramas,rotondas,salidas:!!sal,carreteras:typeof j.cruces_carretera==='string'?j.cruces_carretera:''};
 }
 function bajaZona(){
  return fetch(URL_CRUCES,{cache:'default'})
@@ -727,8 +727,11 @@ function calculaCrucesDe(){
    // ahi sigue por la carretera no se dice nada. En las horquillas de dos
    // carreteras no se toca: ahi el aviso sirve.
    if(d&&d.mantente&&elCruce.carretera){
+    // A 40 m por la ruta como mucho, no a 40 puntos: en un lazo, 40 puntos
+    // pueden ser otra pasada por el mismo sitio (revision con GPT).
     let iC=i,dC=dist(pts[i],elCruce);
-    for(let k=Math.max(1,i-40);k<Math.min(pts.length-1,i+40);k++){const e=dist(pts[k],elCruce);if(e<dC){dC=e;iC=k}}
+    for(let k=i-1;k>=1&&routeCumulative[i]-routeCumulative[k]<=40;k--){const e=dist(pts[k],elCruce);if(e<dC){dC=e;iC=k}}
+    for(let k=i+1;k<pts.length-1&&routeCumulative[k]-routeCumulative[i]<=40;k++){const e=dist(pts[k],elCruce);if(e<dC){dC=e;iC=k}}
     const mC=Math.min(routeCumulative[iC],routeCumulative[pts.length-1]-routeCumulative[iC]);
     const gC=iC!==i&&mC>=6?geometriaEn(iC,Math.min(VENTANA,mC)):null;
     if(gC&&decideCruce(elCruce,pts[iC],gC.antes,gC.despues)===null)d=null;
@@ -828,7 +831,7 @@ function calculaCrucesDe(){
 //   carretera por la que se llega: no se cuentan.
 // - Con mas de SAL_BOCAS bocas (rotondas grandes de varios anillos) el
 //   recuento es dudoso, y pasada la SAL_MAX nadie cuenta: sin numero.
-var SAL_CASA=35,SAL_ENTRADA=15,SAL_MAX=6,SAL_BOCAS=7;
+var SAL_CASA=35,SAL_ENTRADA=15,SAL_MAX=6,SAL_BOCAS=7,SAL_DUDA=15;
 // La ultima APK que no sabe decir el numero de salida («rs»).
 var APK_SIN_SALIDAS='4.9.47';
 function salidaDeRotonda(rot,rIn,rOut){
@@ -836,9 +839,15 @@ function salidaDeRotonda(rot,rIn,rOut){
  if(!S||!Array.isArray(S.salidas)||!S.salidas.length||S.salidas.length>SAL_BOCAS||!Number.isFinite(rIn)||!Number.isFinite(rOut))return 0;
  const bocas=S.salidas.map(a=>({r:a%360,libre:a<360}));
  const tras=a=>S.sentido>0?((rIn-a)%360+360)%360:((a-rIn)%360+360)%360;
- let mia=null,err=Infinity;
- for(const b of bocas)if(b.libre){const e=Math.abs(difRumbo(b.r,rOut));if(e<err){err=e;mia=b}}
+ // Con TODAS las bocas, tambien las prohibidas: andando se puede salir por
+ // una calle de direccion prohibida para coches, y entonces casar con la libre
+ // de al lado daria el numero de otra (revision con GPT).
+ let mia=null,err=Infinity,libre=Infinity;
+ for(const b of bocas){const e=Math.abs(difRumbo(b.r,rOut));if(e<err){err=e;mia=b}if(b.libre&&e<libre)libre=e}
  if(!mia||err>SAL_CASA)return 0;
+ // Y si la mas cercana es prohibida pero una libre queda casi igual de cerca,
+ // no se sabe cual es: puede ser el GPS de la grabacion. Sin numero.
+ if(!mia.libre&&libre-err<SAL_DUDA)return 0;
  const hasta=tras(mia.r);
  if(hasta<=SAL_ENTRADA)return 0;
  let n=0;

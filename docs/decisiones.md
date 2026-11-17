@@ -833,3 +833,30 @@ Android anterior al 14 se graba como siempre: no hay modelo del geoide en el
 móvil y no se inventa una cifra. Las grabaciones antiguas siguen 50 m altas.
 La ficha no cambia: sobre la ruta manda el perfil (más estable que el GPS,
 que baila 10-20 m) y fuera de ella el GPS.
+
+## Revisión con GPT de la noche del 16-17 de noviembre: lo que se arregló
+
+Crítico gpt-6-astra, una ronda (la cuenta se había quedado sin saldo; se
+recargó). Comprobado cada punto contra el código y los datos antes de tocar:
+
+- **Rotondas, pareja de calzadas al revés:** si la calzada de salida queda
+  delante de la de entrada en el sentido de giro, su boca se contaría como
+  primera salida. Medido: 3 de 367 parejas. Esas rotondas, sin número.
+- **Casar la salida con todas las bocas**, también las prohibidas: andando se
+  sale por una calle prohibida para coches, y casar con la libre de al lado
+  daba el número de otra. Si la prohibida y una libre quedan a menos de 15°
+  de diferencia, sin número. Cambia tres pasos en las rutas, los tres por
+  calles prohibidas para coches.
+- **La marca de cruces de carretera** se compara por contenido, no por
+  longitud, para volver a bajar el fichero.
+- **El punto de la ruta más cercano al cruce** se busca a 40 m por la ruta, no
+  a 40 puntos: en un lazo podía coger otra pasada.
+- **La flecha del mapa** se rehace también si cambia la lista (ida o vuelta).
+
+Lo de la app (leer el GPX fuera del hilo principal, entregas a la página sin
+carreras, altitud coherente y cola acotada) va aparte, con APK nueva.
+
+Lo que NO se cambió: la invertida «salida delante» que el crítico puso de
+ejemplo no se da con circulación por la derecha salvo en esas 3 parejas; y el
+filtro de octet-stream solo reconoce URI que acaben en .gpx, limitación que
+queda dicha.

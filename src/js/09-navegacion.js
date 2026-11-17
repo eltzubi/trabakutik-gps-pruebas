@@ -215,7 +215,9 @@ function junctionGuidance(p,accuracy,progress){
  // grados sigue siendo el de verdad, abajo.
  const gradosFlecha=turn.mantente?Math.max(grados,22):grados;
  $('turnArrow').innerHTML=flechaGiro(gradosFlecha,sentido,62,11);
- if(!turnMarker||turnMarker.options.turnIndex!==j){
+ // Tambien si cambia la lista (ida o vuelta) con el mismo indice: la flecha
+ // va girada con el sentido de llegada (revision con GPT).
+ if(!turnMarker||turnMarker.options.turnIndex!==j||turnMarker.options.lista!==lista){
   if(turnMarker)map.removeLayer(turnMarker);
   // UNA MINIATURA DE LA GRANDE (17 nov 2026): «las flechas pequeñas no se
   // distinguen bien, son feas; las grandes bien». La pequeña tenia el trazo
@@ -236,7 +238,7 @@ function junctionGuidance(p,accuracy,progress){
   // punto unos 15 m antes, en el sentido de la marcha-, asi apunta bien con el
   // norte arriba y con el mapa girado.
   html:signoDelGiro(turn,gradosFlecha,sentido)});
-  turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j}).addTo(map);
+  turnMarker=L.marker(turn.point,{icon:sign,zIndexOffset:1800,interactive:false,keyboard:false,turnIndex:j,lista}).addTo(map);
  }
  // Un cruce y una curva de herradura no son lo mismo y no se dicen igual:
  // «cambio de sentido» en un sendero suena a «date la vuelta», y lo que pidio

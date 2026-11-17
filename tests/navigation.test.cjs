@@ -1181,7 +1181,7 @@ test('cruces de carretera con un ramal menor: la marca llega del fichero',()=>{
  // Tres cruces; el segundo, de carretera con un ramal menor (bit 1).
  const z=c.descifraZona({escala:100000,dif:[4316000,-257000,100,100,100,100],ramas:'',cruces_carretera:Buffer.from([2]).toString('base64')});
  assert.deepEqual(z.puntos.map(p=>!!p.carretera),[false,true,false]);
- assert(z.carreteras>0,'para volver a bajar el fichero si cambia');
+ assert.equal(typeof z.carreteras,'string');assert(z.carreteras.length>0,'el contenido, para volver a bajar el fichero si cambia aunque mida lo mismo');
  const sin=c.descifraZona({escala:100000,dif:[4316000,-257000,100,100,100,100],ramas:''});
  assert.deepEqual(sin.puntos.map(p=>!!p.carretera),[false,false,false],'un fichero sin la marca: como antes');
 });
@@ -1191,7 +1191,7 @@ test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
  // y una calle de direccion prohibida a 242 (+360): el autor la cuenta.
  const r=[0,0,9,{sentido:1,salidas:[2,25,92,174,224,602]}];
  assert.equal(c.salidaDeRotonda(r,3,224),2,'entrando por el norte: la prohibida y luego la suya, la segunda');
- assert.equal(c.salidaDeRotonda(r,3,242),2,'por la prohibida no se sale: casa con la de al lado');
+ assert.equal(c.salidaDeRotonda(r,3,242),1,'andando por la calle prohibida: es esa boca, la primera, no la de al lado');
  assert.equal(c.salidaDeRotonda(r,224,3),4,'al reves, hasta el norte hay que dar casi toda la vuelta');
  assert.equal(c.salidaDeRotonda(r,3,320),0,'una salida que no casa con ninguna: sin numero');
  assert.equal(c.salidaDeRotonda([0,0,9],3,224),0,'un fichero sin bocas: sin numero');
