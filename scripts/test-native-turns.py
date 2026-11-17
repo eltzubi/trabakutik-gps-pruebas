@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess,tempfile,sys,re
 production=Path('android/app/src/main/java/com/trabakutik/gps')
 src=(production/'TrackingService.java').read_text()
+replay="--replay" in sys.argv
 metrics=(production/'NavigationMetrics.java').read_text()
 # Las subidas y las fuentes suenan con un tono propio, no con el pitido de
 # los giros: con el mismo, en «solo pitidos» una subida sonaba igual que
@@ -11,7 +12,7 @@ avisos=src[src.index(' String updateNavigationMetrics('):]
 avisos=avisos[:avisos.index('\n }\n')]
 assert 'TONE_PROP_PROMPT' in avisos and 'pitidos(notice.beeps(),900)' not in avisos, \
     'los avisos de subida y de agua tienen que sonar con su propio tono'
-print('PASS: subidas y fuentes con tono propio, distinto del de los giros')
+if not replay: print('PASS: subidas y fuentes con tono propio, distinto del de los giros')
 def method(signature):
  a=src.index(signature);start=src.index('{',a);depth=1;i=start+1
  while depth:
@@ -375,12 +376,50 @@ public class NativeTurnsTest {
   System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras, cruce recien pasado, avisos con mala señal, ruta al reves sin la pagina y vuelta a la ruta");
  }
 }'''
+if replay:
+ code=code.replace('double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}',
+     ''.join(method(m) for m in (' void actualizaVelocidad(Location l)', ' double avisoLargo()', ' double avisoCorto()', ' double avisoVoz()')))
+ code=code.replace('float acc=4;', 'float acc=4,speed=0; boolean hasSpeed(){return true;} float getSpeed(){return speed;}')
+ code=code.replace('String fraseGiro(int lado,int tipo,String fase,double ahead,int salida){return ""+lado;}',
+     method(' String fraseGiro(int lado,int tipo,String fase,double ahead,int salida)').replace(
+         'int salida){','int salida){metrosAviso=ahead;',1))
+ code=code.replace('double posActual=', 'double metrosAviso=Double.NaN; double posActual=')
+ code=code.replace('  checkTurns(l,position);', '  if(l.getAccuracy()<=60)checkTurns(l,position);')
+ code=code.replace('dicho.add(s);try', 'dicho.add(s); System.out.printf(Locale.ROOT,"%d\\t%s\\t%s%n",SystemClock.reloj-1000,Double.isFinite(metrosAviso)?String.format(Locale.ROOT,"%.1f",metrosAviso):"-",s); metrosAviso=Double.NaN; try')
+ code=code.replace('public static void main(String[] args){', r"""public static void main(String[] args) throws Exception {
+  NativeTurnsTest c=new NativeTurnsTest();
+  c.velocidadSuave=0;
+  c.hayReves=true;
+  try(Scanner input=new Scanner(new java.io.File(args[0])).useLocale(Locale.ROOT)){
+   int points=input.nextInt();
+   for(int i=0;i<points;i++)c.route.add(new double[]{input.nextDouble(),input.nextDouble()});
+   for(ArrayList<double[]> list:Arrays.asList(c.turns,c.turnsReves)){
+    int count=input.nextInt();
+    for(int i=0;i<count;i++)list.add(new double[]{input.nextInt(),input.nextInt(),input.nextInt(),input.nextInt(),input.nextInt()});
+   }
+   while(input.hasNextLong()){
+    SystemClock.reloj=1000+input.nextLong();
+    Location l=new Location(0);
+    l.lat=input.nextDouble();l.lon=input.nextDouble();l.acc=input.nextFloat();l.speed=input.nextFloat();
+    c.actualizaVelocidad(l);
+    c.posicion(l);
+   }
+  }
+ }
+ public static void unitTests(String[] args){""")
 if '--generate-junit' in sys.argv:
  dest=Path('android/app/src/test/java/com/trabakutik/gps/NativeTurnsTest.java')
  dest.parent.mkdir(parents=True,exist_ok=True)
  code=code.replace(' public static void main(String[] args){',' @org.junit.Test public void checks(){main(new String[0]);}\n public static void main(String[] args){')
  dest.write_text(code)
  print('Generado test JUnit con checkTurns de producción')
+ sys.exit(0)
+if replay:
+ with tempfile.TemporaryDirectory() as d:
+  # El lanzador Java compila las dos clases juntas desde un solo archivo.
+  p=Path(d)/'NativeTurnsTest.java'
+  p.write_text(code+'\n'+re.sub(r'^(package|import) .*;\n', '', metrics, flags=re.M))
+  subprocess.run(['java',str(p),str(Path(sys.argv[sys.argv.index('--replay')+1]).resolve())],check=True)
  sys.exit(0)
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'NativeTurnsTest.java';p.write_text(code)
