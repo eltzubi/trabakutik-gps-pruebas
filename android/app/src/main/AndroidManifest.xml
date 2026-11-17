@@ -33,6 +33,31 @@
     <category android:name="android.intent.category.BROWSABLE"/>
     <data android:scheme="trabakutikgps" android:host="navegar"/>
    </intent-filter>
+   <!-- ABRIR UN GPX DESDE FUERA (17 nov 2026): el autor intento abrir un GPX
+        desde el gestor de archivos y Trabakutik no salia en «Abrir con». -->
+   <intent-filter>
+    <action android:name="android.intent.action.VIEW"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <data android:scheme="content"/>
+    <data android:scheme="file"/>
+    <data android:mimeType="application/gpx+xml"/>
+    <data android:mimeType="application/gpx"/>
+    <data android:mimeType="application/x-gpx"/>
+   </intent-filter>
+   <!-- Algunos gestores mandan el GPX como «octet-stream»: solo si acaba en .gpx. -->
+   <intent-filter>
+    <action android:name="android.intent.action.VIEW"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <data android:scheme="content" android:host="*" android:mimeType="application/octet-stream" android:pathPattern=".*\\.gpx"/>
+    <data android:scheme="file" android:host="*" android:mimeType="application/octet-stream" android:pathPattern=".*\\.gpx"/>
+   </intent-filter>
+   <intent-filter>
+    <action android:name="android.intent.action.SEND"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <data android:mimeType="application/gpx+xml"/>
+    <data android:mimeType="application/gpx"/>
+    <data android:mimeType="application/x-gpx"/>
+   </intent-filter>
   </activity>
   <!-- Para mandar el GPX a otra app hace falta darle una URI de contenido:
        desde Android 7 no se puede pasar un file:// a otra aplicacion. Sin

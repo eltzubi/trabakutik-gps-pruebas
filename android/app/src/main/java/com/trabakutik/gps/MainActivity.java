@@ -94,6 +94,7 @@ public class MainActivity extends Activity {
   webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
     ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
+  recibeGpx(getIntent());
   if(getIntent()!=null&&getIntent().getBooleanExtra("caida",false))caidaUi.post(this::muestraCaida);
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
   else beginPermissionSetup();
@@ -103,6 +104,45 @@ public class MainActivity extends Activity {
   if (web != null && web.getUrl() != null) out.putString("url_gps", web.getUrl());
   if (webRoutes != null && webRoutes.getUrl() != null) out.putString("url_web", webRoutes.getUrl());
   out.putBoolean("ver_gps", showingGps);
+ }
+ // UN GPX ABIERTO CON LA APP (Abrir con / Compartir), desde el 17 de
+ // noviembre de 2026. Se lee aqui -el permiso de lectura viene con el
+ // intent- y se le pasa a la pagina, que lo importa como el boton de «Mis
+ // rutas» y con sus mismas comprobaciones. Si la pagina aun no ha cargado, se
+ // guarda y se entrega en onPageFinished.
+ String gpxEntrante=null,nombreGpxEntrante=null;
+ static final int GPX_MAX=4*1024*1024;
+ @SuppressWarnings("deprecation")
+ void recibeGpx(Intent in){
+  if(in==null)return;
+  android.net.Uri uri=null;
+  if(Intent.ACTION_VIEW.equals(in.getAction()))uri=in.getData();
+  else if(Intent.ACTION_SEND.equals(in.getAction())){Object o=in.getParcelableExtra(Intent.EXTRA_STREAM);if(o instanceof android.net.Uri)uri=(android.net.Uri)o;}
+  if(uri==null)return;
+  String esquema=uri.getScheme();
+  if(!"content".equals(esquema)&&!"file".equals(esquema))return;
+  String nombre=null;
+  try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
+   if(c!=null&&c.moveToFirst())nombre=c.getString(0);
+  }catch(Exception ignored){}
+  if(nombre==null)nombre=uri.getLastPathSegment();
+  byte[] datos;
+  try(java.io.InputStream is=getContentResolver().openInputStream(uri)){
+   if(is==null)throw new java.io.IOException("sin datos");
+   java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();
+   byte[] buf=new byte[16384];int n,total=0;
+   while((n=is.read(buf))>0){total+=n;if(total>GPX_MAX){Toast.makeText(this,"El GPX ocupa más de 4 MB",Toast.LENGTH_LONG).show();return;}out.write(buf,0,n);}
+   datos=out.toByteArray();
+  }catch(Exception e){Toast.makeText(this,"No se pudo abrir el GPX",Toast.LENGTH_LONG).show();return;}
+  gpxEntrante=new String(datos,java.nio.charset.StandardCharsets.UTF_8);
+  nombreGpxEntrante=nombre==null?"ruta.gpx":nombre;
+  showScreen(true);
+  entregaGpx();
+ }
+ void entregaGpx(){
+  if(web==null||gpxEntrante==null)return;
+  String js="window.trabakutikImportaGpx?(window.trabakutikImportaGpx("+org.json.JSONObject.quote(gpxEntrante)+","+org.json.JSONObject.quote(nombreGpxEntrante)+"),'ok'):'no'";
+  web.evaluateJavascript(js,v->{if("\"ok\"".equals(v)){gpxEntrante=null;nombreGpxEntrante=null;}});
  }
  void handleExternalRoute(Intent incoming){
   if(incoming==null||incoming.getData()==null)return;
@@ -117,6 +157,7 @@ public class MainActivity extends Activity {
   super.onNewIntent(incoming);
   setIntent(incoming);
   handleExternalRoute(incoming);
+  recibeGpx(incoming);
   if(incoming!=null&&incoming.getBooleanExtra("caida",false))muestraCaida();
  }
  void restoreGpsWeb(){
@@ -317,6 +358,7 @@ public class MainActivity extends Activity {
    }
    @Override public void onPageFinished(WebView view,String url){
     super.onPageFinished(view,url);
+    if(navigator&&gpxEntrante!=null)entregaGpx();
     if(!navigator&&url!=null&&url.startsWith("https://trabakutik.com/")){
       lastWebUrl=url;
       lastWebLoadAt=System.currentTimeMillis();

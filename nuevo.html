@@ -3093,30 +3093,46 @@ function parseImportedGpx(text,filename){
  return {name,points,excluded};
 }
 $('importGpxBtn').onclick=()=>$('importGpxFile').click();
-$('importGpxFile').onchange=async e=>{
- const file=e.target.files?.[0];
- if(!file)return;
+// IMPORTAR UN GPX: desde el boton de «Mis rutas» y, desde el 17 nov 2026,
+// tambien desde fuera de la app (Abrir con / Compartir, ver MainActivity): el
+// autor intento abrir un GPX desde el gestor de archivos y Trabakutik no salia
+// en la lista. Las dos entradas pasan por aqui con las mismas comprobaciones.
+function importaTextoGpx(texto,nombre,abrir){
  try{
-  if(file.size>4*1024*1024)throw new Error('El GPX ocupa más de 4 MB');
+  if(typeof texto!=='string'||!texto)throw new Error('El archivo está vacío');
+  if(texto.length>4*1024*1024)throw new Error('El GPX ocupa más de 4 MB');
   const list=savedList();
   if(list.length>=30)throw new Error('Mis rutas está lleno (30). Exporta o elimina una ruta antes de importar');
   // Ya no se exige que el nombre acabe en «.gpx»: el selector de Android se
   // come la extension si cambias el nombre a mano al guardar, y esos ficheros
   // son GPX perfectos que antes no habia forma de volver a meter aqui. Quien
   // decide es el contenido, que ademas es mas seguro que fiarse del nombre.
-  const texto=await file.text();
   if(!/<gpx[\s>]/i.test(texto.slice(0,4000)))throw new Error('Ese archivo no es un GPX');
-  const result=parseImportedGpx(texto,file.name);
+  const result=parseImportedGpx(texto,nombre||'ruta.gpx');
   if(result.excluded){
-   if(!confirm('El GPX contiene '+(result.excluded+1)+' tramos separados. Para no unirlos con líneas rectas se importará únicamente el tramo más largo. ¿Continuar?'))return;
+   if(!confirm('El GPX contiene '+(result.excluded+1)+' tramos separados. Para no unirlos con líneas rectas se importará únicamente el tramo más largo. ¿Continuar?'))return false;
   }
   const item={name:result.name,points:result.points,created:Date.now(),imported:true};
   if(!putSaved([item,...list]))throw new Error('No hay espacio para guardar la ruta. No se ha importado.');
-  showSaved();
+  // Desde fuera se abre DIRECTAMENTE como ruta activa: el autor quiere pulsar
+  // el GPX en Descargas y tenerlo en el navegador. Desde el boton, la lista.
+  if(abrir){$('savedDialog').classList.add('hidden');loadSaved(item)}
+  else showSaved();
   notice('GPX importado: '+item.name+' · '+item.points.length+' puntos');
- }catch(err){alert('No se pudo importar: '+err.message);notice('Error al importar GPX')}
- finally{e.target.value=''}
+  return true;
+ }catch(err){alert('No se pudo importar: '+err.message);notice('Error al importar GPX');return false}
+}
+$('importGpxFile').onchange=async e=>{
+ const file=e.target.files?.[0];
+ if(!file)return;
+ try{
+  if(file.size>4*1024*1024){alert('No se pudo importar: El GPX ocupa más de 4 MB');notice('Error al importar GPX');return}
+  importaTextoGpx(await file.text(),file.name);
+ }finally{e.target.value=''}
 };
+// La app de Android llama a esto con el texto del GPX que se ha abierto con
+// ella. En un navegador no lo llama nadie.
+if(typeof window==='object'&&window)window.trabakutikImportaGpx=(texto,nombre)=>importaTextoGpx(texto,nombre,true);
 function showSaved(){
  const target=$('savedItems');target.replaceChildren();
  const list=savedList();
@@ -3201,7 +3217,7 @@ $('saveCreated').onclick=()=>{
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={firmaTrazado,mismaFirma,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
+ module.exports={importaTextoGpx,firmaTrazado,mismaFirma,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
  Object.defineProperties(module.exports,{rehacerPila:{get:()=>rehacerPila,set:v=>{rehacerPila=v},enumerable:true},firmaTrasDeshacer:{get:()=>firmaTrasDeshacer,set:v=>{firmaTrasDeshacer=v},enumerable:true},savedFromDialog:{get:()=>savedFromDialog,set:v=>{savedFromDialog=v},enumerable:true},pendingSave:{get:()=>pendingSave,set:v=>{pendingSave=v},enumerable:true},estadoBotonera:{get:()=>estadoBotonera,set:v=>{estadoBotonera=v},enumerable:true},ultimoVozEstado:{get:()=>ultimoVozEstado,set:v=>{ultimoVozEstado=v},enumerable:true},rutasListas:{get:()=>rutasListas,set:v=>{rutasListas=v},enumerable:true},ultimoParoNativo:{get:()=>ultimoParoNativo,set:v=>{ultimoParoNativo=v},enumerable:true},giraNativo:{get:()=>giraNativo,set:v=>{giraNativo=v},enumerable:true},savedLine:{get:()=>savedLine,set:v=>{savedLine=v},enumerable:true}});
 }
 // EL NUMERO DE VERSION, ABAJO. Lo pidio el autor: hasta ahora, para saber si

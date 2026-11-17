@@ -581,9 +581,18 @@ async function setup(context) {
       const girado=await mide(180),norte=await mide(0);
       assert(girado.sube>10,'con el mapa girado hacia el sur, la flecha apunta hacia arriba: '+JSON.stringify(girado));
       assert(norte.sube<-10,'con el norte arriba, la flecha apunta hacia abajo, hacia el sur: '+JSON.stringify(norte));
+      // UN GPX ABIERTO DESDE FUERA (Abrir con / Compartir): la app le pasa el
+      // texto a la pagina y queda en «Mis rutas», como con el boton.
+      const gpxFuera='<gpx><trk><name>Desde fuera</name><trkseg>'+Array.from({length:20},(_,k)=>'<trkpt lat="'+(43.02+k*0.0001)+'" lon="-2.02"><ele>'+(100+k)+'</ele></trkpt>').join('')+'</trkseg></trk></gpx>';
+      assert.equal(await p.evaluate(g=>window.trabakutikImportaGpx(g,'desde-fuera.gpx'),gpxFuera),true,'importa el GPX que llega de fuera');
+      await p.waitForFunction(()=>document.querySelector('#mapTitle').textContent.includes('Desde fuera'));
+      assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('trabakutik-gps-creadas-v1')||'[]')[0].name),'Desde fuera','y queda guardada en Mis rutas');
+      let aviso='';p.once('dialog',d=>{aviso=d.message();d.accept()});
+      assert.equal(await p.evaluate(()=>window.trabakutikImportaGpx('<html>no</html>','nada.gpx')),false,'lo que no es GPX no entra');
+      assert.match(aviso,/no es un GPX/);
       assert.deepEqual(errores,[],'errores de la pagina');
       await ctx.close();
-      console.log('PASS Chromium: la flecha del cruce en el mapa apunta en el sentido de la marcha, girado y con el norte arriba');
+      console.log('PASS Chromium: la flecha del cruce en el mapa apunta en el sentido de la marcha, girado y con el norte arriba; y un GPX abierto desde fuera se abre como ruta activa y queda en Mis rutas');
     }
     const offline = await browser.newContext();
     await setup(offline);

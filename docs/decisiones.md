@@ -788,3 +788,23 @@ la grande 62 con trazo 11 (un sexto): proporcionalmente casi el doble de gorda,
 y se emborronaba. Ahora 38 px con trazo 7,5 en un cuadro de 44, oscuro, con
 esquinas redondeadas y borde naranja: la grande en pequeño. Comparadas las dos
 a la vista con giros de 22, 60, 95, 147 y 170 grados.
+
+## Abrir un GPX desde Descargas con la app (17 de noviembre de 2026)
+
+El autor pulsó un GPX en la carpeta de descargas y en «Abrir con» salían Sygic,
+Garmin, OsmAnd y Wikiloc, pero no Trabakutik: la app solo se registraba para
+sus propios enlaces (trabakutikgps://navegar). «Lo que quiero es que desde la
+carpeta de descarga pueda abrir con nuestro navegador un archivo GPX
+directamente.»
+
+- El manifiesto declara VIEW para application/gpx+xml, application/gpx y
+  application/x-gpx (content y file), VIEW para application/octet-stream solo
+  si la ruta acaba en .gpx (hay gestores que lo mandan así), y SEND con los
+  tres tipos GPX (Compartir). Octet-stream no va en SEND: la app saldría al
+  compartir cualquier archivo.
+- MainActivity lee el archivo (máximo 4 MB, como el botón), cambia a la
+  pantalla del navegador y llama a `window.trabakutikImportaGpx(texto, nombre)`.
+  Si la página aún no ha cargado, lo entrega en onPageFinished.
+- En la página, el botón de «Mis rutas» y esta entrada pasan por la misma
+  función (`importaTextoGpx`, pieza 06), con las mismas comprobaciones; desde
+  fuera se abre directamente como ruta activa y queda guardada en Mis rutas.
