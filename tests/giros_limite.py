@@ -92,8 +92,10 @@ public class GirosLimiteTest {
   // 6b. Con el NUMERO de la salida («rs»): «toma la segunda salida», tambien
   //     yendo recto (lado 0), que antes diria «da la vuelta».
   t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":-1,\"t\":1,\"ro\":1,\"rs\":2},{\"i\":20,\"dir\":1,\"t\":1,\"rs\":3}]");t.loadTurns();
-  require(t.turns.get(0).length==4&&(int)t.turns.get(0)[3]==2,"rs leido");
+  require(t.turns.get(0).length==5&&(int)t.turns.get(0)[3]==2&&(int)t.turns.get(0)[4]==0,"rs leido, sin rr");
   require((int)t.turns.get(1)[3]==0,"rs sin rotonda no vale");
+  t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":-1,\"t\":1,\"ro\":1,\"rs\":2,\"rr\":1}]");t.loadTurns();
+  require((int)t.turns.get(0)[4]==1,"rr leido: rotonda recta");
   String sal=t.fraseGiro(-1,5,"1",48,2),salYa=t.fraseGiro(0,5,"3",0,2),salMal=t.fraseGiro(1,5,"1",48,9);
   require(sal.equals("En 50 metros, en la rotonda, toma la segunda salida"),sal);
   require(salYa.equals("En la rotonda, toma la segunda salida ahora"),salYa);

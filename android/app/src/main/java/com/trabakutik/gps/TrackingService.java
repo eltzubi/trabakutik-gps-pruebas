@@ -239,13 +239,19 @@ public class TrackingService extends Service implements LocationListener {
  // siempre: no hay modelo del geoide y no se inventa una cifra.
  String eleGpx(Location l){
   if(!l.hasAltitude())return "";
-  if(Build.VERSION.SDK_INT<34||conversorRoto)return String.valueOf(l.getAltitude());
+  if(Build.VERSION.SDK_INT<34)return String.valueOf(l.getAltitude());
+  // Con una ondulacion ya conocida se sigue usando aunque fallen las
+  // siguientes conversiones: cambia unos metros en decenas de km, y pasar a la
+  // altura en bruto a mitad metia un escalon de 50 m en el track (revision con
+  // GPT). En bruto solo si nunca la hubo: entonces todo el GPX igual.
   Altura a=ultimaAltura;
+  if(a!=null)return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-a.ondulacion);
+  if(conversorRoto)return String.valueOf(l.getAltitude());
   if(a==null)return "";
   return String.format(java.util.Locale.ROOT,"%.1f",l.getAltitude()-a.ondulacion);
  }
  void convierteAltura(Location l){
-  if(!l.hasAltitude()||Build.VERSION.SDK_INT<34||conversorRoto)return;
+  if(!l.hasAltitude()||Build.VERSION.SDK_INT<34||(conversorRoto&&ultimaAltura==null))return;
   if(primerIntentoAltura==0)primerIntentoAltura=SystemClock.elapsedRealtime();
   if(ultimaAltura==null&&SystemClock.elapsedRealtime()-primerIntentoAltura>30_000L){conversorRoto=true;return;}
   if(!convirtiendo.compareAndSet(false,true))return;
@@ -259,7 +265,7 @@ public class TrackingService extends Service implements LocationListener {
      float err=copia.hasMslAltitudeAccuracy()?copia.getMslAltitudeAccuracyMeters():(copia.hasVerticalAccuracy()?copia.getVerticalAccuracyMeters():-1f);
      ultimaAltura=new Altura(mar,copia.getAltitude()-mar,err,copia.getTime());
     }
-   }catch(Throwable t){conversorRoto=true;}
+   }catch(Throwable t){if(ultimaAltura==null)conversorRoto=true;}
    finally{convirtiendo.set(false);}
   });}catch(Exception e){convirtiendo.set(false);}
  }
@@ -878,12 +884,14 @@ public class TrackingService extends Service implements LocationListener {
     // noviembre de 2026). Va en la cuarta casilla del giro; 0 = sin numero.
     int salida=tipo==5?p.optInt("rs",0):0;
     if(salida<0||salida>8)salida=0;
+    // «rr»:1, esa rotonda se cruza recto (solo llega con numero).
+    int recta=tipo==5&&p.optInt("rr",0)==1?1:0;
     // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
     // la lista cuando el giro cae en ese punto, asi que un giro en el 0 no se
     // pasaria nunca y bloquearia TODOS los de detras. La pagina no genera
     // ninguno ahi (un giro necesita un punto antes), pero un fichero raro no
     // puede dejar la ruta muda.
-    if(at>=1&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo,salida});
+    if(at>=1&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo,salida,recta});
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
    // avisos va de i=1 hacia arriba y solo avanza mientras el giro que toca
@@ -1014,7 +1022,11 @@ public class TrackingService extends Service implements LocationListener {
      // exactamente donde estaban, que para eso van bien.
      String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>dYa?"2":ahead<=dYa?"3"
        :ahead<=dv?"v":null;
-     if(fase!=null){
+     // Una rotonda que se cruza RECTO solo se avisa con su numero. Yendo al
+     // reves con la lista de ida el numero no vale, y sin el diria «sal a la
+     // izquierda» en una recta: entonces, nada (revision con GPT).
+     boolean rectaSinNumero=tipo==5&&salida==0&&giro.length>4&&giro[4]==1;
+     if(fase!=null&&!rectaSinNumero){
       String clave=(usaReves?"r":"")+mejor+":"+fase;
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);

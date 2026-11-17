@@ -94,8 +94,8 @@ public class MainActivity extends Activity {
   webRoutes.loadUrl(urlWeb != null && urlWeb.startsWith("https://trabakutik.com/")
     ? urlWeb : "https://trabakutik.com/");
   handleExternalRoute(getIntent());
-  if(b!=null)gpxUriHecho=b.getString("gpx_hecho");
-  recibeGpx(getIntent());
+  gpxIntentHecho=b!=null&&b.getBoolean("gpx_hecho",false);
+  if(!gpxIntentHecho)recibeGpx(getIntent());
   if(getIntent()!=null&&getIntent().getBooleanExtra("caida",false))caidaUi.post(this::muestraCaida);
   if(getPreferences(MODE_PRIVATE).getBoolean("initial_permissions_guided_v1",false))showBatteryReminderIfNeeded();
   else beginPermissionSetup();
@@ -105,7 +105,7 @@ public class MainActivity extends Activity {
   if (web != null && web.getUrl() != null) out.putString("url_gps", web.getUrl());
   if (webRoutes != null && webRoutes.getUrl() != null) out.putString("url_web", webRoutes.getUrl());
   out.putBoolean("ver_gps", showingGps);
-  if(gpxUriHecho!=null)out.putString("gpx_hecho",gpxUriHecho);
+  out.putBoolean("gpx_hecho",gpxIntentHecho);
  }
  // UN GPX ABIERTO CON LA APP (Abrir con / Compartir), desde el 17 de
  // noviembre de 2026. Se le pasa a la pagina, que lo importa como el boton de
@@ -115,10 +115,15 @@ public class MainActivity extends Activity {
  // solo se da por entregado el suyo; no se manda dos veces mientras una
  // entrega esta en curso; y un intent ya importado no se vuelve a importar si
  // Android recrea la pantalla (se recuerda su URI).
- String gpxEntrante=null,nombreGpxEntrante=null,gpxUriHecho=null;
- int gpxPeticion=0,gpxId=0; boolean gpxEnCurso=false;
+ // Ronda 2: solo cuenta como hecho cuando la pagina lo ha RECIBIDO (antes se
+ // marcaba al empezar a leer: si fallaba o se recreaba la pantalla a mitad,
+ // ya no se podia volver a abrir). Abrirlo otra vez a mano (onNewIntent)
+ // siempre vale; lo que se evita es reimportar el MISMO intent al recrearse.
+ // Y cada lectura en su propio hilo: un proveedor colgado no bloquea la
+ // siguiente.
+ String gpxEntrante=null,nombreGpxEntrante=null;
+ int gpxPeticion=0,gpxId=0; boolean gpxEnCurso=false,gpxIntentHecho=false;
  static final int GPX_MAX=4*1024*1024;
- final java.util.concurrent.ExecutorService hiloGpx=java.util.concurrent.Executors.newSingleThreadExecutor();
  @SuppressWarnings("deprecation")
  void recibeGpx(Intent in){
   if(in==null)return;
@@ -128,10 +133,8 @@ public class MainActivity extends Activity {
   if(uri==null)return;
   String esquema=uri.getScheme();
   if(!"content".equals(esquema)&&!"file".equals(esquema))return;
-  if(uri.toString().equals(gpxUriHecho))return;
-  gpxUriHecho=uri.toString();
   final android.net.Uri u=uri;final int id=++gpxPeticion;
-  hiloGpx.execute(()->{
+  Thread lector=new Thread(()->{
    String nombre=null,texto=null,error=null;
    try(android.database.Cursor c=getContentResolver().query(u,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
     if(c!=null&&c.moveToFirst())nombre=c.getString(0);
@@ -152,7 +155,8 @@ public class MainActivity extends Activity {
     showScreen(true);
     entregaGpx();
    });
-  });
+  },"lee-gpx");
+  lector.setDaemon(true);lector.start();
  }
  void entregaGpx(){
   if(web==null||gpxEntrante==null||gpxEnCurso)return;
@@ -162,7 +166,7 @@ public class MainActivity extends Activity {
   web.evaluateJavascript(js,v->{
    if(id!=gpxId)return;          // ya hay otro GPX: este no lo borra
    gpxEnCurso=false;
-   if("\"ok\"".equals(v)){gpxEntrante=null;nombreGpxEntrante=null;}
+   if("\"ok\"".equals(v)){gpxEntrante=null;nombreGpxEntrante=null;gpxIntentHecho=true;}
   });
  }
  void handleExternalRoute(Intent incoming){
@@ -178,6 +182,7 @@ public class MainActivity extends Activity {
   super.onNewIntent(incoming);
   setIntent(incoming);
   handleExternalRoute(incoming);
+  gpxIntentHecho=false;
   recibeGpx(incoming);
   if(incoming!=null&&incoming.getBooleanExtra("caida",false))muestraCaida();
  }

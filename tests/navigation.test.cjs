@@ -1199,6 +1199,12 @@ test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
  // La del km 6: cinco carreteras de dos calzadas, una boca cada una.
  const k6=[0,0,18,{sentido:1,salidas:[10,75,155,244,310]}];
  assert.equal(c.salidaDeRotonda(k6,307,161),2,'pasa la de 244 y toma la de 155');
+ // Revision con GPT: una prohibida como destino cuenta con su propio numero,
+ // no hereda el de la libre anterior (el recuento incluye todas las bocas).
+ assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[300,630]}],0,270),2,'libre a 300 y prohibida a 270: la prohibida es la segunda');
+ // Y la duda, en los dos sentidos: dos bocas casi igual de cerca, sin numero.
+ assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[270,650]}],0,279),0,'libre a 270, prohibida a 290, salida a 279');
+ assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[270,290]}],0,279),0,'dos libres casi igual de cerca');
  assert.equal(c.textoSalida(2),'toma la segunda salida');
  assert.equal(c.textoSalida(9),'');
 });
@@ -1208,7 +1214,7 @@ test('rotonda con numero: «rs» al servicio, y la recta solo a la APK que lo sa
  const manda=v=>{let e=null;pieza('08-cruces.js',{junctions:lista,junctionsReves:null,versionMayor:pieza('07-servicio.js').versionMayor,
   window:{TrabakutikAndroid:{getAppVersion:()=>v,setJunctions:j=>{e=JSON.parse(j)}}}}).enviaGirosNativos();return JSON.stringify(e)};
  assert.equal(manda('4.9.47'),JSON.stringify([{i:5,dir:1,t:1,ro:1,rs:1}]),'APK vieja: sin la recta, que diria «da la vuelta»');
- assert.equal(manda('4.9.48'),JSON.stringify([{i:5,dir:1,t:1,ro:1,rs:1},{i:9,dir:-1,t:1,ro:1,rs:2}]));
+ assert.equal(manda('4.9.48'),JSON.stringify([{i:5,dir:1,t:1,ro:1,rs:1},{i:9,dir:-1,t:1,ro:1,rs:2,rr:1}]),'la recta lleva rr para que la APK se calle si no vale el numero');
  const q=pieza('09-navegacion.js',{window:{},textoSalida:pieza('08-cruces.js').textoSalida},arranque09()).queRotonda;
  assert.equal(q(lista[1],'izquierda',false),'toma la segunda salida');
  assert.equal(q(lista[1],'derecha',true),'sigue recto','al reves con la lista de ida el numero no vale');

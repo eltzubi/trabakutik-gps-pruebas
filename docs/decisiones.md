@@ -869,3 +869,20 @@ Lo que NO se cambió: la invertida «salida delante» que el crítico puso de
 ejemplo no se da con circulación por la derecha salvo en esas 3 parejas; y el
 filtro de octet-stream solo reconoce URI que acaben en .gpx, limitación que
 queda dicha.
+
+**Segunda ronda de la revisión (mismo día):**
+- **La duda de la rotonda, en los dos sentidos:** si otra boca, libre o
+  prohibida, queda a menos de 15° más de la salida de la ruta, sin número.
+  Pierden el número 6 de 46 pasos en las rutas (las rectas vuelven a callarse);
+  recyde no cambia. Probado que una prohibida como destino lleva su propio
+  número (el recuento incluye todas las bocas).
+- **El GPX abierto desde fuera solo cuenta como hecho cuando la página lo
+  recibe** (antes, al empezar a leer: si fallaba, ya no se podía reabrir); se
+  evita reimportar el mismo intent al recrear la pantalla, pero abrirlo otra
+  vez a mano siempre vale. Cada lectura en su propio hilo: uno colgado no
+  bloquea el siguiente.
+- **Sin escalón de altitud en el GPX:** con una ondulación ya conocida se sigue
+  usando aunque fallen conversiones posteriores (cambia unos metros en decenas
+  de km); en bruto solo si nunca la hubo, y entonces todo el GPX igual.
+- **Rotonda recta al revés sin lista de vuelta:** la página manda «rr» y la APK
+  se calla si no tiene número, en vez de decir «sal a la izquierda» en una recta.

@@ -278,6 +278,7 @@ function enviaGirosNativos(){
    // El numero de la salida, en «rs» (16 nov 2026). Una APK anterior lo
    // ignora y dice «sal a la derecha/izquierda», el lado bueno.
    if(j.rotonda&&j.salida)o.rs=j.salida;
+   if(j.rotonda&&j.recto)o.rr=1;
    return o;
   }));
   // Una rotonda que se cruza RECTO solo se avisa con su numero de salida, y
@@ -842,12 +843,13 @@ function salidaDeRotonda(rot,rIn,rOut){
  // Con TODAS las bocas, tambien las prohibidas: andando se puede salir por
  // una calle de direccion prohibida para coches, y entonces casar con la libre
  // de al lado daria el numero de otra (revision con GPT).
- let mia=null,err=Infinity,libre=Infinity;
- for(const b of bocas){const e=Math.abs(difRumbo(b.r,rOut));if(e<err){err=e;mia=b}if(b.libre&&e<libre)libre=e}
+ let mia=null,err=Infinity,segundo=Infinity;
+ for(const b of bocas){const e=Math.abs(difRumbo(b.r,rOut));if(e<err){segundo=err;err=e;mia=b}else if(e<segundo)segundo=e}
  if(!mia||err>SAL_CASA)return 0;
- // Y si la mas cercana es prohibida pero una libre queda casi igual de cerca,
- // no se sabe cual es: puede ser el GPS de la grabacion. Sin numero.
- if(!mia.libre&&libre-err<SAL_DUDA)return 0;
+ // Y si OTRA boca, sea libre o prohibida, queda casi igual de cerca de la
+ // salida de la ruta, no se sabe cual es (puede ser el GPS): sin numero. En
+ // los dos sentidos, no solo cuando gana la prohibida (revision con GPT).
+ if(segundo-err<SAL_DUDA)return 0;
  const hasta=tras(mia.r);
  if(hasta<=SAL_ENTRADA)return 0;
  let n=0;
