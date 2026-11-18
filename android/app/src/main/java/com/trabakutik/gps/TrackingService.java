@@ -813,6 +813,7 @@ public class TrackingService extends Service implements LocationListener {
   updateNotice();
  }
  void loadRoute(){
+  inicioCurva=Double.NaN;
   route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";llegada.reinicia();
   metrics.configure(route,Collections.emptyList());
   metricsRouteKey=0;
@@ -926,7 +927,11 @@ public class TrackingService extends Service implements LocationListener {
     // pasaria nunca y bloquearia TODOS los de detras. La pagina no genera
     // ninguno ahi (un giro necesita un punto antes), pero un fichero raro no
     // puede dejar la ruta muda.
-    if(at>=1&&at<route.size()&&direction>=-1&&direction<=1)turns.add(new double[]{at,direction,tipo,salida,recta});
+    if(at>=1&&at<route.size()&&direction>=-1&&direction<=1){
+     boolean curvaNueva=tipo==0&&direction!=0&&p.optInt("cn",0)==1;
+     turns.add(curvaNueva?new double[]{at,direction,tipo,salida,recta,1}
+                         :new double[]{at,direction,tipo,salida,recta});
+    }
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
    // avisos va de i=1 hacia arriba y solo avanza mientras el giro que toca
@@ -989,16 +994,31 @@ public class TrackingService extends Service implements LocationListener {
  // usa la pagina para esto. Por encima de eso la posicion es basura. Con 40 m
  // de error el «ahora» puede llegar unos metros antes o despues; callarse del
  // todo es peor.
+ double inicioCurva=Double.NaN,maximoCurva=Double.NaN;
+ long ultimoFixCurva=0;
+ boolean confirmaMarchaCurva(double along,boolean fiable){
+  if(!fiable){inicioCurva=Double.NaN;return false;}
+  long ahora=SystemClock.elapsedRealtime();
+  double avance=along*sentido;
+  if(!Double.isFinite(inicioCurva)||ahora-ultimoFixCurva>5000||avance<maximoCurva-12||avance>maximoCurva+40){
+   inicioCurva=maximoCurva=avance;
+  }
+  maximoCurva=Math.max(maximoCurva,avance);
+  ultimoFixCurva=ahora;
+  return maximoCurva-inicioCurva>=12;
+ }
  void checkTurns(Location l,NavigationMetrics.Projection position){
   // Yendo al reves, la lista calculada al reves si la hay (lado ya bueno).
   boolean usaReves=sentido<0&&hayReves;
   ArrayList<double[]> turns=usaReves?turnsReves:this.turns;
   if(!navigating||route.size()<2||turns.isEmpty()||!l.hasAccuracy()||l.getAccuracy()>60)return;
-  if(offRoute||position.distance()>25){
+  if(offRoute||position.ambiguous()||position.distance()>25){
+   inicioCurva=Double.NaN;
    if(!upcomingTurn.isEmpty()){upcomingTurn="";updateNotice();}
    return;
   }
   double along=position.along();
+  boolean curvaConfirmada=confirmaMarchaCurva(along,l.getAccuracy()>0&&l.getAccuracy()<=10&&position.distance()<15);
   double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz(),dYa=avisoYa();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
@@ -1013,7 +1033,9 @@ public class TrackingService extends Service implements LocationListener {
     // cada 1,5 s, 17 m de salto a 40 km/h, y la ventana de 7 m no la pisaba
     // ninguna lectura. Simulado con 10 arranques distintos: 5 de 10 a
     // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
-    if(ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8
+    double[] candidato=turns.get(k);
+    boolean curvaNueva=candidato.length>5&&candidato[5]==1;
+    if((!curvaNueva||(curvaConfirmada&&ahead>=0))&&ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8
        &&(mejor<0||coste(ahead)<coste(mejorAhead))){
      mejor=k;mejorAhead=ahead;
     }
@@ -1059,12 +1081,15 @@ public class TrackingService extends Service implements LocationListener {
      // la ventana de fuera, que empieza en -7 m.
      // Fase "v": solo voz, y la primera de todas. Los pitidos siguen
      // exactamente donde estaban, que para eso van bien.
-     String fase=ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>dYa?"2":ahead<=dYa?"3"
+     boolean curvaNueva=giro.length>5&&giro[5]==1;
+     String fase=curvaNueva?null:ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>dYa?"2":ahead<=dYa?"3"
        :ahead<=dv?"v":null;
      // Una rotonda que se cruza RECTO solo se avisa con su numero. Yendo al
      // reves con la lista de ida el numero no vale, y sin el diria «sal a la
      // izquierda» en una recta: entonces, nada (revision con GPT).
      boolean rectaSinNumero=tipo==5&&salida==0&&giro.length>4&&giro[4]==1;
+     if(curvaNueva&&ahead<=10&&warnedTurns.add((usaReves?"r":"")+mejor+":curva"))
+      habla(lado<0?"Curva a la izquierda":"Curva a la derecha");
      if(fase!=null&&!rectaSinNumero){
       String clave=(usaReves?"r":"")+mejor+":"+fase;
       if(!warnedTurns.contains(clave)){
@@ -1211,7 +1236,7 @@ public class TrackingService extends Service implements LocationListener {
  // giros ya avisados volvian a avisarse una y otra vez.
  void ponSentido(int s){
   if(s==sentido)return;
-  sentido=s;warnedTurns.clear();upcomingTurn="";
+  sentido=s;inicioCurva=Double.NaN;warnedTurns.clear();upcomingTurn="";
   habla(sentido<0?"Vas en sentido inverso, los giros van corregidos"
     :"Vuelves al sentido de la ruta");
  }
@@ -1308,21 +1333,21 @@ public class TrackingService extends Service implements LocationListener {
    if(l.hasAccuracy()&&l.getAccuracy()<=60){
     NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
     // Antes de los giros, que el lado de este mismo aviso ya salga bien.
-    if(!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
+    if(!offRoute&&!position.ambiguous()&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
     checkTurns(l,position);
     // El final de la ruta se dice (AvisoLlegada): una vez, y solo si de
     // verdad la has andado, que en una circular se empieza en el final.
     llegada.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy());
-    if(!offRoute&&l.getAccuracy()<=35&&position.distance()<=30){
+    if(!offRoute&&!position.ambiguous()&&l.getAccuracy()<=35&&position.distance()<=30){
      double total=metrics.total(),hecho=sentido>0?position.along():total-position.along();
      if(llegada.llega(hecho,total)){tonoBien();habla("Has llegado al final de la ruta");}
     }
     long now=SystemClock.elapsedRealtime();
     if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;
-    if(!offRoute&&position.distance()<=30&&l.getAccuracy()<=35){
+    if(!offRoute&&!position.ambiguous()&&position.distance()<=30&&l.getAccuracy()<=35){
      liveMetrics=updateNavigationMetrics(l,position,now);
-    }else metrics.pausePace();
-   }else metrics.pausePace();
+    }else{inicioCurva=Double.NaN;metrics.pausePace();}
+   }else{inicioCurva=Double.NaN;metrics.pausePace();}
   }
   // Con la hora de la MEDIDA y la velocidad del GPS (Doppler): ver TiempoEnMarcha.
   if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L,l.hasSpeed()?l.getSpeed():Double.NaN);

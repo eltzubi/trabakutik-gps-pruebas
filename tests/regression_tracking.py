@@ -75,6 +75,7 @@ public class TrackingRegression {
  File dirBase;File getFilesDir(){return dirBase;}
  File file;static String GRABANDO;String errorGrabacion="";long lastRecordedTime;double lastRecordedLat,lastRecordedLon;int points;boolean recording;
  boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
+ double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double velocidadSuave=1.2;int beeps=0;
  double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}double avisoYa(){return 4;}
  void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){}
@@ -87,7 +88,7 @@ public class TrackingRegression {
  String fraseGiro(int lado,int tipo,String f,double a){return "";}
  String fraseGiro(int lado,int tipo,String f,double a,int s){return "";}
  static void require(boolean condition,String message){if(!condition)throw new AssertionError(message);}
-'''+br+method(' static double coste(double ahead)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+method(' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)')+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+constant+method(' boolean esAntigua(Location l)')+sos+method(' static boolean cortaTrack(boolean forzar,boolean hayAnterior,long huecoMs,double salto)')+re.search(r' static final double VEL_IMPOSIBLE=[^;]+;',src).group(0)+'''
+'''+br+method(' static double coste(double ahead)')+method(' boolean confirmaMarchaCurva(double along,boolean fiable)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+method(' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)')+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+constant+method(' boolean esAntigua(Location l)')+sos+method(' static boolean cortaTrack(boolean forzar,boolean hayAnterior,long huecoMs,double salto)')+re.search(r' static final double VEL_IMPOSIBLE=[^;]+;',src).group(0)+'''
  public static void main(String[] args)throws Exception{
  TrackingRegression p=new TrackingRegression();p.dirBase=new File(args[0]);
  long bucket=System.currentTimeMillis()/1000;

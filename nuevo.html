@@ -4227,6 +4227,7 @@ function enviaGirosNativos(){
    const herradura=j.direction==='vuelta'&&!j.retorno,lado=herradura?j.hacia:j.direction;
    const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
    if(herradura)o.h=1;
+   if(j.curvaNueva)o.cn=1;
    // «sg»: SIGUE LA MISMA VIA, que tuerce en un cruce (17 nov 2026): «sigue
    // la carretera a la izquierda». sg=1 carretera, 2 calle, 3 camino. Una APK
    // anterior lo ignora y dice «cruce a la izquierda», el lado bueno.
@@ -4605,6 +4606,33 @@ function computeJunctions(){
  junctionWarned.clear();junctionZoomOnce.clear();
  enviaGirosNativos();
 }
+function detectaCurvasDelTrack(pts,cum){
+ const indices=[];
+ for(let i=0;i<pts.length;i++){
+  const anterior=indices[indices.length-1];
+  if(anterior===undefined||cum[i]!==cum[anterior])indices.push(i);
+ }
+ const metros=k=>cum[indices[k]];
+ const curvas=[];
+ let antes=0,despues=1,pico=null;
+ for(let k=1;k<indices.length-1;k++){
+  const actual=metros(k);
+  while(antes+1<k&&actual-metros(antes+1)>=12)antes++;
+  despues=Math.max(despues,k+1);
+  while(despues<indices.length&&metros(despues)-actual<12)despues++;
+  if(despues===indices.length)break;
+  if(actual-metros(antes)<12)continue;
+  const i=indices[k],point=pts[i];
+  const giro=difRumbo(bearingBetween(point,pts[indices[despues]]),bearingBetween(pts[indices[antes]],point));
+  const angle=Math.abs(giro),hacia=giro>0?'derecha':'izquierda';
+  if(pico&&(angle<60||pico.hacia!==hacia)){curvas.push(pico);pico=null}
+  if(angle>=60&&(!pico||angle>pico.angle)){
+   pico={i,point,along:cum[i],direction:hacia,hacia,angle,cruce:false,curvaNueva:true};
+  }
+ }
+ if(pico)curvas.push(pico);
+ return curvas;
+}
 function calculaCrucesDe(){
  resetJunctionView();
  junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
@@ -4971,6 +4999,15 @@ function calculaCrucesDe(){
   junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{}));
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
+ // El detector de la app Android aporta curvas por pico y por lado.
+ // La clasificación ya calculada mantiene cruces, retornos y herraduras.
+ const anteriores=junctions.slice();
+ for(const curva of detectaCurvasDelTrack(pts,routeCumulative)){
+  const coincide=anteriores.find(j=>Math.abs(j.along-curva.along)<=
+   (j.direction==='vuelta'?42:j.cruce?35:12)&&(j.cruce||j.direction==='vuelta'||j.hacia===curva.hacia));
+  if(!coincide)junctions.push(curva);
+  else if(!coincide.cruce&&coincide.direction!=='vuelta')coincide.curvaNueva=true;
+ }
  // Al contar desde el cruce, un aviso puede haber quedado por delante del
  // siguiente: en orden de la ruta, que es como los recorre la aplicacion.
  junctions.sort((p,q)=>p.i-q.i);
@@ -5088,7 +5125,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }
@@ -5161,6 +5198,7 @@ function progressOnRoute(p,reliable=true){
  }
  const rumboMarcha=reliable&&anclaRumbo.ruta===routePoints?anclaRumbo.rumbo:null;
  let bestEf=Infinity,cercaEf=Infinity;
+ const candidatos=[];
  for(let i=1;i<routePoints.length;i++){
   const a=routePoints[i-1],b=routePoints[i];
   const ax=(a[1]-p[1])*lonScale,ay=(a[0]-p[0])*latScale;
@@ -5174,11 +5212,18 @@ function progressOnRoute(p,reliable=true){
    if(Math.abs(((rumboMarcha-tramo)%360+540)%360-180)>100)pen=SENTIDO_PEN;
   }
   const ef=meters+pen;
+  if(ef<20)candidatos.push({along:candidate,error:ef});
   if(ef<bestEf-1e-6||(Math.abs(ef-bestEf)<=1e-6&&ref===null&&sentidoRuta<0)){bestEf=ef;best=meters;along=candidate}
   if(ref===null||Math.abs(candidate-ref)>window)continue;
   const score=ef+.20*Math.abs(candidate-predicted);
   if(score<bestScore){bestScore=score;cerca=meters;cercaEf=ef;alongCerca=candidate}
  }
+ // Como en el navegador Android nuevo: 5 m de margen lateral y una
+ // ventana corta de continuidad desempatan los pasos que comparten sitio.
+ const hayContinuidad=ref!==null&&candidatos.some(c=>
+  (c.along-ref)*sentidoRuta>=-12&&(c.along-ref)*sentidoRuta<=40&&c.error<=bestEf+5);
+ const ambiguous=!hayContinuidad&&bestEf<15&&candidatos.some(c=>
+  Math.abs(c.along-along)>25&&c.error-bestEf<5);
  if(Number.isFinite(cerca)&&cercaEf<=bestEf+12){best=cerca;along=alongCerca}
  // EL FINAL DE UN CIRCUITO NO ES SU PRINCIPIO. Si la ruta acaba donde empezo
  // y ya ibas por los ultimos CIERRE_M, volver a la salida es TERMINAR: sin
@@ -5204,9 +5249,9 @@ function progressOnRoute(p,reliable=true){
    else{along=ref;retenido=true}
   }
  }
- if(reliable&&best<=30)progressOnRoute.andado=retenido?(progressOnRoute.andado||0)+step:0;
- if(reliable&&best<=30){ultimoAlong=along;ultimoPuntoAlong=p}
- return {along,distance:best};
+ if(reliable&&!ambiguous&&best<=30)progressOnRoute.andado=retenido?(progressOnRoute.andado||0)+step:0;
+ if(reliable&&!ambiguous&&best<=30){ultimoAlong=along;ultimoPuntoAlong=p}
+ return {along,distance:best,ambiguous};
 }
 // Parado no hay giro que anunciar. «Gira a la derecha · En 50 m» solo
 // significa algo si uno avanza, y al autor se le quedo esa ficha en la
@@ -5232,6 +5277,18 @@ function sigueMoviendose(p,ahora){
  return ahora-refParadoT<PARADO_MS;
 }
 let listaCrucesActiva=null;
+let confirmacionCurva=null;
+function confirmaMarchaCurva(ruta,sentido,along,fiable,ahora){
+ if(!fiable){confirmacionCurva=null;return false}
+ const avance=along*sentido;
+ const c=confirmacionCurva;
+ if(!c||c.ruta!==ruta||c.sentido!==sentido||ahora-c.t>5000||avance<c.maximo-12||avance>c.maximo+40){
+  confirmacionCurva={ruta,sentido,inicio:avance,maximo:avance,t:ahora};
+  return false;
+ }
+ c.maximo=Math.max(c.maximo,avance);c.t=ahora;
+ return c.maximo-c.inicio>=12;
+}
 function colocaGiro(){
  if(typeof document==='undefined'||!document.querySelector)return;
  const t=$('turnHint'),m=$('map'),col=document.querySelector('#map .tools');
@@ -5264,12 +5321,14 @@ function junctionGuidance(p,accuracy,progress){
  // (con typeof: las pruebas que recortan esta funcion no traen el «✋ Sobraba»)
  if(typeof avisoMarcable!=='undefined'&&avisoMarcable&&!guiaIniciada()){avisoMarcable=null;pintaAvisoMal()}
  if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!lista.length||accuracy>60){
+  confirmacionCurva=null;
   if(junctionActive>=0)resetJunctionView();return;
  }
  progress=progress??progressOnRoute(p,false);
  estadoGuia.along=progress.along;estadoGuia.distancia=Math.round(progress.distance);
+ const curvaConfirmada=confirmaMarchaCurva(routePoints,sentidoRuta,progress.along,accuracy>0&&accuracy<=10&&progress.distance<15&&!progress.ambiguous,Date.now());
  const [d1,d2,dv,dYa]=distanciasDeAviso();
- if(progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
+ if(progress.ambiguous||progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
   if(junctionActive>=0)resetJunctionView();return;
  }
  if(typeof buscaAvisoMarcable==='function')buscaAvisoMarcable(lista,progress);
@@ -5288,6 +5347,7 @@ function junctionGuidance(p,accuracy,progress){
   // posicion cada 1,5 s, o sea 17 m de salto a 40 km/h: con el suelo fijo de
   // -12 m, el pitido del propio cruce se perdia 2 de cada 10 veces a 40 km/h
   // y 5 de cada 10 a 50. Con -(d2+8) salen 10 de 10 de 4 a 50 km/h.
+  if(turn.curvaNueva&&(!curvaConfirmada||ahead<0))continue;
   if(ahead< -(d2+8)||ahead>Math.max(d1,dv)+8||dist(p,turn.point)>Math.max(d1,dv)+25)continue;
   if(!best||coste(ahead)<coste(best.ahead))best={j,ahead,turn};
  }
@@ -5358,9 +5418,9 @@ function junctionGuidance(p,accuracy,progress){
    ?(turn.retorno?'Da la vuelta'
     :'Curva de herradura a la '+ladoHerradura)
    :turn.mantente?(turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado
-   :(esCruce?'Gira a la '+lado:'Curva cerrada a la '+lado);
+   :(esCruce?'Gira a la '+lado:(turn.curvaNueva?'Curva a la ':'Curva cerrada a la ')+lado);
  $('turnAngle').textContent=turn.mantente?(turn.noRecto?'Lo de frente no es tu camino':'Dejas el camino que llevas')
-   :'Giro de '+grados+'\u00b0';
+   :'Giro de '+Math.round(grados)+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // Las tres luces se encienden segun te acercas, con los mismos cortes que
  // los pitidos: son lo mismo dicho de otra manera, para cuando no se oiga.
@@ -5402,6 +5462,13 @@ function junctionGuidance(p,accuracy,progress){
  // esos 3 m duran medio segundo. Simulado de 4 a 50 km/h, con suelo fallaba
  // a 20, 25, 40, 45 y 50; sin el suena siempre. Queda acotado solo: arriba
  // se descarta el cruce pasados -12 m y la ficha se cierra a -9.
+ if(turn.curvaNueva){
+  if(ahead<=10&&!junctionWarned.has(j+':curva')){
+   junctionWarned.add(j+':curva');
+   hablarGiro('Curva a la '+lado);
+  }
+  return;
+ }
  let fase=null;
  if(ahead<=d1&&ahead>d2)fase='1';
  else if(ahead<=d2&&ahead>dYa)fase='2';
@@ -5475,7 +5542,7 @@ function textoDeGiro(turn,alReves){
  if(turn.rotonda)return 'Rotonda · '+queRotonda(turn,lado,alReves);
  if(turn.direction==='vuelta')return turn.retorno?'Da la vuelta':'Curva de herradura a la '+hacia;
  if(turn.mantente)return (turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado;
- return (turn.cruce!==false?'Gira a la ':'Curva cerrada a la ')+lado;
+ return (turn.cruce!==false?'Gira a la ':turn.curvaNueva?'Curva a la ':'Curva cerrada a la ')+lado;
 }
 // SOLO PARA EL AUTOR. Lo que marque otra persona se queda en su movil y no
 // nos llega a nadie, asi que a los demas el boton solo les estorbaria. Se
@@ -5647,7 +5714,7 @@ function onFix(pos){
  const fiable=pos.coords.accuracy<=35;
  const progreso=mode!=='create'&&routePoints.length>1?progressOnRoute(p,fiable):null;
  let h=lastCourse;
- if(progreso&&guiaIniciada()&&progreso.distance<=30){
+ if(progreso&&guiaIniciada()&&!progreso.ambiguous&&progreso.distance<=30){
   if(fiable)decideSentido(progreso.along);
   h=(fiable?course.nuevo:null)??rumboDeLaRuta(progreso)??h;
  }
@@ -5696,8 +5763,8 @@ function onFix(pos){
   $('distance').textContent='A '+fmt(d)+' del track';
   if($('ffTrack'))$('ffTrack').textContent=fmt(d);
   // En la ruta solo con posicion fiable; con una mala se queda lo ultimo dicho.
-  pintaAvance(fiable&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
-  liveProfileAlong=guiaIniciada()&&fiable&&progreso.distance<=30?progreso.along:null;
+  pintaAvance(fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
+  liveProfileAlong=guiaIniciada()&&fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
    updateOffRoute(d,pos.coords.accuracy);
    junctionGuidance(p,pos.coords.accuracy,progreso);

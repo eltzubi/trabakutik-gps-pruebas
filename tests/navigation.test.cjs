@@ -72,10 +72,13 @@ test('La copia simplificada de tres puntos conserva los giros cerrados en ambos 
   assert(Math.abs(turns[0].angle-140)<=1);
  }
 });
-test('Sin OSM: solo avisa curvas cerradas, no las esquinas corrientes',()=>{
- // Lo pidio asi el autor: «en realidad solo queria que me indicaran los
- // cruces, no las curvas». Una esquina de 90° sin cruce conocido NO avisa.
- for(const angle of [0,15,30,45,60,75,90,110,125])assert.equal(detector().detect(corner(angle)).length,0,`${angle} grados`);
+test('Sin OSM: el detector nuevo distingue curvas de quiebros suaves',()=>{
+ for(const angle of [0,15,30,45])assert.equal(detector().detect(corner(angle)).length,0,`${angle} grados`);
+ for(const angle of [75,90,110,125]){
+  const [curva]=detector().detect(corner(angle));
+  assert.equal(curva.direction,'izquierda');
+  assert.equal(curva.curvaNueva,true);
+ }
  for(const angle of [135,140,150,170,180]){
   const turns=detector().detect(corner(angle));assert.equal(turns.length,1,`${angle} grados`);
   assert.equal(turns[0].direction,angle>=160?'vuelta':'izquierda',`${angle} grados`);
@@ -114,8 +117,8 @@ test('No crea giro por un quiebro inferior a seis metros al inicio',()=>{
 test('Una curva amplia no avisa, por cerrada que acabe siendo',()=>{
  // Media vuelta de radio 100 m: en los 12 m que se miden apenas se dobla, y en
  // 40 m dobla 23 grados, asi que tampoco cuenta como horquilla. Lo mismo hasta
- // radios muy justos: un arco de 15 m de radio sigue callado.
- for(const radio of [100,60,40,25,15]){
+ // radios de 25 m. Un radio menor puede entrar en el detector nuevo.
+ for(const radio of [100,60,40,25]){
   const amplia=[];
   for(let deg=-90;deg<=90;deg+=2)amplia.push(tramo(deg,radio));
   assert.equal(detector().detect(amplia).length,0,`radio ${radio} m`);
@@ -169,7 +172,7 @@ test('Una horquilla de pista avisa como curva de herradura',()=>{
  // Sin estas dos lineas, subir el umbral a 179 no se notaria: todas las
  // horquillas de arriba doblan justo 180.
  assert.equal(detector().detect(horquilla(10,162)).length,1,'162 grados');
- assert.equal(detector().detect(horquilla(10,158)).length,0,'158 grados');
+ assert(!detector().detect(horquilla(10,158)).some(g=>g.direction==='vuelta'),'158 grados: puede ser curva, sin aviso de herradura');
 });
 test('Quedarse sin satélites se dice en alto, una vez, y la vuelta también',()=>{
  // El autor corto los satelites a proposito y la aplicacion no dijo nada:
@@ -316,7 +319,14 @@ test('Una S no es una horquilla: entra y sale con el mismo rumbo',()=>{
  for(let a=-90;a<=0;a+=10)points.push(point(10*Math.cos(a*Math.PI/180),10+10*Math.sin(a*Math.PI/180)));
  for(let a=180;a>=90;a-=10)points.push(point(20+10*Math.cos(a*Math.PI/180),10+10*Math.sin(a*Math.PI/180)));
  for(let x=20;x<=120;x+=10)points.push(point(x,20));
- assert.equal(detector().detect(points).length,0);
+ const c=detector(),ida=c.detect(points);
+ assert.equal(ida.length,2);
+ assert(ida.every(g=>g.curvaNueva));
+ assert.notEqual(ida[0].direction,ida[1].direction);
+ const vuelta=c.junctionsReves;
+ assert.equal(vuelta.length,2);
+ assert(vuelta[0].along>vuelta[1].along);
+ assert.equal(vuelta[0].direction,ida[0].direction);
 });
 test('Una desviación aislada del GPS y los puntos repetidos no crean giros falsos',()=>{
  const points=[];for(let x=-60;x<=60;x+=5)points.push(point(x,x===0?10:0));
@@ -343,13 +353,13 @@ function zigzag(separacion){
  for(let d=10;d<=120;d+=10)points.push(point(q[0]+d,q[1]));
  return points;
 }
-test('Dos giros cerrados seguidos se avisan por separado; pegados, uno solo',()=>{
+test('Dos giros cerrados seguidos se detectan por separado incluso a 20 m',()=>{
  const lejos=detector().detect(zigzag(40));
  assert.equal(lejos.length,2);
  // Comparado como texto: el array lo crea el vm y deepStrictEqual mira el prototipo.
  assert.equal(lejos.map(j=>j.direction).join(' '),'izquierda derecha');
- // A menos de 35 m no se repite: serian dos «ahora» uno encima del otro.
- assert.equal(detector().detect(zigzag(20)).length,1);
+ const cerca=detector().detect(zigzag(20));
+ assert.equal(cerca.map(g=>g.direction).join(' '),'izquierda derecha');
 });
 test('De dos avisos pegados se queda el cruce, no la curva',()=>{
  // Lo que el autor pidio que no se perdiera nunca son los CRUCES. Antes se
@@ -360,9 +370,9 @@ test('De dos avisos pegados se queda el cruce, no la curva',()=>{
  const turns=detector().detect(puntos,[point(q[0],q[1])]);
  assert.equal(turns.length,1);
  assert.equal(turns[0].cruce,true,'el que se queda es el cruce');
- // Sin el cruce marcado, se queda la curva: el aviso no se duplica.
+ // Sin cruce conocido, se conservan las dos curvas de distinto lado.
  const solas=detector().detect(puntos);
- assert.equal(solas.length,1);assert.equal(solas[0].cruce,false);
+ assert.equal(solas.length,2);assert(solas.every(g=>!g.cruce));
 });
 test('Rutas vacías, de dos puntos y demasiado cortas no inventan indicaciones',()=>{
  for(const points of [[],[point(0,0)],[point(0,0),point(0,50)],[point(-2,0),point(0,0),tramo(140,2)]])assert.equal(detector().detect(points).length,0);
@@ -1041,6 +1051,17 @@ test('Al revés se usan los avisos calculados al revés, con su lado, sin darles
  vm.runInContext(source('let listaCrucesActiva=null;','function rumboDeLaRuta(progreso){'),c);
  c.junctionGuidance(point(0,0),5);
  assert.equal(n.turnDirection&&n.turnDirection.textContent,'Gira a la derecha','el lado de la lista al reves, tal cual');
+ // En la misma pantalla, las dos curvas consecutivas se anuncian una sola vez.
+ const voz=[];
+ c.hablarGiro=texto=>voz.push(texto);
+ c.buscaAvisoMarcable=()=>{};
+ c.sentidoRuta=1;
+ c.junctions=[{...ida[0],cruce:false,curvaNueva:true,angle:90,direction:'izquierda',hacia:'izquierda'},
+              {...ida[0],cruce:false,curvaNueva:true,angle:90,along:120}];
+ for(const along of [85,87,91])c.junctionGuidance(point(0,0),5,{along,distance:1});
+ assert.deepEqual(voz,[],'espera a confirmar 12 metros de avance');
+ for(const along of [98,99,102,111,114,119])c.junctionGuidance(point(0,0),5,{along,distance:1});
+ assert.deepEqual(voz,['Curva a la izquierda','Curva a la derecha']);
 });
 test('la flecha del mapa apunta en el sentido en que se llega al cruce',()=>{
  const R=Math.PI/180;

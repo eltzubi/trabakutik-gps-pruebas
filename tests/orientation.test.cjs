@@ -187,8 +187,12 @@ test('Sin lectura de rumbo nueva se conserva el dato previo solo como referencia
 test('El progreso no toma la vuelta antes de llegar al extremo del camino compartido',()=>{
  const route=Array.from({length:101},(_,i)=>punto(0,Math.min(i,100-i)*10));
  const c=nav({routePoints:route,routeCumulative:route.map((_,i)=>10*i),ultimoAlong:null,ultimoPuntoAlong:null,sentidoRuta:1,R:Math.PI/180});
- c.progressOnRoute(punto(0,440));
- assert(Math.abs(c.progressOnRoute(punto(0,450)).along-450)<.01);
+ const ambiguo=c.progressOnRoute(punto(0,440));
+ assert.equal(ambiguo.ambiguous,true);
+ assert.equal(c.ultimoAlong,null,'la primera coordenada compartida no fija el tramo');
+ const confirmado=c.progressOnRoute(punto(0,450));
+ assert.equal(confirmado.ambiguous,false);
+ assert(Math.abs(confirmado.along-450)<.01);
  for(let m=460;m<=500;m+=10)c.progressOnRoute(punto(0,m));
  assert(Math.abs(c.progressOnRoute(punto(0,490)).along-510)<.01);
 });

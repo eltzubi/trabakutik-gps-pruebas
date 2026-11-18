@@ -23,6 +23,7 @@ import java.util.*;
 public class NativeTurnsTest {
  boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
  double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
+ double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
@@ -60,6 +61,7 @@ public class NativeTurnsTest {
  String fraseGiro(int lado,int tipo,String fase,double ahead,int salida){return ""+lado;}
 '''+''.join(method(m) for m in (
  ' static double coste(double ahead)',
+ ' boolean confirmaMarchaCurva(double along,boolean fiable)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
  ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' double avisoYa()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
@@ -124,8 +126,10 @@ public class NativeTurnsTest {
   for(int y=0;y<=1000;y+=10)r.add(new double[]{y/111195.,0,100});
   for(int y=1000;y>=0;y-=10)r.add(new double[]{y/111195.,8/111195.,100});
   NavigationMetrics m=new NavigationMetrics();m.configure(r,Collections.emptyList());
+  NavigationMetrics.Projection first=m.project(300/111195.,6/111195.,1,true);
+  require(first.ambiguous(),"Las dos pasadas son posibles con una sola posición");
   NavigationMetrics.Projection pr=null;
-  for(int y=300;y<=420;y+=10)pr=m.project(y/111195.,6/111195.,1,true);
+  for(int y=310;y<=420;y+=10)pr=m.project(y/111195.,6/111195.,1,true);
   require(Math.abs(pr.along()-420)<15,"va por la ida, km 0,42, no por la vuelta: "+Math.round(pr.along()));
   NavigationMetrics w=new NavigationMetrics();w.configure(r,Collections.emptyList());
   NavigationMetrics.Projection pw=null;
@@ -288,11 +292,31 @@ public class NativeTurnsTest {
   require(Double.isNaN(metrics.gain(100,1)),"Altitude gap cannot invent gain");
   require(Double.isFinite(metrics.gain(300,1)),"Earlier gap does not hide subsequent gain");
  }
+ static void curvasCercanas(){
+  NativeTurnsTest c=setup();
+  c.turns.clear();
+  c.turns.add(new double[]{10,-1,0,0,0,1});
+  c.turns.add(new double[]{12,1,0,0,0,1});
+  for(int m:new int[]{60,72,89})c.checkTurns(new Location(m));
+  require(c.dicho.isEmpty(),"Las curvas no avisan de lejos");
+  for(int m:new int[]{93,97,101,113,117})c.checkTurns(new Location(m));
+  require(c.dicho.equals(Arrays.asList("Curva a la izquierda","Curva a la derecha")),"Dos curvas cercanas: "+c.dicho);
+  require(c.beeps==0,"El aviso de curva nuevo tiene una sola locución");
+  System.out.println("PASS: curvas separadas 20 m, una locución por curva");
+  c=setup();
+  c.turns.clear();
+  c.turns.add(new double[]{10,-1,0,0,0,1});
+  c.checkTurns(new Location(95));
+  c.checkTurns(new Location(96));
+  c.checkTurns(new Location(98,20));
+  require(c.dicho.isEmpty(),"Sin confirmar marcha o con señal imprecisa no se canta");
+ }
  public static void main(String[] args){
   saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();ahoraAntes();System.out.println("PASS: el «ahora» suena dos segundos antes del cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();
+  curvasCercanas();
   NativeTurnsTest late=setup();late.checkTurns(new Location(72));
   require(late.spoken.equals(Arrays.asList(-1)),"First fix in phase 1 still speaks");
   late.checkTurns(new Location(72));require(late.spoken.size()==1,"Late turn voice is deduplicated");

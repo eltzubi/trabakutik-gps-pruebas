@@ -37,7 +37,9 @@ final class NavigationMetrics {
     private static final double UMBRAL_DESNIVEL = 5, CIERRE_M = 300;
     private static final long MAX_GAP_MS = 10_000;
     record Water(String name, double lat, double lon, boolean approximate) {}
-    record Projection(double along, double distance) {}
+    record Projection(double along, double distance, boolean ambiguous) {
+        Projection(double along, double distance) { this(along, distance, false); }
+    }
     record Notice(String text, int beeps) {}
     private record Event(double along, int direction, Notice notice) {}
 
@@ -176,6 +178,7 @@ final class NavigationMetrics {
             }
         }
         double rumboMarcha = reliable ? rumboAncla : Double.NaN;
+        List<double[]> candidates = new ArrayList<>();
         for (int i = 1; i < distance.length; i++) {
             projectSegment(i, lat, lon, scale, segment);
             double along = segment[0], error = segment[1];
@@ -190,6 +193,7 @@ final class NavigationMetrics {
                 }
             }
             double ef = error + pen;
+            if (ef < 20) candidates.add(new double[]{along, ef});
             if (ef < nearestEf - 1e-6
                     || (Math.abs(ef - nearestEf) <= 1e-6 && !hasReference && dir < 0)) {
                 nearestEf = ef;
@@ -205,8 +209,15 @@ final class NavigationMetrics {
                 nearbyAlong = along;
             }
         }
+        boolean continuous = false, rival = false;
+        for (double[] c : candidates) {
+            double advance = (c[0] - reference) * dir;
+            continuous |= hasReference && advance >= -12 && advance <= 40 && c[1] <= nearestEf + 5;
+            rival |= Math.abs(c[0] - nearestAlong) > 25 && c[1] - nearestEf < 5;
+        }
+        boolean ambiguous = !continuous && nearestEf < 15 && rival;
         Projection result = Double.isFinite(nearby) && nearbyEf <= nearestEf + 12
-                ? new Projection(nearbyAlong, nearby) : new Projection(nearestAlong, nearest);
+                ? new Projection(nearbyAlong, nearby, ambiguous) : new Projection(nearestAlong, nearest, ambiguous);
         // EL FINAL DE UN CIRCUITO NO ES SU PRINCIPIO. Si la ruta acaba a menos
         // de 150 m de donde empieza y ya ibas por los ultimos CIERRE_M, volver
         // a la salida es terminar: sin esto, el tramo mas cercano era el del
@@ -214,7 +225,7 @@ final class NavigationMetrics {
         // llegar al coche: su ruta acababa 89 m antes de la salida.
         double total = total();
         boolean held = false;
-        if (hasReference && total > 2 * CIERRE_M && points.size() > 2) {
+        if (!ambiguous && hasReference && total > 2 * CIERRE_M && points.size() > 2) {
             double[] a = points.get(0), b = points.get(points.size() - 1);
             if (meters(a[0], a[1], b[0], b[1]) < 150) {
                 // Solo es llegar si lo que faltaba cabe en lo andado (+30 m);
@@ -233,7 +244,7 @@ final class NavigationMetrics {
                 }
             }
         }
-        if (reliable && result.distance <= 30) {
+        if (reliable && !result.ambiguous && result.distance <= 30) {
             reference = result.along;
             heldWalked = held ? heldWalked + step : 0;
             lastLat = lat;

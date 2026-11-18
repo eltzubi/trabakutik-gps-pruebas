@@ -321,6 +321,7 @@ function enviaGirosNativos(){
    const herradura=j.direction==='vuelta'&&!j.retorno,lado=herradura?j.hacia:j.direction;
    const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
    if(herradura)o.h=1;
+   if(j.curvaNueva)o.cn=1;
    // «sg»: SIGUE LA MISMA VIA, que tuerce en un cruce (17 nov 2026): «sigue
    // la carretera a la izquierda». sg=1 carretera, 2 calle, 3 camino. Una APK
    // anterior lo ignora y dice «cruce a la izquierda», el lado bueno.
@@ -699,6 +700,33 @@ function computeJunctions(){
  junctionWarned.clear();junctionZoomOnce.clear();
  enviaGirosNativos();
 }
+function detectaCurvasDelTrack(pts,cum){
+ const indices=[];
+ for(let i=0;i<pts.length;i++){
+  const anterior=indices[indices.length-1];
+  if(anterior===undefined||cum[i]!==cum[anterior])indices.push(i);
+ }
+ const metros=k=>cum[indices[k]];
+ const curvas=[];
+ let antes=0,despues=1,pico=null;
+ for(let k=1;k<indices.length-1;k++){
+  const actual=metros(k);
+  while(antes+1<k&&actual-metros(antes+1)>=12)antes++;
+  despues=Math.max(despues,k+1);
+  while(despues<indices.length&&metros(despues)-actual<12)despues++;
+  if(despues===indices.length)break;
+  if(actual-metros(antes)<12)continue;
+  const i=indices[k],point=pts[i];
+  const giro=difRumbo(bearingBetween(point,pts[indices[despues]]),bearingBetween(pts[indices[antes]],point));
+  const angle=Math.abs(giro),hacia=giro>0?'derecha':'izquierda';
+  if(pico&&(angle<60||pico.hacia!==hacia)){curvas.push(pico);pico=null}
+  if(angle>=60&&(!pico||angle>pico.angle)){
+   pico={i,point,along:cum[i],direction:hacia,hacia,angle,cruce:false,curvaNueva:true};
+  }
+ }
+ if(pico)curvas.push(pico);
+ return curvas;
+}
 function calculaCrucesDe(){
  resetJunctionView();
  junctions=[];junctionWarned.clear();junctionZoomOnce.clear();
@@ -1065,6 +1093,15 @@ function calculaCrucesDe(){
   junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{}));
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
+ // El detector de la app Android aporta curvas por pico y por lado.
+ // La clasificación ya calculada mantiene cruces, retornos y herraduras.
+ const anteriores=junctions.slice();
+ for(const curva of detectaCurvasDelTrack(pts,routeCumulative)){
+  const coincide=anteriores.find(j=>Math.abs(j.along-curva.along)<=
+   (j.direction==='vuelta'?42:j.cruce?35:12)&&(j.cruce||j.direction==='vuelta'||j.hacia===curva.hacia));
+  if(!coincide)junctions.push(curva);
+  else if(!coincide.cruce&&coincide.direction!=='vuelta')coincide.curvaNueva=true;
+ }
  // Al contar desde el cruce, un aviso puede haber quedado por delante del
  // siguiente: en orden de la ruta, que es como los recorre la aplicacion.
  junctions.sort((p,q)=>p.i-q.i);
@@ -1182,7 +1219,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }
