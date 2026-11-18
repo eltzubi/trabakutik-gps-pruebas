@@ -1417,3 +1417,27 @@ test('Tu carretera sale a la izquierda y luego curva a la derecha: el aviso dice
  // Y el aviso esta en el propio cruce (el punto 0,0 de la ruta), no antes.
  assert(meters(enCruce[0].point,point(0,0))<1,'el aviso cuenta desde el cruce: '+meters(enCruce[0].point,point(0,0)));
 });
+test('«✋ Faltó aquí»: siempre a mano guiando, apunta el sitio, el aviso más cercano y si el guiado callaba',()=>{
+ const almacen={},nodos={};
+ const nodo=id=>nodos[id]||(nodos[id]={textContent:id==='tripRuta'?'recyde':'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}}});
+ const c=pieza('09-navegacion.js',{window:{},$:nodo,localStorage:{getItem:k=>almacen[k]??null,setItem:(k,v)=>{almacen[k]=v},removeItem:k=>{delete almacen[k]}},
+  notice(){},junctionActive:-1,sentidoRuta:1,junctions:[],guiaIniciada:()=>true},arranque09());
+ const lista=[{along:1000,point:[43.2,-2.5],direction:'izquierda',hacia:'izquierda',cruce:true,angle:79}];
+ c.buscaAvisoMarcable(lista,{along:500});
+ assert(nodo('avisoFalta').classList.contains('hidden'),'sin activar el ✋, no sale');
+ c.activaBotonAvisos(true);c.buscaAvisoMarcable(lista,{along:500});
+ assert(!nodo('avisoFalta').classList.contains('hidden'),'activado y guiando, sale');
+ // Lejos de cualquier aviso, y fuera de ruta: lo apunta todo.
+ c.estadoGuia={p:[43.19,-2.49],lista,fuera:true,parado:false,precision:8,along:500,distancia:40};
+ c.marcaAvisoFalta();
+ // Junto a un aviso calculado: dice cual y a cuanto.
+ c.estadoGuia={p:[43.2,-2.5],lista,fuera:false,parado:false,precision:5,along:960,distancia:3};
+ c.marcaAvisoFalta();
+ const t=c.textoAvisos().split('\n');
+ assert.equal(t.length,2,c.textoAvisos());
+ assert(/^recyde · km 0,50 · faltó un aviso · no había ninguno a menos de 120 m · fuera de ruta · a 40 m del track · 43.19,-2.49/.test(t[0]),t[0]);
+ assert(/^recyde · km 0,96 · faltó un aviso · había «Gira a la izquierda» a 40 m · 43.2,-2.5/.test(t[1]),t[1]);
+ // Y al salir el «Sobraba», el de «Faltó» se aparta.
+ c.buscaAvisoMarcable(lista,{along:1040});
+ assert(!nodo('avisoMal').classList.contains('hidden')&&nodo('avisoFalta').classList.contains('hidden'));
+});

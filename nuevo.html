@@ -159,6 +159,7 @@ button{min-width:0}
 /* «✋ Sobraba»: despues de pasar un aviso, para apuntarlo si estaba de mas. */
 .aviso-mal{position:absolute;z-index:1050;left:50%;transform:translateX(-50%);bottom:30px;width:max-content;max-width:calc(100% - 24px);margin:0;padding:9px 14px;border-radius:18px;background:#0f1a20eb;color:#e6edf0;border:1px solid #3d8ea4;font-size:13px;font-weight:700;text-align:center;line-height:1.3;box-shadow:0 2px 10px #0008}
 .aviso-mal.hidden{display:none}
+.aviso-falta{left:12px;transform:none;font-size:12px;padding:7px 11px;border-color:#7a6a2f;opacity:.9}
 #appVersion.con-mano::after{content:" ✋"}
 #avisosTexto{width:100%;box-sizing:border-box;min-height:140px;font:12px/1.4 ui-monospace,monospace;background:#0b1820;color:#e6edf0;border:1px solid #2a3d4b;border-radius:10px;padding:8px;resize:vertical}
 #map.giro-al-lado .turn-hint{right:var(--giro-derecha,70px)}
@@ -621,7 +622,7 @@ body.despejado #compass b{font-size:26px}
 @media (max-width:389px){body.despejado #compass svg{width:32px;height:32px}body.despejado #compass b{font-size:21px}}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
-<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><button type="button" id="avisoMal" class="aviso-mal hidden"></button><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">OSM</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 3.5 L26 25 L20 21 L14 25 Z" fill="#ff9c3b" stroke="#020617" stroke-width="1.2" stroke-linejoin="round"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="ffTrackBox" class="ff"><span class="ff-lab">Al track</span><b id="ffTrack">—</b></span><span id="ffAltBox" class="ff"><span class="ff-lab">Altitud</span><b id="ffAlt">—</b></span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
+<div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div class="tools"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><button type="button" id="avisoMal" class="aviso-mal hidden"></button><button type="button" id="avisoFalta" class="aviso-mal aviso-falta hidden">✋ Faltó aquí</button><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i id="turnFase1"></i><i id="turnFase2"></i><i id="turnFase3"></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span id="turnRot2">10 m</span><span id="turnRot3">en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">OSM</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 3.5 L26 25 L20 21 L14 25 Z" fill="#ff9c3b" stroke="#020617" stroke-width="1.2" stroke-linejoin="round"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="ffTrackBox" class="ff"><span class="ff-lab">Al track</span><b id="ffTrack">—</b></span><span id="ffAltBox" class="ff"><span class="ff-lab">Altitud</span><b id="ffAlt">—</b></span><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
 <section id="tripBox" class="hidden" aria-label="Lo que llevas" aria-live="off"><div class="trip-nombre" id="tripRuta"></div><div class="trip-tres"><div class="trip-col"><h3>Distancia</h3><div class="trip-g"><span id="tripHecho"></span><small id="tripHechoU">km</small></div><div class="trip-p"><span id="tripQuedaTxt">quedan </span><b id="tripQueda"></b></div><div class="trip-pista"><i id="tripBarra"></i></div></div><div class="trip-col"><h3>Desnivel</h3><div class="trip-g" id="tripDesnivel" role="text"><span class="par"><span class="sube" aria-hidden="true">▲</span><span id="tripSubido"></span></span> <span class="par"><span class="baja" aria-hidden="true">▼</span><span id="tripBajado"></span></span></div><div class="trip-p">falta <b id="tripFalta"></b></div></div><div class="trip-col"><h3>Tiempo</h3><div class="trip-g" id="tripTiempo">—</div><div class="trip-p">en marcha<b id="tripAltitud" class="hidden"></b></div></div></div><svg id="tripPerfil" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="tripHechoClip"><path id="tripHechoRect" d=""/></clipPath></defs><path id="tripPerfilArea" fill="#4fd8f0" fill-opacity=".14"/><path id="tripPerfilHecho" fill="#4fd8f0" fill-opacity=".38" clip-path="url(#tripHechoClip)"/><path id="tripPerfilLinea" fill="none" stroke="#4fd8f0" stroke-width="2" vector-effect="non-scaling-stroke"/><circle id="tripPerfilPunto" r="0" fill="#1e7bf2" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div class="trip-botones"><button type="button" id="tripPausa" class="trip-proxy">❙❙ Pausa</button><button type="button" id="tripSigue" class="trip-proxy go hidden">▶ Seguir</button><button type="button" id="tripParar" class="trip-proxy red">■ Parar</button><button type="button" id="tripBloquea" class="trip-bloquea" aria-label="Bloquear la pantalla" title="Bloquear la pantalla: los toques no hacen nada hasta desbloquear">🔒</button><button id="despeja" class="despeja hidden" type="button" title="Mostrar u ocultar los mandos" aria-expanded="false">⌄ Ocultar</button></div></section>
 <div id="candado" class="hidden" role="dialog" aria-modal="true" aria-label="Pantalla bloqueada"><button type="button" id="candadoQuita"><span aria-hidden="true">🔒</span><span>Bloqueada · mantén pulsado para desbloquear</span></button></div>
 <section id="elevationPanel" class="elevation-panel hidden" aria-label="Perfil de elevación">
@@ -5122,6 +5123,8 @@ let anclaRumbo={p:null,ruta:null,rumbo:null,t:0};
 // «✋ Sobraba» (ver mas abajo): arriba, porque junctionGuidance lo usa y puede
 // correr antes de llegar a esas lineas.
 let avisoMarcable=null,avisoMarcadoJ=-1,avisoMarcadoLista=null;
+// Como estaba el guiado en la ultima posicion: para «✋ Falto aqui».
+let estadoGuia=null;
 const AVISOS_MAL='avisos-mal',AVISO_MAL_M=250,AVISOS_ACTIVO='avisos-mal-activo';
 function progressOnRoute(p,reliable=true){
  let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity,retenido=false;
@@ -5256,12 +5259,15 @@ function junctionGuidance(p,accuracy,progress){
  const lista=sentidoRuta<0&&Array.isArray(junctionsReves)?junctionsReves:junctions;
  if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear()}
  listaCrucesActiva=lista;
+ // Para «✋ Falto aqui»: si se calla un giro, por que se callaba.
+ estadoGuia={p,lista,fuera:!!alerted,parado:!moviendose,precision:Math.round(accuracy),along:null,distancia:null};
  // (con typeof: las pruebas que recortan esta funcion no traen el «✋ Sobraba»)
  if(typeof avisoMarcable!=='undefined'&&avisoMarcable&&!guiaIniciada()){avisoMarcable=null;pintaAvisoMal()}
  if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!lista.length||accuracy>60){
   if(junctionActive>=0)resetJunctionView();return;
  }
  progress=progress??progressOnRoute(p,false);
+ estadoGuia.along=progress.along;estadoGuia.distancia=Math.round(progress.distance);
  const [d1,d2,dv,dYa]=distanciasDeAviso();
  if(progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
   if(junctionActive>=0)resetJunctionView();return;
@@ -5502,6 +5508,28 @@ function pintaAvisoMal(){
  const ver=botonAvisosActivo()&&!!avisoMarcable&&!(avisoMarcadoJ===avisoMarcable.j&&avisoMarcadoLista===avisoMarcable.lista)&&junctionActive<0;
  b.classList.toggle('hidden',!ver);
  if(ver)b.textContent='✋ Sobraba: «'+avisoMarcable.texto+'»';
+ // «✋ FALTO AQUI» (18 nov 2026): el autor oia pocos avisos y el ✋ solo
+ // apuntaba los que sobran. Siempre a mano mientras se sigue una ruta (solo
+ // con el ✋ activado), y se aparta cuando sale el de «Sobraba» o un giro.
+ const f=$('avisoFalta');
+ if(f)f.classList.toggle('hidden',!(botonAvisosActivo()&&typeof guiaIniciada==='function'&&guiaIniciada()&&!ver&&junctionActive<0));
+}
+// Apunta tu posicion como un aviso que FALTO, con lo necesario para saber
+// por que: el aviso calculado mas cercano (si lo habia, el problema no es la
+// regla) y si el guiado estaba callando (fuera de ruta, parado, GPS malo).
+function marcaAvisoFalta(){
+ const e=estadoGuia;if(!e||!e.p)return;
+ const l=avisosMarcados();
+ const ruta=(($('tripRuta')&&$('tripRuta').textContent)||($('mapTitle')&&$('mapTitle').textContent)||'').trim();
+ let cerca=null;
+ if(Number.isFinite(e.along))for(const t of e.lista||[]){const d=(t.along-e.along)*sentidoRuta;if(Math.abs(d)<=120&&(!cerca||Math.abs(d)<Math.abs(cerca.d)))cerca={d:Math.round(d),texto:textoDeGiro(t,sentidoRuta<0&&e.lista===junctions)}}
+ l.push({tipo:'falta',ruta,km:Number.isFinite(e.along)?Math.round(e.along)/1000:null,sentido:sentidoRuta,
+  cerca,fuera:e.fuera,parado:e.parado,precision:e.precision,distancia:e.distancia,
+  lat:+(+e.p[0]).toFixed(5),lon:+(+e.p[1]).toFixed(5),fecha:new Date().toISOString()});
+ while(l.length>300)l.shift();
+ try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l))}catch(err){}
+ pintaBotonAvisos();
+ try{notice('Apuntado: aquí faltó un aviso · '+l.length+' en la lista')}catch(err){}
 }
 function marcaAvisoMal(){
  if(!avisoMarcable)return;
@@ -5525,11 +5553,17 @@ function pintaBotonAvisos(){
  const v=$('appVersion');if(v&&v.classList)v.classList.toggle('con-mano',botonAvisosActivo());
 }
 function textoAvisos(){
- return avisosMarcados().map(a=>(a.ruta||'Ruta')+' · km '+(+a.km).toFixed(2).replace('.',',')+(a.sentido<0?' (al revés)':'')
-  +' · «'+a.dicho+'» sobraba · '+a.lat+','+a.lon+' · '+String(a.fecha||'').slice(0,16).replace('T',' ')).join('\n');
+ const km=a=>Number.isFinite(+a.km)&&a.km!==null?' · km '+(+a.km).toFixed(2).replace('.',','):'';
+ return avisosMarcados().map(a=>(a.ruta||'Ruta')+km(a)+(a.sentido<0?' (al revés)':'')
+  +(a.tipo==='falta'
+   ?' · faltó un aviso · '+(a.cerca?'había «'+a.cerca.texto+'» a '+a.cerca.d+' m':'no había ninguno a menos de 120 m')
+    +(a.fuera?' · fuera de ruta':'')+(a.parado?' · parado':'')+(a.precision>60?' · GPS ±'+a.precision+' m':'')+(a.distancia>25?' · a '+a.distancia+' m del track':'')
+   :' · «'+a.dicho+'» sobraba')
+  +' · '+a.lat+','+a.lon+' · '+String(a.fecha||'').slice(0,16).replace('T',' ')).join('\n');
 }
 if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $('avisoMal').addEventListener==='function'){
  $('avisoMal').addEventListener('click',marcaAvisoMal);
+ if($('avisoFalta'))$('avisoFalta').addEventListener('click',marcaAvisoFalta);
  $('avisosMarcados').addEventListener('click',()=>{$('avisosTexto').value=textoAvisos();$('avisosEstado').textContent='';$('avisosDialogo').classList.remove('hidden')});
  $('avisosCerrar').addEventListener('click',()=>$('avisosDialogo').classList.add('hidden'));
  $('avisosCopiar').addEventListener('click',()=>{
@@ -5927,8 +5961,9 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={marcaAvisoFalta,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
+ Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }
 // Estado del bloqueo de pantalla (ver «BLOQUEAR LA PANTALLA» mas abajo):

@@ -29,6 +29,8 @@ let anclaRumbo={p:null,ruta:null,rumbo:null,t:0};
 // «✋ Sobraba» (ver mas abajo): arriba, porque junctionGuidance lo usa y puede
 // correr antes de llegar a esas lineas.
 let avisoMarcable=null,avisoMarcadoJ=-1,avisoMarcadoLista=null;
+// Como estaba el guiado en la ultima posicion: para «✋ Falto aqui».
+let estadoGuia=null;
 const AVISOS_MAL='avisos-mal',AVISO_MAL_M=250,AVISOS_ACTIVO='avisos-mal-activo';
 function progressOnRoute(p,reliable=true){
  let best=Infinity,along=0,cerca=Infinity,alongCerca=0,bestScore=Infinity,retenido=false;
@@ -163,12 +165,15 @@ function junctionGuidance(p,accuracy,progress){
  const lista=sentidoRuta<0&&Array.isArray(junctionsReves)?junctionsReves:junctions;
  if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear()}
  listaCrucesActiva=lista;
+ // Para «✋ Falto aqui»: si se calla un giro, por que se callaba.
+ estadoGuia={p,lista,fuera:!!alerted,parado:!moviendose,precision:Math.round(accuracy),along:null,distancia:null};
  // (con typeof: las pruebas que recortan esta funcion no traen el «✋ Sobraba»)
  if(typeof avisoMarcable!=='undefined'&&avisoMarcable&&!guiaIniciada()){avisoMarcable=null;pintaAvisoMal()}
  if(!guiaIniciada()||alerted||!moviendose||routePoints.length<2||!lista.length||accuracy>60){
   if(junctionActive>=0)resetJunctionView();return;
  }
  progress=progress??progressOnRoute(p,false);
+ estadoGuia.along=progress.along;estadoGuia.distancia=Math.round(progress.distance);
  const [d1,d2,dv,dYa]=distanciasDeAviso();
  if(progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
   if(junctionActive>=0)resetJunctionView();return;
@@ -409,6 +414,28 @@ function pintaAvisoMal(){
  const ver=botonAvisosActivo()&&!!avisoMarcable&&!(avisoMarcadoJ===avisoMarcable.j&&avisoMarcadoLista===avisoMarcable.lista)&&junctionActive<0;
  b.classList.toggle('hidden',!ver);
  if(ver)b.textContent='✋ Sobraba: «'+avisoMarcable.texto+'»';
+ // «✋ FALTO AQUI» (18 nov 2026): el autor oia pocos avisos y el ✋ solo
+ // apuntaba los que sobran. Siempre a mano mientras se sigue una ruta (solo
+ // con el ✋ activado), y se aparta cuando sale el de «Sobraba» o un giro.
+ const f=$('avisoFalta');
+ if(f)f.classList.toggle('hidden',!(botonAvisosActivo()&&typeof guiaIniciada==='function'&&guiaIniciada()&&!ver&&junctionActive<0));
+}
+// Apunta tu posicion como un aviso que FALTO, con lo necesario para saber
+// por que: el aviso calculado mas cercano (si lo habia, el problema no es la
+// regla) y si el guiado estaba callando (fuera de ruta, parado, GPS malo).
+function marcaAvisoFalta(){
+ const e=estadoGuia;if(!e||!e.p)return;
+ const l=avisosMarcados();
+ const ruta=(($('tripRuta')&&$('tripRuta').textContent)||($('mapTitle')&&$('mapTitle').textContent)||'').trim();
+ let cerca=null;
+ if(Number.isFinite(e.along))for(const t of e.lista||[]){const d=(t.along-e.along)*sentidoRuta;if(Math.abs(d)<=120&&(!cerca||Math.abs(d)<Math.abs(cerca.d)))cerca={d:Math.round(d),texto:textoDeGiro(t,sentidoRuta<0&&e.lista===junctions)}}
+ l.push({tipo:'falta',ruta,km:Number.isFinite(e.along)?Math.round(e.along)/1000:null,sentido:sentidoRuta,
+  cerca,fuera:e.fuera,parado:e.parado,precision:e.precision,distancia:e.distancia,
+  lat:+(+e.p[0]).toFixed(5),lon:+(+e.p[1]).toFixed(5),fecha:new Date().toISOString()});
+ while(l.length>300)l.shift();
+ try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l))}catch(err){}
+ pintaBotonAvisos();
+ try{notice('Apuntado: aquí faltó un aviso · '+l.length+' en la lista')}catch(err){}
 }
 function marcaAvisoMal(){
  if(!avisoMarcable)return;
@@ -432,11 +459,17 @@ function pintaBotonAvisos(){
  const v=$('appVersion');if(v&&v.classList)v.classList.toggle('con-mano',botonAvisosActivo());
 }
 function textoAvisos(){
- return avisosMarcados().map(a=>(a.ruta||'Ruta')+' · km '+(+a.km).toFixed(2).replace('.',',')+(a.sentido<0?' (al revés)':'')
-  +' · «'+a.dicho+'» sobraba · '+a.lat+','+a.lon+' · '+String(a.fecha||'').slice(0,16).replace('T',' ')).join('\n');
+ const km=a=>Number.isFinite(+a.km)&&a.km!==null?' · km '+(+a.km).toFixed(2).replace('.',','):'';
+ return avisosMarcados().map(a=>(a.ruta||'Ruta')+km(a)+(a.sentido<0?' (al revés)':'')
+  +(a.tipo==='falta'
+   ?' · faltó un aviso · '+(a.cerca?'había «'+a.cerca.texto+'» a '+a.cerca.d+' m':'no había ninguno a menos de 120 m')
+    +(a.fuera?' · fuera de ruta':'')+(a.parado?' · parado':'')+(a.precision>60?' · GPS ±'+a.precision+' m':'')+(a.distancia>25?' · a '+a.distancia+' m del track':'')
+   :' · «'+a.dicho+'» sobraba')
+  +' · '+a.lat+','+a.lon+' · '+String(a.fecha||'').slice(0,16).replace('T',' ')).join('\n');
 }
 if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $('avisoMal').addEventListener==='function'){
  $('avisoMal').addEventListener('click',marcaAvisoMal);
+ if($('avisoFalta'))$('avisoFalta').addEventListener('click',marcaAvisoFalta);
  $('avisosMarcados').addEventListener('click',()=>{$('avisosTexto').value=textoAvisos();$('avisosEstado').textContent='';$('avisosDialogo').classList.remove('hidden')});
  $('avisosCerrar').addEventListener('click',()=>$('avisosDialogo').classList.add('hidden'));
  $('avisosCopiar').addEventListener('click',()=>{
@@ -834,7 +867,8 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={marcaAvisoFalta,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
+ Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
 }

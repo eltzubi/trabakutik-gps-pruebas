@@ -1216,3 +1216,15 @@ Tres avisos que el autor marcó en recyde, al revés:
 
 Tres casos más en `cruces-dificiles.test.cjs` (20 en total). Lado contra el
 trazado: nuevo 224, viejo 18; giros fuertes sin aviso, los mismos 8.
+
+## «✋ Faltó aquí» (18 de noviembre de 2026)
+
+El autor oía pocos avisos en carretera y el ✋ solo apuntaba los que sobran,
+así que no había forma de decir dónde faltó uno. Ahora, mientras se sigue
+una ruta y con el ✋ activado, hay un botón «✋ Faltó aquí» siempre a mano
+(se aparta cuando sale el de «Sobraba» o un giro). Apunta tu posición y el
+km, y lo necesario para saber por qué faltó: el aviso calculado más cercano
+a menos de 120 m (si lo había, el problema no es la regla sino que algo lo
+calló) y si el guiado estaba callando en ese momento: fuera de ruta, parado,
+GPS peor de 60 m o a más de 25 m del track. Sale en la misma lista que los
+«Sobraba», para pegarla en el chat.
