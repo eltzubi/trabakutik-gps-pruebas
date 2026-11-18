@@ -43,11 +43,19 @@ public class LlegadaTest{
   q.posicion(lat(0),-2.5,5);q.posicion(lat(500),-2.5,5);q.posicion(lat(1000),-2.5,60);
   require(q.andado()==0,"ni saltos ni posiciones malas: "+q.andado());
 
-  // 5. Ruta de 200 m: demasiado corta para avisar.
+  // 5. Ruta creada de 200 m: avisa también al llegar.
   AvisoLlegada r=new AvisoLlegada();boolean dicho=false;
   for(int m=0;m<=200;m+=5){r.posicion(lat(m),-2.5,5);if(r.llega(m,200))dicho=true;}
-  require(!dicho,"en una ruta de 200 m no se dice");
+  require(dicho,"en una ruta creada de 200 m también se anuncia la llegada");
+  r.reinicia();require(!r.llega(200,200),"cambiar de ruta no permite llegar sin recorrerla");
+  for(int m=0;m<=200;m+=5)r.posicion(lat(m),-2.5,5);
+  require(r.llega(200,200),"la segunda ruta vuelve a avisar");
 
+  // Una ruta corta circular tampoco termina al arrancar.
+  AvisoLlegada corta=new AvisoLlegada();
+  corta.posicion(lat(0),-2.5,5);
+  require(!corta.llega(40,40),"Una circular de 40 m no acaba al arrancar");
+  for(int m=5;m<=40;m+=5){corta.posicion(lat(m),-2.5,5);require(!corta.llega(m,40)||m>=36,"La llegada corta espera al final");}
   // 6. Reiniciar (ruta nueva) vuelve a dejar avisar.
   l.reinicia();require(l.andado()==0,"reinicia");
   System.out.println("llegada OK");

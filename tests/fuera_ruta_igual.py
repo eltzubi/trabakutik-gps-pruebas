@@ -46,7 +46,7 @@ public class FueraTest {
  static class ToneGenerator{static final int TONE_PROP_ACK=2;}
  static class Location{double lat,lon;float acc;Location(double la,double lo,float a){lat=la;lon=lo;acc=a;}
   double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
- boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
+ boolean entradaAvisada=false;boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
  ArrayList<double[]> route=new ArrayList<>();
  void updateNotice(){}void pitidos(int n,int s){}void pitidos(int n,int s,int t){}void habla(String s){}void tonoBien(){}
 ''' + metodo(' void vuelveALaRuta()') + metodo(' void checkDeviation(Location l)') + metodo(' double closest(double lat,double lon)') + '''

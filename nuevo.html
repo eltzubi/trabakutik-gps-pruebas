@@ -3361,6 +3361,7 @@ if(typeof document!=='undefined')$('navCreated').onclick=()=>{
 // sentidoRuta: +1 si vas como la ruta esta grabada, -1 si la haces al reves.
 // Se reinicia con cada ruta nueva, que para eso resetOffRoute() se llama en
 // selectRoute, loadSaved y clearActiveRoute.
+let entradaAvisada=false;
 let rumboSuave=null,sentidoRuta=1,refAvance=null,refAvanceT=0,alongPrevio=null,alongAcum=0,ultimoAlong=null,ultimoPuntoAlong=null;
 // Cuantas veces se partio el track por quedarse sin senal. Un GPX con
 // huecos no es el recorrido completo y hay que decirlo al terminar, no
@@ -3751,7 +3752,7 @@ function marcaAlReves(si){
 // web va bien, y al crear una ruta y juntarla con una guardada «va fatal».
 // resetOffRoute() se llama en los cinco sitios donde se cambia de ruta y en
 // ninguno mas, asi que aqui no se repite por cada posicion.
-function resetOffRoute(){alerted=false;farCount=0;farSince=0;cercaDesdePag=0;onRouteSeen=false;sentidoRuta=1;
+function resetOffRoute(){entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;onRouteSeen=false;sentidoRuta=1;
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
 refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;if(typeof document!=='undefined')marcaAlReves(false);
@@ -3769,7 +3770,7 @@ function updateOffRoute(d,accuracy){
  // de cordura, y salta la lectura sin tocar la cuenta.
  if(accuracy>60)return;
  const near=d<=Math.max(11,accuracy+4);
- if(near){onRouteSeen=true;farSince=0;cercaDesdePag=0;if(alerted)vuelvePagALaRuta();return}
+ if(near){if(!entradaAvisada&&accuracy>0&&accuracy<=35&&d<=15){entradaAvisada=true;hablar("Ya estás en la ruta")}onRouteSeen=true;farSince=0;cercaDesdePag=0;if(alerted)vuelvePagALaRuta();return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
  // 25 m y no 15, como el servicio: los demas navegadores avisan a 22-100 m y
  // con 15, bajo arbolado, avisaba sin motivo (decidido el 15 nov 2026).

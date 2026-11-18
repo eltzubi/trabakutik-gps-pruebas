@@ -17,7 +17,7 @@ package com.trabakutik.gps;
  */
 final class AvisoLlegada {
     static final double FALTA_M = 25;          // a esto del final, has llegado
-    static final double RUTA_MINIMA_M = 300;   // en rutas mas cortas no se dice
+    static final double RUTA_MINIMA_M = 25;   // descarta recorridos sin longitud suficiente
     static final double ANDADO_MINIMO = 0.5;   // fraccion de la ruta andada de verdad
     static final double PASO_M = 5;            // menos que esto es el GPS bailando
     static final double SALTO_M = 100;         // mas que esto de golpe no se anda
@@ -31,7 +31,7 @@ final class AvisoLlegada {
 
     /** Una posicion; precision en metros. */
     void posicion(double la, double lo, double precision) {
-        if (!(precision <= 35)) return;
+        if (!(precision > 0 && precision <= 35) || !Double.isFinite(la) || !Double.isFinite(lo)) return;
         if (Double.isNaN(lat)) { lat = la; lon = lo; return; }
         double d = metros(lat, lon, la, lo);
         if (d < PASO_M) return;
@@ -42,7 +42,8 @@ final class AvisoLlegada {
     /** true UNA vez, al llegar: «hecho» y «total» por la ruta, en tu sentido. */
     boolean llega(double hecho, double total) {
         if (avisado || !(total >= RUTA_MINIMA_M)) return false;
-        if (total - hecho <= FALTA_M && andado >= total * ANDADO_MINIMO) {
+        if (Double.isFinite(hecho) && hecho >= 0 && hecho <= total + FALTA_M &&
+            total - hecho <= Math.min(FALTA_M, total * 0.1) && andado >= total * ANDADO_MINIMO) {
             avisado = true;
             return true;
         }

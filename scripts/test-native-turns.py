@@ -21,7 +21,7 @@ def method(signature):
 code='''package com.trabakutik.gps;
 import java.util.*;
 public class NativeTurnsTest {
- boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
+ boolean entradaAvisada=false;boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
  double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
  double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
@@ -315,8 +315,19 @@ public class NativeTurnsTest {
   c.checkTurns(new Location(98,50));
   require(c.dicho.isEmpty(),"Sin confirmar marcha o con señal imprecisa no se canta");
  }
+ static void entradaDeRuta(){
+  NativeTurnsTest c=setup();
+  c.checkDeviation(new Location(50,80,5));
+  require(c.dicho.isEmpty(),"Estar fuera al empezar no anuncia entrada");
+  c.checkDeviation(new Location(50,0,5));
+  c.checkDeviation(new Location(60,0,5));
+  require(Collections.frequency(c.dicho,"Ya estás en la ruta")==1,"La entrada se anuncia una sola vez");
+  c.entradaAvisada=false;c.routeReached=false;c.dicho.clear();
+  c.checkDeviation(new Location(100,0,5));
+  require(c.dicho.equals(Arrays.asList("Ya estás en la ruta")),"Al cambiar de ruta vuelve a anunciar");
+ }
  public static void main(String[] args){
-  saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();ahoraAntes();System.out.println("PASS: el «ahora» suena dos segundos antes del cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
+  entradaDeRuta();saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();ahoraAntes();System.out.println("PASS: el «ahora» suena dos segundos antes del cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();

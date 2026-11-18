@@ -17,7 +17,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.telephony.SmsManager;
 public class TrackingService extends Service implements LocationListener {
- LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final ArrayList<double[]> turnsReves=new ArrayList<>();boolean hayReves=false;final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double alongPrevio=Double.NaN,alongAcum=0;long cercaDesde=0;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
+ LocationManager manager;PowerManager.WakeLock gpsWakeLock;LocationListener red=null;File file;boolean entradaAvisada=false;boolean recording=false,navigating=false,active=false,routeReached=false,offRoute=false;int points=0;long lastRecordedTime=0;double lastRecordedLat=Double.NaN,lastRecordedLon=Double.NaN;long farSince=0,lastNotice=0;double velocidadSuave=0;final ArrayList<double[]> route=new ArrayList<>();final ArrayList<double[]> turns=new ArrayList<>();final ArrayList<double[]> turnsReves=new ArrayList<>();boolean hayReves=false;final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double alongPrevio=Double.NaN,alongAcum=0;long cercaDesde=0;boolean pausado=false,forzarCorte=false;long ultimoFixGpsElapsed=0;String ultimoEstadoAviso="";boolean sinGpsAvisado=false;final Handler pitidoHandler=new Handler(Looper.getMainLooper());ToneGenerator tonoEnCurso=null;String errorGrabacion="",errorRuta="";TextToSpeech voz=null;boolean vozLista=false;String audioModo="voz";String vozEstado="iniciando";final Handler avisoHandler=new Handler(Looper.getMainLooper());
  final NavigationMetrics metrics=new NavigationMetrics();
  List<NavigationMetrics.Water> waterPoints;
  int metricsRouteKey;
@@ -497,7 +497,7 @@ public class TrackingService extends Service implements LocationListener {
    return START_NOT_STICKY;
   }
   if("STOP_NAVIGATION".equals(action)){
-   navigating=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;olvidaSentido();
+   navigating=false;entradaAvisada=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;olvidaSentido();
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
    publicaEstado();
    if(!recording){finish();return START_NOT_STICKY;}
@@ -813,6 +813,7 @@ public class TrackingService extends Service implements LocationListener {
   updateNotice();
  }
  void loadRoute(){
+  entradaAvisada=false;
   inicioCurva=Double.NaN;
   route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";llegada.reinicia();
   metrics.configure(route,Collections.emptyList());
@@ -1260,6 +1261,7 @@ public class TrackingService extends Service implements LocationListener {
   if(l.getAccuracy()>60)return;
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
   if(d<=Math.max(11,acc+4)){
+   if(!entradaAvisada&&acc>0&&acc<=35&&d<=15){entradaAvisada=true;habla("Ya estás en la ruta");}
    routeReached=true;farSince=0;
    if(offRoute)vuelveALaRuta();
    return;
@@ -1327,6 +1329,7 @@ public class TrackingService extends Service implements LocationListener {
   if(recording&&!pausado)bateriaFixes++;
   String liveMetrics="{}";
   if(navigating&&route.size()>1){
+   boolean entradaAnterior=entradaAvisada;
    boolean wasOff=offRoute;
    int previousWarnings=warnedTurns.size();
    checkDeviation(l);
@@ -1334,7 +1337,7 @@ public class TrackingService extends Service implements LocationListener {
     NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
     // Antes de los giros, que el lado de este mismo aviso ya salga bien.
     if(!offRoute&&!position.ambiguous()&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
-    checkTurns(l,position);
+    if(entradaAnterior==entradaAvisada)checkTurns(l,position);
     // El final de la ruta se dice (AvisoLlegada): una vez, y solo si de
     // verdad la has andado, que en una circular se empieza en el final.
     llegada.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy());
@@ -1345,7 +1348,7 @@ public class TrackingService extends Service implements LocationListener {
     long now=SystemClock.elapsedRealtime();
     if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;
     if(!offRoute&&!position.ambiguous()&&position.distance()<=30&&l.getAccuracy()<=35){
-     liveMetrics=updateNavigationMetrics(l,position,now);
+     if(entradaAnterior==entradaAvisada)liveMetrics=updateNavigationMetrics(l,position,now);
     }else{inicioCurva=Double.NaN;metrics.pausePace();}
    }else{inicioCurva=Double.NaN;metrics.pausePace();}
   }
