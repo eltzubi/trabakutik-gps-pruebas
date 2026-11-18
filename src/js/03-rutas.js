@@ -277,6 +277,7 @@ function selectRoute(i){
   junctions=[];junctionsReves=null;
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
+  if(guiaIniciada())enciendeNavegacionNativa();
   aplicaCruces();
   notice('Ruta seleccionada · cargando detalle del Garmin');
   loadDetailedSelected(i,request);

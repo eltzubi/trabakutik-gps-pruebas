@@ -1184,6 +1184,7 @@ function selectRoute(i){
   junctions=[];junctionsReves=null;
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
+  if(guiaIniciada())enciendeNavegacionNativa();
   aplicaCruces();
   notice('Ruta seleccionada · cargando detalle del Garmin');
   loadDetailedSelected(i,request);
@@ -3066,6 +3067,7 @@ function loadSaved(item){
  junctions=[];junctionsReves=null;
  syncNativeRoute();
  computeJunctions();
+ if(guiaIniciada())enciendeNavegacionNativa();
  aplicaCruces();
  notice(guiaIniciada()?'Siguiendo · '+item.name:'Ruta cargada · '+item.name+' · pulsa Empezar');
 }
@@ -5314,7 +5316,7 @@ function junctionGuidance(p,accuracy,progress){
  // Calculada aunque este vacia: al reves puede no hacer falta ningun aviso,
  // y entonces no se usan los de la ida dados la vuelta.
  const lista=sentidoRuta<0&&Array.isArray(junctionsReves)?junctionsReves:junctions;
- if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear()}
+ if(listaCrucesActiva&&lista!==listaCrucesActiva){if(junctionActive>=0)resetJunctionView();junctionWarned.clear();confirmacionCurva=null}
  listaCrucesActiva=lista;
  // Para «✋ Falto aqui»: si se calla un giro, por que se callaba.
  estadoGuia={p,lista,fuera:!!alerted,parado:!moviendose,precision:Math.round(accuracy),along:null,distancia:null};
@@ -5326,7 +5328,7 @@ function junctionGuidance(p,accuracy,progress){
  }
  progress=progress??progressOnRoute(p,false);
  estadoGuia.along=progress.along;estadoGuia.distancia=Math.round(progress.distance);
- const curvaConfirmada=confirmaMarchaCurva(routePoints,sentidoRuta,progress.along,accuracy>0&&accuracy<=10&&progress.distance<15&&!progress.ambiguous,Date.now());
+ const curvaConfirmada=confirmaMarchaCurva(routePoints,sentidoRuta,progress.along,accuracy>0&&accuracy<=35&&progress.distance<=25&&!progress.ambiguous,Date.now());
  const [d1,d2,dv,dYa]=distanciasDeAviso();
  if(progress.ambiguous||progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
   if(junctionActive>=0)resetJunctionView();return;
@@ -5347,7 +5349,7 @@ function junctionGuidance(p,accuracy,progress){
   // posicion cada 1,5 s, o sea 17 m de salto a 40 km/h: con el suelo fijo de
   // -12 m, el pitido del propio cruce se perdia 2 de cada 10 veces a 40 km/h
   // y 5 de cada 10 a 50. Con -(d2+8) salen 10 de 10 de 4 a 50 km/h.
-  if(turn.curvaNueva&&(!curvaConfirmada||ahead<0))continue;
+  if(turn.curvaNueva&&(!curvaConfirmada||ahead< -dYa))continue;
   if(ahead< -(d2+8)||ahead>Math.max(d1,dv)+8||dist(p,turn.point)>Math.max(d1,dv)+25)continue;
   if(!best||coste(ahead)<coste(best.ahead))best={j,ahead,turn};
  }

@@ -1018,7 +1018,7 @@ public class TrackingService extends Service implements LocationListener {
    return;
   }
   double along=position.along();
-  boolean curvaConfirmada=confirmaMarchaCurva(along,l.getAccuracy()>0&&l.getAccuracy()<=10&&position.distance()<15);
+  boolean curvaConfirmada=confirmaMarchaCurva(along,l.getAccuracy()>0&&l.getAccuracy()<=35&&position.distance()<=25);
   double d1=avisoLargo(),d2=avisoCorto(),dv=avisoVoz(),dYa=avisoYa();
   // Haciendo la ruta al reves «along» decrece: sin el signo, los avisos
   // apuntaban a los cruces que ya habias pasado.
@@ -1035,7 +1035,7 @@ public class TrackingService extends Service implements LocationListener {
     // 30 km/h, 5 de 10 a 40 y 3 de 10 a 50. Con -(d2+8), 10 de 10 siempre.
     double[] candidato=turns.get(k);
     boolean curvaNueva=candidato.length>5&&candidato[5]==1;
-    if((!curvaNueva||(curvaConfirmada&&ahead>=0))&&ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8
+    if((!curvaNueva||(curvaConfirmada&&ahead>=-dYa))&&ahead>=-(d2+8)&&ahead<=Math.max(d1,dv)+8
        &&(mejor<0||coste(ahead)<coste(mejorAhead))){
      mejor=k;mejorAhead=ahead;
     }
@@ -1242,7 +1242,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  // Al cambiar de ruta, callando: «vuelves al sentido de la ruta» en una ruta
  // que acabas de cargar no quiere decir nada.
- void olvidaSentido(){sentido=1;alongPrevio=Double.NaN;alongAcum=0;latSentido=Double.NaN;lonSentido=Double.NaN;movSentido=Double.NaN;}
+ void olvidaSentido(){inicioCurva=Double.NaN;sentido=1;alongPrevio=Double.NaN;alongAcum=0;latSentido=Double.NaN;lonSentido=Double.NaN;movSentido=Double.NaN;}
  void vuelveALaRuta(){offRoute=false;cercaDesde=0;updateNotice();tonoBien();habla("De nuevo en la ruta");}
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;return;}

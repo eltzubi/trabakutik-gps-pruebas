@@ -427,6 +427,15 @@ test('Abrir una ruta guardada no manda al servicio los giros de la ruta anterior
  assert.deepEqual(giros,[0],'con los puntos nuevos no viaja ningun giro viejo');
  assert.equal(c.junctions.length,1,'y despues entran los de la ruta nueva');
 });
+test('Cambiar entre dos rutas guardadas durante la grabación reactiva su guía',()=>{
+ const c=savedFlow();c.recording=true;
+ c.loadSaved({name:'Primera',points:corner(140),created:1});
+ c.loadSaved({name:'Segunda',points:corner(-140),created:2});
+ const activadas=c.calls.filter(call=>call[0]==='navigate');
+ assert.equal(activadas.length,2);
+ assert.equal(c.activeSavedId,2);
+ assert.equal(c.junctions[0].direction,'derecha');
+});
 test('Guardar, cerrar, volver a Ruta y grabar activa primero la ruta recién guardada',()=>{
  const c=savedFlow();c.save();c.closeSaveDialog();c.mode='nav';c.$('recordStart').onclick();
  assert.equal(c.recording,true);assert.equal(c.routePoints.length,3);assert.equal(c.junctions.length,1);

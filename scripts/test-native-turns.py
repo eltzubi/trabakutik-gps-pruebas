@@ -303,12 +303,16 @@ public class NativeTurnsTest {
   require(c.dicho.equals(Arrays.asList("Curva a la izquierda","Curva a la derecha")),"Dos curvas cercanas: "+c.dicho);
   require(c.beeps==0,"El aviso de curva nuevo tiene una sola locución");
   System.out.println("PASS: curvas separadas 20 m, una locución por curva");
+  c=setup();c.turns.clear();c.turns.add(new double[]{10,-1,0,0,0,1});
+  for(int m:new int[]{55,70,85,101,103})c.checkTurns(new Location(m,25));
+  require(c.dicho.equals(Arrays.asList("Curva a la izquierda")),"Con 25 m de precisión y lectura pasada 1 m avisa una vez: "+c.dicho);
+
   c=setup();
   c.turns.clear();
   c.turns.add(new double[]{10,-1,0,0,0,1});
   c.checkTurns(new Location(95));
   c.checkTurns(new Location(96));
-  c.checkTurns(new Location(98,20));
+  c.checkTurns(new Location(98,50));
   require(c.dicho.isEmpty(),"Sin confirmar marcha o con señal imprecisa no se canta");
  }
  public static void main(String[] args){

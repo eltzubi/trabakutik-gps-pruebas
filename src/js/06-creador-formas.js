@@ -460,6 +460,7 @@ function loadSaved(item){
  junctions=[];junctionsReves=null;
  syncNativeRoute();
  computeJunctions();
+ if(guiaIniciada())enciendeNavegacionNativa();
  aplicaCruces();
  notice(guiaIniciada()?'Siguiendo · '+item.name:'Ruta cargada · '+item.name+' · pulsa Empezar');
 }
