@@ -163,3 +163,20 @@ test('18. Salida a la derecha con la llegada en curva y puntos cada 20 m: «dere
  const j=detector()(ruta(llegaCurva,mia,20),[cruce([llegaCurva,mia,sigue])]);
  assert.deepEqual(lados(enCruce(j)),['derecha'],dice(j).join(' | '));
 });
+test('20. Doble carril: las dos calzadas se separan a 16 y la otra es de sentido prohibido: nada',()=>{
+ const mia={tramos:[[8,150]],calle:'A'},contraria={tramos:[[352,150]],calle:'A',prohibida:true};
+ const c=cruce([sur,mia,contraria]);c.prohibidas=[false,false,true];
+ const j=detector()(ruta(sur,mia),[c]);
+ assert.deepEqual(dice(j),[],dice(j).join(' | '));
+});
+test('21. Dejas la carretera por una entrada que sale 40 a la izquierda (la carretera sigue recta): «gira izquierda», no «recto por»',()=>{
+ const main={tramos:[[0,150]],calle:'A'},entrada={tramos:[[320,150]],calle:'B'};
+ const j=detector()(ruta(sur,entrada),[cruce([sur,main,entrada])]);
+ assert.deepEqual(dice(enCruce(j)),['gira izquierda'],dice(j).join(' | '));
+});
+test('22. Horquilla de tu misma via en la que lo recto es la OTRA: «por la izquierda» sin «recto»',()=>{
+ const mia={tramos:[[340,150]],calle:'A'},otra={tramos:[[5,150]],calle:'B'};
+ const j=enCruce(detector()(ruta(sur,mia),[cruce([sur,mia,otra])]));
+ assert.equal(j.length,1,dice(j).join(' | '));
+ assert(j[0].mantente&&j[0].noRecto&&j[0].direction==='izquierda',JSON.stringify(j[0]));
+});

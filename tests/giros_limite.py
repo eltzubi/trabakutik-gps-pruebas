@@ -117,6 +117,15 @@ public class GirosLimiteTest {
   require(via.equals("En 50 metros, gira a la izquierda"),via);
   require(camino.equals("Gira a la derecha ahora"),camino);
   require(calle.equals("En 50 metros, gira a la derecha"),calle);
+  // 9. «Sigue por la izquierda», sin «recto», cuando la tuya no es la mas
+  //    recta (nr, 18 nov 2026). Sin nr, como siempre.
+  t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":-1,\"t\":2,\"nr\":1},{\"i\":20,\"dir\":1,\"t\":2},{\"i\":30,\"dir\":1,\"t\":1,\"nr\":1}]");t.loadTurns();
+  require((int)t.turns.get(0)[2]==2&&(int)t.turns.get(0)[3]==1,"nr en una horquilla: casilla 1");
+  require((int)t.turns.get(1)[3]==0,"sin nr: casilla 0");
+  require((int)t.turns.get(2)[2]==1&&(int)t.turns.get(2)[3]==0,"nr fuera de una horquilla no cuenta");
+  String sinRecto=t.fraseGiro(-1,2,"1",48,1),conRecto=t.fraseGiro(1,2,"1",48,0);
+  require(sinRecto.equals("En 50 metros, sigue por la izquierda"),sinRecto);
+  require(conRecto.equals("En 50 metros, sigue recto por la derecha"),conRecto);
   System.out.println("OK: caben 2000 giros, por encima se vacia la lista, un giro en el punto 0 no tapa a los demas y la herradura dice su lado");
  }
 }'''

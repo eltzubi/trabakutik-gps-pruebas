@@ -434,7 +434,10 @@ public class TrackingService extends Service implements LocationListener {
    // oyo 45 m antes de una carretera que salia a la derecha (hacia Mallabia) y
    // se podia entender como «gira ahi». Con «recto» queda claro que no hay
    // giro, solo coger el ramal de ese lado. Lo propuso el 16 nov 2026.
-   ?(lado<0?"sigue recto por la izquierda":"sigue recto por la derecha")
+   // Sin «recto» si la tuya no es la mas recta (salida==1): el autor, con una
+   // carretera recta a la derecha que no era la suya, «lo de recto sobra».
+   ?(salida==1?(lado<0?"sigue por la izquierda":"sigue por la derecha")
+    :(lado<0?"sigue recto por la izquierda":"sigue recto por la derecha"))
    :lado==0
    ?"da la vuelta"
    // «GIRA», NO «CRUCE» (17 nov 2026). El autor: «se quita la palabra cruce
@@ -912,6 +915,10 @@ public class TrackingService extends Service implements LocationListener {
     // 1 carretera, 2 calle, 3 camino. «Sigue la carretera a la izquierda».
     int sg=p.optInt("sg",0);
     if((tipo==1||tipo==2)&&sg>=1&&sg<=3){tipo=6;salida=sg;}
+    // «nr»:1 en una horquilla (tipo 2): la tuya no es la mas recta, y se dice
+    // «sigue por la izquierda», sin «recto» (18 nov 2026). Va en la casilla de
+    // la salida, que en el tipo 2 no se usaba.
+    if(tipo==2&&p.optInt("nr",0)==1)salida=1;
     // «rr»:1, esa rotonda se cruza recto (solo llega con numero).
     int recta=tipo==5&&p.optInt("rr",0)==1?1:0;
     // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
@@ -1035,8 +1042,9 @@ public class TrackingService extends Service implements LocationListener {
      // El numero de la salida vale en el sentido en que se calculo: con la
      // lista de ida dada la vuelta (sin la de vuelta) no, y no se dice.
      int salida=tipo==5&&giro.length>3&&(usaReves||sentido>0)?(int)giro[3]:0;
-     // En el tipo 6 esa casilla es la clase de via, que vale en los dos sentidos.
-     if(tipo==6)salida=giro.length>3?(int)giro[3]:3;
+     // En el tipo 6 esa casilla es la clase de via, y en el 2 si lleva «recto»;
+     // las dos valen en los dos sentidos.
+     if(tipo==6||tipo==2)salida=giro.length>3?(int)giro[3]:(tipo==6?3:0);
      // La rotonda era tipo>=3 y salia «Herradura dcha.» en la notificacion.
      if(tipo==5)instruction=salida>=1&&salida<ORDINALES.length?"Rotonda, "+salida+".ª salida"
       :lado==0?"Rotonda, da la vuelta":"Rotonda "+(lado<0?"izqda.":"dcha.");

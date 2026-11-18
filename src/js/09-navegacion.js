@@ -258,9 +258,9 @@ function junctionGuidance(p,accuracy,progress){
    :lado==='vuelta'
    ?(turn.retorno?'Da la vuelta'
     :'Curva de herradura a la '+ladoHerradura)
-   :turn.mantente?'Sigue recto por la '+lado
+   :turn.mantente?(turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado
    :(esCruce?'Gira a la '+lado:'Curva cerrada a la '+lado);
- $('turnAngle').textContent=turn.mantente?'Dejas el camino que llevas'
+ $('turnAngle').textContent=turn.mantente?(turn.noRecto?'Lo de frente no es tu camino':'Dejas el camino que llevas')
    :'Giro de '+grados+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // Las tres luces se encienden segun te acercas, con los mismos cortes que
@@ -317,7 +317,7 @@ function junctionGuidance(p,accuracy,progress){
     :lado==='vuelta'
     ?(turn.retorno?'da la vuelta'
      :'curva de herradura a la '+ladoHerradura)
-    :turn.mantente?'sigue recto por la '+lado
+    :turn.mantente?(turn.noRecto?'sigue por la ':'sigue recto por la ')+lado
     :(esCruce?'gira a la '+lado:'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.
   if(fase==='v'||fase==='3'||(fase==='1'&&!junctionWarned.has(j+':v'))){
@@ -328,7 +328,7 @@ function junctionGuidance(p,accuracy,progress){
   }
   if(fase!=='v')notice(fase==='3'
         ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
-        :(turn.rotonda?'Rotonda':turn.mantente?'Sigue recto por la '+lado:esCruce?'Gira a la '+lado:'Curva cerrada')
+        :(turn.rotonda?'Rotonda':turn.mantente?(turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado:esCruce?'Gira a la '+lado:'Curva cerrada')
          +' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
@@ -375,7 +375,7 @@ function textoDeGiro(turn,alReves){
  const lado=cambia(turn.direction),hacia=cambia(turn.hacia||turn.direction);
  if(turn.rotonda)return 'Rotonda · '+queRotonda(turn,lado,alReves);
  if(turn.direction==='vuelta')return turn.retorno?'Da la vuelta':'Curva de herradura a la '+hacia;
- if(turn.mantente)return 'Sigue recto por la '+lado;
+ if(turn.mantente)return (turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado;
  return (turn.cruce!==false?'Gira a la ':'Curva cerrada a la ')+lado;
 }
 // SOLO PARA EL AUTOR. Lo que marque otra persona se queda en su movil y no

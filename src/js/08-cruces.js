@@ -192,6 +192,16 @@ function descifraZona(j){
    if(dos?((o+3)>>2)!==b.length:o!==b.length)for(const p of puntos)delete p.clases;
   }catch(e){for(const p of puntos)delete p.clases}
  }
+ // LAS RAMAS DE SENTIDO PROHIBIDO (18 nov 2026): un bit por rama, en el
+ // mismo orden. Por ellas se iria a contramano: la otra calzada de un doble
+ // carril, una rotonda al reves. No son una alternativa para nadie.
+ if(ramas&&typeof j.ramas_prohibidas==='string'&&j.ramas_prohibidas){
+  try{
+   const b=atob(j.ramas_prohibidas);let o=0;
+   for(const p of puntos){const g=p[2];if(!Array.isArray(g))continue;const c=[];for(const grupo of g)for(let k=0;k<grupo.length;k++){c.push(!!(b.charCodeAt(o>>3)&(1<<(o&7))));o++}p.prohibidas=c}
+   if(((o+7)>>3)!==b.length)for(const p of puntos)delete p.prohibidas;
+  }catch(e){for(const p of puntos)delete p.prohibidas}
+ }
  // CRUCES DE CARRETERA CON UN RAMAL MENOR (16 nov 2026): un bit por cruce,
  // en el mismo orden. Va como propiedad del cruce, no como elemento, para no
  // mover las ramas de sitio. Un fichero sin el campo: todo sigue como antes.
@@ -315,6 +325,10 @@ function enviaGirosNativos(){
    // la carretera a la izquierda». sg=1 carretera, 2 calle, 3 camino. Una APK
    // anterior lo ignora y dice «cruce a la izquierda», el lado bueno.
    if(j.sigue&&!herradura)o.sg=j.via===1?1:j.via===2?2:3;
+   // «nr»: horquilla en la que la tuya NO es la mas recta: «sigue por la
+   // izquierda», sin «recto» (18 nov 2026). Una APK anterior dice «sigue
+   // recto por la izquierda», el lado bueno.
+   if(j.mantente&&j.noRecto)o.nr=1;
    // Rotonda: «sal a la derecha» en la APK que lo sepa decir; la anterior
    // ignora «ro» y dice «cruce a la derecha», que es el mismo lado.
    if(j.rotonda)o.ro=1;
@@ -408,7 +422,12 @@ function eligePorForma(lista,linea,punto){
 // Devuelve undefined si la forma no lo deja claro: entonces, como siempre.
 function decideCrucePorCalle(cruce,ramas,ruta){
  if(!ruta||!Array.isArray(cruce.lejos)||cruce.lejos.length!==ramas.length)return undefined;
- ramas.forEach((x,k)=>{x.lejos=cruce.lejos[k];x.clase=Array.isArray(cruce.clases)?cruce.clases[k]:0});
+ ramas.forEach((x,k)=>{x.lejos=cruce.lejos[k];x.clase=Array.isArray(cruce.clases)?cruce.clases[k]:0;x.prohibida=Array.isArray(cruce.prohibidas)&&!!cruce.prohibidas[k]});
+ // Una rama por la que se iria a contramano, o una entrada sin salida, no es
+ // una alternativa: no cuenta para «de frente», ni como la otra de una
+ // horquilla, ni como «la mas recta». El autor, en un doble carril de la
+ // BI-633: «es una recta, no hace falta indicar».
+ const otraValida=x=>!x.prohibida&&x.clase!==3;
  if(ramas.some(x=>!x.lejos))return undefined;
  const a=eligePorForma(ramas,ruta.antes,ruta.a25);if(!a)return undefined;
  const m=eligePorForma(ramas.filter(x=>x!==a),ruta.despues,ruta.d25);if(!m)return undefined;
@@ -419,7 +438,7 @@ function decideCrucePorCalle(cruce,ramas,ruta){
  const entra=bearingBetween(desde,nodo),sale=bearingBetween(nodo,hasta);
  const desvio=difRumbo(rumboDe(m),entra);
  let recta=null;
- for(const x of ramas)if(x!==a&&x!==m&&(!recta||Math.abs(difRumbo(rumboDe(x),entra))<Math.abs(difRumbo(rumboDe(recta),entra))))recta=x;
+ for(const x of ramas)if(x!==a&&x!==m&&!x.prohibida&&(!recta||Math.abs(difRumbo(rumboDe(x),entra))<Math.abs(difRumbo(rumboDe(recta),entra))))recta=x;
  if(m.g===a.g){
   // SIGUES POR LA MISMA CALLE. No es un cruce para ti, salvo que la calle
   // tuerza y de frente siga otra: entonces «sigue la carretera a la
@@ -447,7 +466,7 @@ function decideCrucePorCalle(cruce,ramas,ruta){
   // fronton de Eltzubi: «sale una subidita a una entrada del fronton, como
   // cualquier entrada o caserio, que normalmente no se cuenta»; en OSM esa era
   // una calle residencial de 236 m y por eso contaba.
-  const deFrente=ramas.some(x=>{if(x===a||x===m||x.clase===3)return false;const f=Math.abs(difRumbo(rumboDe(x),llega));return f<90&&f<mia+GEO_DE_FRENTE});
+  const deFrente=ramas.some(x=>{if(x===a||x===m||!otraValida(x))return false;const f=Math.abs(difRumbo(rumboDe(x),llega));return f<90&&f<mia+GEO_DE_FRENTE});
   const cercaH=difRumbo(bearingBetween(nodo,ruta.despues[ruta.despues.length-1]),bearingBetween(ruta.antes[0],nodo));
   // Una revuelta muy cerrada en tu misma via no es un cruce, pero tampoco se
   // calla: «curva cerrada» (exigente 36,48: 127 grados).
@@ -459,7 +478,7 @@ function decideCrucePorCalle(cruce,ramas,ruta){
   // los pocos metros curva a la derecha, decia «derecha». Lo que pase despues
   // del cruce no cambia por donde hay que salir de el. Cuanto giras, de tu
   // rama a 25 m frente a como llegas: poco es «sigue recto por», mucho «gira».
-  let f=null;for(const x of ramas)if(x!==a&&x!==m&&x.clase!==3&&(!f||Math.abs(difRumbo(rumboDe(x),llega))<Math.abs(difRumbo(rumboDe(f),llega))))f=x;
+  let f=null;for(const x of ramas)if(x!==a&&x!==m&&otraValida(x)&&(!f||Math.abs(difRumbo(rumboDe(x),llega))<Math.abs(difRumbo(rumboDe(f),llega))))f=x;
   // Las dos medidas desde COMO LLEGAS (de -180 a 180, de izquierda a
   // derecha): restar los dos rumbos sin mas da la vuelta pasados 180 grados, y
   // una revuelta de 130 a la derecha con la otra rama a la izquierda salia
@@ -470,18 +489,29 @@ function decideCrucePorCalle(cruce,ramas,ruta){
   // Dos caminos a 30 y 10 grados a la izquierda con «gira a la izquierda»
   // no dicen cual coger.
   const juntas=Math.abs(difRumbo(rumboDe(m),llega)-difRumbo(rumboDe(f),llega))<GEO_HORQUILLA;
-  if(mia<CRUCE_RECTO||juntas)return {grados:Math.round(mia),lado,mantente:true,porCalle:true};
+  // «RECTO» SOLO SI LA TUYA ES LA MAS RECTA DE LAS DOS (18 nov 2026). El
+  // autor: «lo de recto sobra, porque justo a mano derecha iba una carretera
+  // recta que no era la nuestra». Si la mas recta es la otra, «sigue por la
+  // izquierda», sin «recto».
+  const recto=mia<=Math.abs(difRumbo(rumboDe(f),llega));
+  if(mia<CRUCE_RECTO||juntas)return {grados:Math.round(mia),lado,mantente:true,recto,porCalle:true};
   return {grados:Math.round(mia),lado,mantente:false,sigue:true,via:m.clase|0,porCalle:true};
  }
  // Dos ramas casi juntas (una horquilla): «sigue recto por la izquierda o la
  // derecha», con el lado de la tuya frente a la otra.
- if(recta&&Math.abs(difRumbo(rumboDe(m),rumboDe(recta)))<GEO_HORQUILLA&&Math.abs(desvio)<CRUCE_GIRO_CALLE)
-  return {grados:Math.round(Math.abs(desvio)),lado:difRumbo(rumboDe(m),rumboDe(recta))<0?'izquierda':'derecha',mantente:true,porCalle:true};
+ // Cambias de via: es una horquilla solo si tu rama casi no se aparta (menos de
+ // CRUCE_RECTO). Si se aparta mas, aunque la otra vaya cerca, entras en otra
+ // carretera y es «gira» (18 nov 2026; el autor, en una entrada a 40 grados
+ // de la BI-633: «debería ser gira a la izquierda, entramos en otro tipo de
+ // carretera»; con el limite en 45 decia «sigue recto por la izquierda»).
+ if(recta&&Math.abs(difRumbo(rumboDe(m),rumboDe(recta)))<GEO_HORQUILLA&&Math.abs(desvio)<CRUCE_RECTO)
+  return {grados:Math.round(Math.abs(desvio)),lado:difRumbo(rumboDe(m),rumboDe(recta))<0?'izquierda':'derecha',mantente:true,
+   recto:Math.abs(desvio)<=Math.abs(difRumbo(rumboDe(recta),entra)),porCalle:true};
  const masRecta=!!recta&&Math.abs(difRumbo(rumboDe(recta),entra))<Math.abs(desvio)-5;
  if(!masRecta&&Math.abs(desvio)<CRUCE_RECTO)return null;
  const mantente=Math.abs(desvio)<CRUCE_RECTO;
  const lado=mantente?(difRumbo(rumboDe(m),rumboDe(recta))<0?'izquierda':'derecha'):(desvio<0?'izquierda':'derecha');
- return {grados:Math.round(Math.abs(desvio)),lado,mantente,porCalle:true};
+ return {grados:Math.round(Math.abs(desvio)),lado,mantente,recto:!mantente||!recta||Math.abs(desvio)<=Math.abs(difRumbo(rumboDe(recta),entra)),porCalle:true};
 }
 function decideCruce(cruce,centro,antes,despues,ruta){
  const RAMA_ENCAJA=45;
@@ -510,7 +540,11 @@ function decideCruce(cruce,centro,antes,despues,ruta){
  // rutas: el lado de las ramas contradecia el giro del trazado en 295 avisos.
  if(Math.abs(difRumbo(mia.r,sale))>RAMA_ENCAJA||Math.abs(difRumbo(atras.r,detras))>RAMA_ENCAJA)return {sinRamas:true};
  if(mia.g===atras.g)return null;          // sigues por el mismo camino
- const otras=resto.filter(x=>x!==mia),desvio=difRumbo(mia.r,entra);
+ // Las ramas de sentido prohibido no son alternativa (la otra calzada de un
+ // doble carril): sin esto, en la BI-633 decia «sigue recto por la derecha»
+ // en plena recta (18 nov 2026).
+ const prohibida=x=>Array.isArray(cruce.prohibidas)&&!!cruce.prohibidas[ramas.indexOf(x)];
+ const otras=resto.filter(x=>x!==mia&&!prohibida(x)),desvio=difRumbo(mia.r,entra);
  let recta=null;
  for(const x of otras)if(!recta||Math.abs(difRumbo(x.r,entra))<Math.abs(difRumbo(recta.r,entra)))recta=x;
  // «Mas recta» con 5 grados de margen: por debajo de eso es el ruido del
@@ -524,7 +558,7 @@ function decideCruce(cruce,centro,antes,despues,ruta){
  // lado se queda la buena.
  const lado=mantente?(difRumbo(mia.r,recta.r)<0?'izquierda':'derecha')
                     :(desvio<0?'izquierda':'derecha');
- return {grados:Math.round(Math.abs(desvio)),lado,mantente};
+ return {grados:Math.round(Math.abs(desvio)),lado,mantente,recto:!mantente||Math.abs(desvio)<=Math.abs(difRumbo(recta.r,entra))};
 }
 // AL REVES, LOS AVISOS SE CALCULAN AL REVES. Antes se cogian los del sentido
 // en que se grabo la ruta y se les cambiaba el lado. En una curva vale; en un
@@ -879,7 +913,7 @@ function calculaCrucesDe(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false;
   if(cruce){
    // El trozo de ruta de 60 m antes y despues del CRUCE (cortado en el punto
    // de la ruta mas cercano a su nodo y empalmado en el nodo), para reconocer
@@ -971,7 +1005,7 @@ function calculaCrucesDe(){
    }else if(d&&!(crucesDichos.has(elCruce)&&!haSalido(elCruce,crucesDichos.get(elCruce),i))){
     cruceAvisado=elCruce;
     porElCruce=true;
-    grados=d.grados;ladoCruce=d.lado;mantente=d.mantente;sigue=!!d.sigue;via=d.via|0;
+    grados=d.grados;ladoCruce=d.lado;mantente=d.mantente;sigue=!!d.sigue;via=d.via|0;noRecto=d.mantente&&d.recto===false;
    }
   }
   // Que el cruce no pida aviso NO cierra el punto: encima de un cruce puede
@@ -1028,7 +1062,7 @@ function calculaCrucesDe(){
   // el aviso va en el punto de la ruta mas cercano a su nodo.
   const ultimo=junctions[junctions.length-1];
   const iA=cruceAvisado&&iNodo!=null&&iNodo!==i&&(!ultimo||iNodo>ultimo.i)?iNodo:i;
-  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{}));
+  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{}));
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
  // Al contar desde el cruce, un aviso puede haber quedado por delante del

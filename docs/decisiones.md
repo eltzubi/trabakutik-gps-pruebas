@@ -1189,3 +1189,30 @@ La lección, otra vez: un caso de mentira que falla no justifica un cambio si
 en las rutas de verdad empeora. Resultado final: controles igual; lado contra
 el giro real del trazado, nuevo 220 y viejo 17; giros reales de 90° o más sin
 aviso cerca, 8 de 849, los mismos de antes.
+
+## Doble carril, entradas y «recto» (18 de noviembre de 2026)
+
+Tres avisos que el autor marcó en recyde, al revés:
+
+1. **Doble carril.** En la BI-633 la carretera se parte en dos calzadas de
+   sentido único que salen a 16° una de otra, y se decía «sigue recto por la
+   derecha». El autor: «es una recta, no hace falta indicar, doble carril».
+   Ahora el fichero de cruces marca qué ramas son de **sentido prohibido**
+   (`ramas_prohibidas`, un bit por rama: `oneway` contra la salida, o una
+   rotonda, salvo `oneway:bicycle=no`), y una rama prohibida no es
+   alternativa para nada, tampoco en la decisión a la antigua, a la que se
+   cae cuando dos ramas salen tan juntas que la forma no las distingue.
+   **Recyde 1,40 (ida), que era un control que sonaba, también calla**: es la
+   misma partición de la BI-633 en dos calzadas.
+2. **Dejar la carretera por una entrada a 40°** se decía «sigue recto por la
+   izquierda». El autor: «debería ser gira, entramos en otro tipo de
+   carretera». Cambiando de vía, la horquilla ahora solo vale si tu rama casi
+   no se aparta (menos de 25°, antes 45); si no, «gira».
+3. **«Recto» solo si la tuya es la más recta.** En una horquilla de tu misma
+   carretera donde lo recto era otra: «lo de recto sobra, porque justo a mano
+   derecha iba una carretera recta que no era la nuestra». Ahora, si la más
+   recta es la otra, «sigue por la izquierda», sin «recto», y la ficha pone
+   «Lo de frente no es tu camino». Va a la aplicación como `nr`.
+
+Tres casos más en `cruces-dificiles.test.cjs` (20 en total). Lado contra el
+trazado: nuevo 224, viejo 18; giros fuertes sin aviso, los mismos 8.
