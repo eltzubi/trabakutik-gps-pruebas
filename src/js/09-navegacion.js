@@ -482,16 +482,22 @@ function pintaPosicionGps(p,h){
  const valido=Number.isFinite(h);
  if(!me){
   anguloFlecha=valido?h:null;
-  const icon=L.divIcon({className:'',iconSize:[54,54],iconAnchor:[27,27],html:
+  // LA FLECHA LIMA CON EL ARO VERDE (18 nov 2026), la de una version
+  // anterior que el autor prefirio: «me gusta este tipo de flecha, tal vez un
+  // poco mas pequeña, con el aro verde». 40 px en vez de los 54 del punto
+  // azul. Sin rumbo fiable la flecha se esconde y queda un punto en el aro.
+  const icon=L.divIcon({className:'',iconSize:[40,40],iconAnchor:[20,20],html:
    '<div class="gps-course" style="transform:rotate('+(anguloFlecha??0)+'deg)">'+
-   '<svg width="54" height="54" viewBox="0 0 54 54" overflow="visible">'+
-   '<path d="M27 0 L39.5 19 L27 14 L14.5 19 Z" fill="#187cff" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>'+
-   '<circle cx="27" cy="27" r="10.5" fill="#187cff" stroke="#fff" stroke-width="3.2"/>'+
-   '<circle cx="27" cy="27" r="3.5" fill="#fff"/></svg></div>'});
+   '<svg width="40" height="40" viewBox="0 0 40 40" overflow="visible">'+
+   '<circle cx="20" cy="20" r="16" fill="#1d3a0f66" stroke="#8fc93a" stroke-width="3.4" stroke-opacity=".85"/>'+
+   '<circle class="gps-punto" cx="20" cy="20" r="4.5" fill="#d2ff3f" stroke="#0b1d0c" stroke-width="2" style="visibility:hidden"/>'+
+   '<path d="M20 6 L29.5 29 L20 23 L10.5 29 Z" fill="#d2ff3f" stroke="#0b1d0c" stroke-width="2.4" stroke-linejoin="round"/>'+
+   '</svg></div>'});
   me=L.marker(p,{icon,zIndexOffset:1000}).addTo(map);
  }else me.setLatLng(p);
  const giro=me.getElement().firstElementChild;
  giro.querySelector('path').style.visibility=valido?'':'hidden';
+ const punto=giro.querySelector('.gps-punto');if(punto)punto.style.visibility=valido?'hidden':'';
  if(!valido){anguloFlecha=null;return}
  anguloFlecha=anguloFlecha===null?h:anguloFlecha+diferenciaRumbo(anguloFlecha,h);
  giro.style.transform='rotate('+anguloFlecha.toFixed(1)+'deg)';

@@ -62,12 +62,13 @@ test('La flecha y la brújula dejan de mostrar un rumbo al caducar la posición'
  const gps={dataset:{},textContent:''},headings=[];
  const ctx=vm.createContext({Date:{now:()=>100000},$ :()=>gps,gpsSolicitado:true,gpsApagadoPorTi:false,
   errorVisualGps:null,fixVisualGps:{time:74000,accuracy:8},ubicacionVisualGps:true,
-  me:{getElement:()=>({querySelector:()=>({style:{setProperty:(key,value)=>headings.push([key,value])}})})},
+  me:{getElement:()=>({querySelector:sel=>({style:{setProperty:(key,value)=>headings.push([sel.includes('punto')?'punto':'flecha',key,value])}})})},
   pintaBrujula:angle=>headings.push(angle),rumboSuave:270,lastCourse:270,courseFix:[43,-2],rumboMapa:270});
  vm.runInContext(html.slice(start,html.indexOf('function bearingBetween(',end)),ctx);
  ctx.pintaEstadoGps();
  assert.equal(gps.dataset.estado,'sin-senal');
- assert.deepEqual(headings,[null,['visibility','hidden']]);
+ // Se esconde la flecha y queda el punto dentro del aro.
+ assert.deepEqual(headings,[null,['flecha','visibility','hidden'],['punto','visibility','visible']]);
  assert.equal(ctx.lastCourse,null);
 });
 

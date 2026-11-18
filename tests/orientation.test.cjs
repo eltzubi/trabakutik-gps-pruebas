@@ -162,7 +162,7 @@ test('La brújula cruza el norte por el lado corto y muestra cero grados',()=>{
 });
 
 test('El marcador mantiene la misma flecha al actualizar el rumbo',()=>{
- const c=rumbos(),path={style:{}},root={style:{},querySelector:()=>path};
+ const c=rumbos(),path={style:{}},puntoAro={style:{}},root={style:{},querySelector:sel=>sel.includes('punto')?puntoAro:path};
  let creados=0;
  c.me=null;c.map={};
  c.L={divIcon:o=>o,marker:()=>{creados++;return {addTo(){return this},setLatLng(){},getElement:()=>({firstElementChild:root})}}};
@@ -173,6 +173,7 @@ test('El marcador mantiene la misma flecha al actualizar el rumbo',()=>{
  assert.equal(root.style.transform,'rotate(370.0deg)');
  c.pintaPosicionGps(punto(0,10),null);
  assert.equal(path.style.visibility,'hidden');
+ assert.equal(puntoAro.style.visibility,'','sin rumbo queda el punto en el aro');
 });
 
 test('Sin lectura de rumbo nueva se conserva el dato previo solo como referencia',()=>{

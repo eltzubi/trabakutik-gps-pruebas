@@ -185,7 +185,7 @@ function pintaEstadoGps(){
  if(el.textContent!==estado.texto)el.textContent=estado.texto;
  if(estado.estado==='sin-senal'||estado.estado==='apagada'||estado.estado==='permiso'){
   pintaBrujula(null);
-  if(me)me.getElement()?.querySelector('.gps-course path')?.style.setProperty('visibility','hidden');
+  if(me){const g=me.getElement();g?.querySelector('.gps-course path')?.style.setProperty('visibility','hidden');g?.querySelector('.gps-punto')?.style.setProperty('visibility','visible')}
   rumboSuave=null;lastCourse=null;courseFix=null;rumboMapa=null;
  }
 }
