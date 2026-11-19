@@ -1149,7 +1149,9 @@ function salidaDeRotonda(rot,rIn,rOut){
  // de al lado daria el numero de otra (revision con GPT).
  let mia=null,err=Infinity,segundo=Infinity;
  for(const b of bocas){const e=Math.abs(difRumbo(b.r,rOut));if(e<err){segundo=err;err=e;mia=b}else if(e<segundo)segundo=e}
- if(!mia||err>SAL_CASA)return 0;
+ // Una boca de entrada exclusivamente no es una salida válida en bici ni en coche.
+ // Se puede contar como referencia visual, pero nunca anunciar que se salga por ella.
+ if(!mia||!mia.libre||err>SAL_CASA)return 0;
  // Y si OTRA boca, sea libre o prohibida, queda casi igual de cerca de la
  // salida de la ruta, no se sabe cual es (puede ser el GPS): sin numero. En
  // los dos sentidos, no solo cuando gana la prohibida (revision con GPT).
