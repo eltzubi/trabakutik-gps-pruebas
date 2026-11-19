@@ -991,10 +991,27 @@ test('Fuera de ruta a 25 m, no a 15: como los demás navegadores (decidido el 15
  assert.equal(c.alerted,false,'a 20 m no salta');
  for(let k=0;k<5;k++){ahora+=1500;c.updateOffRoute(30,5)}
  assert.equal(c.alerted,true,'a 30 m si');
- // Un segundo aviso, uno solo: al minuto y a mas de 50 m (lo escrito: con el
- // servicio delante, lo hablado lo dice el).
+ // El recordatorio no espera un minuto y solo ocurre una vez por salida.
+ ahora+=1500;c.updateOffRoute(49,5);
+ assert.equal(dicho.filter(t=>t.startsWith('Sigues fuera')).length,0);
+ ahora+=1500;c.updateOffRoute(55,5);
+ assert.equal(dicho.filter(t=>t.startsWith('Sigues fuera')).length,1,'repite a 50 m');
  for(let k=0;k<50;k++){ahora+=1500;c.updateOffRoute(70,5)}
- assert.equal(dicho.filter(t=>t.startsWith('Sigues fuera')).length,1,'un recordatorio y solo uno');
+ assert.equal(dicho.filter(t=>t.startsWith('Sigues fuera')).length,1,'una sola repeticion');
+ ahora+=1500;c.updateOffRoute(5,5);
+ assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,1,'regreso andando');
+ for(let k=0;k<10;k++){ahora+=1500;c.updateOffRoute(55,5)}
+ assert.equal(dicho.filter(t=>t.startsWith('Sigues fuera')).length,2,'se rearma en la segunda salida');
+ ahora+=1500;c.updateOffRoute(5,5);
+ assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,2,'segundo regreso');
+ // Como al cargar otra ruta: empieza una nueva entrada y un ciclo completo.
+ c.alerted=false;c.onRouteSeen=false;c.entradaAvisada=false;c.farSince=0;
+ ahora+=1500;c.updateOffRoute(5,5);
+ for(let k=0;k<10;k++){ahora+=1500;c.updateOffRoute(55,5)}
+ ahora+=1500;c.updateOffRoute(5,5);
+ assert.equal(dicho.filter(t=>t.startsWith('Sigues fuera')).length,3,'otra ruta tambien repite');
+ assert.equal(dicho.filter(t=>t==='De nuevo en la ruta').length,3,'otra ruta tambien avisa al volver');
+
 });
 test('Revisión con GPT: en una recta, un punto en un vértice cae donde está, no 10 m atrás',()=>{
  const pts=rutaNorte([100,100,100,100],10);
@@ -1470,4 +1487,18 @@ test('«✋ Faltó aquí»: siempre a mano guiando, apunta el sitio, el aviso m�
  // Y al salir el «Sobraba», el de «Faltó» se aparta.
  c.buscaAvisoMarcable(lista,{along:1040});
  assert(!nodo('avisoMal').classList.contains('hidden')&&nodo('avisoFalta').classList.contains('hidden'));
+});
+
+test('el giro se oye despues del regreso, sin cortar el aviso ni perderse',()=>{
+ let ahora=100000,cancelaciones=0;const dicho=[];
+ globalThis.SpeechSynthesisUtterance=function(text){this.text=text};
+ const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,giraNativo:false,gpsApagadoPorTi:false,audioModo:'voz',
+  alerted:true,onRouteSeen:true,farSince:0,notice(){},Date:{now:()=>ahora},
+  window:{speechSynthesis:{cancel(){cancelaciones++},speak(u){dicho.push(u.text)}}}});
+ c.vuelvePagALaRuta();
+ c.hablarGiro('Gira a la derecha');
+ assert.deepEqual(dicho,['De nuevo en la ruta','Gira a la derecha']);
+ assert.equal(cancelaciones,1,'el giro no cancela la voz del regreso');
+ ahora+=5000;c.hablarGiro('Gira a la izquierda');
+ assert.equal(cancelaciones,2,'fuera de la proteccion manda el giro actual');
 });

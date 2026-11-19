@@ -161,9 +161,11 @@ public class TrackingService extends Service implements LocationListener {
  }
  void habla(String texto){
   if(!"voz".equals(modoAudio())||!vozLista||voz==null||texto==null)return;
-  // QUEUE_FLUSH a proposito: navegando manda lo ultimo. Si el aviso de los
-  // 10 m llega mientras todavia suena el de 50, el que vale es el de 10.
-  try{voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"trabakutik");}catch(Exception ignored){}
+  // Normalmente manda el aviso nuevo. Tras entrar, salir o volver, el giro
+  // se encola: no corta el estado de ruta ni se pierde la indicacion.
+  boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido");
+  int cola=!estadoRuta&&SystemClock.elapsedRealtime()<avisoRutaHasta?TextToSpeech.QUEUE_ADD:TextToSpeech.QUEUE_FLUSH;
+  try{voz.speak(texto,cola,null,"trabakutik");}catch(Exception ignored){}
  }
  // CALLAR AHORA MISMO, no «a partir de ahora». Antes el modo se miraba solo
  // al empezar a hablar o a pitar, asi que al poner silencio la frase que ya
@@ -1253,7 +1255,7 @@ public class TrackingService extends Service implements LocationListener {
  // Al cambiar de ruta, callando: «vuelves al sentido de la ruta» en una ruta
  // que acabas de cargar no quiere decir nada.
  void olvidaSentido(){inicioCurva=Double.NaN;sentido=1;alongPrevio=Double.NaN;alongAcum=0;latSentido=Double.NaN;lonSentido=Double.NaN;movSentido=Double.NaN;}
- void vuelveALaRuta(){offRoute=false;cercaDesde=0;updateNotice();tonoBien();habla("De nuevo en la ruta");}
+ void vuelveALaRuta(){entradaAvisada=true;offRoute=false;cercaDesde=0;protegeAvisoRuta();updateNotice();tonoBien();habla("De nuevo en la ruta");}
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;return;}
   // El corte estaba en 22 m Y ADEMAS borraba farSince, que es el cronometro
@@ -1270,7 +1272,7 @@ public class TrackingService extends Service implements LocationListener {
   if(l.getAccuracy()>60)return;
   double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
   if(d<=Math.max(11,acc+4)){
-   if(!entradaAvisada&&acc>0&&acc<=35&&d<=15){entradaAvisada=true;habla("Ya estás en la ruta");}
+   if(!entradaAvisada&&!offRoute&&acc>0&&acc<=35&&d<=15){entradaAvisada=true;protegeAvisoRuta();habla("Ya estás en la ruta");}
    routeReached=true;farSince=0;
    if(offRoute)vuelveALaRuta();
    return;
@@ -1306,20 +1308,22 @@ public class TrackingService extends Service implements LocationListener {
   // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
   // verdad se detecta a 104 m en vez de a 86. Barato.
   if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=4000){
-   offRoute=true;fueraDesde=SystemClock.elapsedRealtime();recordado=false;updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
+   offRoute=true;fueraDesde=SystemClock.elapsedRealtime();recordado=false;protegeAvisoRuta();updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
   }
   // UN SEGUNDO AVISO, UNO SOLO. Si el primero no se oyo -el movil en la
   // mochila, viento- seguias andando fuera sin saberlo. Locus permite
-  // repetirlo; aqui una vez, al minuto y si ya estas lejos (RECUERDA_M), para
+  // repetirlo; aqui una vez, a 50 m del trazado, tras dejar terminar el primero, para
   // no dar la lata a quien se ha salido a proposito. Lo decidio el autor el
   // 15 de noviembre de 2026.
   else if(offRoute&&!recordado&&d>=RECUERDA_M&&SystemClock.elapsedRealtime()-fueraDesde>=RECUERDA_MS){
-   recordado=true;pitidos(4,180);habla("Sigues fuera del recorrido");
+   recordado=true;protegeAvisoRuta();pitidos(4,180);habla("Sigues fuera del recorrido");
   }
  }
  static final double FUERA_M=25,RECUERDA_M=50;
- static final long RECUERDA_MS=60_000;
+ static final long RECUERDA_MS=4_000;
  long fueraDesde=0;boolean recordado=false;
+ long avisoRutaHasta=0;
+ void protegeAvisoRuta(){lastImportantAudio=SystemClock.elapsedRealtime();avisoRutaHasta=lastImportantAudio+4000;}
  static final long MAX_EDAD_FIX_NS=10_000_000_000L;
  boolean esAntigua(Location l){
   long t=l.getElapsedRealtimeNanos();

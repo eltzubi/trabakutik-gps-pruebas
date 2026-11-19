@@ -3788,7 +3788,7 @@ function updateOffRoute(d,accuracy){
  // de cordura, y salta la lectura sin tocar la cuenta.
  if(accuracy>60)return;
  const near=d<=Math.max(11,accuracy+4);
- if(near){if(!entradaAvisada&&accuracy>0&&accuracy<=35&&d<=15){entradaAvisada=true;hablar("Ya estás en la ruta")}onRouteSeen=true;farSince=0;cercaDesdePag=0;if(alerted)vuelvePagALaRuta();return}
+ if(near){if(!entradaAvisada&&!alerted&&accuracy>0&&accuracy<=35&&d<=15){entradaAvisada=true;avisoRutaHastaPag=Date.now()+4000;hablar("Ya estás en la ruta")}onRouteSeen=true;farSince=0;cercaDesdePag=0;if(alerted)vuelvePagALaRuta();return}
  if(!onRouteSeen)return; // No avisar mientras nos acercamos al inicio.
  // 25 m y no 15, como el servicio: los demas navegadores avisan a 22-100 m y
  // con 15, bajo arbolado, avisaba sin motivo (decidido el 15 nov 2026).
@@ -3813,12 +3813,12 @@ function updateOffRoute(d,accuracy){
  // por hora -el autor lo sufrio-. Con 4 s hacen falta cuatro lecturas
  // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
  // verdad se detecta a 104 m en vez de a 86. Barato.
- if(!alerted&&Date.now()-farSince>=4000){alerted=true;fueraDesdePag=Date.now();recordadoPag=false;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
- // Un segundo aviso, uno solo, al minuto y a mas de 50 m (como el servicio).
- else if(alerted&&!recordadoPag&&d>=50&&Date.now()-fueraDesdePag>=60000){recordadoPag=true;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
+ if(!alerted&&Date.now()-farSince>=4000){alerted=true;fueraDesdePag=Date.now();recordadoPag=false;avisoRutaHastaPag=Date.now()+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
+ // Un segundo aviso a 50 m: espera solo a que termine el primero.
+ else if(alerted&&!recordadoPag&&d>=50&&Date.now()-fueraDesdePag>=4000){recordadoPag=true;avisoRutaHastaPag=Date.now()+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
-let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0;
-function vuelvePagALaRuta(){alerted=false;cercaDesdePag=0;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}
+let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0,avisoRutaHastaPag=0;
+function vuelvePagALaRuta(){entradaAvisada=true;avisoRutaHastaPag=Date.now()+4000;alerted=false;cercaDesdePag=0;hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}
 try{const modoGuardado=localStorage.getItem('trabakutik-audio-modo');if(['voz','pitidos','silencio'].includes(modoGuardado))audioModo=modoGuardado}catch(e){}
 try{window.TrabakutikAndroid?.setAudioModo?.(audioModo)}catch(e){}
 function avisaModoAudioNativo(){
@@ -3846,7 +3846,8 @@ function hablar(texto){
 function hablaPagina(texto){
  if(gpsApagadoPorTi)return;
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
- try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
+ const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto);
+ try{if(estadoRuta||Date.now()>=avisoRutaHastaPag)window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
 }
 // QUEDARSE SIN SATELITES SE DICE EN ALTO, no solo escrito en la barra de
 // abajo. Con el movil en el bolsillo no te enterabas de que habias dejado de

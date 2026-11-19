@@ -1228,3 +1228,12 @@ a menos de 120 m (si lo había, el problema no es la regla sino que algo lo
 calló) y si el guiado estaba callando en ese momento: fuera de ruta, parado,
 GPS peor de 60 m o a más de 25 m del track. Sale en la misma lista que los
 «Sobraba», para pegarla en el chat.
+
+## 19 de noviembre: cada salida y regreso se avisan
+
+El segundo aviso se repite una vez al estar a 50 m del trazado, sin esperar
+un minuto: solo se dejan cuatro segundos para terminar el primero. Cada
+regreso rearma el ciclo; cargar otra ruta conserva el mismo comportamiento.
+Los giros que coincidan con un aviso de entrada o regreso se encolan durante
+cuatro segundos para no cortarlo, sin descartar el giro. Se mantienen los
+filtros de precisión y la confirmación de salida para evitar falsas alarmas.
