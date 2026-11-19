@@ -38,7 +38,7 @@ public class SilencioTest {
   void corre(){for(Runnable r:new ArrayList<>(cola))r.run();cola.clear();}
   void removeCallbacksAndMessages(Object o){cola.clear();limpiezas++;}
  }
- Voz voz=new Voz(); final Handler pitidoHandler=new Handler(); ToneGenerator tonoEnCurso=null;
+ String avisoRutaPendiente="Atención, fuera del recorrido";Voz voz=new Voz(); final Handler pitidoHandler=new Handler(); ToneGenerator tonoEnCurso=null;
  String modo="voz"; String modoAudio(){return modo;}
 ''' + metodo(' void callaYa()') + metodo(' void sueltaTono()') + metodo(' void pitidos(int n,int sep)')+metodo(' void pitidos(int n,int sep,int tono)')+metodo(' void pitidos(int n,int sep,int tono,int volumen)')+metodo(' void tonoBien()') + '''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
@@ -53,6 +53,7 @@ public class SilencioTest {
 
   // 2. Silencio: se corta la voz, se tira la cola y se suelta el tono.
   c.callaYa();
+  require(c.avisoRutaPendiente==null,"silencio borra tambien la frase pendiente");
   require(c.voz.parado==1,"la frase en curso se corta");
   require(c.pitidoHandler.cola.isEmpty(),"los pitidos pendientes no suenan");
   require(ToneGenerator.vivos==0,"y el generador NO se queda cogido");

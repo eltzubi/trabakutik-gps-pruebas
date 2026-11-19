@@ -123,6 +123,11 @@ public class TrackingService extends Service implements LocationListener {
  // La voz vive AQUI y no en la pagina. La pagina se duerme con la pantalla
  // apagada —es la misma razon por la que los pitidos se mudaron al servicio—
  // y con el movil en el bolsillo la voz no sonaba justo cuando hace falta.
+ String avisoRutaPendiente=null;
+ void entregaAvisoRutaPendiente(){
+  String pendiente=avisoRutaPendiente;avisoRutaPendiente=null;
+  if(pendiente!=null&&navigating&&"voz".equals(modoAudio())){protegeAvisoRuta();habla(pendiente);}
+ }
  void arrancaVoz(){
   try{
    voz=new TextToSpeech(this,estado->{
@@ -144,7 +149,7 @@ public class TrackingService extends Service implements LocationListener {
      voz.setAudioAttributes(new AudioAttributes.Builder()
        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
-     vozLista=true;apuntaVoz("ok");
+     vozLista=true;apuntaVoz("ok");entregaAvisoRutaPendiente();
     }catch(Exception e){apuntaVoz("No se pudo preparar la voz");}
    });
   }catch(Exception e){apuntaVoz("No hay motor de voz instalado");}
@@ -160,10 +165,14 @@ public class TrackingService extends Service implements LocationListener {
   else apuntaVoz(vozEstado==null||"ok".equals(vozEstado)?"La voz aún se está preparando":vozEstado);
  }
  void habla(String texto){
-  if(!"voz".equals(modoAudio())||!vozLista||voz==null||texto==null)return;
+  if(!"voz".equals(modoAudio())||texto==null)return;
   // Normalmente manda el aviso nuevo. Tras entrar, salir o volver, el giro
   // se encola: no corta el estado de ruta ni se pierde la indicacion.
   boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido");
+  // El primer fix puede llegar antes de que Android prepare la voz.
+  // Solo se conserva el ultimo estado: nunca se reproduce una salida vieja.
+  if(!vozLista||voz==null){if(estadoRuta)avisoRutaPendiente=texto;return;}
+  if(estadoRuta)avisoRutaPendiente=null;
   int cola=!estadoRuta&&SystemClock.elapsedRealtime()<avisoRutaHasta?TextToSpeech.QUEUE_ADD:TextToSpeech.QUEUE_FLUSH;
   try{voz.speak(texto,cola,null,"trabakutik");}catch(Exception ignored){}
  }
@@ -172,6 +181,7 @@ public class TrackingService extends Service implements LocationListener {
  // estaba sonando terminaba de decirse y los pitidos de esa tanda seguian
  // saliendo uno detras de otro.
  void callaYa(){
+  avisoRutaPendiente=null;
   try{if(voz!=null)voz.stop();}catch(Exception ignored){}
   pitidoHandler.removeCallbacksAndMessages(null);
   // Los pitidos pendientes se han quedado sin reloj, asi que el que iba a
@@ -502,7 +512,7 @@ public class TrackingService extends Service implements LocationListener {
    return START_NOT_STICKY;
   }
   if("STOP_NAVIGATION".equals(action)){
-   navigating=false;entradaAvisada=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;olvidaSentido();
+   navigating=false;avisoRutaPendiente=null;entradaAvisada=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;ultimoDesvio=0;fueraDesde=0;recordado=false;olvidaSentido();
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
    publicaEstado();
    if(!recording){finish();return START_NOT_STICKY;}
@@ -821,7 +831,7 @@ public class TrackingService extends Service implements LocationListener {
   entradaAvisada=false;
   climbRejoinAlong=Double.NaN;
   inicioCurva=Double.NaN;
-  route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";llegada.reinicia();
+  avisoRutaPendiente=null;route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;ultimoDesvio=0;fueraDesde=0;recordado=false;errorRuta="";llegada.reinicia();
   metrics.configure(route,Collections.emptyList());
   metricsRouteKey=0;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().remove("metrics").apply();
@@ -1255,73 +1265,51 @@ public class TrackingService extends Service implements LocationListener {
  // Al cambiar de ruta, callando: «vuelves al sentido de la ruta» en una ruta
  // que acabas de cargar no quiere decir nada.
  void olvidaSentido(){inicioCurva=Double.NaN;sentido=1;alongPrevio=Double.NaN;alongAcum=0;latSentido=Double.NaN;lonSentido=Double.NaN;movSentido=Double.NaN;}
- void vuelveALaRuta(){entradaAvisada=true;offRoute=false;cercaDesde=0;protegeAvisoRuta();updateNotice();tonoBien();habla("De nuevo en la ruta");}
+ void vuelveALaRuta(){entradaAvisada=true;routeReached=true;offRoute=false;farSince=0;cercaDesde=0;fueraDesde=0;recordado=false;protegeAvisoRuta();updateNotice();tonoBien();habla("De nuevo en la ruta");}
  void checkDeviation(Location l){
-  if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;return;}
-  // El corte estaba en 22 m Y ADEMAS borraba farSince, que es el cronometro
-  // de los 800 ms. Bajo arbolado 25-35 m de precision es lo normal, asi que
-  // cada lectura mala reiniciaba la cuenta y el aviso no llegaba nunca. Lo
-  // dijo el autor: «al salirme de la ruta no me ha pitado ni me ha hablado».
-  // Simulado 400 veces por escenario con 45 m de desvio: en bosque cerrado
-  // (22-38 m) avisaba el 0,0% de las veces; asi, el 100% a las 2 lecturas.
-  // El corte ya no hace falta para evitar falsos avisos porque los umbrales
-  // de abajo YA crecen con la precision (acc+4 y acc+7): con mala señal hay
-  // que estar mas lejos para que cuente. Queda solo un corte de cordura en
-  // 60 m -por encima de eso la posicion es basura- y ese SE SALTA la lectura
-  // sin tocar el cronometro. Falsas alarmas a 8 m del track: 0 de 400.
-  if(l.getAccuracy()>60)return;
-  double d=closest(l.getLatitude(),l.getLongitude()),acc=l.getAccuracy();
-  if(d<=Math.max(11,acc+4)){
-   if(!entradaAvisada&&!offRoute&&acc>0&&acc<=35&&d<=15){entradaAvisada=true;protegeAvisoRuta();habla("Ya estás en la ruta");}
-   routeReached=true;farSince=0;
+  if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
+  double acc=l.getAccuracy();
+  // Sin una medida válida no se confirma ni salida ni regreso.
+  if(!Double.isFinite(acc)||acc<0||acc>60){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
+  double d=closest(l.getLatitude(),l.getLongitude());
+  if(!Double.isFinite(d)||d<0){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
+  long now=SystemClock.elapsedRealtime();
+  // Un hueco de señal no cuenta como cuatro segundos de posiciones fuera.
+  if(ultimoDesvio>0&&(now<ultimoDesvio||now-ultimoDesvio>10000)){farSince=0;cercaDesde=0;}
+  ultimoDesvio=now;
+  boolean dentro=acc<=35&&d<=FUERA_M;
+  if(dentro&&d<=Math.max(11,acc+4)){
+   if(!entradaAvisada&&!offRoute&&acc<=35&&d<=FUERA_M){entradaAvisada=true;protegeAvisoRuta();tonoBien();habla("Ya estás en la ruta");}
+   routeReached=true;farSince=0;cercaDesde=0;
    if(offRoute)vuelveALaRuta();
    return;
   }
-  if(!routeReached)return;
-  // LA FRANJA MUERTA. El aviso de salir pide pasar de acc+7 y el de volver
-  // pedia bajar de acc+4, y entre los dos no pasaba nada: volviendo a la
-  // ruta y quedandote ahi -lo normal cuando el track se grabo por el otro
-  // lado del camino, o del carril- te quedabas «fuera de ruta» para siempre,
-  // sin que te lo dijera y, peor, sin avisos de giro, que checkTurns se
-  // calla estando fuera. Lo conto el autor: «al volver no me ha indicado que
-  // entra en ruta, solo al salir». Ahora la franja tambien devuelve, con los
-  // mismos 4 s que saca: cuatro segundos fuera para avisar, cuatro dentro
-  // para volver, y asi el baile del GPS en el borde no enciende y apaga.
-  // 25 M Y NO 15. Los demas navegadores avisan de fuera de ruta mas lejos:
-  // OsmAnd a 22 m andando, AllTrails y HiiKER a 50, Locus entre 30 y 100. Con
-  // 15 m, bajo arbolado avisaba sin motivo. Lo decidio el autor el 15 de
-  // noviembre de 2026, con la comparacion delante (docs/decisiones.md).
+  // Se vigila desde Empezar, incluso si aún no se ha pisado el track o se
+  // acaba de elegir otra ruta. Antes routeReached bloqueaba ambos casos.
   if(d<=Math.max(FUERA_M,acc+7)){
    farSince=0;
-   if(offRoute){
-    if(cercaDesde==0)cercaDesde=SystemClock.elapsedRealtime();
-    else if(SystemClock.elapsedRealtime()-cercaDesde>=4000)vuelveALaRuta();
-   }
+   if(dentro&&(offRoute||!entradaAvisada)){
+    if(cercaDesde==0)cercaDesde=now;
+    else if(now-cercaDesde>=4000){
+     if(offRoute)vuelveALaRuta();
+     else if(acc<=35&&d<=FUERA_M){entradaAvisada=true;routeReached=true;cercaDesde=0;protegeAvisoRuta();tonoBien();habla("Ya estás en la ruta");}
+    }
+   }else cercaDesde=0;
    return;
   }
   cercaDesde=0;
-  if(farSince==0){farSince=SystemClock.elapsedRealtime();return;}
-  // 800 ms a 1,5 s por lectura significa DOS lecturas: basta un par de
-  // saltos del GPS para dar la alarma. En el bolsillo, con el cuerpo
-  // tapando el cielo y 20-45 m de precision, eso son 2,2 falsos avisos
-  // por hora -el autor lo sufrio-. Con 4 s hacen falta cuatro lecturas
-  // seguidas fuera: simulado, 0,0 falsos por hora, y un desvio de
-  // verdad se detecta a 104 m en vez de a 86. Barato.
-  if(!offRoute&&SystemClock.elapsedRealtime()-farSince>=4000){
-   offRoute=true;fueraDesde=SystemClock.elapsedRealtime();recordado=false;protegeAvisoRuta();updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
+  if(farSince==0){farSince=now;return;}
+  if(!offRoute&&now-farSince>=4000){
+   offRoute=true;fueraDesde=now;recordado=false;protegeAvisoRuta();updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
   }
-  // UN SEGUNDO AVISO, UNO SOLO. Si el primero no se oyo -el movil en la
-  // mochila, viento- seguias andando fuera sin saberlo. Locus permite
-  // repetirlo; aqui una vez, a 50 m del trazado, tras dejar terminar el primero, para
-  // no dar la lata a quien se ha salido a proposito. Lo decidio el autor el
-  // 15 de noviembre de 2026.
-  else if(offRoute&&!recordado&&d>=RECUERDA_M&&SystemClock.elapsedRealtime()-fueraDesde>=RECUERDA_MS){
+  // Un recordatorio por salida, a 50 m del track, dejando terminar la voz.
+  else if(offRoute&&!recordado&&d>=RECUERDA_M&&now-fueraDesde>=RECUERDA_MS){
    recordado=true;protegeAvisoRuta();pitidos(4,180);habla("Sigues fuera del recorrido");
   }
  }
- static final double FUERA_M=25,RECUERDA_M=50;
+ static final double FUERA_M=15,RECUERDA_M=50;
  static final long RECUERDA_MS=4_000;
- long fueraDesde=0;boolean recordado=false;
+ long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;
  long avisoRutaHasta=0;
  void protegeAvisoRuta(){lastImportantAudio=SystemClock.elapsedRealtime();avisoRutaHasta=lastImportantAudio+4000;}
  static final long MAX_EDAD_FIX_NS=10_000_000_000L;
