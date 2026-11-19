@@ -263,6 +263,12 @@ public class NativeTurnsTest {
   NavigationMetrics mt2=new NavigationMetrics();
   mt2.configure(puerto,Collections.emptyList());
   require(mt2.nextNotice(80,1)==null,"pasados 60 m del arranque ya no");
+  require(mt2.nextNotice(80,1,12)!=null,"recupera la subida tras volver al pie y esperar a la voz");
+  require(mt2.nextNotice(90,1,12)==null,"no repite la subida recuperada");
+  NavigationMetrics vueltaTarde=new NavigationMetrics();
+  vueltaTarde.configure(puerto,Collections.emptyList());
+  require(vueltaTarde.nextNotice(150,1,100)==null,"volver lejos del inicio no recupera el aviso");
+  require(vueltaTarde.nextNotice(vueltaTarde.total(),1,12)==null,"no recupera el aviso una vez en la cima");
   long eta=-1;
   for(int i=0;i<=60;i++)eta=metrics.eta(i*2,1,i*2/111195.,0,100000+i*1000,true);
   require(Math.abs(eta-190000)<1,"ETA from real movement");

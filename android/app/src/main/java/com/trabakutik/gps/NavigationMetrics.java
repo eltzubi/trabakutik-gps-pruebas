@@ -41,7 +41,7 @@ final class NavigationMetrics {
         Projection(double along, double distance) { this(along, distance, false); }
     }
     record Notice(String text, int beeps) {}
-    private record Event(double along, int direction, Notice notice) {}
+    private record Event(double along, int direction, Notice notice, double end) {}
 
     private List<double[]> points = Collections.emptyList();
     double[] distance = new double[0];
@@ -114,7 +114,7 @@ final class NavigationMetrics {
                 // Yendo al reves, lo que aqui se sube es lo que de ida se baja.
                 double gain = dir > 0 ? ascent[top] - ascent[i] : descent[i] - descent[top];
                 if (gain >= CLIMB_MIN_GAIN || length >= CLIMB_MIN_LENGTH) {
-                    events.add(new Event(from, dir, new Notice(textoSubida(length, gain), 1)));
+                    events.add(new Event(from, dir, new Notice(textoSubida(length, gain), 1), distance[top]));
                 }
                 i = top == i ? i + dir : top;
             }
@@ -270,12 +270,16 @@ final class NavigationMetrics {
             // Keep equivalent passes, such as the outbound and return legs of the same path.
             if (p.distance > closest + .25 || p.along - lastAlong < 5) continue;
             events.add(new Event(p.along, 0, new Notice(
-                    source.name + (source.approximate ? ", posición aproximada" : "") + " cerca de la ruta", 2)));
+                    source.name + (source.approximate ? ", posición aproximada" : "") + " cerca de la ruta", 2), p.along));
             lastAlong = p.along;
         }
     }
 
     Notice nextNotice(double along, int dir) {
+        return nextNotice(along, dir, Double.NaN);
+    }
+
+    Notice nextNotice(double along, int dir, double rejoinedAt) {
         Event best = null;
         double nearest = Double.POSITIVE_INFINITY;
         for (Event event : events) {
@@ -288,7 +292,7 @@ final class NavigationMetrics {
             // addWater, que a proposito guarda un aviso por pasada -«keep
             // equivalent passes»- y ya descarta los repetidos de la misma
             // pasada exigiendo 5 m entre uno y otro.
-            Event key = new Event(event.along, dir, event.notice);
+            Event key = new Event(event.along, dir, event.notice, event.end);
             if (announced.contains(key)) continue;
             double ahead = (event.along - along) * dir;
             // Una subida tambien vale con el arranque recien pasado, hasta
@@ -298,7 +302,14 @@ final class NavigationMetrics {
             // el arranque ya no se volvia a ofrecer y no se decia nunca. Asi
             // se dice en cuanto el giro queda atras. El agua no: decir «a -20
             // metros» no tiene sentido y la fuente se avisa a 150.
-            if (ahead < (water ? -.01 : -CLIMB_LATE) || ahead > (water ? WATER_NOTICE : CLIMB_NOTICE)) continue;
+            // Al volver al track, la voz cede primero al aviso de reincorporación.
+            // Si el arranque estaba cerca entonces, aún se puede avisar hasta la cima.
+            double atRejoin = (event.along - rejoinedAt) * dir;
+            boolean recoverClimb = !water && ahead < -CLIMB_LATE
+                    && atRejoin >= -CLIMB_LATE && atRejoin <= CLIMB_NOTICE
+                    && (event.end - along) * dir > 0;
+            if (!recoverClimb && (ahead < (water ? -.01 : -CLIMB_LATE)
+                    || ahead > (water ? WATER_NOTICE : CLIMB_NOTICE))) continue;
             if (!water) {
                 announced.add(key);
                 return event.notice;

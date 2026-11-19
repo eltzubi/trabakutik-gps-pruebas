@@ -22,6 +22,9 @@ public class TrackingService extends Service implements LocationListener {
  List<NavigationMetrics.Water> waterPoints;
  int metricsRouteKey;
  long lastImportantAudio=Long.MIN_VALUE/2;
+ double climbRejoinAlong=Double.NaN;
+ int climbRejoinDirection;
+ long climbRejoinTime;
  final String channel="trabakutik-grabacion";
  /** Hay un servicio vivo en este proceso. Es estatica a proposito: si Android
   *  mata el proceso, vuelve sola a false, que es lo que hace falta para saber
@@ -814,6 +817,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  void loadRoute(){
   entradaAvisada=false;
+  climbRejoinAlong=Double.NaN;
   inicioCurva=Double.NaN;
   route.clear();routeReached=false;offRoute=false;farSince=0;cercaDesde=0;errorRuta="";llegada.reinicia();
   metrics.configure(route,Collections.emptyList());
@@ -1154,7 +1158,10 @@ public class TrackingService extends Service implements LocationListener {
   long eta=metrics.eta(along,sentido,location.getLatitude(),location.getLongitude(),
       location.getElapsedRealtimeNanos()/1_000_000L,moving);
   if(moving&&farSince==0&&upcomingTurn.isEmpty()&&now-lastImportantAudio>=8000&&!"silencio".equals(modoAudio())){
-   NavigationMetrics.Notice notice=metrics.nextNotice(along,sentido);
+   double rejoinedAt=climbRejoinDirection==sentido&&now-climbRejoinTime<=20000
+           ?climbRejoinAlong:Double.NaN;
+   climbRejoinAlong=Double.NaN;
+   NavigationMetrics.Notice notice=metrics.nextNotice(along,sentido,rejoinedAt);
    if(notice!=null){
     // OTRO TONO PARA LO QUE SOLO INFORMA. La subida era 1 pitido, igual que
     // «giro a 50 m», y la fuente 2 pitidos lentos, casi igual que «sin señal
@@ -1349,7 +1356,11 @@ public class TrackingService extends Service implements LocationListener {
     }
     long now=SystemClock.elapsedRealtime();
     if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;
+    if(offRoute||climbRejoinDirection!=sentido)climbRejoinAlong=Double.NaN;
     if(!offRoute&&!position.ambiguous()&&position.distance()<=30&&l.getAccuracy()<=35){
+     if(wasOff){
+      climbRejoinAlong=position.along();climbRejoinDirection=sentido;climbRejoinTime=now;
+     }
      if(entradaAnterior==entradaAvisada)liveMetrics=updateNavigationMetrics(l,position,now);
     }else{inicioCurva=Double.NaN;metrics.pausePace();}
    }else{inicioCurva=Double.NaN;metrics.pausePace();}

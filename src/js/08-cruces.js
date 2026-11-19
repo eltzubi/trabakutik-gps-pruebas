@@ -941,7 +941,7 @@ function calculaCrucesDe(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false;
   if(cruce){
    // El trozo de ruta de 60 m antes y despues del CRUCE (cortado en el punto
    // de la ruta mas cercano a su nodo y empalmado en el nodo), para reconocer
@@ -969,12 +969,17 @@ function calculaCrucesDe(){
    for(let k=iN;k>=0&&routeCumulative[iN]-routeCumulative[k]<60;k--)ruta.antes.splice(1,0,pts[k]);
    for(let k=iN;k<pts.length&&routeCumulative[k]-routeCumulative[iN]<60;k++)ruta.despues.push(pts[k]);
    ruta.despues.push(enRuta(60));
+   // Verifica el nodo contra el trazado real antes de empalmarlo a la ruta.
+   // En enlaces próximos, las ramas de la otra calzada pueden parecer
+   // compatibles a 25 m aunque la ruta nunca llegue a su cruce.
+   nodoEnRuta=!elCruce.lejos||dN<=GEO_PEGADA||distARuta(elCruce,ruta.antes)<=GEO_PEGADA
+      ||distARuta(elCruce,ruta.despues)<=GEO_PEGADA;
    ruta.antes.push([elCruce[0],elCruce[1]]);ruta.despues.unshift([elCruce[0],elCruce[1]]);
    // Y donde estabas y donde estaras a GIRO_CALLE_M (cuanto tuerce la calle
    // que llevas) y a FRENTE_M antes (con que rumbo llegas al cruce).
    ruta.a25=enRuta(-25);ruta.d25=enRuta(25);
    ruta.desde=enRuta(-GIRO_CALLE_M);ruta.hasta=enRuta(GIRO_CALLE_M);ruta.llegada=enRuta(-FRENTE_M);
-   let d=decideCruce(elCruce,b,giro.antes,giro.despues,ruta);
+   let d=nodoEnRuta?decideCruce(elCruce,b,giro.antes,giro.despues,ruta):null;
    // EL LADO DE UN CRUCE, MEDIDO EN EL CRUCE (17 nov 2026). Si hay que avisar
    // lo decide lo de siempre; el LADO se comprueba mirando la ruta en su punto
    // mas cercano al nodo del cruce, con LADO_VENTANA m a cada lado. El punto
@@ -1059,7 +1064,7 @@ function calculaCrucesDe(){
   // MANDA: si el de antes era una curva o una horquilla y este es un cruce, se
   // queda el cruce, que es lo que el autor pidio que no se perdiera nunca.
   // La revuelta de tu misma via se dice como curva, no como cruce.
-  const esCruce=cruce&&!curvaCalle;
+  const esCruce=nodoEnRuta&&!curvaCalle;
   const previo=junctions[junctions.length-1];
   if(previo&&dist(previo.point,b)<35){
    if(!(esCruce&&!previo.cruce))continue;

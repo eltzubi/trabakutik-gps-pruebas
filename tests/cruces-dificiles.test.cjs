@@ -180,3 +180,11 @@ test('22. Horquilla de tu misma via en la que lo recto es la OTRA: «por la izqu
  assert.equal(j.length,1,dice(j).join(' | '));
  assert(j[0].mantente&&j[0].noRecto&&j[0].direction==='izquierda',JSON.stringify(j[0]));
 });
+
+test('Un enlace de la calzada de al lado no anuncia un giro en la recta',()=>{
+ const lateral=[...P(17,0),[[210,174],[330]]];
+ lateral.lejos=[P(5,-22),P(20,-25),P(5,22)];
+ lateral.clases=[1,1,1];lateral.prohibidas=[false,true,false];
+ const recta={tramos:[[0,150]],calle:'A'};
+ assert.deepEqual(dice(detector()(ruta(sur,recta),[lateral])),[]);
+});
