@@ -1095,7 +1095,7 @@ public class TrackingService extends Service implements LocationListener {
       String clave=(usaReves?"r":"")+mejor+":"+fase;
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
-       if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300);
+       if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300,ToneGenerator.TONE_PROP_BEEP,100);
        if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add((usaReves?"r":"")+mejor+":v")))
         habla(fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
       }
@@ -1126,14 +1126,15 @@ public class TrackingService extends Service implements LocationListener {
  // distingue conduciendo. TONE_PROP_ACK es el «ti-ti» de confirmacion, que
  // no se parece a una alarma, que es justo lo que hay que decir.
  void tonoBien(){pitidos(2,140,ToneGenerator.TONE_PROP_ACK);}
- void pitidos(int n,int sep,int tono){
+ void pitidos(int n,int sep,int tono){pitidos(n,sep,tono,90);}
+ void pitidos(int n,int sep,int tono,int volumen){
   // Se relee del fichero, no del campo: el campo solo se cargaba al nacer
   // el servicio, asi que un cambio posterior no le llegaba y seguia
   // pitando con «Silencio» puesto. Lo dijo el autor.
   if("silencio".equals(modoAudio()))return;
   try{
    sueltaTono();pitidoHandler.removeCallbacksAndMessages(null);
-   final ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,90);
+   final ToneGenerator tone=new ToneGenerator(AudioManager.STREAM_MUSIC,volumen);
    tonoEnCurso=tone;
    for(int i=0;i<n;i++){
     final int delay=i*sep;

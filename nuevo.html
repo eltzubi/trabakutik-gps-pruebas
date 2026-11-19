@@ -3954,14 +3954,14 @@ function distanciasDeAviso(){
 // seguidos. Se guardan para poder cortarlos: si no, al poner silencio
 // seguian saliendo uno detras de otro aunque ya nadie los quisiera.
 let pitidosEnCurso=[];
-function pitidos(n,sep){
+function pitidos(n,sep,volumen=.13){
  if(gpsApagadoPorTi||audioModo==='silencio'||!audio)return;
  const t=audio.currentTime;
  for(let i=0;i<n;i++){
   const o=audio.createOscillator(),g=audio.createGain(),at=t+i*sep;
   o.frequency.value=880;
   g.gain.setValueAtTime(.0001,at);
-  g.gain.linearRampToValueAtTime(.13,at+.015);
+  g.gain.linearRampToValueAtTime(volumen,at+.015);
   g.gain.exponentialRampToValueAtTime(.0001,at+.19);
   o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.2);
   pitidosEnCurso.push(o);
@@ -5480,7 +5480,7 @@ function junctionGuidance(p,accuracy,progress){
  if(fase&&!junctionWarned.has(j+':'+fase)){
   junctionWarned.add(j+':'+fase);
   // La página solo pita si Android no está dando los avisos nativos.
-   if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
+   if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30,.24)}
   const giroTxt=turn.rotonda
     ?'en la rotonda, '+queRotonda(turn,lado,alReves)
     :lado==='vuelta'
