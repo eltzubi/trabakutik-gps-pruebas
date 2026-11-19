@@ -856,8 +856,8 @@ public class MainActivity extends Activity {
      envio.setClipData(android.content.ClipData.newRawUri(name,uri));
      if(reloj){
       Intent abrir=new Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/gpx+xml")
-        .setClipData(android.content.ClipData.newRawUri(name,uri))
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      abrir.setClipData(android.content.ClipData.newRawUri(name,uri));
       Intent selector=Intent.createChooser(abrir,"Abrir en la aplicación del reloj");
       selector.putExtra(Intent.EXTRA_INITIAL_INTENTS,new Intent[]{envio});
       startActivity(selector);
