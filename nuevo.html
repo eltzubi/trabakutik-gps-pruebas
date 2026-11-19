@@ -2819,6 +2819,15 @@ async function shareGpx(points,name){
  try{await navigator.share({files:[file],title:name,text:'Ruta GPX'});return true}
  catch(e){if(e.name!=='AbortError')notice('No se pudo compartir el GPX.');return false}
 }
+async function enviaAlReloj(points,name){
+ if(!Array.isArray(points)||points.filter(Boolean).length<2){notice('Carga una ruta para enviarla al reloj.');return false}
+ notice('Elige la aplicación de tu reloj e importa el recorrido. El envío se completa allí.');
+ if(window.TrabakutikAndroid?.sendGpxToWatch){
+  try{window.TrabakutikAndroid.sendGpxToWatch(gpxFilename(name)+'.gpx',gpx(points,name));return true}
+  catch(e){notice('No se pudo abrir el GPX. Puedes descargarlo e importarlo en la aplicación del reloj.');return false}
+ }
+ return shareGpx(points,name);
+}
 function closeSaveDialog(){
  $('saveDialog').classList.add('hidden');
  pendingSave=null;savedFromDialog=null;
@@ -3203,13 +3212,22 @@ $('importGpxFile').onchange=async e=>{
 if(typeof window==='object'&&window)window.trabakutikImportaGpx=(texto,nombre)=>importaTextoGpx(texto,nombre,true);
 function showSaved(){
  const target=$('savedItems');target.replaceChildren();
+ if(typeof routePoints!=='undefined'&&routePoints.length>1){
+  const puntos=typeof navigationProfilePoints==='function'?navigationProfilePoints():routePoints;
+  const nombre=$('mapTitle').textContent||'Ruta';
+  const actual=document.createElement('div');actual.className='routeitem';
+  const titulo=document.createElement('span');titulo.textContent='Ruta cargada · '+nombre;titulo.style.flex='1';
+  const descargar=document.createElement('button');descargar.className='btn-sub';descargar.textContent='↓ GPX';descargar.onclick=()=>download(puntos,nombre);
+  const reloj=document.createElement('button');reloj.className='btn-sub';reloj.textContent='Enviar al reloj';reloj.onclick=()=>{void enviaAlReloj(puntos,nombre)};
+  actual.append(titulo,descargar,reloj);target.append(actual);
+ }
  const list=savedList();
- if(!list.length){target.textContent='Aún no hay rutas guardadas. Puedes importar un GPX desde tu móvil o crear una ruta en el mapa.';pintaGrabaciones(target);return}
+ if(!list.length){const vacio=document.createElement('p');vacio.textContent='Aún no hay rutas guardadas. Puedes importar un GPX desde tu móvil o crear una ruta en el mapa.';target.append(vacio);pintaGrabaciones(target);return}
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
   const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
   const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name);
-  const share=document.createElement('button');share.className='btn-sub';share.textContent='Compartir';share.title='Compartir archivo GPX';share.hidden=!canShareGpx(item.points,item.name);share.onclick=()=>{void shareGpx(item.points,item.name)};
+  const share=document.createElement('button');share.className='btn-sub';share.textContent='Enviar al reloj';share.title='Abrir el GPX con la aplicación del reloj';share.onclick=()=>{void enviaAlReloj(item.points,item.name)};
   const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
   row.append(open,dl,share,del);target.append(row);
  });
@@ -3285,7 +3303,7 @@ $('saveCreated').onclick=()=>{
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={importaTextoGpx,firmaTrazado,mismaFirma,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
+ module.exports={importaTextoGpx,firmaTrazado,mismaFirma,puedeRehacer,rehaceGps,sincronizaCrea,cierraCirculoGps,idaYVueltaGps,mueveAnclaGps,mueveAnclaMapa,xmlEscape,gpx,download,savedList,putSaved,gpxFilename,canShareGpx,shareGpx,enviaAlReloj,closeSaveDialog,openSaveDialog,finishRecording,savePendingToMine,elevationText,compactRoutePoints,loadSaved,sameTrack,clearDraft,clearActiveRoute,parseImportedGpx,showSaved,describeGrabacion,textoBorrarGrabacion,pintaGrabaciones};
  Object.defineProperties(module.exports,{rehacerPila:{get:()=>rehacerPila,set:v=>{rehacerPila=v},enumerable:true},firmaTrasDeshacer:{get:()=>firmaTrasDeshacer,set:v=>{firmaTrasDeshacer=v},enumerable:true},savedFromDialog:{get:()=>savedFromDialog,set:v=>{savedFromDialog=v},enumerable:true},pendingSave:{get:()=>pendingSave,set:v=>{pendingSave=v},enumerable:true},estadoBotonera:{get:()=>estadoBotonera,set:v=>{estadoBotonera=v},enumerable:true},ultimoVozEstado:{get:()=>ultimoVozEstado,set:v=>{ultimoVozEstado=v},enumerable:true},rutasListas:{get:()=>rutasListas,set:v=>{rutasListas=v},enumerable:true},ultimoParoNativo:{get:()=>ultimoParoNativo,set:v=>{ultimoParoNativo=v},enumerable:true},giraNativo:{get:()=>giraNativo,set:v=>{giraNativo=v},enumerable:true},savedLine:{get:()=>savedLine,set:v=>{savedLine=v},enumerable:true}});
 }
 // EL NUMERO DE VERSION, ABAJO. Lo pidio el autor: hasta ahora, para saber si
@@ -3954,14 +3972,14 @@ function distanciasDeAviso(){
 // seguidos. Se guardan para poder cortarlos: si no, al poner silencio
 // seguian saliendo uno detras de otro aunque ya nadie los quisiera.
 let pitidosEnCurso=[];
-function pitidos(n,sep,volumen=.13){
+function pitidos(n,sep){
  if(gpsApagadoPorTi||audioModo==='silencio'||!audio)return;
  const t=audio.currentTime;
  for(let i=0;i<n;i++){
   const o=audio.createOscillator(),g=audio.createGain(),at=t+i*sep;
   o.frequency.value=880;
   g.gain.setValueAtTime(.0001,at);
-  g.gain.linearRampToValueAtTime(volumen,at+.015);
+  g.gain.linearRampToValueAtTime(.13,at+.015);
   g.gain.exponentialRampToValueAtTime(.0001,at+.19);
   o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.2);
   pitidosEnCurso.push(o);
@@ -5480,7 +5498,7 @@ function junctionGuidance(p,accuracy,progress){
  if(fase&&!junctionWarned.has(j+':'+fase)){
   junctionWarned.add(j+':'+fase);
   // La página solo pita si Android no está dando los avisos nativos.
-   if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30,.24)}
+   if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
   const giroTxt=turn.rotonda
     ?'en la rotonda, '+queRotonda(turn,lado,alReves)
     :lado==='vuelta'

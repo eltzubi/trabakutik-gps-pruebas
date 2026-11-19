@@ -824,6 +824,12 @@ public class MainActivity extends Activity {
   // rutas por la hoja de compartir, y para eso hace falta una URI de
   // contenido: desde Android 7 no se puede pasar un file:// a otra app.
   @JavascriptInterface public void shareGpx(String filename,String xml){
+   comparteGpx(filename,xml,false);
+  }
+  @JavascriptInterface public void sendGpxToWatch(String filename,String xml){
+   comparteGpx(filename,xml,true);
+  }
+  private void comparteGpx(String filename,String xml,boolean reloj){
    if(xml==null||xml.length()>3000000||!xml.startsWith("<?xml"))return;
    String safe=filename==null?"trabakutik.gpx":filename.replaceAll("[^a-zA-Z0-9._-]","_");
    if(!safe.endsWith(".gpx"))safe+=".gpx";
@@ -847,7 +853,15 @@ public class MainActivity extends Activity {
        .putExtra(Intent.EXTRA_SUBJECT,name)
        .putExtra(Intent.EXTRA_TITLE,name)
        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-     startActivity(Intent.createChooser(envio,"Enviar la ruta"));
+     envio.setClipData(android.content.ClipData.newRawUri(name,uri));
+     if(reloj){
+      Intent abrir=new Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/gpx+xml")
+        .setClipData(android.content.ClipData.newRawUri(name,uri))
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      Intent selector=Intent.createChooser(abrir,"Abrir en la aplicación del reloj");
+      selector.putExtra(Intent.EXTRA_INITIAL_INTENTS,new Intent[]{envio});
+      startActivity(selector);
+     }else startActivity(Intent.createChooser(envio,"Enviar la ruta"));
     }catch(Exception e){
      Toast.makeText(MainActivity.this,"No se pudo preparar el GPX para compartir",Toast.LENGTH_SHORT).show();
     }
