@@ -8,7 +8,7 @@
 #tripBox .trip-nombre{background:#102b3a;border:1px solid #ffffff12}
 .modes button,.actions button{border-radius:16px}
 .modes button[aria-pressed=true]{box-shadow:0 5px 16px #3ed1f044,inset 0 1px 0 #ffffffaa}
-#vistaModo{position:absolute;left:10px;bottom:12px;z-index:1120;width:46px;height:46px;border-radius:15px;background:#0b2635ed;color:#8af1ff;border:1px solid #63d9f077;box-shadow:0 4px 20px #0009;display:grid;place-items:center;font-size:20px;cursor:pointer;touch-action:manipulation}
+#vistaModo{position:absolute;left:10px;bottom:12px;z-index:705;width:46px;height:46px;border-radius:15px;background:#0b2635ed;color:#8af1ff;border:1px solid #63d9f077;box-shadow:0 4px 20px #0009;display:grid;place-items:center;font-size:20px;cursor:pointer;touch-action:manipulation}
 #vistaModo:focus-visible{outline:3px solid #9dffbc;outline-offset:3px}
 #vistaModo[data-vista="compacta"]{background:#0e3b4d;color:#b8f8ff}
 #vistaModo[data-vista="mapa"]{background:#6ceeff;color:#062635}
@@ -20,7 +20,7 @@ body.vista-compacta .info{max-width:calc(100% - 84px);width:min(285px,calc(100% 
 body.vista-compacta .info-top{display:none}
 body.vista-compacta .tools{gap:6px}
 body.vista-compacta .tools button{height:40px;width:40px;border-radius:13px}
-body.vista-mapa .info{display:none!important}
+body.vista-mapa .info:not(:has(#reverseWarn:not(.hidden))){display:none!important}
 body.vista-mapa .tools{display:none!important}
 body.vista-mapa .on-map{display:none!important}
 /* Los avisos urgentes y las fichas de giro no se ocultan ni en modo mapa. */
