@@ -1238,7 +1238,7 @@ test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
  // y una calle de direccion prohibida a 242 (+360): el autor la cuenta.
  const r=[0,0,9,{sentido:1,salidas:[2,25,92,174,224,602]}];
  assert.equal(c.salidaDeRotonda(r,3,224),2,'entrando por el norte: la prohibida y luego la suya, la segunda');
- assert.equal(c.salidaDeRotonda(r,3,242),1,'andando por la calle prohibida: es esa boca, la primera, no la de al lado');
+ assert.equal(c.salidaDeRotonda(r,3,242),0,'una calle solo de entrada nunca se anuncia como salida en bici o coche');
  assert.equal(c.salidaDeRotonda(r,224,3),4,'al reves, hasta el norte hay que dar casi toda la vuelta');
  assert.equal(c.salidaDeRotonda(r,3,320),0,'una salida que no casa con ninguna: sin numero');
  assert.equal(c.salidaDeRotonda([0,0,9],3,224),0,'un fichero sin bocas: sin numero');
@@ -1246,12 +1246,18 @@ test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
  // La del km 6: cinco carreteras de dos calzadas, una boca cada una.
  const k6=[0,0,18,{sentido:1,salidas:[10,75,155,244,310]}];
  assert.equal(c.salidaDeRotonda(k6,307,161),2,'pasa la de 244 y toma la de 155');
- // Revision con GPT: una prohibida como destino cuenta con su propio numero,
- // no hereda el de la libre anterior (el recuento incluye todas las bocas).
- assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[300,630]}],0,270),2,'libre a 300 y prohibida a 270: la prohibida es la segunda');
+ // Las bocas prohibidas siguen contando visualmente, pero no son destinos legales.
+ assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[300,630]}],0,270),0,'no anunciar una boca prohibida aunque sea la segunda');
  // Y la duda, en los dos sentidos: dos bocas casi igual de cerca, sin numero.
  assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[270,650]}],0,279),0,'libre a 270, prohibida a 290, salida a 279');
  assert.equal(c.salidaDeRotonda([0,0,9,{sentido:1,salidas:[270,290]}],0,279),0,'dos libres casi igual de cerca');
+ // Ida y vuelta: cambia el numero al cambiar de entrada, sin invertir el sentido de circulación.
+ const cuatro=[0,0,9,{sentido:1,salidas:[0,60,120,180,240,300]}];
+ assert.equal(c.salidaDeRotonda(cuatro,0,240),2,'ida: segunda salida en sentido legal');
+ assert.equal(c.salidaDeRotonda(cuatro,240,0),4,'vuelta: cuarta desde la entrada nueva, no copia la segunda');
+ const horario=[0,0,9,{sentido:-1,salidas:[0,90,180,270]}];
+ assert.equal(c.salidaDeRotonda(horario,0,180),2,'giro horario: segunda salida');
+ assert.equal(c.salidaDeRotonda(horario,180,0),2,'giro horario inverso: recuento desde la entrada nueva');
  assert.equal(c.textoSalida(2),'toma la segunda salida');
  assert.equal(c.textoSalida(9),'');
 });
