@@ -1,0 +1,30 @@
+/* Fusión visual: solo presentación. Los controles GPS y los avisos siguen en sus módulos. */
+:root{--fusion-cristal:rgba(9,26,40,.88);--fusion-borde:rgba(112,211,238,.28)}
+.top,.bottom,#tripBox,.elevation-panel{background:linear-gradient(160deg,#0c2636,#081925);border-color:var(--fusion-borde)}
+.top strong{letter-spacing:.07em}
+.tools button{border-radius:15px;box-shadow:0 7px 22px #0008,inset 0 1px 0 #ffffff19}
+.info{background:var(--fusion-cristal);border-color:var(--fusion-borde);border-radius:18px;box-shadow:0 8px 26px #0008;backdrop-filter:blur(16px)}
+#tripBox{border-top-color:var(--fusion-borde)}
+#tripBox .trip-nombre{background:#102b3a;border:1px solid #ffffff12}
+.modes button,.actions button{border-radius:16px}
+.modes button[aria-pressed=true]{box-shadow:0 5px 16px #3ed1f044,inset 0 1px 0 #ffffffaa}
+#vistaModo{position:absolute;left:10px;bottom:12px;z-index:1120;width:46px;height:46px;border-radius:15px;background:#0b2635ed;color:#8af1ff;border:1px solid #63d9f077;box-shadow:0 4px 20px #0009;display:grid;place-items:center;font-size:20px;cursor:pointer;touch-action:manipulation}
+#vistaModo:focus-visible{outline:3px solid #9dffbc;outline-offset:3px}
+#vistaModo[data-vista="compacta"]{background:#0e3b4d;color:#b8f8ff}
+#vistaModo[data-vista="mapa"]{background:#6ceeff;color:#062635}
+body.vista-compacta .top,body.vista-mapa .top{display:none!important}
+body.vista-compacta .bottom,body.vista-mapa .bottom{display:none!important}
+body.vista-compacta #tripBox,body.vista-mapa #tripBox{display:none!important}
+body.vista-compacta #elevationPanel,body.vista-mapa #elevationPanel{display:none!important}
+body.vista-compacta .info{max-width:calc(100% - 84px);width:min(285px,calc(100% - 84px));padding:7px 10px}
+body.vista-compacta .info-top{display:none}
+body.vista-compacta .tools{gap:6px}
+body.vista-compacta .tools button{height:40px;width:40px;border-radius:13px}
+body.vista-mapa .info{display:none!important}
+body.vista-mapa .tools{display:none!important}
+body.vista-mapa .on-map{display:none!important}
+/* Los avisos urgentes y las fichas de giro no se ocultan ni en modo mapa. */
+body.vista-mapa .turn-hint,body.vista-mapa .aviso-mal{display:block}
+body.vista-mapa #reverseWarn:not(.hidden){position:absolute;top:70px;left:10px;right:10px;z-index:1150;background:#351b21f2;padding:7px;border-radius:12px}
+body.vista-compacta #mapCredit,body.vista-mapa #mapCredit{bottom:0}
+@media(max-width:389px){#vistaModo{left:7px;bottom:7px;width:43px;height:43px}}
