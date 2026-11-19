@@ -78,7 +78,8 @@ public class TrackingRegression {
  double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double velocidadSuave=1.2;int beeps=0;
  double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}double avisoYa(){return 4;}
- void updateNotice(){}void pitidos(int n,int ms){beeps++;}void habla(String s){}
+ static class ToneGenerator{static final int TONE_PROP_BEEP=1;}
+ void updateNotice(){}void pitidos(int n,int ms){beeps++;}void pitidos(int n,int ms,int tono,int volumen){pitidos(n,ms);}void habla(String s){}
  NavigationMetrics metrics=new NavigationMetrics();
  void checkTurns(Location l){
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());

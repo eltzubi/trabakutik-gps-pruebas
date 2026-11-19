@@ -40,7 +40,7 @@ public class SilencioTest {
  }
  Voz voz=new Voz(); final Handler pitidoHandler=new Handler(); ToneGenerator tonoEnCurso=null;
  String modo="voz"; String modoAudio(){return modo;}
-''' + metodo(' void callaYa()') + metodo(' void sueltaTono()') + metodo(' void pitidos(int n,int sep)')+metodo(' void pitidos(int n,int sep,int tono)')+metodo(' void tonoBien()') + '''
+''' + metodo(' void callaYa()') + metodo(' void sueltaTono()') + metodo(' void pitidos(int n,int sep)')+metodo(' void pitidos(int n,int sep,int tono)')+metodo(' void pitidos(int n,int sep,int tono,int volumen)')+metodo(' void tonoBien()') + '''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  public static void main(String[] args){
   SilencioTest c=new SilencioTest();

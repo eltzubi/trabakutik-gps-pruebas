@@ -1095,7 +1095,7 @@ public class TrackingService extends Service implements LocationListener {
       String clave=(usaReves?"r":"")+mejor+":"+fase;
       if(!warnedTurns.contains(clave)){
        warnedTurns.add(clave);
-       // Los giros y cruces usan el máximo del tono, dentro del volumen multimedia.
+       // Solo los giros y cruces usan el máximo del tono. El volumen multimedia manda.
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300,ToneGenerator.TONE_PROP_BEEP,100);
        if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add((usaReves?"r":"")+mejor+":v")))
         habla(fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
