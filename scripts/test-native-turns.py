@@ -32,8 +32,9 @@ public class NativeTurnsTest {
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
  double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
- static class ToneGenerator{static final int TONE_PROP_ACK=2;}
+ static class ToneGenerator{static final int TONE_PROP_ACK=2,TONE_PROP_BEEP=1;}
  void updateNotice(){}double posActual=Double.NaN,tresEn=Double.NaN;void pitidos(int n,int ms){beeps++;if(n==3&&Double.isNaN(tresEn))tresEn=posActual;}void pitidos(int n,int ms,int t){beeps++;}
+ void pitidos(int n,int ms,int t,int volumen){require(t==ToneGenerator.TONE_PROP_BEEP&&volumen==100,"giro a volumen máximo");pitidos(n,ms);}
  ArrayList<String> dicho=new ArrayList<>();
  void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s.split(" ")[0]));}catch(NumberFormatException e){}}
  // Lo mismo que hace onLocationChanged con cada posicion, en el mismo orden.
