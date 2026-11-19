@@ -28,7 +28,7 @@ public class NativeTurnsTest {
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
-'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;',src).group(0)+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+'''
+'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
@@ -405,19 +405,30 @@ public class NativeTurnsTest {
   require(c.offRoute,"fuera");
   SystemClock.reloj+=1500;c.posicion(new Location(250,4,5));
   require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"a 4 m se dice ya: "+c.dicho);
-  // A 20 M NO ES FUERA DE RUTA (decidido el 15 nov 2026: 25 m, como los
-  // demas navegadores, que avisan a 22-100 m). A 30 m si.
+  // Con buena precisión, 14 m aún es margen; 19 m confirmado ya avisa.
   c=setup();SystemClock.reloj=1000;c.posicion(new Location(250,0,5));
-  for(int k=0;k<8;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,20,5));}
-  require(!c.offRoute,"a 20 m del track no salta");
+  for(int k=0;k<8;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,14,5));}
+  require(!c.offRoute,"a 14 m del track no salta");
   for(int k=0;k<5;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,30,5));}
   require(c.offRoute,"a 30 m si");
-  // UN SEGUNDO AVISO, UNO SOLO: al minuto y a mas de 50 m.
+  // UN SEGUNDO AVISO, UNO SOLO: a mas de 50 m y tras 4 segundos.
   int veces=0;for(String t:c.dicho)if(t.startsWith("Sigues fuera"))veces++;
   require(veces==0,"a 30 m no se recuerda");
   for(int k=0;k<50;k++){SystemClock.reloj+=1500;c.posicion(new Location(250,70,5));}
   veces=0;for(String t:c.dicho)if(t.startsWith("Sigues fuera"))veces++;
-  require(veces==1,"al minuto y lejos, un recordatorio y solo uno: "+veces);
+  require(veces==1,"lejos, un recordatorio y solo uno: "+veces);
+  // La captura del autor: empezar ya a 19 m, precision 4 m, sin entrada previa.
+  c=setup();SystemClock.reloj=1000;
+  for(int k=0;k<5;k++){c.checkDeviation(new Location(250,19,4));SystemClock.reloj+=1000;}
+  require(c.offRoute&&c.dicho.contains("Atención, fuera del recorrido"),"19 m desde el arranque: "+c.dicho);
+  c.checkDeviation(new Location(250,5,4));
+  require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"regreso tras empezar fuera");
+  // Un hueco largo no equivale a cuatro segundos de posiciones fuera.
+  c=setup();SystemClock.reloj=1000;c.checkDeviation(new Location(250,19,4));
+  SystemClock.reloj+=3000;c.checkDeviation(new Location(250,19,4));
+  SystemClock.reloj+=30000;c.checkDeviation(new Location(250,19,4));require(!c.offRoute,"hueco GPS no confirma");
+  SystemClock.reloj+=3999;c.checkDeviation(new Location(250,19,4));require(!c.offRoute,"antes de cuatro segundos");
+  SystemClock.reloj+=1;c.checkDeviation(new Location(250,19,4));require(c.offRoute,"cuatro segundos validos confirman");
   SystemClock.reloj=1000;
 
   System.out.println("PASS Java: giro proximo, voz unica, inverso, giro pasado, cruce atras, cruce recien pasado, avisos con mala señal, ruta al reves sin la pagina y vuelta a la ruta");

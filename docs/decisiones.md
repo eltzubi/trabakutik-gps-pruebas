@@ -1237,3 +1237,35 @@ regreso rearma el ciclo; cargar otra ruta conserva el mismo comportamiento.
 Los giros que coincidan con un aviso de entrada o regreso se encolan durante
 cuatro segundos para no cortarlo, sin descartar el giro. Se mantienen los
 filtros de precisión y la confirmación de salida para evitar falsas alarmas.
+
+## 19 de noviembre: aviso desde el arranque y a 19 m con buena señal
+
+La captura muestra 19 m al track con precisión de ±4 m. El código todavía
+exigía superar 25 m y haber estado antes cerca del trazado. Esto dejaba sin
+aviso tanto ese desvío como empezar o cambiar de ruta estando ya fuera.
+
+Se sustituye el umbral base de 25 por 15 m; con peor señal se mantiene el
+margen `precisión + 7`. Se confirma la salida con cuatro segundos de
+lecturas válidas, también antes de la primera entrada al track. Una lectura
+inválida o un hueco de más de diez segundos reinicia esa confirmación.
+El regreso exige estar a 15 m o menos y precisión de 35 m o mejor: inmediato
+en la zona cercana y tras cuatro segundos en la franja restante. Que empeore
+la precisión no basta para declarar un regreso. Cada regreso y cambio de
+ruta rearma los avisos; se conserva un único recordatorio a 50 m del track.
+
+La primera entrada y cada regreso tienen tono de confirmación. Si el motor
+de voz aún se está preparando, se conserva solo el último estado de ruta;
+al prepararse se entrega una vez. Parar, cambiar de ruta o silenciar lo
+cancelan. Los giros siguen encolándose tras el aviso de estado.
+
+Contraste con documentación oficial: Wikiloc anuncia salida y regreso;
+OsmAnd separa activación y prioridad de los avisos; Mapbox distingue la
+posición real de la ajustada al trazado. No se copian umbrales de carretera:
+se conserva la distancia real al GPX y el margen de precisión propio.
+
+Pruebas añadidas con coordenadas sintéticas: arranque a 19 m, cambio de
+ruta estando fuera, entrada estable a 13 m, corte GPS, lectura inválida,
+incertidumbre al regresar y preparación tardía de voz. La reproducción
+comparada ejecuta las funciones reales Java y JavaScript y comprueba el
+instante de cada cambio, además de los avisos y su prioridad. No sustituye
+la prueba física de audio y pantalla bloqueada en el teléfono.

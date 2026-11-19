@@ -983,12 +983,12 @@ test('Revisión con GPT: el barómetro se ve aunque la ruta no tenga alturas, y 
  c.baroNativo=null;c.pintaAvance(12400);
  assert.equal(n.tripSubido.textContent,'—');assert.equal(n.tripDesnivel.attrs['aria-label'],'Desnivel sin datos');
 });
-test('Fuera de ruta a 25 m, no a 15: como los demás navegadores (decidido el 15 nov 2026)',()=>{
+test('Fuera de ruta a 15 m con buena señal y recordatorio único a 50 m',()=>{
  let ahora=1e6;const dicho=[];
  const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:true,gpsApagadoPorTi:false,
   alerted:false,onRouteSeen:true,farSince:0,notice:t=>dicho.push(t),Date:{now:()=>ahora}});
- for(let k=0;k<6;k++){ahora+=1500;c.updateOffRoute(20,5)}
- assert.equal(c.alerted,false,'a 20 m no salta');
+ for(let k=0;k<6;k++){ahora+=1500;c.updateOffRoute(14,5)}
+ assert.equal(c.alerted,false,'a 14 m no salta');
  for(let k=0;k<5;k++){ahora+=1500;c.updateOffRoute(30,5)}
  assert.equal(c.alerted,true,'a 30 m si');
  // El recordatorio no espera un minuto y solo ocurre una vez por salida.
@@ -1346,7 +1346,7 @@ test('la pagina y el servicio deciden igual el fuera de ruta (umbrales y franja)
  const js=fs.readFileSync(path.join(__dirname,'../src/js/07-servicio.js'),'utf8');
  const java=fs.readFileSync(path.join(__dirname,'../android/app/src/main/java/com/trabakutik/gps/TrackingService.java'),'utf8');
  assert(/Math\.max\(11,accuracy\+4\)/.test(js)&&/Math\.max\(11,acc\+4\)/.test(java),'cerca: 11 m o precision+4 en los dos');
- assert(/Math\.max\(25,accuracy\+7\)/.test(js)&&/FUERA_M=25/.test(java),'lejos: 25 m o precision+7 en los dos');
+ assert(/Math\.max\(15,accuracy\+7\)/.test(js)&&/FUERA_M=15/.test(java),'lejos: 15 m o precision+7 en los dos');
  assert(/cercaDesdePag\)>=4000|-cercaDesdePag>=4000/.test(js)&&/cercaDesde/.test(java),'la franja devuelve en los dos');
 });
 // El segundo exacto (revision con GPT): a los 3,999 s sigue fuera y a los 4 s
@@ -1493,7 +1493,7 @@ test('el giro se oye despues del regreso, sin cortar el aviso ni perderse',()=>{
  let ahora=100000,cancelaciones=0;const dicho=[];
  globalThis.SpeechSynthesisUtterance=function(text){this.text=text};
  const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:false,giraNativo:false,gpsApagadoPorTi:false,audioModo:'voz',
-  alerted:true,onRouteSeen:true,farSince:0,notice(){},Date:{now:()=>ahora},
+  alerted:true,onRouteSeen:true,farSince:0,notice(){},getAudio(){return null},pitidos(){},Date:{now:()=>ahora},
   window:{speechSynthesis:{cancel(){cancelaciones++},speak(u){dicho.push(u.text)}}}});
  c.vuelvePagALaRuta();
  c.hablarGiro('Gira a la derecha');
@@ -1501,4 +1501,50 @@ test('el giro se oye despues del regreso, sin cortar el aviso ni perderse',()=>{
  assert.equal(cancelaciones,1,'el giro no cancela la voz del regreso');
  ahora+=5000;c.hablarGiro('Gira a la izquierda');
  assert.equal(cancelaciones,2,'fuera de la proteccion manda el giro actual');
+});
+
+function desvioDesdeCero(){
+ let now=1000;const avisos=[];
+ const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0,0],[0,1]],recording:true,navegaNativo:true,gpsApagadoPorTi:false,
+  alerted:false,onRouteSeen:false,farSince:0,$:()=>null,paintNavigationMetrics(){},notice:t=>avisos.push(t),Date:{now:()=>now}});
+ const paso=(d,acc=4,ms=1000)=>{now+=ms;c.updateOffRoute(d,acc)};
+ return {c,avisos,paso};
+}
+test('19 m con precisión de 4 m avisa también al empezar sin pisar antes el track',()=>{
+ const {c,paso,avisos}=desvioDesdeCero();for(let i=0;i<5;i++)paso(19);
+ assert.equal(c.alerted,true);assert.equal(avisos.filter(s=>s.startsWith('Fuera del recorrido')).length,1);
+});
+test('Cada nueva ruta rearma el aviso incluso si se carga cuando ya estás fuera',()=>{
+ const {c,paso,avisos}=desvioDesdeCero();for(let i=0;i<5;i++)paso(19);
+ c.resetOffRoute();for(let i=0;i<5;i++)paso(19);
+ assert.equal(c.alerted,true);assert.equal(avisos.filter(s=>s.startsWith('Fuera del recorrido')).length,2);
+});
+test('Una entrada estable en la franja de 13 m también avisa una vez',()=>{
+ const {c,paso}=desvioDesdeCero();for(let i=0;i<5;i++)paso(13);
+ assert.equal(c.onRouteSeen,true);assert.equal(c.alerted,false);
+});
+test('La incertidumbre y un salto aislado no son una salida confirmada',()=>{
+ const {c,paso}=desvioDesdeCero();paso(5);paso(19);paso(5);
+ for(let i=0;i<10;i++)paso(19,20);
+ assert.equal(c.alerted,false);
+});
+
+test('Un corte GPS o precisión inválida reinicia los cuatro segundos de confirmación',()=>{
+ for(const corte of ['sin señal','precisión inválida']){
+  const {c,paso}=desvioDesdeCero();paso(19);paso(19,4,3000);
+  if(corte==='sin señal')paso(19,4,30000);else{paso(19,NaN);paso(19);}
+  assert.equal(c.alerted,false,corte+' no confirma con tiempo sin muestras');
+  paso(19,4,3999);assert.equal(c.alerted,false);
+  paso(19,4,1);assert.equal(c.alerted,true);
+ }
+});
+
+test('Una precisión peor no anuncia regreso mientras sigues a 30 m del track',()=>{
+ const {c,paso,avisos}=desvioDesdeCero();for(let i=0;i<5;i++)paso(40);
+ assert.equal(c.alerted,true);
+ for(let i=0;i<8;i++)paso(30,30);
+ assert.equal(c.alerted,true,'incertidumbre no equivale a estar de vuelta');
+ assert.equal(avisos.filter(s=>s==='De nuevo en la ruta').length,0);
+ paso(5);assert.equal(c.alerted,false);
+ assert.equal(avisos.filter(s=>s==='De nuevo en la ruta').length,1);
 });
