@@ -7,7 +7,7 @@ import java.util.List;
 
 /** Route geometry shared by the native turn announcements and navigation metrics. */
 final class NavigationMetrics {
-    private static final double CLIMB_LENGTH = 200, CLIMB_GRADE = .10, CLIMB_NOTICE = 100;
+    private static final double CLIMB_LENGTH = 200, CLIMB_GRADE = .10, CLIMB_NOTICE = 0.5;
     // UNA SUBIDA ES UNA SUBIDA ENTERA, NO CADA VENTANA DE 200 METROS. La
     // deteccion mira si en los proximos 200 m se sube el 10%, y antes soltaba
     // un aviso cada vez que esa ventana VOLVIA a cumplirlo. En una subida
@@ -95,6 +95,7 @@ final class NavigationMetrics {
             int i = dir > 0 ? 0 : n - 1;
             while (i >= 0 && i < n) {
                 double from = distance[i], to = from + dir * CLIMB_LENGTH;
+                if (tramoEnBajada(from, dir)) { i += dir; continue; }
                 double grade = to < 0 || to > total() || !hasHeights(from, to)
                         ? Double.NaN : (height(to) - height(from)) / CLIMB_LENGTH;
                 double toLong = from + dir * CLIMB_LONG_LENGTH;
@@ -275,6 +276,13 @@ final class NavigationMetrics {
         }
     }
 
+    private boolean tramoEnBajada(double along, int dir) {
+        double siguiente = Math.max(0, Math.min(total(), along + dir * 25));
+        double inmediato = Math.max(0, Math.min(total(), along + dir * 10));
+        double actual = height(along);
+        return actual - height(inmediato) > .6 || actual - height(siguiente) > 1.5;
+    }
+
     Notice nextNotice(double along, int dir) {
         return nextNotice(along, dir, Double.NaN);
     }
@@ -295,12 +303,12 @@ final class NavigationMetrics {
             Event key = new Event(event.along, dir, event.notice, event.end);
             if (announced.contains(key)) continue;
             double ahead = (event.along - along) * dir;
+            if (!water && tramoEnBajada(along, dir)) continue;
             // Una subida tambien vale con el arranque recien pasado, hasta
             // CLIMB_LATE. El servicio no pide avisos mientras canta un giro
             // (upcomingTurn), y si la subida empezaba junto a un cruce sus
-            // 100 m de antes caian todos dentro de la ventana del giro: pasado
-            // el arranque ya no se volvia a ofrecer y no se decia nunca. Asi
-            // se dice en cuanto el giro queda atras. El agua no: decir «a -20
+            // primeros metros pueden caer dentro de la ventana del giro.
+            // Se dice en cuanto el giro queda atrás. El agua no: decir «a -20
             // metros» no tiene sentido y la fuente se avisa a 150.
             // Al volver al track, la voz cede primero al aviso de reincorporación.
             // Si el arranque estaba cerca entonces, aún se puede avisar hasta la cima.

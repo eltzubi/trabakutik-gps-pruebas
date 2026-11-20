@@ -273,6 +273,16 @@ public class NativeTurnsTest {
   // piden avisos, y si los 100 m de antes de la subida caian todos en la
   // ventana del giro, pasado el arranque ya no se ofrecia y no se decia nunca.
   // Ahora vale hasta 60 m despues del arranque; mas alla, no.
+  for(int dir:new int[]{1,-1}){
+   ArrayList<double[]> vaguada=new ArrayList<>();
+   for(int m=0;m<=2000;m+=10)vaguada.add(new double[]{m/111195.,0,100+Math.abs(m-1000)*.18});
+   NavigationMetrics mv=new NavigationMetrics();
+   mv.configure(vaguada,Collections.emptyList());
+   for(int m=200;m>=10;m-=10)
+    require(mv.nextNotice(1000-dir*m,dir)==null,"no anticipar una subida en la bajada, sentido "+dir);
+   require(mv.nextNotice(1000+dir*30,dir)!=null,"avisar al empezar a subir, sentido "+dir);
+   require(mv.nextNotice(1000+dir*40,dir)==null,"un aviso por subida");
+  }
   NavigationMetrics mt=new NavigationMetrics();
   mt.configure(puerto,Collections.emptyList());
   require(mt.nextNotice(40,1)!=null,"recien empezada la subida todavia se avisa");
