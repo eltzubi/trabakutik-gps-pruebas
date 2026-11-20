@@ -174,6 +174,20 @@ function colocaGiro(){
  m.style.setProperty('--turn-alto',Math.round(t.getBoundingClientRect().height+16)+'px');
 }
 if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('resize',()=>{try{colocaGiro()}catch(e){}});
+function siguienteManiobra(lista,actual,along,sentido){
+ let distancia=Infinity,siguiente;
+ for(const giro of lista){
+  if((giro.along-actual.along)*sentido<=0.5)continue;
+  const quedan=(giro.along-along)*sentido;
+  if(quedan>0.5&&quedan<distancia){distancia=quedan;siguiente=giro}
+ }
+ if(!siguiente||distancia<=30)return '';
+ const maniobra=siguiente.rotonda?'Siguiente rotonda':siguiente.cruce===false?'Siguiente curva':'Siguiente cruce';
+ const metros=Math.max(1,Math.round(distancia/10)*10);
+ if(metros<1000)return maniobra+' a '+metros+(metros===1?' metro':' metros');
+ const km=Math.round(metros/100)/10;
+ return maniobra+' a '+String(km).replace('.',',')+(km===1?' kilómetro':' kilómetros');
+}
 function junctionGuidance(p,accuracy,progress){
  const moviendose=sigueMoviendose(p,Date.now());
  // Los giros y el zoom de cruces esperan al inicio de la salida.
@@ -291,12 +305,9 @@ function junctionGuidance(p,accuracy,progress){
  $('turnAngle').textContent=turn.mantente?(turn.noRecto?'Lo de frente no es tu camino':'Dejas el camino que llevas')
    :'Giro de '+Math.round(grados)+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
- // Las tres luces se encienden segun te acercas, con los mismos cortes que
- // los pitidos: son lo mismo dicho de otra manera, para cuando no se oiga.
- const r1=Math.round(d1/5)*5,r2=Math.round(d2/5)*5;
- $('turnRot1').textContent=r1+' m';
- $('turnRot2').textContent=r2+' m';
- for(const [id,enc] of [['1',ahead<=d1],['2',ahead<=d2],['3',ahead<=dYa]]){
+ // La ficha muestra las dos fases que se anuncian.
+ $('turnRot1').textContent=Math.round(d1/5)*5+' m';
+ for(const [id,enc] of [['1',ahead<=d1],['3',ahead<=dYa]]){
   $('turnFase'+id).classList.toggle('on',enc);
   $('turnRot'+id).classList.toggle('on',enc);
  }
@@ -320,29 +331,18 @@ function junctionGuidance(p,accuracy,progress){
    setTimeout(()=>{autoZooming=false},300);
   }
  }
- // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a 50 m,
- // 2 a 10 m y 3 en el propio cruce. Los avisos siguen al cruce que esta
- // mostrando la ficha, no a todos los que caen en rango: con 20 parejas de
- // cruces a menos de 110 m, sonar por todos solaparia dos grupos de pitidos
- // y no sabrias de cual te hablan.
- // Los cortes salen de la velocidad (ver distanciasDeAviso). El tercero no
- // lleva suelo por abajo a proposito: con «ahead>=-3» el pitido del propio
- // cruce se perdia, porque el GPS da una lectura por segundo y a 20 km/h
- // esos 3 m duran medio segundo. Simulado de 4 a 50 km/h, con suelo fallaba
- // a 20, 25, 40, 45 y 50; sin el suena siempre. Queda acotado solo: arriba
- // se descarta el cruce pasados -12 m y la ficha se cierra a -9.
+ // Solo suena el cruce que está mostrando la ficha.
  if(turn.curvaNueva){
   if(ahead<=10&&!junctionWarned.has(j+':curva')){
    junctionWarned.add(j+':curva');
-   hablarGiro('Curva a la '+lado);
+   hablarGiro('Curva a la '+lado,siguienteManiobra(lista,turn,progress.along,sentidoRuta));
   }
   return;
  }
  let fase=null;
  if(ahead<=d1&&ahead>d2)fase='1';
- else if(ahead<=d2&&ahead>dYa)fase='2';
  else if(ahead<=dYa)fase='3';
- else if(ahead<=dv)fase='v';   // solo voz, y la primera de todas
+ else if(ahead>d1&&ahead<=dv)fase='v';   // solo voz, y la primera de todas
  if(fase&&!junctionWarned.has(j+':'+fase)){
   junctionWarned.add(j+':'+fase);
   // La página solo pita si Android no está dando los avisos nativos.
@@ -359,12 +359,13 @@ function junctionGuidance(p,accuracy,progress){
    if(fase==='1')junctionWarned.add(j+':v');
    hablarGiro(fase==='3'
      ?(giroTxt.charAt(0).toUpperCase()+giroTxt.slice(1)+' ahora')
-     :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt);
+     :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt,
+     fase==='3'?siguienteManiobra(lista,turn,progress.along,sentidoRuta):'');
   }
   if(fase!=='v')notice(fase==='3'
         ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
         :(turn.rotonda?'Rotonda':turn.mantente?(turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado:esCruce?'Gira a la '+lado:'Curva cerrada')
-         +' a '+Math.round((fase==='1'?d1:d2)/5)*5+' m · sigue la línea azul');
+         +' a '+Math.round(d1/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
 }
@@ -897,7 +898,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={marcaAvisoFalta,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={siguienteManiobra,marcaAvisoFalta,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});

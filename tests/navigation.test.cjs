@@ -1554,3 +1554,35 @@ test('Una precisión peor no anuncia regreso mientras sigues a 30 m del track',(
  paso(5);assert.equal(c.alerted,false);
  assert.equal(avisos.filter(s=>s==='De nuevo en la ruta').length,1);
 });
+
+test('La voz anuncia la distancia por el track a la siguiente maniobra',()=>{
+ const {siguienteManiobra}=pieza('09-navegacion.js',{window:{}},arranque09());
+ const curva={along:100,cruce:false},cruce={along:2100},rotonda={along:2350,rotonda:true};
+ const lista=[curva,cruce,rotonda];
+ assert.equal(siguienteManiobra(lista,curva,100,1),'Siguiente cruce a 2 kilómetros');
+ assert.equal(siguienteManiobra(lista,cruce,2100,1),'Siguiente rotonda a 250 metros');
+ assert.equal(siguienteManiobra(lista,cruce,2100,-1),'Siguiente curva a 2 kilómetros');
+ assert.equal(siguienteManiobra(lista,rotonda,2350,1),'');
+});
+
+test('La distancia se dice 2,5 segundos después de acabar la voz y cede ante otro aviso',()=>{
+ const frases=[],relojes=[];
+ const c=pieza('07-servicio.js',{
+  gpsApagadoPorTi:false,audioModo:'voz',giraNativo:false,alerted:false,
+  routePoints:[[0,0],[0,1]],mode:'nav',recording:true,sentidoRuta:1,avisoRutaHastaPag:0,
+  SpeechSynthesisUtterance:function(texto){this.text=texto},
+  window:{speechSynthesis:{cancel(){},speak(u){frases.push(u)}}},
+  setTimeout(fn,ms){relojes.push({fn,ms})}
+ });
+ c.hablaPagina('Gira ahora','Siguiente cruce');
+ assert.equal(frases.length,1);
+ frases[0].onend();
+ assert.equal(relojes[0].ms,2500);
+ relojes.shift().fn();
+ assert.equal(frases[1].text,'Siguiente cruce');
+ c.hablaPagina('Curva izquierda','Siguiente curva');
+ frases[2].onend();
+ c.hablaPagina('Curva derecha');
+ relojes.shift().fn();
+ assert.equal(frases.length,4);
+});

@@ -176,6 +176,15 @@ public class TrackingService extends Service implements LocationListener {
   int cola=!estadoRuta&&SystemClock.elapsedRealtime()<avisoRutaHasta?TextToSpeech.QUEUE_ADD:TextToSpeech.QUEUE_FLUSH;
   try{voz.speak(texto,cola,null,"trabakutik");}catch(Exception ignored){}
  }
+ void hablaGiro(String instruccion,String siguiente){
+  habla(instruccion);
+  if(siguiente.isEmpty()||!"voz".equals(modoAudio())||!vozLista||voz==null)return;
+  try{
+   int cola=TextToSpeech.QUEUE_ADD;
+   if(voz.playSilentUtterance(2500,cola,"pausa-siguiente-giro")==TextToSpeech.SUCCESS)
+    voz.speak(siguiente,cola,null,"siguiente-giro");
+  }catch(Exception ignored){}
+ }
  // CALLAR AHORA MISMO, no «a partir de ahora». Antes el modo se miraba solo
  // al empezar a hablar o a pitar, asi que al poner silencio la frase que ya
  // estaba sonando terminaba de decirse y los pitidos de esa tanda seguian
@@ -397,6 +406,26 @@ public class TrackingService extends Service implements LocationListener {
   int d=(int)turns.get(sig)[1],lado=usaReves?d:d*sentido;
   if(lado==0)return "";
   return " y enseguida a la "+(lado<0?"izquierda":"derecha");
+ }
+ String siguienteManiobra(ArrayList<double[]> turns,int actual,boolean usaReves,double along){
+  double origen=metrics.distance[(int)turns.get(actual)[0]];
+  double distancia=Double.POSITIVE_INFINITY;
+  int tipoSiguiente=0;
+  for(double[] giro:turns){
+   int tipo=giro.length<3?1:(int)giro[2];
+   if(tipo==5&&giro.length>4&&giro[4]==1&&(giro[3]==0||(sentido<0&&!usaReves)))continue;
+   double progreso=metrics.distance[(int)giro[0]];
+   if((progreso-origen)*sentido<=0.5)continue;
+   double quedan=(progreso-along)*sentido;
+   if(quedan>0.5&&quedan<distancia){distancia=quedan;tipoSiguiente=tipo;}
+  }
+  if(!Double.isFinite(distancia)||distancia<=SEGUIDO_M)return "";
+  String maniobra=tipoSiguiente==5?"Siguiente rotonda":tipoSiguiente==0||tipoSiguiente==3?"Siguiente curva":"Siguiente cruce";
+  long metros=Math.max(1,Math.round(distancia/10)*10);
+  if(metros<1000)return maniobra+" a "+metros+(metros==1?" metro":" metros");
+  double km=Math.round(metros/100.0)/10.0;
+  String cantidad=km==Math.floor(km)?Long.toString((long)km):Double.toString(km).replace('.',',');
+  return maniobra+" a "+cantidad+(km==1?" kilómetro":" kilómetros");
  }
  static final String[] ORDINALES={"","primera","segunda","tercera","cuarta","quinta","sexta","séptima","octava"};
  String fraseGiro(int lado,int tipo,String fase,double ahead,int salida){
@@ -1088,25 +1117,16 @@ public class TrackingService extends Service implements LocationListener {
      if(tipo==5)instruction=salida>=1&&salida<ORDINALES.length?"Rotonda, "+salida+".ª salida"
       :lado==0?"Rotonda, da la vuelta":"Rotonda "+(lado<0?"izqda.":"dcha.");
      next=instruction+" en "+Math.max(0,Math.round(ahead/5)*5)+" m";
-     // Tres avisos por cruce y cada fase suena una sola vez: 1 pitido a
-     // 50 m, 2 a 10 m y 3 en el propio cruce. El numero es el dato, que
-     // con la pantalla apagada es lo unico que hay. Cabe en la ventana de
-     // arriba porque llega hasta 55 m.
-     // El tramo del propio cruce va sin suelo por abajo: con -3 m el pitido
-     // se perdia a la mitad de las velocidades, porque a 20 km/h esos 3 m
-     // duran medio segundo y el GPS da una lectura por segundo. Lo acota ya
-     // la ventana de fuera, que empieza en -7 m.
-     // Fase "v": solo voz, y la primera de todas. Los pitidos siguen
-     // exactamente donde estaban, que para eso van bien.
+     // La voz puede adelantarse al primer pitido. El aviso intermedio se omite.
      boolean curvaNueva=giro.length>5&&giro[5]==1;
-     String fase=curvaNueva?null:ahead<=d1&&ahead>d2?"1":ahead<=d2&&ahead>dYa?"2":ahead<=dYa?"3"
+     String fase=curvaNueva?null:ahead<=dYa?"3":ahead<=d2?null:ahead<=d1?"1"
        :ahead<=dv?"v":null;
      // Una rotonda que se cruza RECTO solo se avisa con su numero. Yendo al
      // reves con la lista de ida el numero no vale, y sin el diria «sal a la
      // izquierda» en una recta: entonces, nada (revision con GPT).
      boolean rectaSinNumero=tipo==5&&salida==0&&giro.length>4&&giro[4]==1;
      if(curvaNueva&&ahead<=10&&warnedTurns.add((usaReves?"r":"")+mejor+":curva"))
-      habla(lado<0?"Curva a la izquierda":"Curva a la derecha");
+      hablaGiro(lado<0?"Curva a la izquierda":"Curva a la derecha",siguienteManiobra(turns,mejor,usaReves,along));
      if(fase!=null&&!rectaSinNumero){
       String clave=(usaReves?"r":"")+mejor+":"+fase;
       if(!warnedTurns.contains(clave)){
@@ -1114,13 +1134,14 @@ public class TrackingService extends Service implements LocationListener {
        // Solo los giros y cruces usan el máximo del tono. El volumen multimedia manda.
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300,ToneGenerator.TONE_PROP_BEEP,100);
        if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add((usaReves?"r":"")+mejor+":v")))
-        habla(fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
+        if("3".equals(fase))hablaGiro(fraseGiro(lado,tipo,fase,ahead,salida),siguienteManiobra(turns,mejor,usaReves,along));
+        else habla(fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
       }
      }
   }
   if(!next.equals(upcomingTurn)){upcomingTurn=next;updateNotice();}
  }
- // Un grupo de n pitidos: 1 = cruce a 50 m, 2 = a 10 m, 3 = en el cruce,
+ // Un grupo de n pitidos: 1 = aproximación, 3 = en el cruce,
  // 4 = fuera de ruta. Los cuatro de fuera de ruta van mas seguidos (180 ms)
  // que los de giro (300 ms), que tres y cuatro al mismo ritmo no se
  // distinguen de oido.

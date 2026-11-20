@@ -37,7 +37,8 @@ public class NativeTurnsTest {
  void updateNotice(){}double posActual=Double.NaN,tresEn=Double.NaN;void pitidos(int n,int ms){beeps++;if(n==3&&Double.isNaN(tresEn))tresEn=posActual;}void pitidos(int n,int ms,int t){beeps++;}
  void pitidos(int n,int ms,int t,int volumen){require(t==ToneGenerator.TONE_PROP_BEEP&&volumen==100,"giro a volumen máximo");pitidos(n,ms);}
  ArrayList<String> dicho=new ArrayList<>();
- void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s.split(" ")[0]));}catch(NumberFormatException e){}}
+ void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s.split("[ .]")[0]));}catch(NumberFormatException e){}}
+ void hablaGiro(String s,String siguiente){habla(s);if(!siguiente.isEmpty())habla(siguiente);}
  // Lo mismo que hace onLocationChanged con cada posicion, en el mismo orden.
  void posicion(Location l){posicion(l,true);}
  void posicion(Location l,boolean decide){
@@ -65,6 +66,7 @@ public class NativeTurnsTest {
  ' static double coste(double ahead)',
  ' boolean confirmaMarchaCurva(double along,boolean fiable)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
+ ' String siguienteManiobra(ArrayList<double[]> turns,int actual,boolean usaReves,double along)',
  ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' double avisoYa()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
@@ -155,6 +157,19 @@ public class NativeTurnsTest {
   require(c.giroSeguido(c.turns,1,false).equals(" y enseguida a la derecha"),"al reves, el de atras con el lado cambiado: '"+c.giroSeguido(c.turns,1,false)+"'");
   require(c.giroSeguido(c.turns,0,false).isEmpty(),"al reves, el primero ya es el ultimo");
   require(c.giroSeguido(c.turns,1,true).equals(" y enseguida a la izquierda"),"con la lista de vuelta, el lado ya viene puesto");
+  c.sentido=1;
+  require(c.siguienteManiobra(c.turns,1,false,120).equals("Siguiente cruce a 80 metros"),"distancia al siguiente cruce");
+  require(c.siguienteManiobra(c.turns,2,false,200).isEmpty(),"sin maniobra después de la última");
+  c.sentido=-1;
+  require(c.siguienteManiobra(c.turns,2,false,200).equals("Siguiente cruce a 80 metros"),"distancia al volver");
+  NativeTurnsTest fases=setup();
+  fases.checkTurns(new Location(30));
+  fases.checkTurns(new Location(83));
+  require(fases.beeps==1,"sin pitido intermedio");
+  fases.checkTurns(new Location(95));
+  fases.checkTurns(new Location(95));
+  require(fases.beeps==2,"dos avisos sonoros, sin repetición");
+  require(fases.dicho.stream().filter(d->d.contains("Siguiente cruce")).count()==1,"la distancia solo se dice con el ahora");
   // Andando de verdad: el aviso del primero lleva el segundo.
   NativeTurnsTest w=new NativeTurnsTest();for(int m=0;m<=300;m+=10)w.route.add(new double[]{m/111195.,0});
   w.turns.add(new double[]{10,-1,1});w.turns.add(new double[]{12,1,1});

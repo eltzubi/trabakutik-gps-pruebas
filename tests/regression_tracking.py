@@ -79,7 +79,7 @@ public class TrackingRegression {
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double velocidadSuave=1.2;int beeps=0;
  double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}double avisoYa(){return 4;}
  static class ToneGenerator{static final int TONE_PROP_BEEP=1;}
- void updateNotice(){}void pitidos(int n,int ms){beeps++;}void pitidos(int n,int ms,int tono,int volumen){pitidos(n,ms);}void habla(String s){}
+ void updateNotice(){}void pitidos(int n,int ms){beeps++;}void pitidos(int n,int ms,int tono,int volumen){pitidos(n,ms);}void habla(String s){}void hablaGiro(String s,String siguiente){}
  NavigationMetrics metrics=new NavigationMetrics();
  void checkTurns(Location l){
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
@@ -89,7 +89,7 @@ public class TrackingRegression {
  String fraseGiro(int lado,int tipo,String f,double a){return "";}
  String fraseGiro(int lado,int tipo,String f,double a,int s){return "";}
  static void require(boolean condition,String message){if(!condition)throw new AssertionError(message);}
-'''+br+method(' static double coste(double ahead)')+method(' boolean confirmaMarchaCurva(double along,boolean fiable)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+method(' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)')+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+constant+method(' boolean esAntigua(Location l)')+sos+method(' static boolean cortaTrack(boolean forzar,boolean hayAnterior,long huecoMs,double salto)')+re.search(r' static final double VEL_IMPOSIBLE=[^;]+;',src).group(0)+'''
+'''+br+method(' static double coste(double ahead)')+method(' boolean confirmaMarchaCurva(double along,boolean fiable)')+method(' void checkTurns(Location l,NavigationMetrics.Projection position)')+method(' String siguienteManiobra(ArrayList<double[]> turns,int actual,boolean usaReves,double along)')+method(' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)')+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+constant+method(' boolean esAntigua(Location l)')+sos+method(' static boolean cortaTrack(boolean forzar,boolean hayAnterior,long huecoMs,double salto)')+re.search(r' static final double VEL_IMPOSIBLE=[^;]+;',src).group(0)+'''
  public static void main(String[] args)throws Exception{
  TrackingRegression p=new TrackingRegression();p.dirBase=new File(args[0]);
  long bucket=System.currentTimeMillis()/1000;

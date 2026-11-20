@@ -521,7 +521,7 @@ function pintaModoAudio(){
   silencio:altavoz+'<path d="m16 9 6 6m0-6-6 6"/>'};
  b.innerHTML='<svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+dibujos[audioModo]+'</svg><small class="audio-label" aria-hidden="true">'+({voz:'Voz',pitidos:'Pitidos',silencio:'Silencio'})[audioModo]+'</small>';
 }
-function hablarGiro(texto){if(!giraNativo)hablaPagina(texto)}
+function hablarGiro(texto,siguiente=''){if(!giraNativo)hablaPagina(texto,siguiente)}
 function hablar(texto){
  // Si navega el servicio, habla el: tiene TextToSpeech y sigue sonando con la
  // pantalla apagada, que es cuando hace falta. La pagina se duerme ahi, asi
@@ -529,11 +529,24 @@ function hablar(texto){
  if(navegaNativo)return;
  hablaPagina(texto);
 }
-function hablaPagina(texto){
+let turnoVozPagina=0;
+function hablaPagina(texto,siguiente=''){
  if(gpsApagadoPorTi)return;
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
  const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto);
- try{if(estadoRuta||Date.now()>=avisoRutaHastaPag)window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
+ const turno=++turnoVozPagina;
+ try{
+  if(estadoRuta||Date.now()>=avisoRutaHastaPag)window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(texto);u.lang='es-ES';u.rate=1.05;
+  if(siguiente){
+   const ruta=routePoints,direccion=sentidoRuta;
+   u.onend=()=>setTimeout(()=>{
+    if(turno===turnoVozPagina&&ruta===routePoints&&direccion===sentidoRuta&&guiaIniciada()&&!alerted&&!giraNativo)
+     hablaPagina(siguiente);
+   },2500);
+  }
+  window.speechSynthesis.speak(u);
+ }catch(e){}
 }
 // QUEDARSE SIN SATELITES SE DICE EN ALTO, no solo escrito en la barra de
 // abajo. Con el movil en el bolsillo no te enterabas de que habias dejado de
