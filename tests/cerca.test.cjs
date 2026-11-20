@@ -132,3 +132,15 @@ test('Con las rutas de verdad del autor, en Intxorta ya no sale una sola',()=>{
  // Y la primera es la que mas cerca le pasa.
  assert(c.distanciaCerca(salen[0])<=c.distanciaCerca(salen[salen.length-1]));
 });
+
+test('Cerca de mí filtra por actividad antes de limitar a veinte rutas',()=>{
+ const p=[43.1,-2.5];
+ const rutas=Array.from({length:21},()=>({...recta(...p,1000),color:'violet'}));
+ rutas.push({...recta(43.101,-2.5,1000),color:'teal',href:'bici.html'});
+ rutas.push({...recta(43.102,-2.5,1000),color:'teal',href:'urregarai.html'});
+ const c=cerca(rutas);
+ assert.equal(c.desde(p).length,20);
+ assert.deepEqual(Array.from(c.indicesCercanos('bici')),[21,22]);
+ assert(c.coincideActividad(rutas[22],'senderismo'));
+ assert(!c.coincideActividad(rutas[21],'senderismo'));
+});

@@ -33,12 +33,20 @@ function dentroDeCerca(i){
  return !!nearbyOrigin&&t?.points?.length>1&&
   (dist(nearbyOrigin,t.points[0])<=nearbyRadius||closestMeters(nearbyOrigin,t.points)<=nearbyPaso);
 }
-function recalculaCerca(){
- nearbyCercanas=new Set();
- if(!nearbyOnly||!nearbyOrigin||!tracks.length)return;
- const dentro=tracks.map((t,i)=>i).filter(dentroDeCerca);
+// Las fichas de estas rutas figuran en las dos actividades de Trabakutik.
+const rutasMixtas=new Set(['muniozguren.html','iruzubieta.html','urregarai.html']);
+function coincideActividad(ruta,actividad){
+ return actividad==='all'||rutasMixtas.has(ruta.href)||
+  ruta.color===(actividad==='bici'?'teal':'violet');
+}
+function indicesCercanos(actividad='all'){
+ if(!nearbyOnly||!nearbyOrigin||!tracks.length)return [];
+ const dentro=tracks.map((t,i)=>i).filter(i=>coincideActividad(tracks[i],actividad)&&dentroDeCerca(i));
  dentro.sort((a,b)=>distanciaCerca(a)-distanciaCerca(b)||routeLength(a)-routeLength(b));
- for(const i of dentro.slice(0,nearbyMaximo))nearbyCercanas.add(i);
+ return dentro.slice(0,nearbyMaximo);
+}
+function recalculaCerca(){
+ nearbyCercanas=new Set(indicesCercanos());
  nearbyCount=nearbyCercanas.size;
 }
 function nearTrack(i){return !nearbyOnly||nearbyCercanas.has(i)}
@@ -287,7 +295,7 @@ function selectRoute(i){
   loadDetailedSelected(i,request);
  },60);
 }
-let routeListScope='all';
+let routeListScope='all',actividadRutas='all';
 function syncScopeMap(){
  nearbyOnly=routeListScope==='near';
  if(nearbyOnly)recalculaCerca();else{nearbyCercanas=new Set();nearbyCount=0}
@@ -299,17 +307,15 @@ function syncScopeMap(){
 function showRoutes(){
  const q=$('search').value.toLowerCase().trim(),list=$('items');list.replaceChildren();
  document.querySelectorAll('#routeListScope button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scope===routeListScope)));
+ $('routeListActivity').classList.toggle('hidden',routeListScope==='current');
+ document.querySelectorAll('#routeListActivity button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.activity===actividadRutas)));
  if(routeListScope==='near'&&!nearbyOrigin){list.textContent='Buscando tu posición GPS…';return}
  if(routeListScope==='current'&&chosen<0){list.textContent=routePoints.length>1?'Ruta propia activa: '+$('mapTitle').textContent:'No hay una ruta activa';return}
  let n=0;
- // La misma regla y el mismo orden que en el mapa, de un solo sitio: antes
- // el listado llevaba su propia copia y ordenaba solo por la salida, asi que
- // una ruta que te pasa por delante caia al final de la lista.
- tracks.map((t,i)=>({t,i})).sort((a,b)=>routeListScope==='near'&&nearbyOrigin
-   ?(distanciaCerca(a.i)-distanciaCerca(b.i)||routeLength(a.i)-routeLength(b.i))
-   :a.i-b.i).forEach(({t,i})=>{
-  if(routeListScope==='near'&&!nearbyCercanas.has(i))return;
-  if(routeListScope==='current'&&i!==chosen)return;
+ const indices=routeListScope==='near'?indicesCercanos(actividadRutas)
+  :routeListScope==='current'?[chosen]:tracks.map((t,i)=>i).filter(i=>coincideActividad(tracks[i],actividadRutas));
+ indices.forEach(i=>{
+  const t=tracks[i];
   if(!sinTildes(toName(t)).includes(sinTildes(q)))return;
   n++;const b=document.createElement('button');b.className='routeitem';
   // Titulo arriba y, debajo, los kilometros y el desnivel: eligiendo ruta en
@@ -330,6 +336,10 @@ document.querySelectorAll('#routeListScope button').forEach(b=>b.onclick=()=>{
   const cached=position||quickNativePosition();
   if(cached){applyNearbyPosition(cached)}else if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{if(routeListScope!=='near')return;position=[p.coords.latitude,p.coords.longitude];applyNearbyPosition(position);syncScopeMap();showRoutes()},warnGps,{enableHighAccuracy:true,timeout:12000,maximumAge:5000});else warnGps();
  }
+ showRoutes();
+});
+document.querySelectorAll('#routeListActivity button').forEach(b=>b.onclick=()=>{
+ actividadRutas=b.dataset.activity;
  showRoutes();
 });
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
