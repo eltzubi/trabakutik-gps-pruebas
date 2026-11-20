@@ -335,7 +335,7 @@ function junctionGuidance(p,accuracy,progress){
  if(turn.curvaNueva){
   if(ahead<=10&&!junctionWarned.has(j+':curva')){
    junctionWarned.add(j+':curva');
-   hablarGiro('Curva a la '+lado,siguienteManiobra(lista,turn,progress.along,sentidoRuta));
+   hablarGiro('Sigue por este camino, que curva a la '+lado,siguienteManiobra(lista,turn,progress.along,sentidoRuta));
   }
   return;
  }
@@ -353,12 +353,13 @@ function junctionGuidance(p,accuracy,progress){
     ?(turn.retorno?'da la vuelta'
      :'curva de herradura a la '+ladoHerradura)
     :turn.mantente?(turn.noRecto?'sigue por la ':'sigue recto por la ')+lado
-    :(esCruce?'gira a la '+lado:'curva cerrada a la '+lado);
+    :turn.sigue?'sigue por este camino, que curva a la '+lado
+    :(esCruce?'gira a la '+lado+' en el cruce':'curva cerrada a la '+lado);
   // Si la primera lectura entra en fase 1, aún queda margen para la voz.
   if(fase==='v'||fase==='3'||(fase==='1'&&!junctionWarned.has(j+':v'))){
    if(fase==='1')junctionWarned.add(j+':v');
    hablarGiro(fase==='3'
-     ?(giroTxt.charAt(0).toUpperCase()+giroTxt.slice(1)+' ahora')
+     ?(giroTxt.charAt(0).toUpperCase()+giroTxt.slice(1)+(turn.sigue||turn.deFrente?'':' ahora'))
      :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt,
      fase==='3'?siguienteManiobra(lista,turn,progress.along,sentidoRuta):'');
   }

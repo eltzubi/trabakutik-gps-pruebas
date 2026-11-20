@@ -458,12 +458,8 @@ public class TrackingService extends Service implements LocationListener {
   }
   if(tipo==7)return "3".equals(fase)?"Sigue de frente":"En "+Math.max(5,Math.round(ahead/10)*10)+" metros, sigue de frente";
   if(tipo==6&&lado!=0){
-   // Sigues por la misma via y tuerce donde sale otra de frente: no es
-   // «cruce a la izquierda», que suena a dejarla (el autor, 17 nov 2026).
-   // Desde el mismo dia se dice «gira»: las frases dicen que hacer, no que
-   // hay (lo pidio el autor). La clase de via se sigue guardando.
-   String h="gira a la "+(lado<0?"izquierda":"derecha");
-   if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1)+" ahora";
+   String h="sigue por este camino, que curva a la "+(lado<0?"izquierda":"derecha");
+   if("3".equals(fase))return Character.toUpperCase(h.charAt(0))+h.substring(1);
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+h;
   }
   if((tipo==3||tipo==4)&&lado!=0){
@@ -485,11 +481,7 @@ public class TrackingService extends Service implements LocationListener {
     :(lado<0?"sigue recto por la izquierda":"sigue recto por la derecha"))
    :lado==0
    ?"da la vuelta"
-   // «GIRA», NO «CRUCE» (17 nov 2026). El autor: «se quita la palabra cruce
-   // y se deja en todo gira a la derecha, gira a la izquierda o sigue recto;
-   // asi no hay equivocacion». Donde la pagina ve un cruce de verdad se dice
-   // que hacer; en una curva suelta, «curva cerrada».
-   :esCruce?(lado<0?"gira a la izquierda":"gira a la derecha")
+   :esCruce?(lado<0?"gira a la izquierda en el cruce":"gira a la derecha en el cruce")
            :(lado<0?"curva cerrada a la izquierda":"curva cerrada a la derecha");
   if("3".equals(fase))return Character.toUpperCase(hacia.charAt(0))+hacia.substring(1)+" ahora";
   // La distancia de VERDAD, no el umbral: decia «en 200 metros» estando a 170.
@@ -1129,7 +1121,7 @@ public class TrackingService extends Service implements LocationListener {
      // izquierda» en una recta: entonces, nada (revision con GPT).
      boolean rectaSinNumero=tipo==5&&salida==0&&giro.length>4&&giro[4]==1;
      if(curvaNueva&&ahead<=10&&warnedTurns.add((usaReves?"r":"")+mejor+":curva"))
-      hablaGiro(lado<0?"Curva a la izquierda":"Curva a la derecha",siguienteManiobra(turns,mejor,usaReves,along));
+      hablaGiro("Sigue por este camino, que curva a la "+(lado<0?"izquierda":"derecha"),siguienteManiobra(turns,mejor,usaReves,along));
      if(fase!=null&&!rectaSinNumero){
       String clave=(usaReves?"r":"")+mejor+":"+fase;
       if(!warnedTurns.contains(clave)){

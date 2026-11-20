@@ -1089,7 +1089,7 @@ test('Al revés se usan los avisos calculados al revés, con su lado, sin darles
  for(const along of [85,87,91])c.junctionGuidance(point(0,0),5,{along,distance:1});
  assert.deepEqual(voz,[],'espera a confirmar 12 metros de avance');
  for(const along of [98,99,102,111,114,119])c.junctionGuidance(point(0,0),5,{along,distance:1});
- assert.deepEqual(voz,['Curva a la izquierda','Curva a la derecha']);
+ assert.deepEqual(voz,['Sigue por este camino, que curva a la izquierda','Sigue por este camino, que curva a la derecha']);
 });
 test('la flecha del mapa apunta en el sentido en que se llega al cruce',()=>{
  const R=Math.PI/180;

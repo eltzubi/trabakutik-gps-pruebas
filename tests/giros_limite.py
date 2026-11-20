@@ -77,7 +77,7 @@ public class GirosLimiteTest {
   String enCruce=t.fraseGiro(1,4,"1",48),suelta=t.fraseGiro(-1,3,"3",0),normal=t.fraseGiro(1,1,"1",50);
   require(enCruce.equals("En 50 metros, curva de herradura a la derecha"),enCruce);
   require(suelta.equals("Curva de herradura a la izquierda ahora"),suelta);
-  require(normal.equals("En 50 metros, gira a la derecha"),normal);
+  require(normal.equals("En 50 metros, gira a la derecha en el cruce"),normal);
   require(!enCruce.contains("da la vuelta")&&!suelta.contains("da la vuelta"),"nunca «da la vuelta»");
   // 5. Sin lado solo llega una ida y vuelta por el mismo camino: ahi si.
   String retorno=t.fraseGiro(0,0,"1",50);
@@ -118,9 +118,9 @@ public class GirosLimiteTest {
   require((int)t.turns.get(2)[2]==5,"una rotonda sigue siendo rotonda");
   require((int)t.turns.get(3)[2]==1,"un sg raro no cambia nada");
   String via=t.fraseGiro(-1,6,"1",48,1),camino=t.fraseGiro(1,6,"3",0,3),calle=t.fraseGiro(1,6,"1",50,2);
-  require(via.equals("En 50 metros, gira a la izquierda"),via);
-  require(camino.equals("Gira a la derecha ahora"),camino);
-  require(calle.equals("En 50 metros, gira a la derecha"),calle);
+  require(via.equals("En 50 metros, sigue por este camino, que curva a la izquierda"),via);
+  require(camino.equals("Sigue por este camino, que curva a la derecha"),camino);
+  require(calle.equals("En 50 metros, sigue por este camino, que curva a la derecha"),calle);
   // 9. «Sigue por la izquierda», sin «recto», cuando la tuya no es la mas
   //    recta (nr, 18 nov 2026). Sin nr, como siempre.
   t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":-1,\"t\":2,\"nr\":1},{\"i\":20,\"dir\":1,\"t\":2},{\"i\":30,\"dir\":1,\"t\":1,\"nr\":1}]");t.loadTurns();
