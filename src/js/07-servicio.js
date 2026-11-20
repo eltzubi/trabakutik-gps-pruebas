@@ -476,7 +476,7 @@ function avisoSalida(posicion,inicio){
  const metros=Math.round(Math.hypot(norte,este)/10)*10;
  const rumbos=['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'];
  const rumbo=(Math.round(Math.atan2(este,norte)*4/Math.PI)+8)%8;
- return 'La salida de la ruta está a '+metros+' metros en línea recta hacia el '+rumbos[rumbo];
+ return 'Estás fuera de ruta. A '+metros+' metros hacia el '+rumbos[rumbo]+' está la salida de la ruta';
 }
 function updateOffRoute(d,accuracy,posicion){
  if(!guiaIniciada()){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
@@ -509,7 +509,7 @@ function updateOffRoute(d,accuracy,posicion){
  cercaDesdePag=0;
  if(!farSince){farSince=now;return;}
  if(!alerted&&now-farSince>=4000){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,routePoints[0]):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
- else if(alerted&&!recordadoPag&&d>=50&&now-fueraDesdePag>=4000){recordadoPag=true;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
+ else if(onRouteSeen&&alerted&&!recordadoPag&&d>=50&&now-fueraDesdePag>=4000){recordadoPag=true;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
 let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0,avisoRutaHastaPag=0,ultimoDesvioPag=0;
 function vuelvePagALaRuta(){entradaAvisada=true;onRouteSeen=true;avisoRutaHastaPag=Date.now()+4000;alerted=false;farSince=0;cercaDesdePag=0;fueraDesdePag=0;recordadoPag=false;if(!navegaNativo){getAudio();pitidos(2,.14)}hablar('De nuevo en la ruta');notice('De nuevo en la ruta')}
@@ -541,7 +541,7 @@ let turnoVozPagina=0;
 function hablaPagina(texto,siguiente=''){
  if(gpsApagadoPorTi)return;
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
- const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto)||texto.startsWith('La salida de la ruta está a ');
+ const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto)||texto.endsWith(' está la salida de la ruta');
  const turno=++turnoVozPagina;
  try{
   if(estadoRuta||Date.now()>=avisoRutaHastaPag)window.speechSynthesis.cancel();

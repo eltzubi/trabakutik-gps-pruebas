@@ -141,7 +141,7 @@ if($('tripRuta')){
  $('tripRuta').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abre()}};
 }
 function trazoRutaActiva(puntos){
- return L.featureGroup([[16,'#f5f8fa'],[13,'#071822'],[8,'#5bebff']].map(([weight,color])=>
+ return L.featureGroup([[13,'#f5f8fa'],[10,'#071822'],[6.5,'#5bebff']].map(([weight,color])=>
   L.polyline(puntos,{color,weight,opacity:1,interactive:false,lineCap:'round',lineJoin:'round'})));
 }
 function getTrackLayer(i){

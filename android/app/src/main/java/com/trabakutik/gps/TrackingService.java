@@ -168,7 +168,7 @@ public class TrackingService extends Service implements LocationListener {
   if(!"voz".equals(modoAudio())||texto==null)return;
   // Normalmente manda el aviso nuevo. Tras entrar, salir o volver, el giro
   // se encola: no corta el estado de ruta ni se pierde la indicacion.
-  boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido")||texto.startsWith("La salida de la ruta está a ");
+  boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido")||texto.endsWith(" está la salida de la ruta");
   // El primer fix puede llegar antes de que Android prepare la voz.
   // Solo se conserva el ultimo estado: nunca se reproduce una salida vieja.
   if(!vozLista||voz==null){if(estadoRuta)avisoRutaPendiente=texto;return;}
@@ -1294,7 +1294,7 @@ public class TrackingService extends Service implements LocationListener {
   long metros=Math.round(Math.hypot(norte,este)/10)*10;
   String[] rumbos={"norte","noreste","este","sureste","sur","suroeste","oeste","noroeste"};
   int rumbo=(int)Math.floorMod(Math.round(Math.toDegrees(Math.atan2(este,norte))/45),8);
-  return "La salida de la ruta está a "+metros+" metros en línea recta hacia el "+rumbos[rumbo];
+  return "Estás fuera de ruta. A "+metros+" metros hacia el "+rumbos[rumbo]+" está la salida de la ruta";
  }
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
@@ -1333,7 +1333,7 @@ public class TrackingService extends Service implements LocationListener {
    offRoute=true;fueraDesde=now;recordado=false;protegeAvisoRuta();updateNotice();pitidos(4,180);habla(routeReached?"Atención, fuera del recorrido":avisoSalida(l));
   }
   // Un recordatorio por salida, a 50 m del track, dejando terminar la voz.
-  else if(offRoute&&!recordado&&d>=RECUERDA_M&&now-fueraDesde>=RECUERDA_MS){
+  else if(routeReached&&offRoute&&!recordado&&d>=RECUERDA_M&&now-fueraDesde>=RECUERDA_MS){
    recordado=true;protegeAvisoRuta();pitidos(4,180);habla("Sigues fuera del recorrido");
   }
  }

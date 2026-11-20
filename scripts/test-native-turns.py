@@ -340,7 +340,11 @@ public class NativeTurnsTest {
  }
  static void entradaDeRuta(){
   NativeTurnsTest c=setup();
-  require(c.avisoSalida(new Location(-400)).equals("La salida de la ruta está a 400 metros en línea recta hacia el norte"),"distancia y rumbo hacia el inicio");
+  require(c.avisoSalida(new Location(-400)).equals("Estás fuera de ruta. A 400 metros hacia el norte está la salida de la ruta"),"distancia y rumbo hacia el inicio");
+  require(c.avisoSalida(new Location(400)).equals("Estás fuera de ruta. A 400 metros hacia el sur está la salida de la ruta"),"rumbo al sur");
+  for(int k=0;k<12;k++){c.checkDeviation(new Location(-400));SystemClock.reloj+=1000;}
+  require(c.dicho.equals(Arrays.asList("Estás fuera de ruta. A 400 metros hacia el norte está la salida de la ruta")),"no interrumpir la salida: "+c.dicho);
+  c=setup();
   c.checkDeviation(new Location(50,80,5));
   require(c.dicho.isEmpty(),"Estar fuera al empezar no anuncia entrada");
   c.checkDeviation(new Location(50,0,5));
@@ -436,7 +440,7 @@ public class NativeTurnsTest {
   // La captura del autor: empezar ya a 19 m, precision 4 m, sin entrada previa.
   c=setup();SystemClock.reloj=1000;
   for(int k=0;k<5;k++){c.checkDeviation(new Location(250,19,4));SystemClock.reloj+=1000;}
-  require(c.offRoute&&c.dicho.stream().anyMatch(t->t.startsWith("La salida de la ruta está a ")),"19 m desde el arranque: "+c.dicho);
+  require(c.offRoute&&c.dicho.stream().anyMatch(t->t.endsWith(" está la salida de la ruta")),"19 m desde el arranque: "+c.dicho);
   c.checkDeviation(new Location(250,5,4));
   require(!c.offRoute&&c.dicho.contains("De nuevo en la ruta"),"regreso tras empezar fuera");
   // Un hueco largo no equivale a cuatro segundos de posiciones fuera.
