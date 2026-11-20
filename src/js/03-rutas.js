@@ -140,11 +140,15 @@ if($('tripRuta')){
  $('tripRuta').onclick=abre;
  $('tripRuta').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abre()}};
 }
+function trazoRutaActiva(puntos){
+ return L.featureGroup([[16,'#f5f8fa'],[13,'#071822'],[8,'#5bebff']].map(([weight,color])=>
+  L.polyline(puntos,{color,weight,opacity:1,interactive:false,lineCap:'round',lineJoin:'round'})));
+}
 function getTrackLayer(i){
- if(!layers[i]&&tracks[i])layers[i]=L.polyline(tracks[i].points.map(p=>[p[0],p[1]]),{
-  color:i===chosen?'#5bebff':'#ff8a16',weight:i===chosen?7:4.5,
-  opacity:i===chosen?1:.97,interactive:false
- });
+ if(!layers[i]&&tracks[i]){
+  const puntos=tracks[i].points.map(p=>[p[0],p[1]]);
+  layers[i]=i===chosen?trazoRutaActiva(puntos):L.polyline(puntos,{color:'#ff8a16',weight:4.5,opacity:.97,interactive:false});
+ }
  return layers[i];
 }
 function refreshRouteLayers(){
@@ -221,7 +225,7 @@ async function loadDetailedSelected(i,request){
   // aviso dijera «a 15 m», y de ahí que la flecha fuera a saltos.
   const detailedLine=pts.map(p=>[p[0],p[1],Number.isFinite(p[2])?p[2]:null]);
   if(layers[i])map.removeLayer(layers[i]);
-  layers[i]=L.polyline(detailedLine,{color:'#5bebff',weight:7,opacity:1,interactive:false}).addTo(map).bringToFront();
+  layers[i]=trazoRutaActiva(detailedLine).addTo(map).bringToFront();
   // Y ahora sí: la fina manda también para medir. Se rehacen los cruces -que
   // recalculan routeCumulative- y se le manda al servicio.
   if(detailedLine.length<=12000){

@@ -399,6 +399,8 @@ function savedFlow(){
  for(const k of ['showSaved','finishRecording','resetOffRoute','updateNativeLaunchLink','pintaBotonNavegar','pintaBotonMapa','updateDirectionArrows','aplicaCruces','recordingControls'])c[k]=()=>{};
  vm.runInContext(source('function closeSaveDialog(){','function openSaveDialog('),c);
  vm.runInContext(source('function savePendingToMine(){',"$('closeSave').onclick="),c);
+ c.L.featureGroup=layers=>layers[0];
+ vm.runInContext(source('function trazoRutaActiva(', 'function getTrackLayer('),c);
  vm.runInContext(source('function loadSaved(item){','let savedLine=null;'),c);
  vm.runInContext(source('function sameTrack(a,b){','function clearDraft(){'),c);
  vm.runInContext(source("$('recordStart').onclick=",'// En un circuito te cruzas'),c);

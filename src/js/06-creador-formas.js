@@ -456,7 +456,7 @@ function loadSaved(item){
 
  if(drawPoints.length||drawLayer)clearDraft();
  if(savedLine)map.removeLayer(savedLine);
- savedLine=L.polyline(routePoints,{color:'#5bebff',weight:8,opacity:1,interactive:false}).addTo(map).bringToFront();
+ savedLine=trazoRutaActiva(routePoints).addTo(map).bringToFront();
  updateDirectionArrows();
  map.fitBounds(savedLine.getBounds(),{padding:[35,35]});
  $('title').textContent=item.name;setRouteTitle(item.name,null);
