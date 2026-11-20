@@ -4655,13 +4655,19 @@ function computeJunctions(){
    vuelta=junctions.map(j=>Object.assign(aRuta(j,idx[m-1-j.i]),{reves:true}));
   }
  }finally{routePoints=pts}
- // Cruce confirmado sobre el trazado detallado publicado de Asuntza bira.
- // Si se sustituye el trazado, la marca no se aplica a otro punto por error.
- const iAsuntza=326;
- if(typeof chosen==='number'&&typeof tracks!=='undefined'&&tracks[chosen]?.href==='asuntzabira.html'&&
-    n===809&&Math.abs(cum[iAsuntza]-7120)<15&&!ida.some(j=>Math.abs(j.along-cum[iAsuntza])<25)){
-  ida.push({i:iAsuntza,point:pts[iAsuntza],along:cum[iAsuntza],deFrente:true,angle:0,cruce:true});
-  ida.sort((a,b)=>a.i-b.i);
+ // Indicaciones comprobadas en el trazado detallado publicado de Asuntza.
+ // Las distancias e índices evitan trasladarlas a otra versión del recorrido.
+ if(typeof chosen==='number'&&typeof tracks!=='undefined'&&tracks[chosen]?.href==='asuntzabira.html'&&n===809){
+  const bifurcacion=ida.find(j=>j.i===210&&j.cruce&&j.mantente&&j.noRecto&&j.direction==='derecha');
+  if(bifurcacion&&Math.abs(bifurcacion.along-4792)<10){
+   // La pista buena es el ramal izquierdo de los dos, aunque la llegada curve.
+   bifurcacion.direction=bifurcacion.hacia='izquierda';
+  }
+  const iAsuntza=326;
+  if(Math.abs(cum[iAsuntza]-7120)<15&&!ida.some(j=>Math.abs(j.along-cum[iAsuntza])<25)){
+   ida.push({i:iAsuntza,point:pts[iAsuntza],along:cum[iAsuntza],deFrente:true,angle:0,cruce:true});
+   ida.sort((a,b)=>a.i-b.i);
+  }
  }
  junctions=ida;routeCumulative=cum;junctionsReves=vuelta;
  junctionWarned.clear();junctionZoomOnce.clear();
