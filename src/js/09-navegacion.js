@@ -636,7 +636,7 @@ function onFix(pos){
   pintaAvance(fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
   liveProfileAlong=guiaIniciada()&&fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
-   updateOffRoute(d,pos.coords.accuracy);
+   updateOffRoute(d,pos.coords.accuracy,[pos.coords.latitude,pos.coords.longitude]);
    junctionGuidance(p,pos.coords.accuracy,progreso);
    if(alerted){liveProfileAlong=null;liveNativeMetrics=null;}
   }

@@ -168,7 +168,7 @@ public class TrackingService extends Service implements LocationListener {
   if(!"voz".equals(modoAudio())||texto==null)return;
   // Normalmente manda el aviso nuevo. Tras entrar, salir o volver, el giro
   // se encola: no corta el estado de ruta ni se pierde la indicacion.
-  boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido");
+  boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido")||texto.startsWith("La salida de la ruta está a ");
   // El primer fix puede llegar antes de que Android prepare la voz.
   // Solo se conserva el ultimo estado: nunca se reproduce una salida vieja.
   if(!vozLista||voz==null){if(estadoRuta)avisoRutaPendiente=texto;return;}
@@ -1287,6 +1287,15 @@ public class TrackingService extends Service implements LocationListener {
  // que acabas de cargar no quiere decir nada.
  void olvidaSentido(){inicioCurva=Double.NaN;sentido=1;alongPrevio=Double.NaN;alongAcum=0;latSentido=Double.NaN;lonSentido=Double.NaN;movSentido=Double.NaN;}
  void vuelveALaRuta(){entradaAvisada=true;routeReached=true;offRoute=false;farSince=0;cercaDesde=0;fueraDesde=0;recordado=false;protegeAvisoRuta();updateNotice();tonoBien();habla("De nuevo en la ruta");}
+ String avisoSalida(Location l){
+  double[] inicio=route.get(0);
+  double norte=(inicio[0]-l.getLatitude())*111195;
+  double este=(inicio[1]-l.getLongitude())*111195*Math.cos(Math.toRadians(l.getLatitude()));
+  long metros=Math.round(Math.hypot(norte,este)/10)*10;
+  String[] rumbos={"norte","noreste","este","sureste","sur","suroeste","oeste","noroeste"};
+  int rumbo=(int)Math.floorMod(Math.round(Math.toDegrees(Math.atan2(este,norte))/45),8);
+  return "La salida de la ruta está a "+metros+" metros en línea recta hacia el "+rumbos[rumbo];
+ }
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
   double acc=l.getAccuracy();
@@ -1321,7 +1330,7 @@ public class TrackingService extends Service implements LocationListener {
   cercaDesde=0;
   if(farSince==0){farSince=now;return;}
   if(!offRoute&&now-farSince>=4000){
-   offRoute=true;fueraDesde=now;recordado=false;protegeAvisoRuta();updateNotice();pitidos(4,180);habla("Atención, fuera del recorrido");
+   offRoute=true;fueraDesde=now;recordado=false;protegeAvisoRuta();updateNotice();pitidos(4,180);habla(routeReached?"Atención, fuera del recorrido":avisoSalida(l));
   }
   // Un recordatorio por salida, a 50 m del track, dejando terminar la voz.
   else if(offRoute&&!recordado&&d>=RECUERDA_M&&now-fueraDesde>=RECUERDA_MS){

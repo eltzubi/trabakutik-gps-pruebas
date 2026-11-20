@@ -470,7 +470,15 @@ refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimo
  // «Quedan 1611 m aprox.» con la salida ya terminada y el GPS apagado.
  if(typeof paintNavigationMetrics==='function')paintNavigationMetrics();
  const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
-function updateOffRoute(d,accuracy){
+function avisoSalida(posicion,inicio){
+ const norte=(inicio[0]-posicion[0])*111195;
+ const este=(inicio[1]-posicion[1])*111195*Math.cos(posicion[0]*Math.PI/180);
+ const metros=Math.round(Math.hypot(norte,este)/10)*10;
+ const rumbos=['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'];
+ const rumbo=(Math.round(Math.atan2(este,norte)*4/Math.PI)+8)%8;
+ return 'La salida de la ruta está a '+metros+' metros en línea recta hacia el '+rumbos[rumbo];
+}
+function updateOffRoute(d,accuracy,posicion){
  if(!guiaIniciada()){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
  if(!Number.isFinite(d)||d<0||!Number.isFinite(accuracy)||accuracy<0||accuracy>60){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
  const now=Date.now();
@@ -500,7 +508,7 @@ function updateOffRoute(d,accuracy){
  }
  cercaDesdePag=0;
  if(!farSince){farSince=now;return;}
- if(!alerted&&now-farSince>=4000){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Atención, fuera del recorrido');notice('Fuera del recorrido · vuelve a la línea cian')}
+ if(!alerted&&now-farSince>=4000){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,routePoints[0]):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
  else if(alerted&&!recordadoPag&&d>=50&&now-fueraDesdePag>=4000){recordadoPag=true;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
 let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0,avisoRutaHastaPag=0,ultimoDesvioPag=0;
@@ -533,7 +541,7 @@ let turnoVozPagina=0;
 function hablaPagina(texto,siguiente=''){
  if(gpsApagadoPorTi)return;
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
- const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto);
+ const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto)||texto.startsWith('La salida de la ruta está a ');
  const turno=++turnoVozPagina;
  try{
   if(estadoRuta||Date.now()>=avisoRutaHastaPag)window.speechSynthesis.cancel();
@@ -622,6 +630,6 @@ function flechaGiro(deg,dir,tam,grosor){
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={altitudGps,pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
+ module.exports={avisoSalida,altitudGps,pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
  Object.defineProperties(module.exports,{altGpsNativa:{get:()=>altGpsNativa,set:v=>{altGpsNativa=v},enumerable:true},rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true},tiempoMovNativo:{get:()=>tiempoMovNativo,set:v=>{tiempoMovNativo=v},enumerable:true}});
 }

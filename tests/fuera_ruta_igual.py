@@ -54,7 +54,7 @@ public class FueraTest {
  boolean entradaAvisada=false;boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
  ArrayList<double[]> route=new ArrayList<>();
  void updateNotice(){}void pitidos(int n,int s){}void pitidos(int n,int s,int t){}ArrayList<String> dicho=new ArrayList<>();void habla(String s){dicho.add(s);}void tonoBien(){}
-''' + metodo(' void protegeAvisoRuta()') + metodo(' void vuelveALaRuta()') + metodo(' void checkDeviation(Location l)') + metodo(' double closest(double lat,double lon)') + '''
+''' + metodo(' void protegeAvisoRuta()') + metodo(' void vuelveALaRuta()') + metodo(' String avisoSalida(Location l)') + metodo(' void checkDeviation(Location l)') + metodo(' double closest(double lat,double lon)') + '''
  ''' + re.search(r' static final double FUERA_M=[^;]+;',src).group(0) + re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0) + '''
  long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;long avisoRutaHasta=0,lastImportantAudio=0;
  public static void main(String[] a){
