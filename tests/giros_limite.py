@@ -105,6 +105,10 @@ public class GirosLimiteTest {
   String sigue=t.fraseGiro(1,2,"1",48),sigueYa=t.fraseGiro(-1,2,"3",0);
   require(sigue.equals("En 50 metros, sigue recto por la derecha"),sigue);
   require(sigueYa.equals("Sigue recto por la izquierda ahora"),sigueYa);
+  t=new GirosLimiteTest(100);t.escribe("[{\"i\":10,\"dir\":0,\"t\":1,\"df\":1}]");t.loadTurns();
+  require((int)t.turns.get(0)[2]==7,"df: cruce de frente");
+  require(t.fraseGiro(0,7,"3",0,0).equals("Sigue de frente"),"aviso de frente al entrar");
+  require(t.fraseGiro(0,7,"1",50,0).equals("En 50 metros, sigue de frente"),"aviso de frente al acercarse");
   // 8. «Sigue la carretera a la izquierda» (sg, 17 nov 2026): sigues la misma
   //    via, que tuerce en un cruce. Tipo 6 y la via en la cuarta casilla. En
   //    una herradura o una rotonda no cuenta.

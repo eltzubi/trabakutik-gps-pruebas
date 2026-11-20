@@ -295,14 +295,14 @@ function junctionGuidance(p,accuracy,progress){
  // decia una vuelta en plena curva». Ahora es una curva de herradura a la
  // derecha o a la izquierda, haya cruce o no.
  const ladoHerradura=ladoFlecha(turn,alReves);
- $('turnDirection').textContent=turn.rotonda
+ $('turnDirection').textContent=turn.deFrente?'Sigue de frente':turn.rotonda
    ?'Rotonda · '+queRotonda(turn,lado,alReves)
    :lado==='vuelta'
    ?(turn.retorno?'Da la vuelta'
     :'Curva de herradura a la '+ladoHerradura)
    :turn.mantente?(turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado
    :(esCruce?'Gira a la '+lado:(turn.curvaNueva?'Curva a la ':'Curva cerrada a la ')+lado);
- $('turnAngle').textContent=turn.mantente?(turn.noRecto?'Lo de frente no es tu camino':'Dejas el camino que llevas')
+ $('turnAngle').textContent=turn.deFrente?'':turn.mantente?(turn.noRecto?'Lo de frente no es tu camino':'Dejas el camino que llevas')
    :'Giro de '+Math.round(grados)+'\u00b0';
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // La ficha muestra las dos fases que se anuncian.
@@ -347,7 +347,7 @@ function junctionGuidance(p,accuracy,progress){
   junctionWarned.add(j+':'+fase);
   // La página solo pita si Android no está dando los avisos nativos.
    if(fase!=='v'&&!giraNativo){getAudio();pitidos(Number(fase),.30)}
-  const giroTxt=turn.rotonda
+  const giroTxt=turn.deFrente?'sigue de frente':turn.rotonda
     ?'en la rotonda, '+queRotonda(turn,lado,alReves)
     :lado==='vuelta'
     ?(turn.retorno?'da la vuelta'
@@ -364,7 +364,7 @@ function junctionGuidance(p,accuracy,progress){
   }
   if(fase!=='v')notice(fase==='3'
         ?(esCruce?'En el cruce · sigue la línea azul':'En el giro · sigue la línea cian')
-        :(turn.rotonda?'Rotonda':turn.mantente?(turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado:esCruce?'Gira a la '+lado:'Curva cerrada')
+        :(turn.deFrente?'Sigue de frente':turn.rotonda?'Rotonda':turn.mantente?(turn.noRecto?'Sigue por la ':'Sigue recto por la ')+lado:esCruce?'Gira a la '+lado:'Curva cerrada')
          +' a '+Math.round(d1/5)*5+' m · sigue la línea azul');
  }
  if(ahead< -(d2+5))resetJunctionView();
@@ -407,6 +407,7 @@ function queRotonda(turn,lado,alReves){
 // palabra «cruce» ya no se dice, que en una curva con una entrada al lado
 // confundia. Cuando hablar lo siguen decidiendo los cruces de OSM.
 function textoDeGiro(turn,alReves){
+ if(turn.deFrente)return 'Sigue de frente';
  const cambia=l=>alReves?(l==='izquierda'?'derecha':l==='derecha'?'izquierda':l):l;
  const lado=cambia(turn.direction),hacia=cambia(turn.hacia||turn.direction);
  if(turn.rotonda)return 'Rotonda · '+queRotonda(turn,lado,alReves);

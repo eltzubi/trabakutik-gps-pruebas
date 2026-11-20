@@ -322,6 +322,7 @@ function enviaGirosNativos(){
    const o={i:j.i,dir:lado==='izquierda'?-1:lado==='derecha'?1:0,t:j.cruce?(j.mantente?2:1):0};
    if(herradura)o.h=1;
    if(j.curvaNueva)o.cn=1;
+   if(j.deFrente)o.df=1;
    // «sg»: SIGUE LA MISMA VIA, que tuerce en un cruce (17 nov 2026): «sigue
    // la carretera a la izquierda». sg=1 carretera, 2 calle, 3 camino. Una APK
    // anterior lo ignora y dice «cruce a la izquierda», el lado bueno.
@@ -344,7 +345,8 @@ function enviaGirosNativos(){
   // vuelta». A esas no se les mandan.
   let v='';try{v=window.TrabakutikAndroid.getAppVersion?window.TrabakutikAndroid.getAppVersion():''}catch(e){}
   const sabeSalidas=typeof versionMayor==='function'&&versionMayor(v,APK_SIN_SALIDAS);
-  const aNativoFiltrado=lista=>aNativo(lista.filter(j=>!(j.rotonda&&j.recto&&!sabeSalidas)));
+  const sabeDeFrente=typeof versionMayor==='function'&&versionMayor(v,'4.9.70');
+  const aNativoFiltrado=lista=>aNativo(lista.filter(j=>(!j.deFrente||sabeDeFrente)&&!(j.rotonda&&j.recto&&!sabeSalidas)));
   window.TrabakutikAndroid.setJunctions(aNativoFiltrado(junctions));
   // Los del sentido inverso, ya con su lado: el servicio los usa tal cual
   // yendo al reves. Una APK que no los sepa leer sigue cambiando el lado.
@@ -696,6 +698,14 @@ function computeJunctions(){
    vuelta=junctions.map(j=>Object.assign(aRuta(j,idx[m-1-j.i]),{reves:true}));
   }
  }finally{routePoints=pts}
+ // Cruce confirmado sobre el trazado detallado publicado de Asuntza bira.
+ // Si se sustituye el trazado, la marca no se aplica a otro punto por error.
+ const iAsuntza=326;
+ if(typeof chosen==='number'&&typeof tracks!=='undefined'&&tracks[chosen]?.href==='asuntzabira.html'&&
+    n===809&&Math.abs(cum[iAsuntza]-7120)<15&&!ida.some(j=>Math.abs(j.along-cum[iAsuntza])<25)){
+  ida.push({i:iAsuntza,point:pts[iAsuntza],along:cum[iAsuntza],deFrente:true,angle:0,cruce:true});
+  ida.sort((a,b)=>a.i-b.i);
+ }
  junctions=ida;routeCumulative=cum;junctionsReves=vuelta;
  junctionWarned.clear();junctionZoomOnce.clear();
  enviaGirosNativos();

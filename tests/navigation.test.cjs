@@ -878,7 +878,7 @@ test('Una curva de herradura viaja al servicio con su lado, y la ficha ya no dic
  const jg=pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance;
  const ficha=trozo(jg,"const ladoHerradura=ladoFlecha(turn,alReves);","$('turnAngle')");
  assert(/turn\.retorno\?/.test(ficha)&&/curva de herradura a la/i.test(ficha),'la ficha dice «curva de herradura a la …» salvo en una ida y vuelta');
- const voz=trozo(jg,"const giroTxt=turn.rotonda","// Si la primera lectura entra en fase 1");
+ const voz=trozo(jg,"const giroTxt=turn.deFrente","// Si la primera lectura entra en fase 1");
  assert(/turn\.retorno\?/.test(voz)&&/curva de herradura a la/i.test(voz),'y la voz de la pagina tambien');
 });
 test('Al parar o cambiar de ruta se repinta el desnivel: no se queda el último «Quedan … m»',()=>{

@@ -456,6 +456,7 @@ public class TrackingService extends Service implements LocationListener {
    if("3".equals(fase))return Character.toUpperCase(r.charAt(0))+r.substring(1)+" ahora";
    return "En "+Math.max(5,(int)(Math.round(ahead/10.0)*10))+" metros, "+r;
   }
+  if(tipo==7)return "3".equals(fase)?"Sigue de frente":"En "+Math.max(5,Math.round(ahead/10)*10)+" metros, sigue de frente";
   if(tipo==6&&lado!=0){
    // Sigues por la misma via y tuerce donde sale otra de frente: no es
    // «cruce a la izquierda», que suena a dejarla (el autor, 17 nov 2026).
@@ -966,6 +967,7 @@ public class TrackingService extends Service implements LocationListener {
     // «sigue por la izquierda», sin «recto» (18 nov 2026). Va en la casilla de
     // la salida, que en el tipo 2 no se usaba.
     if(tipo==2&&p.optInt("nr",0)==1)salida=1;
+    if(tipo==1&&direction==0&&p.optInt("df",0)==1)tipo=7;
     // «rr»:1, esa rotonda se cruza recto (solo llega con numero).
     int recta=tipo==5&&p.optInt("rr",0)==1?1:0;
     // at>=1 y no >=0: checkTurns recorre la ruta desde i=1 y solo avanza por
@@ -1098,11 +1100,12 @@ public class TrackingService extends Service implements LocationListener {
      int d=(int)giro[1];
      int tipo=giro.length<3?1:(int)giro[2];
      boolean herradura=tipo==3||tipo==4;
-     boolean esCruce=tipo==1||tipo==2||tipo==4||tipo==6;
+     boolean esCruce=tipo==1||tipo==2||tipo==4||tipo==6||tipo==7;
      // Al reves, lo que se grabo como derecha es izquierda... salvo con la
      // lista calculada al reves, que ya trae el lado de quien va al reves.
      int lado=usaReves?d:d*sentido;
      String instruction=lado<0?"Izquierda":lado>0?"Derecha":esCruce?"Da la vuelta":"Herradura";
+     if(tipo==7)instruction="Sigue de frente";
      if(!esCruce&&lado!=0)instruction="Curva "+(lado<0?"izqda.":"dcha.");
      if(tipo==2&&lado!=0)instruction="Sigue "+(lado<0?"izqda.":"dcha.");
 
