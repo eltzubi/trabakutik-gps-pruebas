@@ -114,7 +114,7 @@ function updateDirectionArrows(){
   if(len<1)continue;
   while(covered+len>=next){
    const t=(next-covered)/len,point=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
-   const angle=bearingBetween(a,b);
+   const angle=(bearingBetween(a,b)+(sentidoRuta<0?180:0))%360;
    const icon=L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:'<div style="width:20px;height:20px;display:grid;place-items:center;transform:rotate('+angle+'deg);pointer-events:none"><svg width="15" height="17" viewBox="0 0 15 17" aria-hidden="true"><path d="M7.5 1L14 15L7.5 11.5L1 15Z" fill="#07314b" stroke="#f0ffff" stroke-width="1.8" stroke-linejoin="round"/></svg></div>'});
    L.marker(point,{icon,interactive:false,keyboard:false,zIndexOffset:450}).addTo(directionArrows);
    next+=spacing;
@@ -148,22 +148,29 @@ if($('tripRuta')){
  $('tripRuta').onclick=abre;
  $('tripRuta').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abre()}};
 }
+function haloRutaActiva(base){
+ return base==='pnoa'?'#ffffff':'#071822';
+}
+function verdeSenderismo(base){
+ return base==='pnoa'?'#76ff03':'#2ecc71';
+}
 function trazoRutaActiva(puntos){
- return L.featureGroup([[13,'#f5f8fa'],[10,'#071822'],[6.5,'#5bebff']].map(([weight,color])=>
-  L.polyline(puntos,{color,weight,opacity:1,interactive:false,lineCap:'round',lineJoin:'round'})));
+ const estilo={pane:'rutaActiva',opacity:1,interactive:false,lineCap:'round',lineJoin:'round'};
+ return L.featureGroup([
+  L.polyline(puntos,{...estilo,color:haloRutaActiva($('basemap')?.value),weight:9}),
+  L.polyline(puntos,{...estilo,color:'#00e5ff',weight:6})
+ ]);
 }
 function actividadVisible(t){
  return rutasMixtas.has(t.href)?'Mixta':t.color==='teal'?'E-bike':'Senderismo';
 }
 function trazoRutaDeFondo(t,puntos){
- const actividad=actividadVisible(t);
- const estilo={pane:'rutasDeFondo',weight:3.3,opacity:.9,interactive:false,lineCap:'round',lineJoin:'round'};
- const lineas=[
-  L.polyline(puntos,{...estilo,color:'#17251d',weight:5.3,opacity:.84}),
-  L.polyline(puntos,{...estilo,color:actividad==='Senderismo'?'#72df66':'#ff9c3b'})
- ];
- if(actividad==='Mixta')lineas.push(L.polyline(puntos,{...estilo,color:'#72df66',dashArray:'6 7'}));
- return L.featureGroup(lineas);
+ const actividad=actividadVisible(t),verde=verdeSenderismo($('basemap')?.value);
+ const estilo={pane:'rutasDeFondo',weight:3,interactive:false,lineCap:'round',lineJoin:'round'};
+ if(actividad==='Senderismo')return L.featureGroup([L.polyline(puntos,{...estilo,color:verde,dashArray:'6 5'})]);
+ const naranja=L.polyline(puntos,{...estilo,color:'#ff8c00'});
+ if(actividad==='E-bike')return L.featureGroup([naranja]);
+ return L.featureGroup([naranja,L.polyline(puntos,{...estilo,color:verde,dashArray:'6 7'})]);
 }
 function getTrackLayer(i){
  if(!layers[i]&&tracks[i]){
@@ -183,6 +190,18 @@ function refreshRouteLayers(){
  if(chosen>=0&&layers[chosen])layers[chosen].bringToFront();
  if(savedLine)savedLine.bringToFront();
 }
+map.on('fondoCambiado',({key})=>{
+ const activa=savedLine||layers[chosen];
+ activa?.getLayers()[0]?.setStyle({color:haloRutaActiva(key)});
+ layers.forEach((layer,i)=>{
+  if(!layer||i===chosen)return;
+  const actividad=actividadVisible(tracks[i]);
+  if(actividad!=='E-bike'){
+   const lineas=layer.getLayers();
+   lineas[lineas.length-1].setStyle({color:verdeSenderismo(key)});
+  }
+ });
+});
 function drawAll(){
  layers.forEach(l=>{if(l)map.removeLayer(l)});layers=[];
  refreshRouteLayers();

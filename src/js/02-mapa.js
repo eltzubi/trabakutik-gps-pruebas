@@ -66,6 +66,7 @@ function aplicaGiroMapa(deGolpe){
 }
 const map=L.map('mapRot',{zoomControl:false,preferCanvas:true,attributionControl:false}).setView([43.19,-2.55],12);
 map.createPane('rutasDeFondo').style.zIndex='390';
+map.createPane('rutaActiva').style.zIndex='410';
 function dimensionaMapa(){
  const m=document.getElementById('map'),w=m.clientWidth,h=m.clientHeight;
  if(!w||!h)return;
@@ -114,7 +115,7 @@ const baseMaps={
 // mas tarde esa primera llamada reventaria por la zona muerta temporal.
 let hayMapaGuardado=false;
 let currentBase=null;
-function changeBase(key){if(!baseMaps[key])key='osm';$('basemap').value=key;if(currentBase)map.removeLayer(currentBase);currentBase=baseMaps[key];currentBase.addTo(map);currentBase.bringToBack();$('mapCredit').textContent=(currentBase.options.attribution||'')+(hayMapaGuardado&&(key==='ign'||key==='pnoa')?' · guardado en el teléfono':(key==='ign'||key==='pnoa'?' · necesita conexión':''));try{localStorage.setItem('trabakutik-mapa-fondo',key)}catch(e){}}
+function changeBase(key){if(!baseMaps[key])key='osm';$('basemap').value=key;if(currentBase)map.removeLayer(currentBase);currentBase=baseMaps[key];currentBase.addTo(map);currentBase.bringToBack();$('mapCredit').textContent=(currentBase.options.attribution||'')+(hayMapaGuardado&&(key==='ign'||key==='pnoa')?' · guardado en el teléfono':(key==='ign'||key==='pnoa'?' · necesita conexión':''));try{localStorage.setItem('trabakutik-mapa-fondo',key)}catch(e){}map.fire('fondoCambiado',{key})}
 // FUERA TOPO, EN EL NAVEGADOR. Era el unico fondo que juntaba las tres
 // cosas: lo sirve un servidor de voluntarios, tarda el triple que los demas
 // y -lo que de verdad lo descarta- NO SE PUEDE GUARDAR para andar sin

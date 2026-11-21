@@ -182,10 +182,26 @@ async function setup(context) {
     assert.match(await page.locator('#items .routeitem').first().textContent(), /Senderismo|E-bike|Mixta/);
     assert(await page.evaluate(() => {
       const fondo=document.querySelector('.leaflet-rutasDeFondo-pane');
-      const activa=document.querySelector('.leaflet-overlay-pane');
+      const activa=document.querySelector('.leaflet-rutaActiva-pane');
       return fondo?.querySelector('canvas')&&activa?.querySelector('canvas')
         &&Number(getComputedStyle(fondo).zIndex)<Number(getComputedStyle(activa).zIndex);
     }),'los trazados de fondo quedan bajo la ruta activa');
+    assert.equal(await page.locator('.leaflet-rutasDeFondo-pane').evaluate(el=>getComputedStyle(el).opacity),'0.78');
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => {
+      window.__coloresCapa=[];
+      const aplica=L.Polyline.prototype.setStyle;
+      L.Polyline.prototype.setStyle=function(estilo){
+        if(estilo.color)window.__coloresCapa.push([this.options.pane,estilo.color]);
+        return aplica.call(this,estilo);
+      };
+    });
+    await page.selectOption('#basemap','pnoa');
+    assert(await page.evaluate(()=>window.__coloresCapa.some(([pane,color])=>pane==='rutaActiva'&&color==='#ffffff')));
+    assert(await page.evaluate(()=>window.__coloresCapa.some(([pane,color])=>pane==='rutasDeFondo'&&color==='#76ff03')));
+    await page.selectOption('#basemap','ign');
+    assert(await page.evaluate(()=>window.__coloresCapa.some(([pane,color])=>pane==='rutaActiva'&&color==='#071822')));
+
     await page.reload();
     await page.click('#choose');
     await page.locator('#routeDialog').click({position:{x:3,y:3}});
@@ -258,6 +274,8 @@ async function setup(context) {
     );
     await page.waitForFunction(()=>document.querySelector('#gpsState').dataset.estado==='recibiendo');
     assert(await page.locator('#gpsState').isVisible(),'el GPS sigue visible con los mandos ocultos');
+    assert.equal(await page.locator('.leaflet-rutasDeFondo-pane').evaluate(el=>getComputedStyle(el).opacity),'0.4');
+
     assert.match(await page.locator('#gpsState').textContent(),/±5 m/);
     for(const width of [320,390,768,1280]){
       await page.setViewportSize({width,height:844});
@@ -307,6 +325,8 @@ async function setup(context) {
     );
     await page.click("#recordStop");
     assert.equal(await page.locator('#gpsState').textContent(),'GPS detenido');
+    assert.equal(await page.locator('.leaflet-rutasDeFondo-pane').evaluate(el=>getComputedStyle(el).opacity),'0.78');
+
     assert(
       await page.locator("#saveRecording").isVisible(),
       "al parar, la botonera vuelve sin tocar nada",

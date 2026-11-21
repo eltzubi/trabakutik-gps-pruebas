@@ -98,6 +98,7 @@ function decideSentido(along){
  const nuevo=alongAcum>0?1:-1;alongAcum=0;
  if(nuevo===sentidoRuta)return;
  sentidoRuta=nuevo;
+ if(typeof updateDirectionArrows==='function')updateDirectionArrows();
  junctionWarned.clear();
  // El servicio hace su propia cuenta con la pantalla apagada y tambien lo
  // necesita. Un APK viejo no tiene setSentido: se queda como estaba.
@@ -466,7 +467,9 @@ function marcaAlReves(si){
 // resetOffRoute() se llama en los cinco sitios donde se cambia de ruta y en
 // ninguno mas, asi que aqui no se repite por cada posicion.
 let acercarAlTrack=false;
-function resetOffRoute(cambioEnMarcha=false){if(typeof confirmaRamalWeb!=='undefined')confirmaRamalWeb.reinicia();acercarAlTrack=cambioEnMarcha;entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;sentidoRuta=1;
+function resetOffRoute(cambioEnMarcha=false){if(typeof confirmaRamalWeb!=='undefined')confirmaRamalWeb.reinicia();acercarAlTrack=cambioEnMarcha;entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;
+ const eraInverso=sentidoRuta<0;sentidoRuta=1;
+ if(eraInverso&&typeof updateDirectionArrows==='function')updateDirectionArrows();
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
 refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;if(typeof document!=='undefined')marcaAlReves(false);
