@@ -169,6 +169,25 @@ async function setup(context) {
     await page.click('#choose');
     await page.locator('#search').click();
     assert(await page.locator('#routeDialog').isVisible(),'tocar dentro conserva el selector');
+    const origen=JSON.parse(fs.readFileSync(path.join(root,'data/trailhead.json'),'utf8')).tracks[0].points[0];
+    await page.evaluate(([lat,lon]) => {
+      window.TrabakutikAndroid.getLastLocation = () => JSON.stringify({lat,lon,age:0,accuracy:5});
+    },origen.slice(0,2));
+    await page.locator('#items .routeitem').first().click();
+    await page.click('#eye');
+    assert(await page.locator('#backgroundRouteLegend').isVisible());
+    await page.click('#choose');
+    await page.locator('[data-scope="near"]').click();
+    assert.match(await page.locator('#items .routeitem').first().textContent(), /0 m hasta el trazado/);
+    assert.match(await page.locator('#items .routeitem').first().textContent(), /Senderismo|E-bike|Mixta/);
+    assert(await page.evaluate(() => {
+      const fondo=document.querySelector('.leaflet-rutasDeFondo-pane');
+      const activa=document.querySelector('.leaflet-overlay-pane');
+      return fondo?.querySelector('canvas')&&activa?.querySelector('canvas')
+        &&Number(getComputedStyle(fondo).zIndex)<Number(getComputedStyle(activa).zIndex);
+    }),'los trazados de fondo quedan bajo la ruta activa');
+    await page.reload();
+    await page.click('#choose');
     await page.locator('#routeDialog').click({position:{x:3,y:3}});
     assert(await page.locator('#routeDialog').isHidden(),'tocar fuera cierra el selector');
     await page.click('#savedRoutes');

@@ -65,6 +65,7 @@ function aplicaGiroMapa(deGolpe){
  if(deGolpe){void rotEl.offsetWidth;rotEl.classList.remove('sin-giro')}
 }
 const map=L.map('mapRot',{zoomControl:false,preferCanvas:true,attributionControl:false}).setView([43.19,-2.55],12);
+map.createPane('rutasDeFondo').style.zIndex='390';
 function dimensionaMapa(){
  const m=document.getElementById('map'),w=m.clientWidth,h=m.clientHeight;
  if(!w||!h)return;

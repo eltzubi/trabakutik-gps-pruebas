@@ -152,16 +152,31 @@ function trazoRutaActiva(puntos){
  return L.featureGroup([[13,'#f5f8fa'],[10,'#071822'],[6.5,'#5bebff']].map(([weight,color])=>
   L.polyline(puntos,{color,weight,opacity:1,interactive:false,lineCap:'round',lineJoin:'round'})));
 }
+function actividadVisible(t){
+ return rutasMixtas.has(t.href)?'Mixta':t.color==='teal'?'E-bike':'Senderismo';
+}
+function trazoRutaDeFondo(t,puntos){
+ const actividad=actividadVisible(t);
+ const estilo={pane:'rutasDeFondo',weight:3.3,opacity:.9,interactive:false,lineCap:'round',lineJoin:'round'};
+ const lineas=[
+  L.polyline(puntos,{...estilo,color:'#17251d',weight:5.3,opacity:.84}),
+  L.polyline(puntos,{...estilo,color:actividad==='Senderismo'?'#72df66':'#ff9c3b'})
+ ];
+ if(actividad==='Mixta')lineas.push(L.polyline(puntos,{...estilo,color:'#72df66',dashArray:'6 7'}));
+ return L.featureGroup(lineas);
+}
 function getTrackLayer(i){
  if(!layers[i]&&tracks[i]){
   const puntos=tracks[i].points.map(p=>[p[0],p[1]]);
-  layers[i]=i===chosen?trazoRutaActiva(puntos):L.polyline(puntos,{color:'#ff8a16',weight:4.5,opacity:.97,interactive:false});
+  layers[i]=i===chosen?trazoRutaActiva(puntos):trazoRutaDeFondo(tracks[i],puntos);
  }
  return layers[i];
 }
 function refreshRouteLayers(){
+ const muestraFondo=otherTracksVisible&&routeListScope!=='current';
+ $('backgroundRouteLegend')?.classList.toggle('hidden',!muestraFondo);
  tracks.forEach((t,i)=>{
-  const show=i===chosen||(otherTracksVisible&&routeListScope!=='current'&&(!nearbyOnly||nearTrack(i)));
+  const show=i===chosen||(muestraFondo&&(!nearbyOnly||nearTrack(i)));
   if(show){const layer=getTrackLayer(i);if(layer&&!map.hasLayer(layer))layer.addTo(map);}
   else if(layers[i]){map.removeLayer(layers[i]);layers[i]=null;}
  });
@@ -175,7 +190,7 @@ function drawAll(){
   map.fitBounds(layers[chosen].getBounds(),{padding:[35,35]});
   $('title').textContent=toName(tracks[chosen]);
   setRouteTitle(toName(tracks[chosen]),tracks[chosen].href);
-  $('distance').textContent='Azul: tu ruta · Naranja: demás rutas';
+  $('distance').textContent='Ruta activa en cian';
  }
  if(savedLine) savedLine.bringToFront();
  syncScopeMap();
@@ -325,6 +340,16 @@ function showRoutes(){
   const txt=document.createElement('span');txt.className='ri-txt';
   const nom=document.createElement('span');nom.className='ri-name';nom.textContent=toName(t);txt.append(nom);
   if(datosDeRuta[t.href]){const km=document.createElement('span');km.className='ri-km';km.textContent=datosDeRuta[t.href];txt.append(km)}
+  const actividad=document.createElement('span');actividad.className='ri-km';actividad.textContent=actividadVisible(t);
+  txt.append(actividad);
+  if(routeListScope==='near'){
+   const cerca=distanciaCerca(i);
+   if(Number.isFinite(cerca)){
+    const acceso=document.createElement('span');acceso.className='ri-km';
+    acceso.textContent=fmt(cerca)+' hasta el trazado';
+    txt.append(acceso);
+   }
+  }
   b.append(txt);
   const mark=document.createElement('span');mark.textContent=i===chosen?'Seleccionada':'Ver';b.append(mark);b.onclick=()=>selectRoute(i);list.append(b);
  });
@@ -332,10 +357,12 @@ function showRoutes(){
 }
 document.querySelectorAll('#routeListScope button').forEach(b=>b.onclick=()=>{
  routeListScope=b.dataset.scope;
+ const cached=routeListScope==='near'?
+  (fixVisualGps&&Date.now()-fixVisualGps.time<=120000&&fixVisualGps.accuracy<=150?position:quickNativePosition()):null;
+ if(routeListScope==='near'&&!cached)nearbyOrigin=null;
  syncScopeMap();
  if(routeListScope==='near'){
-  const cached=position||quickNativePosition();
-  if(cached){applyNearbyPosition(cached)}else if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{if(routeListScope!=='near')return;position=[p.coords.latitude,p.coords.longitude];applyNearbyPosition(position);syncScopeMap();showRoutes()},warnGps,{enableHighAccuracy:true,timeout:12000,maximumAge:5000});else warnGps();
+  if(cached){applyNearbyPosition(cached)}else if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{if(routeListScope!=='near'||p.coords.accuracy>150)return;position=[p.coords.latitude,p.coords.longitude];applyNearbyPosition(position);syncScopeMap();showRoutes()},warnGps,{enableHighAccuracy:true,timeout:12000,maximumAge:5000});else warnGps();
  }
  showRoutes();
 });
