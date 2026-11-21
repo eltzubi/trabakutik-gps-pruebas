@@ -6,7 +6,7 @@ Lo pidio el autor el 15 de noviembre de 2026: un golpe fuerte, cuenta atras de
 trazas de acelerometro sinteticas: una caida, un bache, el movil que se cae
 estando parado, levantarse tras el golpe y dos avisos seguidos.
 """
-import subprocess, tempfile
+import re, subprocess, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +16,9 @@ prueba = r'''
 package com.trabakutik.gps;
 import java.util.*;
 public class CaidaSosTest{
+ boolean envio;
+ void terminaCaida(boolean enviar){envio=enviar;}
+ TEMPORIZADOR_CAIDA
  static void require(boolean ok,String m){if(!ok)throw new AssertionError(m);}
  static final double G=9.80665;
  static Random rnd=new Random(7);
@@ -34,6 +37,9 @@ public class CaidaSosTest{
  }
  static boolean golpe(DetectorCaidas d,double g){t+=40;return d.muestra(0,0,g*G,t);}
  public static void main(String[] a){
+  CaidaSosTest alarma=new CaidaSosTest();
+  alarma.envio=true;alarma.finCuentaCaida.run();
+  require(!alarma.envio,"agotar la cuenta no envía el SOS");
   // 1. Caida de verdad: en marcha, golpe de 4 g, y quieto en el suelo.
   DetectorCaidas d=new DetectorCaidas();t=0;
   require(!tramo(d,20,2.5,4.0),"en marcha no salta");
@@ -118,7 +124,9 @@ with tempfile.TemporaryDirectory() as d:
     pkg = Path(d, 'com/trabakutik/gps'); pkg.mkdir(parents=True)
     for n in ('DetectorCaidas.java', 'ContactosSos.java'):
         (pkg / n).write_text((PKG / n).read_text())
-    (pkg / 'CaidaSosTest.java').write_text(prueba)
+    servicio=(PKG / 'TrackingService.java').read_text()
+    temporizador=re.search(r'final Runnable finCuentaCaida=.*?;', servicio).group()
+    (pkg / 'CaidaSosTest.java').write_text(prueba.replace('TEMPORIZADOR_CAIDA', temporizador))
     out = Path(d, 'out')
     subprocess.run(['javac', '-d', str(out)] + [str(pkg / n) for n in ('DetectorCaidas.java', 'ContactosSos.java', 'CaidaSosTest.java')], check=True)
     subprocess.run(['java', '-cp', str(out), 'com.trabakutik.gps.CaidaSosTest'], check=True)

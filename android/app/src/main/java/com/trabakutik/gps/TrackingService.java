@@ -642,7 +642,7 @@ public class TrackingService extends Service implements LocationListener {
  }
  void creaCanalCaida(){
   NotificationChannel c=new NotificationChannel(CANAL_CAIDA,"Aviso de caída",NotificationManager.IMPORTANCE_HIGH);
-  c.setDescription("La cuenta atrás de 30 s antes de enviar el SOS");
+  c.setDescription("Aviso de caída con opción de enviar el SOS manualmente");
   c.enableVibration(true);
   ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);
  }
@@ -693,7 +693,7 @@ public class TrackingService extends Service implements LocationListener {
   try{startActivity(new Intent(this,MainActivity.class).putExtra("caida",true)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP));}catch(Exception ignored){}
  }
- final Runnable finCuentaCaida=()->terminaCaida(true);
+ final Runnable finCuentaCaida=()->terminaCaida(false);
  final Runnable pitaCaida=new Runnable(){@Override public void run(){
   if(!caidaEnCurso)return;
   try{
@@ -719,7 +719,7 @@ public class TrackingService extends Service implements LocationListener {
    avisoCaida(enviar?"Prueba terminada: aquí se habría enviado el SOS a "+nombres(contactos)+". No se ha enviado nada."
      :"Prueba cancelada. No se ha enviado nada.");
   }else if(enviar)enviaSos(contactos);
-  else avisoCaida("Aviso de caída cancelado. No se ha enviado nada.");
+  else avisoCaida("Aviso de caída cerrado. No se ha enviado nada.");
   if(!active)stopSelf();
  }
  static String nombres(List<ContactosSos.Contacto> l){
@@ -764,7 +764,7 @@ public class TrackingService extends Service implements LocationListener {
   String quien=nombres(ContactosSos.lee(prefsSos().getString("contactos","")));
   return new Notification.Builder(this,CANAL_CAIDA).setSmallIcon(android.R.drawable.ic_dialog_alert)
    .setContentTitle(caidaPrueba?"Prueba: ¿te has caído?":"¿Te has caído?")
-   .setContentText(caidaPrueba?"Prueba: en 30 s terminará sin enviar nada.":"Si no respondes, en 30 s se envía un SOS a "+quien+".")
+   .setContentText(caidaPrueba?"Prueba: en 30 s terminará sin enviar nada.":"La alarma termina en 30 s. Pulsa Enviar SOS para avisar a "+quien+".")
    .setCategory(Notification.CATEGORY_ALARM).setOngoing(true).setAutoCancel(false)
    .setUsesChronometer(true).setChronometerCountDown(true).setWhen(System.currentTimeMillis()+CUENTA_MS)
    .setFullScreenIntent(abre,true).setContentIntent(abre)

@@ -503,7 +503,7 @@ public class MainActivity extends Activity {
   @JavascriptInterface public String getSosConfig(){
    SharedPreferences p=getSharedPreferences("sos",MODE_PRIVATE);
    boolean sms=checkSelfPermission(Manifest.permission.SEND_SMS)==PackageManager.PERMISSION_GRANTED;
-   return "{\"activo\":"+p.getBoolean("caidas_activo",true)
+   return "{\"envioManual\":true,\"activo\":"+p.getBoolean("caidas_activo",true)
     +",\"contactos\":"+ContactosSos.json(ContactosSos.lee(p.getString("contactos","")))
     +",\"max\":"+ContactosSos.MAX+",\"permisoSms\":"+sms
     +",\"notificaciones\":"+TrackingService.avisosCaidaVisibles(MainActivity.this)+",\"golpes\":"+p.getInt("golpes",0)+",\"caidas\":"+p.getInt("caidas",0)+"}";
@@ -1108,7 +1108,7 @@ public class MainActivity extends Activity {
   cuenta.setTextSize(64);cuenta.setGravity(android.view.Gravity.CENTER);cuenta.setTextColor(0xFFE5484D);
   final boolean prueba=TrackingService.CAIDA_PRUEBA;
   caidaDialog=new AlertDialog.Builder(this).setTitle(prueba?"Prueba: ¿te has caído?":"¿Te has caído?")
-   .setMessage(prueba?"Es una prueba: al terminar no se enviará nada.":"Si no respondes, al acabar se envía un SOS por SMS con tu posición.")
+   .setMessage(prueba?"Es una prueba: al terminar no se enviará nada.":"La alarma se cierra al terminar la cuenta. Pulsa Enviar S.O.S. ya para enviar tu posición.")
    .setView(cuenta).setCancelable(false)
    .setPositiveButton("Estoy bien",(d,w)->mandaCaida("CAIDA_BIEN"))
    .setNegativeButton(prueba?"Terminar prueba":"Enviar S.O.S. ya",(d,w)->mandaCaida("CAIDA_ENVIA")).create();

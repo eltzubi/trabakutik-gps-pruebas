@@ -80,3 +80,12 @@ test('La hoja dice por qué no funciona: sin permiso de SMS o sin notificaciones
  assert(todos(nodos.sosCuerpo).some(x=>x.textContent==='Activado'));
 });
 
+
+test('La hoja describe el envío de SOS según la capacidad de la APK',()=>{
+ for(const envioManual of [true,undefined]){
+  const {c,nodos}=contexto({shareSos(){},getSosConfig:()=>cfg({envioManual})});c.abreSos();
+  const textos=todos(nodos.sosCuerpo).map(x=>x.textContent).join(' ');
+  assert.equal(textos.includes('La alarma se cierra tras 30 s.'),envioManual===true);
+  assert.equal(textos.includes('Si no respondes en 30 s'),envioManual!==true);
+ }
+});

@@ -506,8 +506,8 @@ pintaBotonMapa();
 // LA HOJA DEL BOTON SOS: pedir ayuda ahora (lo de siempre) y el AVISO DE
 // CAIDA. Lo pidio el autor el 15 de noviembre de 2026, con la idea de Garmin:
 // si te caes con fuerza mientras grabas o navegas y te quedas quieto, suena
-// una alarma; tienes 30 s para decir que estas bien y si no, sale un SMS con
-// tu posicion a tus contactos. Lo detecta y lo envia el servicio de Android
+// una alarma de 30 s. El SMS solo sale al pulsar Enviar SOS. La alarma
+// la gestiona el servicio de Android
 // (DetectorCaidas, ContactosSos): aqui solo se ven y se cambian los ajustes.
 // En una APK que no lo sabe hacer, el boton hace lo de antes.
 function abreSos(){
@@ -533,7 +533,7 @@ function pintaSos(){
  chk.type='checkbox';chk.checked=!!c.activo;chk.setAttribute('role','switch');chk.setAttribute('aria-label','Aviso de caída');
  chk.onchange=()=>{app.setFallDetection(chk.checked);pintaSos()};
  sw.append(chk,el('span'));cab.append(tit,sw);sec.append(cab);
- sec.append(el('p',null,'Si te caes con fuerza mientras grabas o navegas y te quedas quieto, suena una alarma. Tienes 30 s para pulsar «Estoy bien»; si no, se envía un SMS con tu posición a tus contactos. Es una ayuda: no avisa al 112 y no detecta todas las caídas.'));
+ sec.append(el('p',null,'Si te caes con fuerza mientras grabas o navegas y te quedas quieto, suena una alarma. '+(c.envioManual===true?'La alarma se cierra tras 30 s. Para enviar tu posición a tus contactos, pulsa «Enviar S.O.S. ya».':'Si no respondes en 30 s, esta versión de Android envía un SMS con tu posición a tus contactos.')+' Es una ayuda: no avisa al 112 y no detecta todas las caídas.'));
  const lista=c.contactos||[];
  sec.append(el('div','sos-titulo','Contactos ('+lista.length+' de '+(c.max||3)+')'));
  if(!lista.length)sec.append(el('p','sos-aviso','Sin ningún contacto no se puede avisar a nadie: añade uno.'));
