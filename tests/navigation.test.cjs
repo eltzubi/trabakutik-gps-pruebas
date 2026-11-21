@@ -17,6 +17,26 @@ function meters(a,b){
  const r=Math.PI/180,q=Math.sin((b[0]-a[0])*r/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;
  return 12742000*Math.asin(Math.min(1,Math.sqrt(q)));
 }
+test('Las flechas se espacian en pantalla y despejan los cruces consecutivos',()=>{
+ const c={dist:meters,bearingBetween:()=>90};vm.createContext(c);
+ vm.runInContext(source('function calculaFlechasRuta(','let ubicacionesFlechas'),c);
+ const recta=[point(0,0),point(300,0)],proyecta=(ancho)=>[{x:0,y:0},{x:ancho,y:0}];
+ const cerca=c.calculaFlechasRuta(recta,proyecta(600),[70,95],1);
+ assert.deepEqual(Array.from(cerca,f=>f.x),[50,250,350,450,550]); // se omite la de x=150
+ assert.deepEqual(Array.from(c.calculaFlechasRuta(recta,proyecta(300),[],1),f=>f.x),[50,150,250]);
+ assert.equal(c.calculaFlechasRuta(recta,proyecta(300),[],-1)[0].angulo,270);
+});
+test('La tangente suaviza un vértice y una ida y vuelta no superpone flechas opuestas',()=>{
+ const c={R:Math.PI/180,dist:meters};vm.createContext(c);
+ vm.runInContext(source('function bearingBetween(a,b){','// EL RUMBO DE LA FLECHA'),c);
+ vm.runInContext(source('function calculaFlechasRuta(','let ubicacionesFlechas'),c);
+ const puntos=[point(0,0),point(49,0),point(50,1),point(51,0),point(100,0)];
+ const proyectados=[{x:0,y:0},{x:49,y:0},{x:50,y:1},{x:51,y:0},{x:100,y:0}];
+ const [flecha]=c.calculaFlechasRuta(puntos,proyectados,[],1);
+ assert(Math.abs(flecha.angulo-90)<1);
+ const idaVuelta=[point(0,0),point(300,0),point(0,0)];
+ assert.equal(c.calculaFlechasRuta(idaVuelta,[{x:0,y:0},{x:300,y:0},{x:0,y:0}],[],1).length,0);
+});
 // LA PIEZA 08 ESTA CERRADA: el detector la pide con require(). Lo que usa de
 // las demas -compactRoutePoints de la 06, bearingBetween de la 02, sin cerrar
 // todavia- se recorta aparte y se le deja en lo global, como lo comparte la

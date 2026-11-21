@@ -102,27 +102,80 @@ function locateNearby(){
 }
 // Flechas pequeñas sobre el recorrido azul, siguiendo el orden real del GPX.
 let directionArrows=L.layerGroup().addTo(map);
-function updateDirectionArrows(){
- directionArrows.clearLayers();
- if(routePoints.length<2||map.getZoom()<13)return;
- let totalMeters=0;
- for(let i=1;i<routePoints.length;i++)totalMeters+=dist(routePoints[i-1],routePoints[i]);
- const spacing=Math.max(220,totalMeters/40);
- let next=spacing/2,covered=0;
- for(let i=1;i<routePoints.length;i++){
-  const a=routePoints[i-1],b=routePoints[i],len=dist(a,b);
-  if(len<1)continue;
-  while(covered+len>=next){
-   const t=(next-covered)/len,point=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
-   const angle=(bearingBetween(a,b)+(sentidoRuta<0?180:0))%360;
-   const icon=L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:'<div style="width:20px;height:20px;display:grid;place-items:center;transform:rotate('+angle+'deg);pointer-events:none"><svg width="15" height="17" viewBox="0 0 15 17" aria-hidden="true"><path d="M7.5 1L14 15L7.5 11.5L1 15Z" fill="#07314b" stroke="#f0ffff" stroke-width="1.8" stroke-linejoin="round"/></svg></div>'});
-   L.marker(point,{icon,interactive:false,keyboard:false,zIndexOffset:450}).addTo(directionArrows);
-   next+=spacing;
+function calculaFlechasRuta(puntos,proyectados,giros,sentido){
+ const metros=[0];
+ for(let i=1;i<puntos.length;i++)metros.push(metros[i-1]+dist(puntos[i-1],puntos[i]));
+ const total=metros[metros.length-1];
+ function puntoEn(m){
+  let izq=0,der=metros.length-1;
+  while(izq+1<der){
+   const mitad=(izq+der)>>1;
+   if(metros[mitad]<=m)izq=mitad;else der=mitad;
   }
-  covered+=len;
+  const a=puntos[izq],b=puntos[der],largo=metros[der]-metros[izq];
+  const t=largo?(m-metros[izq])/largo:0;
+  return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+ }
+ const zonas=[];
+ for(const giro of giros.filter(Number.isFinite).sort((a,b)=>a-b)){
+  const zona=zonas[zonas.length-1];
+  // Dos cruces a 30 m o menos comparten la misma zona limpia.
+  if(zona&&giro-15<=zona[1])zona[1]=giro+15;
+  else zonas.push([giro-15,giro+15]);
+ }
+ const flechas=[],celdas=new Map();
+ let siguiente=50,recorrido=0,exclusion=0;
+ for(let i=1;i<puntos.length;i++){
+  const a=proyectados[i-1],b=proyectados[i],paso=Math.hypot(b.x-a.x,b.y-a.y);
+  if(!paso)continue;
+  for(;siguiente<=recorrido+paso;siguiente+=100){
+   const t=(siguiente-recorrido)/paso,m=metros[i-1]+t*(metros[i]-metros[i-1]);
+   while(exclusion<zonas.length&&m>zonas[exclusion][1])exclusion++;
+   if(exclusion<zonas.length&&m>=zonas[exclusion][0])continue;
+   const antes=puntoEn(Math.max(0,m-8)),despues=puntoEn(Math.min(total,m+8));
+   if(dist(antes,despues)<3)continue; // la tangente no es fiable en una vuelta muy cerrada
+   const angulo=(bearingBetween(antes,despues)+(sentido<0?180:0))%360;
+   const x=a.x+t*(b.x-a.x),y=a.y+t*(b.y-a.y);
+   const col=Math.floor(x/14),fila=Math.floor(y/14);
+   const flecha={punto:puntoEn(m),angulo,x,y,m,oculta:false};
+   for(let c=col-1;c<=col+1;c++)for(let f=fila-1;f<=fila+1;f++){
+    for(const otra of celdas.get(c+','+f)||[]){
+     if(Math.hypot(x-otra.x,y-otra.y)>14)continue;
+     flecha.oculta=true;
+     if(Math.abs((angulo-otra.angulo+540)%360-180)>105)otra.oculta=true;
+    }
+   }
+   const clave=col+','+fila;
+   if(!celdas.has(clave))celdas.set(clave,[]);
+   celdas.get(clave).push(flecha);
+   flechas.push(flecha);
+  }
+  recorrido+=paso;
+ }
+ return flechas.filter(f=>!f.oculta);
+}
+let ubicacionesFlechas=null,zonaFlechas=null;
+function updateDirectionArrows(reutiliza=false){
+ const zoom=map.getZoom();
+ if(routePoints.length<2||zoom<13){
+  directionArrows.clearLayers();ubicacionesFlechas=null;zonaFlechas=null;return;
+ }
+ const vista=map.getBounds();
+ if(reutiliza&&zonaFlechas?.contains(vista))return;
+ directionArrows.clearLayers();
+ if(!reutiliza||!ubicacionesFlechas){
+  const giros=(sentidoRuta<0?junctionsReves||junctions:junctions).map(g=>g.along);
+  ubicacionesFlechas=calculaFlechasRuta(routePoints,routePoints.map(p=>map.project(p,zoom)),giros,sentidoRuta);
+ }
+ zonaFlechas=vista.pad(.25);
+ for(const {punto,angulo} of ubicacionesFlechas){
+  if(!zonaFlechas.contains(punto))continue;
+  const icon=L.divIcon({className:'',iconSize:[10,10],iconAnchor:[5,5],html:'<div class="flecha-sentido" style="transform:rotate('+angulo+'deg)"><svg width="8" height="10" viewBox="0 0 10 12" aria-hidden="true"><path d="M5 1L9 11L5 8L1 11Z" fill="#07314b" fill-opacity=".85" stroke="#f0ffff" stroke-width="1.2" stroke-linejoin="round"/></svg></div>'});
+  L.marker(punto,{icon,interactive:false,keyboard:false,zIndexOffset:450}).addTo(directionArrows);
  }
 }
-map.on('zoomend',updateDirectionArrows);
+map.on('zoomend',()=>updateDirectionArrows());
+map.on('moveend',()=>updateDirectionArrows(true));
 function setRouteTitle(name,href){
  const title=$('mapTitle');
  title.textContent=name;

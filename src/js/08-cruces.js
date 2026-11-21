@@ -786,6 +786,7 @@ function computeJunctions(){
  confirmaRamalWeb.reinicia();
  junctions=ida.filter(j=>!j.entradaLateral);routeCumulative=cum;junctionsReves=vuelta?.filter(j=>!j.entradaLateral)??null;
  junctionWarned.clear();junctionZoomOnce.clear();
+ if(typeof updateDirectionArrows==='function')updateDirectionArrows();
  enviaGirosNativos();
 }
 function detectaCurvasDelTrack(pts,cum){
