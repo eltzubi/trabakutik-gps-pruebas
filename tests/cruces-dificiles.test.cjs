@@ -188,3 +188,11 @@ test('Un enlace de la calzada de al lado no anuncia un giro en la recta',()=>{
  const recta={tramos:[[0,150]],calle:'A'};
  assert.deepEqual(dice(detector()(ruta(sur,recta),[lateral])),[]);
 });
+
+test('Una entrada sin salida no genera un aviso ambiguo si el track continúa por la pista',()=>{
+ const pista={tramos:[[25,150]],calle:'B'};
+ const entrada={tramos:[[0,60]],calle:'C',clase:3};
+ const mapa=cruce([sur,pista,entrada]);
+ assert.deepEqual(dice(enCruce(detector()(ruta(sur,pista),[mapa]))),[]);
+ assert.deepEqual(dice(enCruce(detector()(ruta(sur,entrada),[mapa]))),['recto por izquierda']);
+});

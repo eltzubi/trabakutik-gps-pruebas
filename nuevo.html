@@ -4464,14 +4464,18 @@ function decideCrucePorCalle(cruce,ramas,ruta){
  // carretera y es «gira» (18 nov 2026; el autor, en una entrada a 40 grados
  // de la BI-633: «debería ser gira a la izquierda, entramos en otro tipo de
  // carretera»; con el limite en 45 decia «sigue recto por la izquierda»).
+ // Una entrada lateral sin salida no basta para anunciar una horquilla.
+ // Conserva la maniobra durante el cálculo para no alterar los avisos vecinos.
+ const entradaLateral=recta?.clase===3&&m.clase!==3&&
+  !ramas.some(x=>x!==a&&x!==m&&otraValida(x));
  if(recta&&Math.abs(difRumbo(rumboDe(m),rumboDe(recta)))<GEO_HORQUILLA&&Math.abs(desvio)<CRUCE_RECTO)
-  return {grados:Math.round(Math.abs(desvio)),lado:difRumbo(rumboDe(m),rumboDe(recta))<0?'izquierda':'derecha',mantente:true,
+  return {grados:Math.round(Math.abs(desvio)),lado:difRumbo(rumboDe(m),rumboDe(recta))<0?'izquierda':'derecha',mantente:true,entradaLateral,
    recto:Math.abs(desvio)<=Math.abs(difRumbo(rumboDe(recta),entra)),porCalle:true};
  const masRecta=!!recta&&Math.abs(difRumbo(rumboDe(recta),entra))<Math.abs(desvio)-5;
  if(!masRecta&&Math.abs(desvio)<CRUCE_RECTO)return null;
  const mantente=Math.abs(desvio)<CRUCE_RECTO;
  const lado=mantente?(difRumbo(rumboDe(m),rumboDe(recta))<0?'izquierda':'derecha'):(desvio<0?'izquierda':'derecha');
- return {grados:Math.round(Math.abs(desvio)),lado,mantente,recto:!mantente||!recta||Math.abs(desvio)<=Math.abs(difRumbo(rumboDe(recta),entra)),porCalle:true};
+ return {grados:Math.round(Math.abs(desvio)),lado,mantente,entradaLateral:mantente&&entradaLateral,recto:!mantente||!recta||Math.abs(desvio)<=Math.abs(difRumbo(rumboDe(recta),entra)),porCalle:true};
 }
 function decideCruce(cruce,centro,antes,despues,ruta){
  const RAMA_ENCAJA=45;
@@ -4668,7 +4672,7 @@ function computeJunctions(){
    ida.sort((a,b)=>a.i-b.i);
   }
  }
- junctions=ida;routeCumulative=cum;junctionsReves=vuelta;
+ junctions=ida.filter(j=>!j.entradaLateral);routeCumulative=cum;junctionsReves=vuelta?.filter(j=>!j.entradaLateral)??null;
  junctionWarned.clear();junctionZoomOnce.clear();
  enviaGirosNativos();
 }
@@ -4913,7 +4917,7 @@ function calculaCrucesDe(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false,entradaLateral=false;
   if(cruce){
    // El trozo de ruta de 60 m antes y despues del CRUCE (cortado en el punto
    // de la ruta mas cercano a su nodo y empalmado en el nodo), para reconocer
@@ -5010,7 +5014,7 @@ function calculaCrucesDe(){
    }else if(d&&!(crucesDichos.has(elCruce)&&!haSalido(elCruce,crucesDichos.get(elCruce),i))){
     cruceAvisado=elCruce;
     porElCruce=true;
-    grados=d.grados;ladoCruce=d.lado;mantente=d.mantente;sigue=!!d.sigue;via=d.via|0;noRecto=d.mantente&&d.recto===false;
+    grados=d.grados;ladoCruce=d.lado;mantente=d.mantente;sigue=!!d.sigue;via=d.via|0;noRecto=d.mantente&&d.recto===false;entradaLateral=!!d.entradaLateral;
    }
   }
   // Que el cruce no pida aviso NO cierra el punto: encima de un cruce puede
@@ -5067,7 +5071,7 @@ function calculaCrucesDe(){
   // el aviso va en el punto de la ruta mas cercano a su nodo.
   const ultimo=junctions[junctions.length-1];
   const iA=cruceAvisado&&iNodo!=null&&iNodo!==i&&(!ultimo||iNodo>ultimo.i)?iNodo:i;
-  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{}));
+  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{},entradaLateral?{entradaLateral:true}:{}));
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
  // El detector de la app Android aporta curvas por pico y por lado.
