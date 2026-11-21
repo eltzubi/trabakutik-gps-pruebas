@@ -7,8 +7,17 @@ package com.trabakutik.gps;
  * nadie la para, un SOS al contacto que haya metido cada usuario.
  *
  * Busca un impacto brusco en marcha, seguido de ocho segundos continuos
- * de quietud iniciados enseguida y un cambio de orientacion. Los umbrales
- * son provisionales hasta contar con trazas de campo.
+ * de quietud que empiecen en los INICIO_QUIETUD_MS siguientes, y un cambio
+ * de orientacion. Los umbrales son provisionales hasta contar con trazas de
+ * campo.
+ *
+ * 15 S PARA QUEDARSE QUIETO, NO 2 (21 nov 2026). Con 2 s, una caida rapida
+ * en carretera -rodar o deslizarse por el suelo mas de 2 s, o moverse un
+ * momento antes de quedarse quieto- no saltaba nunca, y son las mas graves.
+ * Antes de los 15 s, moverse no descarta: la cuenta de quietud vuelve a
+ * empezar. Pasados los 15 s, si no estas quieto, o te mueves, se descarta.
+ * Y el GPS en marcha solo descarta a partir de SIGUE_MARCHA_TRAS_MS: un
+ * deslizamiento de unos segundos tambien da velocidad. Lo aprobo el autor.
  *
  * Sin nada de Android, para poder probarlo con javac a secas.
  */
@@ -19,7 +28,8 @@ final class DetectorCaidas {
     static final long MOVIENDO_MS = 2_000;        // el movimiento tiene que ser de hace menos de esto
     static final long PICO_MS = 150;
     static final double AUMENTO_G = 1.0;
-    static final long INICIO_QUIETUD_MS = 2_150;        // unos 2 s, con margen por la cadencia del sensor
+    static final long INICIO_QUIETUD_MS = 15_000;       // tiempo para empezar a estar quieto tras el golpe
+    static final long SIGUE_MARCHA_TRAS_MS = 8_000;     // GPS en marcha pasado esto: sigues, no te has caido
     static final double COS_GIRO = Math.sqrt(0.5);
     static final int QUIETO_S = 8;                // segundos seguidos quieto
     static final double QUIETO_DESV = 0.6;        // m/s2: dispersion del vector en un segundo
@@ -48,7 +58,7 @@ final class DetectorCaidas {
     void velocidad(double v, long t) {
         if (!Double.isFinite(v)) return;
         if (v >= MARCHA_MS) ultimoMovimiento = t;
-        if (golpeEn >= 0 && t - golpeEn > INICIO_QUIETUD_MS && v >= SIGUE_MARCHA_MS) descarta();
+        if (golpeEn >= 0 && t - golpeEn > SIGUE_MARCHA_TRAS_MS && v >= SIGUE_MARCHA_MS) descarta();
     }
 
     /** Una muestra del acelerometro (m/s2, con la gravedad) en t (ms). true = aviso. */
@@ -92,11 +102,14 @@ final class DetectorCaidas {
             double norma = Math.sqrt(mx * mx + my * my + mz * mz);
             double desv = Math.sqrt(Math.max(0, suma2 / n - norma * norma));
             boolean estable = n >= MUESTRAS_MIN && desv <= QUIETO_DESV && norma >= 0.8 * G && norma <= 1.2 * G;
-            if (!estable && (quietos > 0 || t - golpeEn > INICIO_QUIETUD_MS)) {
-                descarta();
-                return false;
-            }
-            if (estable) quietos++;
+            if (!estable) {
+                // Pasado el plazo, moverse descarta; dentro, se vuelve a empezar.
+                if (t - golpeEn > INICIO_QUIETUD_MS) {
+                    descarta();
+                    return false;
+                }
+                quietos = 0;
+            } else quietos++;
             segundoEn = t;
             reiniciaSegundo();
             if (quietos >= QUIETO_S) {

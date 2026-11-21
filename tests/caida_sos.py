@@ -75,11 +75,18 @@ public class CaidaSosTest{
   tramo(d,20,2.5,4.0);golpe(d,4.0);require(tramo(d,12,0.05,0.0,true),"primera");
   tramo(d,10,2.5,4.0);golpe(d,4.0);
   require(!tramo(d,12,0.05,0.0,true),"segunda dentro de 60 s: no");
-  // 7. Si el GPS vuelve a dar velocidad de marcha tras el golpe, se descarta.
+  // 7. Si el GPS sigue dando velocidad de marcha pasados 8 s, sigues: se
+  //    descarta, aunque luego quedes tumbado (con giro, para que lo que lo
+  //    descarte sea el GPS y no la falta de giro).
   d=new DetectorCaidas();t=0;
   tramo(d,20,2.5,4.0);golpe(d,4.0);
-  tramo(d,3,0.05,4.0);
-  require(!tramo(d,12,0.05,Double.NaN),"si el GPS dice que sigues a 4 m/s, no salta");
+  tramo(d,10,2.5,4.0);
+  require(!tramo(d,12,0.05,Double.NaN,true),"si el GPS dice que sigues a 4 m/s pasados 8 s, no salta");
+  // 7b. Deslizarte 3 s por el suelo tambien da velocidad: eso no descarta.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,6.0);golpe(d,4.0);
+  tramo(d,3,2.5,3.0);
+  require(tramo(d,12,0.05,0.0,true),"deslizarte 3 s y quedarte tumbado: salta");
 
   // 8. Muestras sueltas (una por segundo) tras el golpe: no prueban quietud.
   d=new DetectorCaidas();t=0;
@@ -98,7 +105,24 @@ public class CaidaSosTest{
   d=new DetectorCaidas();t=0;
   tramo(d,20,2.5,4.0);golpe(d,4.0);
   tramo(d,4,2.5,Double.NaN);
-  require(!tramo(d,12,0.05,0.0,true),"parar tarde no confirma el impacto");
+  // 15 s para quedarse quieto (21 nov 2026): rodar 4 s tras el golpe y
+  // quedarte tumbado ES una caida, y de las graves. Antes, con 2 s, no saltaba.
+  require(tramo(d,12,0.05,0.0,true),"rodar 4 s y quedarte tumbado: salta");
+  // Moverte un momento antes de quedarte quieto tampoco la descarta.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);golpe(d,4.0);
+  tramo(d,2,2.5,Double.NaN);tramo(d,3,0.05,Double.NaN,true);tramo(d,2,2.5,Double.NaN);
+  require(tramo(d,12,0.05,0.0,true),"rodar, parar, moverte y quedarte quieto dentro de 15 s: salta");
+  // Pero si a los 15 s no te has quedado quieto, no era una caida.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);golpe(d,4.0);
+  tramo(d,16,2.5,Double.NaN);
+  require(!tramo(d,12,0.05,0.0,true),"quedarte quieto pasados 15 s no confirma el impacto");
+  // Y una vez pasados los 15 s, moverte a mitad de la quietud la descarta.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);golpe(d,4.0);
+  tramo(d,10,2.5,Double.NaN);boolean mt=tramo(d,6,0.05,0.0,true);mt|=tramo(d,2,2.5,Double.NaN);
+  require(!mt&&!tramo(d,12,0.05,0.0,true),"moverte pasados 15 s descarta la quietud");
   d=new DetectorCaidas();t=0;
   tramo(d,20,0.05,1.3);golpe(d,2.6);
   require(tramo(d,12,0.05,0.0,true),"un golpe amortiguado con giro y quietud sí cuenta");

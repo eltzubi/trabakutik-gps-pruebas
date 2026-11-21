@@ -1269,3 +1269,28 @@ incertidumbre al regresar y preparación tardía de voz. La reproducción
 comparada ejecuta las funciones reales Java y JavaScript y comprueba el
 instante de cada cambio, además de los avisos y su prioridad. No sustituye
 la prueba física de audio y pantalla bloqueada en el teléfono.
+
+## Aviso de caída: 15 s para quedarse quieto, no 2 (21 de noviembre de 2026)
+
+Revisando los cambios del día, el detector pedía quedarse quieto **en los
+2 s** siguientes al golpe y no moverse ni un segundo durante los 8 de
+quietud; antes había 30 s. Con eso, una caída rápida en carretera (rodar o
+deslizarse por el suelo más de 2 s, o moverse un momento antes de quedarse
+quieto) no saltaba, y son las más graves. El autor aprobó cambiarlo:
+
+- La quietud tiene que empezar en los **15 s** siguientes al golpe
+  (`INICIO_QUIETUD_MS`).
+- Dentro de esos 15 s, moverse no descarta: la cuenta de 8 s vuelve a
+  empezar. Pasados los 15 s, moverse sí descarta.
+- El GPS en marcha descarta solo a partir de **8 s** tras el golpe
+  (`SIGUE_MARCHA_TRAS_MS`): un deslizamiento de 3 s también da velocidad.
+- Lo demás sigue igual: golpe brusco en marcha, 8 s seguidos quieto, giro del
+  móvil de más de 45°, y cancelar la cuenta atrás si se reanuda la marcha con
+  GPS bueno.
+
+En `tests/caida_sos.py`, el caso «parar tarde no confirma el impacto» (golpe,
+4 s moviéndose y luego tumbado con giro) pasa a esperar el aviso, y hay casos
+nuevos: deslizarse 3 s con velocidad GPS, moverse un momento antes de la
+quietud, quedarse quieto pasados 15 s (no salta) y moverse pasados 15 s (no
+salta). El caso del GPS en marcha se reforzó: pasaba por faltar el giro, no
+por el GPS.
