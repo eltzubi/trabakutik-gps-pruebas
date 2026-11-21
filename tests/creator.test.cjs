@@ -505,3 +505,33 @@ test('Descargar un GPX de Mis rutas conserva el nombre de verdad dentro del fich
  botones.find(b=>b.textContent==='↓ GPX').onclick();
  assert.deepEqual(descargas,['Mi ruta 13/11/2026']);
 });
+
+test('un enlace de doble calzada usa el rumbo de la ruta y conserva la calzada devuelta',async()=>{
+ const c=creatorContext();
+ const inicio=[43.00007,-2],fin=[43,-1.998],calzada=[43,-2];
+ c.zonaCruces={puntos:[Object.assign([43,-1.999],{prohibidas:[true,false,true],clases:[1,1,1]})]};
+ c.distARuta=()=>4;
+ vm.runInContext('redOsm=descifraCaminos({escala:100000,nodos:[4300000,-200000,0,200],tramos:[0,1,3,162,0]});',c);
+ let llamadas=0;
+ c.fetch=async(url,opciones)=>{
+  llamadas++;
+  const cuerpo=JSON.parse(opciones.body);
+  assert.equal(cuerpo.costing,'auto');
+  assert.deepEqual(cuerpo.locations.map(l=>l.heading),[93,93]);
+  assert(cuerpo.locations.every(l=>l.radius===35&&l.rank_candidates===false));
+  return {ok:true,json:async()=>({trip:{legs:[{shape:codificaValhalla([calzada,fin])}]}})};
+ };
+ const id=c.nodoManualGps(...inicio);
+ c.draft([id],[[id]]);
+ const resultado=await c.solicitaMapaGps([inicio,fin],new AbortController().signal);
+ c.anadeTramoMapa(resultado);
+ assert.equal(llamadas,1);
+ const s=c.state();
+ assert.deepEqual(Array.from(s.red.nodos[s.anchors[0]]).slice(0,2),calzada);
+ assert.equal(c.planLocalMapa([inicio,fin]),null);
+
+ c.fetch=async()=>({ok:true,json:async()=>({trip:{legs:[
+  {shape:codificaValhalla([calzada,fin]),maneuvers:[{type:13}]}
+ ]}})});
+ await assert.rejects(c.solicitaMapaGps([inicio,fin],new AbortController().signal),/continuidad de la calzada/);
+});

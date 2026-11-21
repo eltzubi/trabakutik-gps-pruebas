@@ -13,7 +13,7 @@ function porQueNoHayCamino(e){
  return e.message+' El lápiz solo conoce los caminos de OpenStreetMap y los de las rutas de Trabakutik: el mapa del IGN dibuja sendas que OpenStreetMap no tiene.';
 }
 function planLocalMapa(coords){
- if(!redOsm||coords.length<2)return null;
+ if(!redOsm||coords.length<2||rumboDeCalzada(coords)!==null)return null;
  const anclas=coords.map(p=>enganchaOsm(redOsm,p[0],p[1]));
  if(anclas.some(a=>!a))return null;
  // El mismo listón que con Valhalla: si el punto marcado se queda a mas de
@@ -118,7 +118,38 @@ function respuestaMapaGps(data,solicitados){
   if(dist(parts[i-1][parts[i-1].length-1],parts[i][0])>1)throw Error('El recorrido contiene un corte.');
  return {anchors,parts};
 }
+// Los enlaces con varias bocas de sentido único pueden confundir al perfil
+// de a pie. Solo se usa el perfil direccional entre puntos de carretera.
+function rumboDeCalzada(coords){
+ if(coords.length!==2||typeof redOsm==='undefined'||!redOsm?.clase||
+    typeof zonaCruces==='undefined'||!zonaCruces?.puntos)return null;
+ const [a,b]=coords;
+ if(dist(a,b)<25)return null;
+ const carretera=p=>{
+  const ancla=enganchaOsm(redOsm,p[0],p[1]);
+  return ancla&&dist(p,ancla.p)<=15&&[3,5].includes(redOsm.clase[ancla.tr]);
+ };
+ if(!carretera(a)||!carretera(b))return null;
+ const enlace=zonaCruces.puntos.some(n=>n.prohibidas?.filter(Boolean).length>=2&&
+  n.clases?.every(c=>c===1)&&distARuta(n,coords)<=30);
+ return enlace?Math.round(rumboDesde(a,b))%360:null;
+}
 async function solicitaMapaGps(coords,signal){
+ const rumbo=rumboDeCalzada(coords);
+ if(rumbo!==null){
+  const respuesta=await pideMapaGps(coords,signal,null,rumbo);
+  const result=respuestaMapaGps(respuesta,coords);
+  const tramo=result.parts[0];
+  const metrosTramo=tramo.slice(1).reduce((m,p,i)=>m+dist(tramo[i],p),0);
+  const directo=dist(coords[0],coords[1]);
+  const cambioDeSentido=respuesta.trip.legs[0].maneuvers?.some(m=>m.type===12||m.type===13);
+  if(cambioDeSentido||metrosTramo>directo*1.35+25)
+   throw Error('No se pudo confirmar la continuidad de la calzada. Acerca los puntos al sentido que quieres seguir.');
+  if(typeof anclasGps!=='undefined'&&anclasGps.length>1&&dist(result.anchors[0],coords[0])>3)
+   throw Error('El punto anterior está en otra calzada. Acércalo al sentido que quieres seguir.');
+  result.calzada=true;
+  return result;
+ }
  const normal=respuestaMapaGps(await pideMapaGps(coords,signal,null),coords);
  // La segunda opinion (ver eligeTramosCortos). Si falla, no pasa nada: se
  // queda el normal. Solo se corta si el calculo se cancela.
@@ -137,7 +168,7 @@ async function solicitaMapaGps(coords,signal){
  finally{clearTimeout(reloj);signal.removeEventListener('abort',corta)}
  return eligeTramosCortos(normal,corto);
 }
-async function pideMapaGps(coords,signal,opciones){
+async function pideMapaGps(coords,signal,opciones,rumbo=null){
  const espera=Math.max(0,1100-(Date.now()-ultimaPeticionMapaGps));
  if(espera)await new Promise((resolve,reject)=>{
   const cancel=()=>{clearTimeout(timer);reject(Error('Cálculo cancelado.'))};
@@ -147,8 +178,8 @@ async function pideMapaGps(coords,signal,opciones){
  if(signal.aborted)throw Error('Cálculo cancelado.');
  ultimaPeticionMapaGps=Date.now();
  const peticion={
-  locations:coords.map(p=>({lat:Number(p[0].toFixed(6)),lon:Number(p[1].toFixed(6)),type:'break'})),
-  costing:'pedestrian',directions_options:{units:'kilometers'}};
+  locations:coords.map(p=>({lat:Number(p[0].toFixed(6)),lon:Number(p[1].toFixed(6)),type:'break',...(rumbo===null?{}:{heading:rumbo,heading_tolerance:35,radius:35,rank_candidates:false})})),
+  costing:rumbo===null?'pedestrian':'auto',directions_options:{units:'kilometers'}};
  if(opciones)peticion.costing_options=opciones;
  const r=await fetch(URL_PLANIFICADOR,{method:'POST',body:JSON.stringify(peticion),signal,cache:'no-store',credentials:'omit',
   headers:{Accept:'application/json','Content-Type':'application/json','X-Client-Id':'trabakutik.com'}});
@@ -254,9 +285,9 @@ function aplicaMapaGps(result){
 // Esto añade el tramo calculado al final y deja lo anterior como estaba.
 function anadeTramoMapa(result){
  const a=result.anchors[0],b=result.anchors[1];
- if(!anclasGps.length){
+ if(!anclasGps.length||result.calzada&&anclasGps.length===1){
   const ini=nodoManualGps(a[0],a[1],a[2]);
-  anclasGps.push(ini);tramosGps.push([ini]);
+  anclasGps[0]=ini;tramosGps[0]=[ini];
  }
  const ini=anclasGps[anclasGps.length-1];
  // EL PRIMER PUNTO SE QUEDABA SIN ALTURA. Esto reutiliza el ancla que ya
