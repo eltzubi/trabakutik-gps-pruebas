@@ -4593,9 +4593,29 @@ function decideCrucePorCalle(cruce,ramas,ruta){
  // BI-633: «es una recta, no hace falta indicar».
  const otraValida=x=>!x.prohibida&&x.clase!==3;
  if(ramas.some(x=>!x.lejos))return undefined;
+ const nodo=[cruce[0],cruce[1]],rumboDe=x=>bearingBetween(nodo,x.lejos);
+ // En un enlace con calzadas de un solo sentido, los rumbos del nodo
+ // pueden apuntar al otro carril. Comprueba la continuidad a 25 m y
+ // silencia solo si hay una salida legal clara y ninguna vecina compite.
+ if(ruta.a25&&ruta.d25&&ramas.filter(x=>x.prohibida).length>=2){
+  const entrada=bearingBetween(ruta.a25,nodo),salida=bearingBetween(nodo,ruta.d25);
+  if(Math.abs(difRumbo(salida,entrada))<CRUCE_RECTO){
+   const legales=ramas.filter(x=>!x.prohibida&&Math.abs(difRumbo(rumboDe(x),entrada))<90);
+   const continua=eligePorForma(legales,ruta.despues,ruta.d25);
+   if(continua&&Math.abs(difRumbo(rumboDe(continua),entrada))<CRUCE_RECTO
+      &&legales.every(x=>x===continua||Math.abs(difRumbo(rumboDe(x),salida))>=GEO_HORQUILLA))return null;
+  }else{
+   const giro=difRumbo(salida,entrada);
+   const ramal=eligePorForma(ramas.filter(x=>!x.prohibida),ruta.despues,ruta.d25);
+   // Si la llegada es dudosa pero la salida coincide con un giro claro
+   // del track, el rumbo de los primeros metros del ramal puede engañar.
+   if(ramal&&Math.abs(giro)>=CRUCE_GIRO_CALLE&&Math.abs(difRumbo(rumboDe(ramal),salida))<CRUCE_RECTO
+      &&!eligePorForma(ramas,ruta.antes,ruta.a25))
+    return {grados:Math.round(Math.abs(giro)),lado:giro<0?'izquierda':'derecha',mantente:false,porCalle:true};
+  }
+ }
  const a=eligePorForma(ramas,ruta.antes,ruta.a25);if(!a)return undefined;
  const m=eligePorForma(ramas.filter(x=>x!==a),ruta.despues,ruta.d25);if(!m)return undefined;
- const nodo=[cruce[0],cruce[1]],rumboDe=x=>bearingBetween(nodo,x.lejos);
  // El rumbo con el que LLEGAS, de la ruta 60 m antes del cruce, no de la rama
  // a 25 m: si la carretera ya viene torciendo, a 25 m parece que sigue recta.
  const desde=ruta.desde||ruta.antes[0],hasta=ruta.hasta||ruta.despues[ruta.despues.length-1];

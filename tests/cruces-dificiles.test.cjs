@@ -196,3 +196,17 @@ test('Una entrada sin salida no genera un aviso ambiguo si el track continúa po
  assert.deepEqual(dice(enCruce(detector()(ruta(sur,pista),[mapa]))),[]);
  assert.deepEqual(dice(enCruce(detector()(ruta(sur,entrada),[mapa]))),['recto por izquierda']);
 });
+
+test('Una carretera que continúa entre enlaces de sentido único se mantiene en silencio en ambos sentidos',()=>{
+ const centro=[...O,[[42,240],[90,270],[120,324]]];
+ centro.lejos=[P(23,7),P(-5,-22),P(25,0),P(-24,1),P(15,-19),P(-23,7)];
+ centro.clases=[1,1,1,1,1,1];
+ centro.prohibidas=[true,false,false,true,true,false];
+ const carretera=[P(-90,10),P(-67,8),P(-41,6),P(-24,7),P(-12,6),P(-7,5),
+  P(-3,3),O,P(4,0),P(14,0),P(32,1),P(48,4),P(70,9),P(95,15)];
+ const calcular=detector();
+ assert.deepEqual(dice(calcular(carretera,[centro])),[]);
+ assert.deepEqual(dice(calcular(carretera.slice().reverse(),[centro])),[]);
+ const ramal=[...carretera.slice(0,8),P(-1,-5),P(-3,-15),P(-6,-25),P(-10,-40),P(-16,-65)];
+ assert.deepEqual(lados(enCruce(calcular(ramal,[centro]))),['derecha']);
+});
