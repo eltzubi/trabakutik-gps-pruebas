@@ -28,6 +28,17 @@ para la nube, comprobados el 13 de noviembre de 2026:
 - Saldo: la API se paga aparte de ChatGPT. «429 insufficient_quota» es que no
   queda saldo, no un fallo del programa.
 - La carpeta `.duel/` está en el `.gitignore`: los duelos no se suben.
+- **Otro crítico, por ejemplo un FreeLLMAPI propio** (21 de noviembre de
+  2026, lo pidió el autor para no pagar la API de OpenAI). Cualquier servicio
+  compatible con la API Responses vale: `--endpoint https://SU-DIRECCION/v1`
+  (o `DUEL_ENDPOINT`), su clave en `DUEL_API_KEY` y, con FreeLLMAPI,
+  `--model auto` para que elija él. Solo https (http únicamente para la propia
+  máquina). Tiene que estar en una dirección pública: un FreeLLMAPI en el
+  ordenador del autor no se alcanza desde la nube. En la nube la clave la pone
+  el proxy: se pide con `request_credential` para ese host y se lanza con
+  `DUEL_API_KEY=proxy-injected`. **Los planes gratuitos de varios proveedores
+  usan lo que se les manda para entrenar**: nada de coordenadas del autor ni
+  de sus GPX en el paquete.
 - El autor quiere que se le hable en castellano y de tú.
 
 ## Start with the user's question

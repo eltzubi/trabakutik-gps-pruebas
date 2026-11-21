@@ -161,12 +161,40 @@ def configured_model(explicit=None):
     return model
 
 
-def configured_key():
-    key = os.environ.get("OPENAI_API_KEY", "").strip()
+def configured_endpoint(override=None):
+    """Otra direccion compatible con la API Responses de OpenAI (por ejemplo,
+    un FreeLLMAPI propio), por --endpoint o DUEL_ENDPOINT. Sin nada, OpenAI.
+    Solo https; http unicamente para la propia maquina."""
+    value = (override or os.environ.get("DUEL_ENDPOINT", "")).strip()
+    if not value:
+        return API_ENDPOINT
+    from urllib.parse import urlsplit
+    parts = urlsplit(value)
+    local = parts.hostname in ("localhost", "127.0.0.1", "::1")
+    if parts.scheme != "https" and not (parts.scheme == "http" and local):
+        raise DuelError("The endpoint must use https (http only for localhost).")
+    if not parts.hostname or parts.username or parts.password or parts.query or parts.fragment:
+        raise DuelError("The endpoint must be a plain URL without credentials, query or fragment.")
+    path = parts.path.rstrip("/")
+    if not path.endswith("/responses"):
+        path = (path if path.endswith("/v1") else path + "/v1") + "/responses"
+    return parts.scheme + "://" + parts.netloc + path
+
+
+def key_variable(endpoint):
+    """Con otra direccion, su clave va en DUEL_API_KEY (si no, OPENAI_API_KEY)."""
+    if endpoint != API_ENDPOINT and os.environ.get("DUEL_API_KEY", "").strip():
+        return "DUEL_API_KEY"
+    return "OPENAI_API_KEY"
+
+
+def configured_key(endpoint=API_ENDPOINT):
+    name = key_variable(endpoint)
+    key = os.environ.get(name, "").strip()
     if not key:
-        raise DuelError("OPENAI_API_KEY is not configured. Set it before requesting a critique.")
+        raise DuelError(name + " is not configured. Set it before requesting a critique.")
     if any(character.isspace() for character in key) or not key.isascii():
-        raise DuelError("OPENAI_API_KEY has invalid whitespace or characters.")
+        raise DuelError(name + " has invalid whitespace or characters.")
     return key
 
 
@@ -273,11 +301,11 @@ def _read_stream(response):
     return final
 
 
-def fetch_critique(body, key, timeout, round_number, stream=False):
+def fetch_critique(body, key, timeout, round_number, stream=False, endpoint=API_ENDPOINT):
     if stream:
         body = dict(body, stream=True)
     request = urllib.request.Request(
-        API_ENDPOINT,
+        endpoint,
         data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
         headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
         method="POST",
@@ -354,10 +382,12 @@ def main(argv=None):
     subparsers = parser.add_subparsers(dest="command", required=True)
     check_parser = subparsers.add_parser("check", help="Report local configuration without networking")
     check_parser.add_argument("--model", help="Override DUEL_OPENAI_MODEL")
+    check_parser.add_argument("--endpoint", help="Override DUEL_ENDPOINT (OpenAI-compatible Responses URL)")
     critique_parser = subparsers.add_parser("critique", help="Request one bounded critique, or preview it")
     critique_parser.add_argument("--packet", required=True, help="Input JSON packet")
     critique_parser.add_argument("--output", required=True, help="New output JSON path; parent must exist")
     critique_parser.add_argument("--model", help="Override DUEL_OPENAI_MODEL")
+    critique_parser.add_argument("--endpoint", help="Override DUEL_ENDPOINT (OpenAI-compatible Responses URL)")
     critique_parser.add_argument("--max-output-tokens", type=int, default=DEFAULT_MAX_OUTPUT_TOKENS)
     critique_parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT, help="Seconds, from 1 to 600")
     critique_parser.add_argument("--dry-run", action="store_true", help="Save request envelope without a key or network")
@@ -365,15 +395,16 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         model = configured_model(args.model)
+        endpoint = configured_endpoint(args.endpoint)
         if args.command == "check":
-            key_configured = bool(os.environ.get("OPENAI_API_KEY", "").strip())
+            key_configured = bool(os.environ.get(key_variable(endpoint), "").strip())
             if key_configured:
-                configured_key()
+                configured_key(endpoint)
             print(json.dumps({
                 "status": "ready" if key_configured else "missing_key",
                 "api_key_configured": key_configured,
                 "model": model,
-                "endpoint": API_ENDPOINT,
+                "endpoint": endpoint,
                 "network_check": False,
             }, indent=2))
             return 0 if key_configured else 1
@@ -383,17 +414,17 @@ def main(argv=None):
             raise DuelError("--timeout must be a finite number from 1 through 600 seconds.")
         packet = read_packet(args.packet)
         body = build_request(packet, model, args.max_output_tokens)
-        key = None if args.dry_run else configured_key()
+        key = None if args.dry_run else configured_key(endpoint)
         with reserve_output(args.output) as handle:
             if args.dry_run:
                 result = {
                     "status": "dry_run",
                     "round": packet["round"],
                     "model": model,
-                    "request": {"method": "POST", "url": API_ENDPOINT, "body": body},
+                    "request": {"method": "POST", "url": endpoint, "body": body},
                 }
             else:
-                result = fetch_critique(body, key, args.timeout, packet["round"], stream=args.stream)
+                result = fetch_critique(body, key, args.timeout, packet["round"], stream=args.stream, endpoint=endpoint)
             json.dump(result, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
         print(json.dumps({"status": result["status"], "round": packet["round"], "model": result["model"]}))
