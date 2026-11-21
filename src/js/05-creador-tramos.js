@@ -134,19 +134,55 @@ function rumboDeCalzada(coords){
   n.clases?.every(c=>c===1)&&distARuta(n,coords)<=30);
  return enlace?Math.round(rumboDesde(a,b))%360:null;
 }
+// Revisa también enlaces intermedios: las anclas de usuario pueden quedar
+// lejos y la cuerda entre ellas no representa la carretera.
+async function revisaCalzadas(result,signal){
+ if(typeof zonaCruces==='undefined'||!zonaCruces?.puntos||!redOsm?.clase)return result;
+ const enlaces=zonaCruces.puntos.filter(n=>n.prohibidas?.filter(Boolean).length>=2&&n.clases?.every(c=>c===1));
+ for(const tramo of result.parts){
+  for(const enlace of enlaces){
+   let centro=-1,cerca=8;
+   for(let i=1;i<tramo.length-1;i++){
+    if(Math.abs(tramo[i][0]-enlace[0])>.00008||Math.abs(tramo[i][1]-enlace[1])>.00011)continue;
+    const d=dist(tramo[i],enlace);
+    if(d<cerca){cerca=d;centro=i}
+   }
+   if(centro<0)continue;
+   let a=centro,b=centro;
+   while(a>0&&dist(tramo[a],enlace)<65)a--;
+   while(b<tramo.length-1&&dist(tramo[b],enlace)<65)b++;
+   if(dist(tramo[a],enlace)<30||dist(tramo[b],enlace)<30)continue;
+   const entrada=rumboDesde(tramo[a],enlace),salida=rumboDesde(enlace,tramo[b]);
+   if(Math.abs(difRumboCreador(entrada,salida))>25)continue;
+   const puntos=[tramo[a],tramo[b]],rumbo=rumboDeCalzada(puntos);
+   if(rumbo===null)continue;
+   const reparado=await calculaCalzada(puntos,signal,rumbo);
+   if(dist(reparado.anchors[0],tramo[a])>3||dist(reparado.anchors[1],tramo[b])>3)
+    throw Error('No se pudo mantener la calzada en un enlace. Marca un punto de paso antes y otro después, en el sentido que quieres seguir.');
+   const interior=reparado.parts[0].filter((p,i,pts)=>
+    (i!==0||dist(p,tramo[a])>.5)&&(i!==pts.length-1||dist(p,tramo[b])>.5));
+   tramo.splice(a+1,b-a-1,...interior);
+  }
+ }
+ return result;
+}
+async function calculaCalzada(coords,signal,rumbo){
+ const respuesta=await pideMapaGps(coords,signal,null,rumbo);
+ const result=respuestaMapaGps(respuesta,coords);
+ const tramo=result.parts[0];
+ const metrosTramo=tramo.slice(1).reduce((m,p,i)=>m+dist(tramo[i],p),0);
+ const directo=dist(coords[0],coords[1]);
+ const cambioDeSentido=respuesta.trip.legs[0].maneuvers?.some(m=>m.type===12||m.type===13);
+ if(cambioDeSentido||metrosTramo>directo*1.35+25)
+  throw Error('No se pudo confirmar la continuidad de la calzada. Acerca los puntos al sentido que quieres seguir.');
+ return result;
+}
 async function solicitaMapaGps(coords,signal){
  const rumbo=rumboDeCalzada(coords);
  if(rumbo!==null){
-  const respuesta=await pideMapaGps(coords,signal,null,rumbo);
-  const result=respuestaMapaGps(respuesta,coords);
-  const tramo=result.parts[0];
-  const metrosTramo=tramo.slice(1).reduce((m,p,i)=>m+dist(tramo[i],p),0);
-  const directo=dist(coords[0],coords[1]);
-  const cambioDeSentido=respuesta.trip.legs[0].maneuvers?.some(m=>m.type===12||m.type===13);
-  if(cambioDeSentido||metrosTramo>directo*1.35+25)
-   throw Error('No se pudo confirmar la continuidad de la calzada. Acerca los puntos al sentido que quieres seguir.');
+  const result=await calculaCalzada(coords,signal,rumbo).catch(e=>{e.calzadaDudosa=true;throw e});
   if(typeof anclasGps!=='undefined'&&anclasGps.length>1&&dist(result.anchors[0],coords[0])>3)
-   throw Error('El punto anterior está en otra calzada. Acércalo al sentido que quieres seguir.');
+   throw Object.assign(Error('El punto anterior está en otra calzada. Acércalo al sentido que quieres seguir.'),{calzadaDudosa:true});
   result.calzada=true;
   return result;
  }
@@ -166,7 +202,8 @@ async function solicitaMapaGps(coords,signal){
  try{corto=respuestaMapaGps(await Promise.race([pideMapaGps(coords,ctl.signal,{pedestrian:{shortest:true}}),tope]),coords)}
  catch(e){if(signal.aborted)throw e}
  finally{clearTimeout(reloj);signal.removeEventListener('abort',corta)}
- return eligeTramosCortos(normal,corto);
+ try{return await revisaCalzadas(eligeTramosCortos(normal,corto),signal)}
+ catch(e){e.calzadaDudosa=true;throw e}
 }
 async function pideMapaGps(coords,signal,opciones,rumbo=null){
  const espera=Math.max(0,1100-(Date.now()-ultimaPeticionMapaGps));
@@ -364,7 +401,7 @@ async function planificaTramoMapa(desde,hasta){
   if(version!==calculoMapaGps)return;
   // Sin cobertura, con los caminos guardados. Sin desnivel: las cotas las
   // da Valhalla y es justo lo que no hay.
-  const local=planLocalMapa([desde,hasta]);
+  const local=e.calzadaDudosa?null:planLocalMapa([desde,hasta]);
   if(local){anadeTramoMapa(local);estadoMapaGps('Sin conexión · tramo por los caminos guardados, sin desnivel.')}
   else if(controller.signal.aborted)estadoMapaGps('No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.');
   else {
@@ -374,7 +411,7 @@ async function planificaTramoMapa(desde,hasta){
    // los caminos de la zona ya bajados. Si todavia no estan, lo que toca es
    // esperar unos segundos, no ponerse a dibujar rectas.
    tramoSinCamino=e&&e.sinCamino&&redOsm?[desde,hasta]:null;
-   estadoMapaGps(porQueNoHayCamino(e),!!tramoSinCamino);
+   estadoMapaGps(e.calzadaDudosa?e.message:porQueNoHayCamino(e),!!tramoSinCamino);
   }
  }finally{
   clearTimeout(timer);
@@ -408,9 +445,9 @@ async function planificaMapaGps(coords){
   }
  }catch(e){
   if(version!==calculoMapaGps)return;
-  const local=planLocalMapa(coords);
+  const local=e.calzadaDudosa?null:planLocalMapa(coords);
   if(local){aplicaMapaGps(local);estadoMapaGps('Sin conexión · recorrido por los caminos guardados, sin desnivel.')}
-  else estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':porQueNoHayCamino(e));
+  else estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':e.calzadaDudosa?e.message:porQueNoHayCamino(e));
  }finally{
   clearTimeout(timer);
   if(version===calculoMapaGps){peticionMapaGps=null;calculandoMapaGps=false;$('saveCreated').disabled=drawPoints.length<2}
