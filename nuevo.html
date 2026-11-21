@@ -62,7 +62,7 @@ body.despejado .info .ff-lab{white-space:nowrap}
 #sosDialog .sos-registro{font-size:11px!important;color:#6f8fa1!important;text-align:center;margin-bottom:0!important}
 .routeitem .ri-txt{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12px;color:inherit}
 .routeitem .ri-name{font-size:12px;color:inherit}
-.flecha-sentido{width:10px;height:10px;display:grid;place-items:center;pointer-events:none}
+.flecha-sentido{width:18px;height:22px;display:grid;place-items:center;pointer-events:none}
 .leaflet-rutasDeFondo-pane{opacity:.78}
 body.con-panel .leaflet-rutasDeFondo-pane{opacity:.4}
 #backgroundRouteLegend{display:block;font-size:11px;line-height:1.3;color:#c7dbe3} #backgroundRouteLegend.hidden{display:none}
@@ -1036,7 +1036,7 @@ function calculaFlechasRuta(puntos,proyectados,giros,sentido){
   if(zona&&giro-15<=zona[1])zona[1]=giro+15;
   else zonas.push([giro-15,giro+15]);
  }
- const flechas=[],celdas=new Map();
+ const flechas=[],celdas=new Map(),distanciaEntreFlechas=22;
  let siguiente=50,recorrido=0,exclusion=0;
  for(let i=1;i<puntos.length;i++){
   const a=proyectados[i-1],b=proyectados[i],paso=Math.hypot(b.x-a.x,b.y-a.y);
@@ -1049,11 +1049,11 @@ function calculaFlechasRuta(puntos,proyectados,giros,sentido){
    if(dist(antes,despues)<3)continue; // la tangente no es fiable en una vuelta muy cerrada
    const angulo=(bearingBetween(antes,despues)+(sentido<0?180:0))%360;
    const x=a.x+t*(b.x-a.x),y=a.y+t*(b.y-a.y);
-   const col=Math.floor(x/14),fila=Math.floor(y/14);
+   const col=Math.floor(x/distanciaEntreFlechas),fila=Math.floor(y/distanciaEntreFlechas);
    const flecha={punto:puntoEn(m),angulo,x,y,m,oculta:false};
    for(let c=col-1;c<=col+1;c++)for(let f=fila-1;f<=fila+1;f++){
     for(const otra of celdas.get(c+','+f)||[]){
-     if(Math.hypot(x-otra.x,y-otra.y)>14)continue;
+     if(Math.hypot(x-otra.x,y-otra.y)>distanciaEntreFlechas)continue;
      flecha.oculta=true;
      if(Math.abs((angulo-otra.angulo+540)%360-180)>105)otra.oculta=true;
     }
@@ -1083,7 +1083,7 @@ function updateDirectionArrows(reutiliza=false){
  zonaFlechas=vista.pad(.25);
  for(const {punto,angulo} of ubicacionesFlechas){
   if(!zonaFlechas.contains(punto))continue;
-  const icon=L.divIcon({className:'',iconSize:[10,10],iconAnchor:[5,5],html:'<div class="flecha-sentido" style="transform:rotate('+angulo+'deg)"><svg width="8" height="10" viewBox="0 0 10 12" aria-hidden="true"><path d="M5 1L9 11L5 8L1 11Z" fill="#07314b" fill-opacity=".85" stroke="#f0ffff" stroke-width="1.2" stroke-linejoin="round"/></svg></div>'});
+  const icon=L.divIcon({className:'',iconSize:[18,22],iconAnchor:[9,11],html:'<div class="flecha-sentido" style="transform:rotate('+angulo+'deg)"><svg width="18" height="22" viewBox="0 0 18 22" aria-hidden="true"><path d="M9 2L16 19L9 15L2 19Z" fill="#ffffff" stroke="#071822" stroke-width="2.4" stroke-linejoin="round"/></svg></div>'});
   L.marker(punto,{icon,interactive:false,keyboard:false,zIndexOffset:450}).addTo(directionArrows);
  }
 }
