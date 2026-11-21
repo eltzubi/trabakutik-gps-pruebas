@@ -555,6 +555,7 @@ public class TrackingService extends Service implements LocationListener {
   }
   if("PAUSE".equals(action)){pausado=true;enMarcha.pausa();baro.pausa(SystemClock.elapsedRealtime());metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
   if("RESUME".equals(action)){
+   filtroGrabacion.reinicia();
    pausado=false;forzarCorte=true;    // que el descanso no salga como una recta
    baro.sigue(SystemClock.elapsedRealtime()); // lo medido en pausa no cuenta
    if(active)updateNotice();return START_NOT_STICKY;
@@ -834,6 +835,7 @@ public class TrackingService extends Service implements LocationListener {
   try{manager.removeUpdates(red);}catch(Exception ignored){}
   red=null;
  }
+ final FiltroDeriva filtroGrabacion=new FiltroDeriva();
  void beginRecording() throws IOException {
   File dir=new File(getFilesDir(),"grabaciones");dir.mkdirs();
   String name=new SimpleDateFormat("yyyyMMdd-HHmmss",Locale.ROOT).format(new Date());
@@ -844,6 +846,7 @@ public class TrackingService extends Service implements LocationListener {
   GRABANDO=file.getName();
   errorGrabacion="";
   try(FileWriter w=new FileWriter(file)){w.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"Trabakutik Android\" xmlns=\"http://www.topografix.com/GPX/1/1\"><trk><name>Grabacion</name><trkseg>\n");}
+  filtroGrabacion.reinicia();
   lastRecordedTime=0;lastRecordedLat=Double.NaN;lastRecordedLon=Double.NaN;points=0;
   try(FileOutputStream reset=new FileOutputStream(new File(getFilesDir(),"trazado-vivo.tsv"),false)){}
   recording=true;enMarcha.reinicia();modoEle.set(0);getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",true).putLong("tiempoMov",0).remove("gasto").apply();
@@ -1394,18 +1397,17 @@ public class TrackingService extends Service implements LocationListener {
   final Altura alt=ultimaAltura;  // una sola lectura: altura, error y hora de la misma muestra
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",alt==null?-9999f:(float)alt.mar).putFloat("altError",alt==null?-1f:alt.error).putLong("altTiempo",alt==null?0L:alt.tiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
-  // Con una posicion por segundo y sin filtro de distancia, parado el GPS
-  // deja un nido de puntos de puro ruido. Se guarda si te has movido 1,5 m
-  // o si han pasado 4 s, asi que una parada queda registrada -un punto cada
-  // cuatro segundos- sin ensuciar el trazado.
-  if(lastRecordedTime>0&&Double.isFinite(lastRecordedLat)&&!forzarCorte
-     &&l.getTime()-lastRecordedTime<4000&&l.distanceTo(makePreviousLocation())<1.5)return;
+  boolean hayPunto=lastRecordedTime>0&&Double.isFinite(lastRecordedLat);
+  double salto=hayPunto?l.distanceTo(makePreviousLocation()):0;
+  long medida=l.getElapsedRealtimeNanos()/1_000_000L;
+  if(!filtroGrabacion.acepta(medida,l.getAccuracy(),l.hasSpeed()?l.getSpeed():Double.NaN,salto,hayPunto))return;
   try(FileWriter w=new FileWriter(file,true)){
    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US);
    fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
    String time=fmt.format(new Date(l.getTime()));
-   boolean corta=cortaTrack(forzarCorte,lastRecordedTime>0,l.getTime()-lastRecordedTime,
-     Double.isFinite(lastRecordedLat)?l.distanceTo(makePreviousLocation()):0);
+   long hueco=l.getTime()-lastRecordedTime;
+   // Una parada con posiciones válidas no es un hueco de GPS.
+   boolean corta=cortaTrack(forzarCorte||filtroGrabacion.cortePendiente(),hayPunto,Math.min(hueco,20000),salto);
    if(corta&&lastRecordedTime>0)w.write("</trkseg><trkseg>\n");
    String ele=eleGpx(l);
    w.write("<trkpt lat=\""+l.getLatitude()+"\" lon=\""+l.getLongitude()+"\">"+(ele.isEmpty()?"":"<ele>"+ele+"</ele>")+"<time>"+time+"</time></trkpt>\n");
@@ -1416,7 +1418,7 @@ public class TrackingService extends Service implements LocationListener {
    try(FileWriter pointsFile=new FileWriter(new File(getFilesDir(),"trazado-vivo.tsv"),true)){if(corta&&lastRecordedTime>0)pointsFile.write("\n");pointsFile.write(l.getLatitude()+"\t"+l.getLongitude()+"\n");}
    if(!corta&&lastRecordedTime>0&&Double.isFinite(lastRecordedLat))bateriaMetros+=l.distanceTo(makePreviousLocation());
    lastRecordedTime=l.getTime();lastRecordedLat=l.getLatitude();lastRecordedLon=l.getLongitude();
-   forzarCorte=false;
+   forzarCorte=false;filtroGrabacion.guardado();
    points++;if(points%10==0)updateNotice();
    if(!errorGrabacion.isEmpty()){errorGrabacion="";updateNotice();}
   }catch(Exception ex){

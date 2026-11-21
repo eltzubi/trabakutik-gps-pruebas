@@ -72,6 +72,7 @@ public class TrackingRegression {
  static class SystemClock{static long elapsedRealtime(){return nowNs/1000000;}static long elapsedRealtimeNanos(){return nowNs;}}
  static class Location{double lat,lon;float acc=5;long ern=nowNs;Location(double m){lat=m/111195.;}
  double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}long getElapsedRealtimeNanos(){return ern;}}
+ final FiltroDeriva filtroGrabacion=new FiltroDeriva();
  File dirBase;File getFilesDir(){return dirBase;}
  File file;static String GRABANDO;String errorGrabacion="";long lastRecordedTime;double lastRecordedLat,lastRecordedLon;int points;boolean recording;
  boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
@@ -143,11 +144,31 @@ public class TrackingRegression {
  require(cortaTrack(true,true,1000,1),"la pausa siempre corta");
  require(!cortaTrack(false,false,999999,99999),"el primer punto no corta nada");
  System.out.println("PASS: el track se corta por el hueco, no por la velocidad");
+ FiltroDeriva filtro=new FiltroDeriva();
+ require(filtro.acepta(1000,12,0,0,false),"se guarda el punto inicial");
+ for(long t=2000;t<=66000;t+=1000)
+  require(!filtro.acepta(t,12,0.05,t%2000==0?18:4,true),"la deriva en el descanso no se guarda");
+ require(!filtro.cortePendiente(),"el descanso con GPS no parte el track");
+ require(!filtro.acepta(67000,12,0.6,1,true),"una lectura de marcha no basta");
+ require(filtro.acepta(68000,12,0.6,2,true),"reanuda al caminar");
+ require(!filtro.acepta(92000,12,0.6,30,true),"tras un hueco vuelve a confirmar movimiento");
+ require(filtro.cortePendiente(),"una pérdida real de señal conserva el corte");
+ require(filtro.acepta(93000,12,0.6,31,true),"reanuda tras recuperar la señal");
+ filtro.guardado();
+ require(!filtro.cortePendiente(),"el corte solo se aplica al primer punto guardado");
+ filtro.reinicia();
+ require(!filtro.acepta(1000,12,Double.NaN,10,true),"sin velocidad: la deriva dentro del margen no pasa");
+ require(!filtro.acepta(2000,12,Double.NaN,23,true),"sin velocidad: un salto aislado no pasa");
+ require(!filtro.acepta(3000,12,Double.NaN,7,true),"sin velocidad: vuelve al margen de error");
+ require(!filtro.acepta(4000,12,Double.NaN,20,true),"sin velocidad: confirma de nuevo fuera del margen");
+ require(filtro.acepta(5000,12,Double.NaN,22,true),"sin velocidad: permite avanzar tras la confirmación");
+ System.out.println("PASS: el filtro conserva la marcha y descarta la deriva en parado");
+
  }
 }'''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'TrackingRegression.java';p.write_text(code)
  metrics_file=Path(p).with_name('NavigationMetrics.java')
  metrics_file.write_text(metrics)
- subprocess.run(['javac','-d',d,str(p),str(metrics_file)],check=True)
+ subprocess.run(['javac','-d',d,str(p),str(metrics_file),str(production/'FiltroDeriva.java')],check=True)
  subprocess.run(['java','-cp',d,'com.trabakutik.gps.TrackingRegression',d],check=True)
