@@ -4658,10 +4658,9 @@ function computeJunctions(){
  // Indicaciones comprobadas en el trazado detallado publicado de Asuntza.
  // Las distancias e índices evitan trasladarlas a otra versión del recorrido.
  if(typeof chosen==='number'&&typeof tracks!=='undefined'&&tracks[chosen]?.href==='asuntzabira.html'&&n===809){
-  const bifurcacion=ida.find(j=>j.i===210&&j.cruce&&j.mantente&&j.noRecto&&j.direction==='derecha');
-  if(bifurcacion&&Math.abs(bifurcacion.along-4792)<10){
-   // La pista buena es el ramal izquierdo de los dos, aunque la llegada curve.
-   bifurcacion.direction=bifurcacion.hacia='izquierda';
+  const bifurcacion=ida.findIndex(j=>j.i===210&&j.cruce&&j.mantente&&j.noRecto&&j.direction==='derecha');
+  if(bifurcacion>=0&&Math.abs(ida[bifurcacion].along-4792)<10){
+   ida.splice(bifurcacion,1);
   }
   const iAsuntza=326;
   if(Math.abs(cum[iAsuntza]-7120)<15&&!ida.some(j=>Math.abs(j.along-cum[iAsuntza])<25)){
