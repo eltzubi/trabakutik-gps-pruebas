@@ -38,8 +38,8 @@ public class CaidaSosTest{
  static boolean golpe(DetectorCaidas d,double g){t+=40;return d.muestra(0,0,g*G,t);}
  public static void main(String[] a){
   CaidaSosTest alarma=new CaidaSosTest();
-  alarma.envio=true;alarma.finCuentaCaida.run();
-  require(!alarma.envio,"agotar la cuenta no envía el SOS");
+  alarma.finCuentaCaida.run();
+  require(alarma.envio,"agotar la cuenta solicita el envío del SOS");
   // 1. Caida de verdad: en marcha, golpe de 4 g, y quieto en el suelo.
   DetectorCaidas d=new DetectorCaidas();t=0;
   require(!tramo(d,20,2.5,4.0),"en marcha no salta");
@@ -88,6 +88,15 @@ public class CaidaSosTest{
   boolean h=tramo(d,6,0.05,0.0);t+=3000;h|=tramo(d,6,0.05,0.0);
   require(!h,"6 s + hueco + 6 s no son 8 s seguidos");
   require(tramo(d,4,0.05,0.0),"pero seguir quieto despues si cuenta");
+  // Parar a beber y dejar el móvil de golpe unos segundos después.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);tramo(d,3,0.05,0.0);golpe(d,4.0);
+  require(!tramo(d,12,0.05,0.0)&&d.golpes==0,"un golpe tras pararse no inicia una alarma");
+  // Superar 3 g de forma gradual tampoco es un impacto seco.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,0.05,4.0);
+  for(int k=1;k<=12;k++)golpe(d,1.0+k*0.2);
+  require(!tramo(d,12,0.05,0.0)&&d.golpes==0,"la aceleración gradual no inicia una alarma");
   // CONTACTOS
   require("+34600111222".equals(ContactosSos.normaliza("+34 600 11 12 22")),"con prefijo y espacios");
   require("+34600111222".equals(ContactosSos.normaliza("0034-600-111-222")),"00 es +");

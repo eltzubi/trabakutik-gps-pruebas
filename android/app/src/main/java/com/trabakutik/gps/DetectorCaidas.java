@@ -11,7 +11,7 @@ package com.trabakutik.gps;
  * de falsa alarma:
  *  1. que te estuvieras MOVIENDO (al menos MOVIENDO_MS antes del golpe):
  *     si se te cae el movil estando parado, no es una caida tuya;
- *  2. un GOLPE de al menos GOLPE_G veces la gravedad;
+ *  2. un GOLPE de al menos GOLPE_G veces la gravedad que suba bruscamente;
  *  3. que despues te quedes QUIETO (QUIETO_S segundos seguidos sin apenas
  *     movimiento) dentro de VENTANA_MS: si tras el bache sigues pedaleando,
  *     o te levantas y andas, no salta. Y si el GPS vuelve a dar velocidad de
@@ -25,7 +25,9 @@ final class DetectorCaidas {
     static final double G = 9.80665;
     static final double GOLPE_G = 3.0;            // pico de aceleracion que cuenta como golpe
     static final double MARCHA_MS = 1.0;          // m/s: por encima, te estas moviendo
-    static final long MOVIENDO_MS = 10_000;       // el movimiento tiene que ser de hace menos de esto
+    static final long MOVIENDO_MS = 2_000;        // el movimiento tiene que ser de hace menos de esto
+    static final long PICO_MS = 150;
+    static final double AUMENTO_G = 1.0;
     static final long VENTANA_MS = 30_000;        // tras el golpe, tiempo para quedarse quieto
     static final int QUIETO_S = 8;                // segundos seguidos quieto
     static final double QUIETO_DESV = 0.6;        // m/s2: desviacion del modulo en un segundo
@@ -38,6 +40,7 @@ final class DetectorCaidas {
     static final int MUESTRAS_MIN = 10;
     static final long HUECO_MS = 1000;
 
+    private double moduloAnterior = Double.NaN;
     private long ultimoMovimiento = Long.MIN_VALUE / 2;
     private long golpeEn = -1;
     private double golpeG = 0;
@@ -59,9 +62,13 @@ final class DetectorCaidas {
     /** Una muestra del acelerometro (m/s2, con la gravedad) en t (ms). true = aviso. */
     boolean muestra(double x, double y, double z, long t) {
         double m = Math.sqrt(x * x + y * y + z * z);
+        long antes = ultimaMuestra;
+        double anterior = moduloAnterior;
+        ultimaMuestra = t;
+        moduloAnterior = m;
         if (golpeEn < 0) {
-            ultimaMuestra = t;
-            if (m >= GOLPE_G * G && t - ultimoMovimiento <= MOVIENDO_MS && t - ultimoAviso >= ESPERA_MS) {
+            boolean pico = t >= antes && t - antes <= PICO_MS && m - anterior >= AUMENTO_G * G;
+            if (pico && m >= GOLPE_G * G && t - ultimoMovimiento <= MOVIENDO_MS && t - ultimoAviso >= ESPERA_MS) {
                 golpeEn = t;
                 golpeG = m / G;
                 golpes++;
@@ -74,8 +81,6 @@ final class DetectorCaidas {
         }
         if (m / G > golpeG) golpeG = m / G;
         if (t - golpeEn > VENTANA_MS) { descarta(); return false; }
-        long antes = ultimaMuestra;
-        ultimaMuestra = t;
         if (t - antes > HUECO_MS) { quietos = 0; segundoEn = t; suma = suma2 = 0; n = 0; return false; }
         if (t < segundoEn) return false;
         suma += m;
