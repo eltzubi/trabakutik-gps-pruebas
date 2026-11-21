@@ -95,7 +95,7 @@ async function mueveAnclaMapa(i,lat,lon){
     try{await alturasTerrenoGps(r,controller.signal)}catch(e){}
    }catch(e){
     if(version!==calculoMapaGps)return;
-    r=planLocalMapa([a,b]);
+    r=e.calzadaDudosa?null:planLocalMapa([a,b]);
     if(!r){estadoMapaGps(controller.signal.aborted?'No se pudo completar el cálculo. Revisa la conexión y vuelve a intentarlo.':porQueNoHayCamino(e));return}
     sinRed=true;
    }

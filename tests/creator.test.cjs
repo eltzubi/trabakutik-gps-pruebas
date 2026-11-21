@@ -535,3 +535,25 @@ test('un enlace de doble calzada usa el rumbo de la ruta y conserva la calzada d
  ]}})});
  await assert.rejects(c.solicitaMapaGps([inicio,fin],new AbortController().signal),/continuidad de la calzada/);
 });
+
+test('revisa un enlace interior aunque las anclas estén fuera de la carretera',async()=>{
+ const c=creatorContext();
+ c.zonaCruces={puntos:[Object.assign([43,-1.999],{prohibidas:[true,false,true],clases:[1,1,1]})]};
+ c.distARuta=()=>4;
+ vm.runInContext('redOsm=descifraCaminos({escala:100000,nodos:[4300000,-200000,0,200],tramos:[0,1,3,162,0]});',c);
+ const inicio=[43.002,-2.002],fin=[43.002,-1.996];
+ const a=[43,-2],b=[43,-1.998],centro=[43,-1.999];
+ const previo=[inicio,a,[43.00006,-1.9994],centro,b,fin];
+ const corregido=[a,centro,b];
+ const pedidos=[];
+ c.fetch=async(url,opciones)=>{
+  const pedido=JSON.parse(opciones.body);pedidos.push(pedido.costing);
+  return {ok:true,json:async()=>({trip:{legs:[{
+   shape:codificaValhalla(pedido.costing==='auto'?corregido:previo)
+  }]}})};
+ };
+ c.setTimeout=(fn,ms)=>setTimeout(fn,ms<2000?0:ms);
+ const resultado=await c.solicitaMapaGps([inicio,fin],new AbortController().signal);
+ assert.deepEqual(pedidos,['pedestrian','pedestrian','auto']);
+ assert.deepEqual(JSON.parse(JSON.stringify(resultado.parts[0])),[inicio,a,centro,b,fin]);
+});
