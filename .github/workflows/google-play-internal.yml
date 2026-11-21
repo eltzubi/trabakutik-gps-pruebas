@@ -1,0 +1,54 @@
+name: Compilar AAB para pruebas internas
+
+on:
+  push:
+    branches: [play-store/pruebas-internas]
+    paths:
+      - 'android/**'
+      - '.github/workflows/google-play-internal.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Instalar SDK de Android 36
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Compilar bundle de lanzamiento
+        env:
+          FIRMA_CLAVE: ${{ secrets.FIRMA_CLAVE }}
+        run: |
+          test -n "$FIRMA_CLAVE"
+          test -f firma/trabakutik.p12
+          gradle :app:bundleRelease --no-daemon
+      - name: Verificar firma y certificado
+        env:
+          FIRMA_CLAVE: ${{ secrets.FIRMA_CLAVE }}
+        run: |
+          bundle=app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify "$bundle"
+          keytool -exportcert -rfc -keystore firma/trabakutik.p12 -storetype PKCS12 \
+            -storepass:env FIRMA_CLAVE -alias trabakutik -file "$RUNNER_TEMP/esperado.pem"
+          keytool -printcert -rfc -jarfile "$bundle" | sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p' > "$RUNNER_TEMP/bundle.pem"
+          cmp "$RUNNER_TEMP/esperado.pem" "$RUNNER_TEMP/bundle.pem"
+          keytool -exportcert -keystore firma/trabakutik.p12 -storetype PKCS12 \
+            -storepass:env FIRMA_CLAVE -alias trabakutik -file "$RUNNER_TEMP/esperado.der"
+          python3 ../scripts/firma-apk.py ../TrabakutikGPS.apk "$RUNNER_TEMP/esperado.der"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Trabakutik-GPS-Google-Play
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

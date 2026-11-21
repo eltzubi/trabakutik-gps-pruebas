@@ -31,8 +31,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(404).end();
   }
 });
-async function setup(context) {
-  await context.addInitScript(() => {
+async function setup(context, appVersion = "4.9.3") {
+  await context.addInitScript((appVersion) => {
     window.__native = {
       active: false,
       navigating: false,
@@ -42,7 +42,7 @@ async function setup(context) {
       complete: true,
     };
     window.TrabakutikAndroid = {
-      getAppVersion: () => "4.9.3",
+      getAppVersion: () => appVersion,
       getPosition: () =>
         JSON.stringify({
           active: window.__native.active,
@@ -103,7 +103,7 @@ async function setup(context) {
         getCurrentPosition() {},
       },
     });
-  });
+  }, appVersion);
   // Evitar que la disponibilidad de mapas externos decida una prueba de UI.
   await context.route("https://**/*", async (route) => {
     const url = route.request().url();
@@ -303,19 +303,19 @@ async function setup(context) {
     console.log(
       "PASS Chromium: apertura, 4 anchos, IGN, importar/reabrir GPX, inicio único de navegación/grabación, Parar y exportar completo",
     );
-    // HAY VERSION NUEVA DE LA APP. El puente dice 4.9.3 y instalar.html, el
+    // HAY VERSION NUEVA DE LA APP. El puente dice 0.0.0 y instalar.html, el
     // de verdad que sirve este mismo servidor, la ultima publicada: tiene que
     // salir el aviso, caber a 320 px, cerrarse y no volver al recargar. Y en
     // un navegador, sin app, no sale nunca.
     {
       const ctxV = await browser.newContext({viewport:{width:320,height:700},serviceWorkers:'block'});
-      await setup(ctxV);
+      await setup(ctxV, "0.0.0");
       const pv = await ctxV.newPage(), fallosV = [];
       pv.on("pageerror", (e) => fallosV.push(e.message));
       await pv.goto(base + "nuevo.html");
       await pv.waitForSelector("#appUpdate:not(.hidden)", { timeout: 10000 });
       const publicada = fs.readFileSync(path.join(root, "instalar.html"), "utf8").match(/<!--VER-->([\d.]+)<!--\/VER-->/)[1];
-      assert.match(await pv.locator("#appUpdateTexto").textContent(), new RegExp(publicada.replace(/\./g, "\\.") + ".*tienes la 4\\.9\\.3"));
+      assert.match(await pv.locator("#appUpdateTexto").textContent(), new RegExp(publicada.replace(/\./g, "\\.") + ".*tienes la 0\\.0\\.0"));
       assert.equal(await pv.locator("#appUpdateTexto").getAttribute("href"), "https://eltzubi.github.io/trabakutik-gps-pruebas/instalar.html");
       assert(await pv.locator("#appUpdate").isVisible(), "el aviso se ve al entrar");
       assert(await pv.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "el aviso no desborda a 320 px");
