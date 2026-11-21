@@ -26,12 +26,15 @@ public class CaidaSosTest{
  // (ruido de +-amp) o quieto, y velocidad GPS cada segundo.
  static long t=0;
  static boolean tramo(DetectorCaidas d,double seg,double amp,double vel){
+  return tramo(d,seg,amp,vel,false);
+ }
+ static boolean tramo(DetectorCaidas d,double seg,double amp,double vel,boolean tumbado){
   boolean salto=false;
   for(int k=0;k<seg*25;k++){
    t+=40;
    if(t%1000==0&&!Double.isNaN(vel))d.velocidad(vel,t);
    double z=G+(rnd.nextDouble()*2-1)*amp,x=(rnd.nextDouble()*2-1)*amp*.5;
-   if(d.muestra(x,0,z,t))salto=true;
+   if(d.muestra(tumbado?z:x,0,tumbado?x:z,t))salto=true;
   }
   return salto;
  }
@@ -44,7 +47,7 @@ public class CaidaSosTest{
   DetectorCaidas d=new DetectorCaidas();t=0;
   require(!tramo(d,20,2.5,4.0),"en marcha no salta");
   golpe(d,4.0);
-  require(tramo(d,12,0.05,0.0),"golpe en marcha y quieto despues: salta");
+  require(tramo(d,12,0.05,0.0,true),"golpe en marcha y quieto despues: salta");
   require(d.golpes==1&&d.caidas==1,"registro: 1 golpe, 1 caida");
   // 2. Bache: golpe de 4 g pero sigues pedaleando.
   d=new DetectorCaidas();t=0;
@@ -59,7 +62,7 @@ public class CaidaSosTest{
   // 4. Te caes, te quedas 5 s y te levantas y andas.
   d=new DetectorCaidas();t=0;
   tramo(d,20,2.5,3.0);golpe(d,4.0);
-  boolean s=tramo(d,5,0.05,0.0);
+  boolean s=tramo(d,5,0.05,0.0,true);
   s|=tramo(d,30,2.5,1.2);
   require(!s,"si te levantas antes de 8 s quieto, no salta");
   // 5. Golpe flojo (2 g, un paso fuerte) no cuenta.
@@ -68,9 +71,9 @@ public class CaidaSosTest{
   require(!tramo(d,12,0.05,0.0)&&d.golpes==0,"2 g no es un golpe");
   // 6. Dos caidas seguidas: la segunda dentro de 60 s no repite el aviso.
   d=new DetectorCaidas();t=0;
-  tramo(d,20,2.5,4.0);golpe(d,4.0);require(tramo(d,12,0.05,0.0),"primera");
+  tramo(d,20,2.5,4.0);golpe(d,4.0);require(tramo(d,12,0.05,0.0,true),"primera");
   tramo(d,10,2.5,4.0);golpe(d,4.0);
-  require(!tramo(d,12,0.05,0.0),"segunda dentro de 60 s: no");
+  require(!tramo(d,12,0.05,0.0,true),"segunda dentro de 60 s: no");
   // 7. Si el GPS vuelve a dar velocidad de marcha tras el golpe, se descarta.
   d=new DetectorCaidas();t=0;
   tramo(d,20,2.5,4.0);golpe(d,4.0);
@@ -85,9 +88,19 @@ public class CaidaSosTest{
   // 9. Un hueco de 3 s sin muestras a mitad de la quietud vuelve a empezar la cuenta.
   d=new DetectorCaidas();t=0;
   tramo(d,20,2.5,4.0);golpe(d,4.0);
-  boolean h=tramo(d,6,0.05,0.0);t+=3000;h|=tramo(d,6,0.05,0.0);
+  boolean h=tramo(d,6,0.05,0.0,true);t+=3000;h|=tramo(d,6,0.05,0.0,true);
   require(!h,"6 s + hueco + 6 s no son 8 s seguidos");
-  require(tramo(d,4,0.05,0.0),"pero seguir quieto despues si cuenta");
+  require(!tramo(d,4,0.05,0.0,true),"el hueco invalida la quietud continua");
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);golpe(d,4.0);
+  require(!tramo(d,12,0.05,0.0),"un bache seguido de parada sin giro no es una caída");
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,4.0);golpe(d,4.0);
+  tramo(d,4,2.5,Double.NaN);
+  require(!tramo(d,12,0.05,0.0,true),"parar tarde no confirma el impacto");
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,0.05,1.3);golpe(d,2.6);
+  require(tramo(d,12,0.05,0.0,true),"un golpe amortiguado con giro y quietud sí cuenta");
   // Parar a beber y dejar el móvil de golpe unos segundos después.
   d=new DetectorCaidas();t=0;
   tramo(d,20,2.5,4.0);tramo(d,3,0.05,0.0);golpe(d,4.0);

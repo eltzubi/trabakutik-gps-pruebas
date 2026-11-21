@@ -6,36 +6,27 @@ package com.trabakutik.gps;
  * idea de Garmin delante: un golpe fuerte, una cuenta atras de 30 s y, si
  * nadie la para, un SOS al contacto que haya metido cada usuario.
  *
- * Una caida no se detecta nunca al 100 %, y Garmin lo dice en sus manuales.
- * Para que salte hacen falta TRES cosas seguidas, y cada una quita una clase
- * de falsa alarma:
- *  1. que te estuvieras MOVIENDO (al menos MOVIENDO_MS antes del golpe):
- *     si se te cae el movil estando parado, no es una caida tuya;
- *  2. un GOLPE de al menos GOLPE_G veces la gravedad que suba bruscamente;
- *  3. que despues te quedes QUIETO (QUIETO_S segundos seguidos sin apenas
- *     movimiento) dentro de VENTANA_MS: si tras el bache sigues pedaleando,
- *     o te levantas y andas, no salta. Y si el GPS vuelve a dar velocidad de
- *     marcha, se descarta.
- * Los numeros son los de partida, sin ninguna caida real medida: el registro
- * de golpes esta para ajustarlos con salidas de verdad.
+ * Busca un impacto brusco en marcha, seguido de ocho segundos continuos
+ * de quietud iniciados enseguida y un cambio de orientacion. Los umbrales
+ * son provisionales hasta contar con trazas de campo.
  *
  * Sin nada de Android, para poder probarlo con javac a secas.
  */
 final class DetectorCaidas {
     static final double G = 9.80665;
-    static final double GOLPE_G = 3.0;            // pico de aceleracion que cuenta como golpe
+    static final double GOLPE_G = 2.5;            // incluye golpes amortiguados
     static final double MARCHA_MS = 1.0;          // m/s: por encima, te estas moviendo
     static final long MOVIENDO_MS = 2_000;        // el movimiento tiene que ser de hace menos de esto
     static final long PICO_MS = 150;
     static final double AUMENTO_G = 1.0;
-    static final long VENTANA_MS = 30_000;        // tras el golpe, tiempo para quedarse quieto
+    static final long INICIO_QUIETUD_MS = 2_150;        // unos 2 s, con margen por la cadencia del sensor
+    static final double COS_GIRO = Math.sqrt(0.5);
     static final int QUIETO_S = 8;                // segundos seguidos quieto
-    static final double QUIETO_DESV = 0.6;        // m/s2: desviacion del modulo en un segundo
-    static final double SIGUE_MARCHA_MS = 1.5;    // m/s tras el golpe: sigues, no te has caido
+    static final double QUIETO_DESV = 0.6;        // m/s2: dispersion del vector en un segundo
+    static final double SIGUE_MARCHA_MS = 1.0;    // m/s tras el golpe: sigues, no te has caido
     static final long ESPERA_MS = 60_000;         // tras un aviso, no otro en este tiempo
     // QUIETO DE VERDAD: un segundo cuenta si trae al menos MUESTRAS_MIN
-    // muestras, y un hueco de mas de HUECO_MS sin muestras vuelve a empezar la
-    // cuenta. Con una sola muestra la desviacion sale cero y parecia quieto; y
+    // muestras. Un hueco de mas de HUECO_MS invalida la quietud. Con una sola muestra la desviacion sale cero y parecia quieto; y
     // pedir 25 por segundo no garantiza que lleguen (revision con GPT).
     static final int MUESTRAS_MIN = 10;
     static final long HUECO_MS = 1000;
@@ -45,7 +36,8 @@ final class DetectorCaidas {
     private long golpeEn = -1;
     private double golpeG = 0;
     private long segundoEn = -1;
-    private double suma = 0, suma2 = 0;
+    private double gx, gy, gz;
+    private double sumaX, sumaY, sumaZ, suma2;
     private int n = 0, quietos = 0;
     private long ultimoAviso = Long.MIN_VALUE / 2;
     private long ultimaMuestra = Long.MIN_VALUE / 2;
@@ -56,7 +48,7 @@ final class DetectorCaidas {
     void velocidad(double v, long t) {
         if (!Double.isFinite(v)) return;
         if (v >= MARCHA_MS) ultimoMovimiento = t;
-        if (golpeEn >= 0 && t > golpeEn + 2000 && v >= SIGUE_MARCHA_MS) descarta();
+        if (golpeEn >= 0 && t - golpeEn > INICIO_QUIETUD_MS && v >= SIGUE_MARCHA_MS) descarta();
     }
 
     /** Una muestra del acelerometro (m/s2, con la gravedad) en t (ms). true = aviso. */
@@ -73,29 +65,48 @@ final class DetectorCaidas {
                 golpeG = m / G;
                 golpes++;
                 segundoEn = t + 1000;   // el segundo del propio golpe no cuenta
-                suma = suma2 = 0;
-                n = 0;
+                reiniciaSegundo();
                 quietos = 0;
+            } else if (m >= 0.7 * G && m <= 1.3 * G) {
+                // Orientacion previa, estimada con muestras cercanas a 1 g.
+                double peso = antes < 0 || t - antes > HUECO_MS ? 1 : 0.10;
+                gx += peso * (x - gx);
+                gy += peso * (y - gy);
+                gz += peso * (z - gz);
             }
             return false;
         }
         if (m / G > golpeG) golpeG = m / G;
-        if (t - golpeEn > VENTANA_MS) { descarta(); return false; }
-        if (t - antes > HUECO_MS) { quietos = 0; segundoEn = t; suma = suma2 = 0; n = 0; return false; }
+        if (t - antes > HUECO_MS || (quietos == 0 && segundoEn - golpeEn > INICIO_QUIETUD_MS)) {
+            descarta();
+            return false;
+        }
         if (t < segundoEn) return false;
-        suma += m;
+        sumaX += x;
+        sumaY += y;
+        sumaZ += z;
         suma2 += m * m;
         n++;
         if (t - segundoEn >= 1000) {
-            double media = suma / n, desv = Math.sqrt(Math.max(0, suma2 / n - media * media));
-            quietos = n >= MUESTRAS_MIN && desv <= QUIETO_DESV ? quietos + 1 : 0;
+            double mx = sumaX / n, my = sumaY / n, mz = sumaZ / n;
+            double norma = Math.sqrt(mx * mx + my * my + mz * mz);
+            double desv = Math.sqrt(Math.max(0, suma2 / n - norma * norma));
+            boolean estable = n >= MUESTRAS_MIN && desv <= QUIETO_DESV && norma >= 0.8 * G && norma <= 1.2 * G;
+            if (!estable && (quietos > 0 || t - golpeEn > INICIO_QUIETUD_MS)) {
+                descarta();
+                return false;
+            }
+            if (estable) quietos++;
             segundoEn = t;
-            suma = suma2 = 0;
-            n = 0;
+            reiniciaSegundo();
             if (quietos >= QUIETO_S) {
+                double referencia = Math.sqrt(gx * gx + gy * gy + gz * gz);
+                boolean giro = referencia >= 0.7 * G
+                        && gx * mx + gy * my + gz * mz < COS_GIRO * referencia * norma;
+                descarta();
+                if (!giro) return false;
                 caidas++;
                 ultimoAviso = t;
-                golpeEn = -1;
                 return true;
             }
         }
@@ -104,6 +115,11 @@ final class DetectorCaidas {
 
     /** El golpe en curso, en g, o 0 si no hay. */
     double golpeEnCurso() { return golpeEn >= 0 ? golpeG : 0; }
+
+    private void reiniciaSegundo() {
+        sumaX = sumaY = sumaZ = suma2 = 0;
+        n = 0;
+    }
 
     private void descarta() { golpeEn = -1; quietos = 0; }
 }
