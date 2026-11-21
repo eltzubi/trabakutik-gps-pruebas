@@ -944,7 +944,34 @@ public class TrackingService extends Service implements LocationListener {
  static String girosQueCaben(String json,int cuantos){
   return cuantos<=GIROS_MAX&&json.length()<=GIROS_MAX_BYTES?json:"[]";
  }
+ final ConfirmaRamal confirmaRamal=new ConfirmaRamal();
+ final Map<double[],String> hitosDeGiro=new IdentityHashMap<>();
+ final Map<Integer,ConfirmaRamal.Cruce> ramalesIda=new LinkedHashMap<>(),ramalesVuelta=new LinkedHashMap<>();
+ ConfirmaRamal.Cruce cruceProximo(double along){
+  Map<Integer,ConfirmaRamal.Cruce> candidatos=sentido>0?ramalesIda:ramalesVuelta;
+  ConfirmaRamal.Cruce mejor=null;
+  double distancia=21;
+  for(ConfirmaRamal.Cruce c:candidatos.values()){
+   double quedan=(c.km()-along)*sentido;
+   if(quedan>=0&&quedan<distancia){distancia=quedan;mejor=c;}
+  }
+  return mejor;
+ }
+ void cargaRamales(JSONObject giro,int indice,ArrayList<double[]> lista){
+  JSONArray datos=giro.optJSONArray("br");
+  if(datos==null||datos.length()<3||datos.length()>12||indice>=metrics.distance.length)return;
+  double[][] puntos=new double[datos.length()][2];
+  for(int i=0;i<datos.length();i++){
+   JSONArray punto=datos.optJSONArray(i);if(punto==null)return;
+   double lat=punto.optDouble(0,Double.NaN),lon=punto.optDouble(1,Double.NaN);
+   if(!Double.isFinite(lat)||Math.abs(lat)>90||!Double.isFinite(lon)||Math.abs(lon)>180)return;
+   if(i>0&&NavigationMetrics.meters(puntos[0][0],puntos[0][1],lat,lon)>60)return;
+   puntos[i][0]=lat;puntos[i][1]=lon;
+  }
+  (lista==turns?ramalesIda:ramalesVuelta).put(indice,new ConfirmaRamal.Cruce(metrics.distance[indice],puntos));
+ }
  void loadTurns(){
+  confirmaRamal.reinicia();ramalesIda.clear();ramalesVuelta.clear();hitosDeGiro.clear();
   turns.clear();turnsReves.clear();warnedTurns.clear();upcomingTurn="";
   leeGiros(new File(getFilesDir(),"giros-activos.json"),turns);
   // Los calculados al reves (la pagina nueva los manda aparte): yendo al
@@ -1002,9 +1029,12 @@ public class TrackingService extends Service implements LocationListener {
     // ninguno ahi (un giro necesita un punto antes), pero un fichero raro no
     // puede dejar la ruta muda.
     if(at>=1&&at<route.size()&&direction>=-1&&direction<=1){
+     cargaRamales(p,at,turns);
      boolean curvaNueva=tipo==0&&direction!=0&&p.optInt("cn",0)==1;
      turns.add(curvaNueva?new double[]{at,direction,tipo,salida,recta,1}
                          :new double[]{at,direction,tipo,salida,recta});
+     String hito=p.optString("ht","").trim();
+     if(!hito.isEmpty())hitosDeGiro.put(turns.get(turns.size()-1),hito.substring(0,Math.min(45,hito.length())));
     }
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
@@ -1164,7 +1194,10 @@ public class TrackingService extends Service implements LocationListener {
        if(!"v".equals(fase))pitidos(Integer.parseInt(fase),300,ToneGenerator.TONE_PROP_BEEP,100);
        if("v".equals(fase)||"3".equals(fase)||("1".equals(fase)&&warnedTurns.add((usaReves?"r":"")+mejor+":v")))
         if("3".equals(fase))hablaGiro(fraseGiro(lado,tipo,fase,ahead,salida),siguienteManiobra(turns,mejor,usaReves,along));
-        else habla(fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
+        else {
+         String hito=hitosDeGiro.get(giro);
+         habla((hito==null?"":hito+". ")+fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
+        }
       }
      }
   }
@@ -1328,12 +1361,13 @@ public class TrackingService extends Service implements LocationListener {
   int rumbo=(int)Math.floorMod(Math.round(Math.toDegrees(Math.atan2(este,norte))/45),8);
   return "Estás fuera de ruta. A "+metros+" metros hacia el "+rumbos[rumbo]+(acercarAlTrack?" está la nueva ruta":" está la salida de la ruta");
  }
- void checkDeviation(Location l){
+ void checkDeviation(Location l,boolean ramalEquivocado){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
   double acc=l.getAccuracy();
   // Sin una medida válida no se confirma ni salida ni regreso.
   if(!Double.isFinite(acc)||acc<0||acc>60){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
   double d=closest(l.getLatitude(),l.getLongitude());
+  if(ramalEquivocado)d=Math.max(d,Math.max(FUERA_M,acc+7)+1);
   if(!Double.isFinite(d)||d<0){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
   long now=SystemClock.elapsedRealtime();
   // Un hueco de señal no cuenta como cuatro segundos de posiciones fuera.
@@ -1360,8 +1394,8 @@ public class TrackingService extends Service implements LocationListener {
    return;
   }
   cercaDesde=0;
-  if(farSince==0){farSince=now;return;}
-  if(!offRoute&&now-farSince>=4000){
+  if(farSince==0)farSince=now;
+  if(!offRoute&&(ramalEquivocado||now-farSince>=4000)){
    offRoute=true;fueraDesde=now;recordado=false;protegeAvisoRuta();updateNotice();pitidos(4,180);habla(routeReached?"Atención, fuera del recorrido":avisoSalida(l));
   }
   // Un recordatorio por salida, a 50 m del track, dejando terminar la voz.
@@ -1405,9 +1439,12 @@ public class TrackingService extends Service implements LocationListener {
    boolean entradaAnterior=entradaAvisada;
    boolean wasOff=offRoute;
    int previousWarnings=warnedTurns.size();
-   checkDeviation(l);
    if(l.hasAccuracy()&&l.getAccuracy()<=60){
     NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
+    ConfirmaRamal.Cruce candidato=!offRoute&&!position.ambiguous()&&position.distance()<=12?cruceProximo(position.along()):null;
+    int ramal=confirmaRamal.muestra(candidato,sentido,l.getLatitude(),l.getLongitude(),
+     l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L);
+    checkDeviation(l,ramal<0);
     // Antes de los giros, que el lado de este mismo aviso ya salga bien.
     if(!offRoute&&!position.ambiguous()&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
     if(entradaAnterior==entradaAvisada)checkTurns(l,position);
@@ -1428,7 +1465,7 @@ public class TrackingService extends Service implements LocationListener {
      }
      if(entradaAnterior==entradaAvisada)liveMetrics=updateNavigationMetrics(l,position,now);
     }else{inicioCurva=Double.NaN;metrics.pausePace();}
-   }else{inicioCurva=Double.NaN;metrics.pausePace();}
+   }else{confirmaRamal.reinicia();checkDeviation(l,false);inicioCurva=Double.NaN;metrics.pausePace();}
   }
   // Con la hora de la MEDIDA y la velocidad del GPS (Doppler): ver TiempoEnMarcha.
   if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L,l.hasSpeed()?l.getSpeed():Double.NaN);

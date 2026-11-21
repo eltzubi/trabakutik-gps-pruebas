@@ -338,6 +338,8 @@ function enviaGirosNativos(){
    // ignora y dice «sal a la derecha/izquierda», el lado bueno.
    if(j.rotonda&&j.salida)o.rs=j.salida;
    if(j.rotonda&&j.recto)o.rr=1;
+   if(j.hito)o.ht=j.hito;
+   if(j.ramales)o.br=j.ramales.map(p=>p.slice(0,2).map(v=>Number(v.toFixed(6))));
    return o;
   }));
   // Una rotonda que se cruza RECTO solo se avisa con su numero de salida, y
@@ -423,6 +425,70 @@ function eligePorForma(lista,linea,punto){
 // - si cambias de calle, se decide como siempre pero con los rumbos medidos en
 //   el cruce (de un punto lejano a otro), no en la curva.
 // Devuelve undefined si la forma no lo deja claro: entonces, como siempre.
+// Misma comprobación que ConfirmaRamal.java para la guía en navegador.
+class ConfirmaRamalWeb{
+ reinicia(){this.cruce=null;this.ancla=null;this.anterior=this.lecturas=this.confirmado=0}
+ muestra(cerca,dir,lat,lon,precision,ahora){
+  if(dir!==this.sentido||ahora<=this.tiempo||ahora-this.tiempo>5000||ahora-this.inicio>45000)this.reinicia();
+  this.sentido=dir;this.tiempo=ahora;
+  if(!Number.isFinite(precision)||precision<=0||precision>20){
+   this.ancla=null;this.anterior=this.lecturas=this.confirmado=0;return 0;
+  }
+  if(!this.cruce){this.cruce=cerca;this.inicio=ahora}
+  if(!this.cruce)return 0;
+  const datos=this.cruce.ramales,origen=datos[0],escala=111195*Math.cos(origen[0]*Math.PI/180);
+  const x=(lon-origen[1])*escala,y=(lat-origen[0])*111195,radio=Math.hypot(x,y);
+  if(radio>38){this.reinicia();return 0}
+  if(radio<9||!this.ancla){
+   this.ancla=[x,y];this.anterior=this.lecturas=this.confirmado=0;return 0;
+  }
+  const dx=x-this.ancla[0],dy=y-this.ancla[1],avance=Math.hypot(dx,dy);
+  if(avance<Math.max(5,precision))return this.confirmado;
+  this.ancla=[x,y];
+  let mejor=Infinity,segundo=Infinity,producto=0,rama=-1;
+  for(let i=1;i<datos.length;i++){
+   const rx=(datos[i][1]-origen[1])*escala,ry=(datos[i][0]-origen[0])*111195,largo=Math.hypot(rx,ry);
+   if(largo<8)continue;
+   const u=Math.max(0,Math.min(1,(x*rx+y*ry)/(largo*largo))),error=Math.hypot(x-u*rx,y-u*ry);
+   if(error<mejor){segundo=mejor;mejor=error;rama=i;producto=(dx*rx+dy*ry)/(avance*largo)}
+   else if(error<segundo)segundo=error;
+  }
+  const evidencia=segundo-mejor>precision+3&&mejor<=precision&&producto>=.82&&x*dx+y*dy>0?(rama===1?1:-rama):0;
+  this.lecturas=evidencia===this.anterior?this.lecturas+1:1;
+  this.anterior=evidencia;
+  if(this.lecturas>=2)this.confirmado=evidencia;
+  return this.confirmado;
+ }
+}
+const confirmaRamalWeb=new ConfirmaRamalWeb();
+let hitosDeAviso=[];
+function aplicaHitosDeAviso(lista){
+ for(const hito of hitosDeAviso){
+  // Un hito acompaña un giro inequívoco. En un lazo con dos giros en el
+  // mismo lugar no sabemos a cuál iba dirigido el punto manual.
+  const cerca=lista.filter(g=>dist(g.point,hito.p)<=12);
+  if(cerca.length===1&&!cerca[0].hito)cerca[0].hito=hito.texto;
+ }
+}
+function compruebaRamalWeb(p,precision,progreso,ts){
+ const candidatos=sentidoRuta>0?junctions:junctionsReves;
+ let cerca=null,distancia=21;
+ if(!alerted&&!progreso.ambiguous&&progreso.distance<=12)for(const c of candidatos||[]){
+  if(!c.ramales)continue;
+  const quedan=(c.along-progreso.along)*sentidoRuta;
+  if(quedan>=0&&quedan<distancia){distancia=quedan;cerca=c}
+ }
+ return confirmaRamalWeb.muestra(cerca,sentidoRuta,p[0],p[1],precision,ts);
+}
+function ramalesParaConfirmar(cruce,ruta){
+ if(!ruta||!cruce.lejos||cruce.lejos.length<3)return null;
+ const ramas=cruce.lejos.map((lejos,i)=>({lejos,i})).filter(x=>x.lejos);
+ const entrada=eligePorForma(ramas,ruta.antes,ruta.a25);if(!entrada)return null;
+ const salidas=ramas.filter(x=>x!==entrada&&!cruce.prohibidas?.[x.i]&&cruce.clases?.[x.i]!==3);
+ const salida=eligePorForma(salidas,ruta.despues,ruta.d25);
+ if(!salida||salidas.length<2)return null;
+ return [[cruce[0],cruce[1]],salida.lejos,...salidas.filter(x=>x!==salida).map(x=>x.lejos)];
+}
 function decideCrucePorCalle(cruce,ramas,ruta){
  if(!ruta||!Array.isArray(cruce.lejos)||cruce.lejos.length!==ramas.length)return undefined;
  ramas.forEach((x,k)=>{x.lejos=cruce.lejos[k];x.clase=Array.isArray(cruce.clases)?cruce.clases[k]:0;x.prohibida=Array.isArray(cruce.prohibidas)&&!!cruce.prohibidas[k]});
@@ -715,6 +781,9 @@ function computeJunctions(){
    ida.sort((a,b)=>a.i-b.i);
   }
  }
+ aplicaHitosDeAviso(ida);
+ if(vuelta)aplicaHitosDeAviso(vuelta);
+ confirmaRamalWeb.reinicia();
  junctions=ida.filter(j=>!j.entradaLateral);routeCumulative=cum;junctionsReves=vuelta?.filter(j=>!j.entradaLateral)??null;
  junctionWarned.clear();junctionZoomOnce.clear();
  enviaGirosNativos();
@@ -960,7 +1029,7 @@ function calculaCrucesDe(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false,entradaLateral=false;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false,entradaLateral=false,ramales=null;
   if(cruce){
    // El trozo de ruta de 60 m antes y despues del CRUCE (cortado en el punto
    // de la ruta mas cercano a su nodo y empalmado en el nodo), para reconocer
@@ -999,6 +1068,7 @@ function calculaCrucesDe(){
    ruta.a25=enRuta(-25);ruta.d25=enRuta(25);
    ruta.desde=enRuta(-GIRO_CALLE_M);ruta.hasta=enRuta(GIRO_CALLE_M);ruta.llegada=enRuta(-FRENTE_M);
    let d=nodoEnRuta?decideCruce(elCruce,b,giro.antes,giro.despues,ruta):null;
+   if(d&&!d.sinRamas&&!d.curva)ramales=ramalesParaConfirmar(elCruce,ruta);
    // EL LADO DE UN CRUCE, MEDIDO EN EL CRUCE (17 nov 2026). Si hay que avisar
    // lo decide lo de siempre; el LADO se comprueba mirando la ruta en su punto
    // mas cercano al nodo del cruce, con LADO_VENTANA m a cada lado. El punto
@@ -1083,10 +1153,10 @@ function calculaCrucesDe(){
   // MANDA: si el de antes era una curva o una horquilla y este es un cruce, se
   // queda el cruce, que es lo que el autor pidio que no se perdiera nunca.
   // La revuelta de tu misma via se dice como curva, no como cruce.
-  const esCruce=nodoEnRuta&&!curvaCalle;
+  const esCruce=!!cruceAvisado&&!curvaCalle;
   const previo=junctions[junctions.length-1];
-  if(previo&&dist(previo.point,b)<35){
-   if(!(esCruce&&!previo.cruce))continue;
+  if(previo&&dist(previo.point,b)<35&&!(esCruce&&previo.cruce&&previo.nodo&&previo.nodo!==cruceAvisado)){
+   if(!((nodoEnRuta&&!curvaCalle)&&!previo.nodo))continue;
    junctions.pop();
   }
   // EL LADO SE GUARDA SIEMPRE, TAMBIEN EN UNA HERRADURA. Antes, al pasar de
@@ -1114,7 +1184,7 @@ function calculaCrucesDe(){
   // el aviso va en el punto de la ruta mas cercano a su nodo.
   const ultimo=junctions[junctions.length-1];
   const iA=cruceAvisado&&iNodo!=null&&iNodo!==i&&(!ultimo||iNodo>ultimo.i)?iNodo:i;
-  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{},entradaLateral?{entradaLateral:true}:{}));
+  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{},entradaLateral?{entradaLateral:true}:{},nodoEnRuta&&!curvaCalle?{nodo:elCruce,ramales}:{}));
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
  // El detector de la app Android aporta curvas por pico y por lado.
@@ -1122,7 +1192,7 @@ function calculaCrucesDe(){
  const anteriores=junctions.slice();
  for(const curva of detectaCurvasDelTrack(pts,routeCumulative)){
   const coincide=anteriores.find(j=>Math.abs(j.along-curva.along)<=
-   (j.direction==='vuelta'?42:j.cruce?35:12)&&(j.cruce||j.direction==='vuelta'||j.hacia===curva.hacia));
+   (j.direction==='vuelta'?42:j.nodo?35:12)&&(j.nodo||j.direction==='vuelta'||j.hacia===curva.hacia));
   if(!coincide)junctions.push(curva);
   else if(!coincide.cruce&&coincide.direction!=='vuelta')coincide.curvaNueva=true;
  }
@@ -1245,7 +1315,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }

@@ -37,7 +37,7 @@ def linea(texto):
 code = r'''import java.io.*;import java.util.*;import java.util.regex.*;
 public class GirosLimiteTest {
  // org.json de mentira: solo lo que lee loadTurns, y solo el formato de giros.
- static class JSONObject{final Map<String,Integer> m=new HashMap<>();
+ static class JSONObject{String optString(String k,String d){return d;}final Map<String,Integer> m=new HashMap<>();
   JSONObject(String s){Matcher k=Pattern.compile("\"(\\w+)\":(-?\\d+)").matcher(s);while(k.find())m.put(k.group(1),Integer.parseInt(k.group(2)));}
   int optInt(String k,int d){return m.getOrDefault(k,d);}}
  static class JSONArray{final List<JSONObject> l=new ArrayList<>();
@@ -48,6 +48,11 @@ public class GirosLimiteTest {
  File dir;File getFilesDir(){return dir;}
  final ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
  final HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";
+ static class ConfirmaRamal {void reinicia(){} static class Cruce{}}
+ ConfirmaRamal confirmaRamal=new ConfirmaRamal();
+ Map<Integer,ConfirmaRamal.Cruce> ramalesIda=new HashMap<>(),ramalesVuelta=new HashMap<>();
+ void cargaRamales(JSONObject p,int at,ArrayList<double[]> lista){}
+ Map<double[],String> hitosDeGiro=new HashMap<>();
 ''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + linea(' static final String[] ORDINALES=') + '\n' + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead,int salida)') + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead){') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  static String lista(int n,int desde){StringBuilder b=new StringBuilder("[");

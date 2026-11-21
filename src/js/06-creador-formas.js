@@ -185,8 +185,10 @@ if(typeof document!=='undefined'&&typeof $==='function'&&$('creaMas')&&typeof $(
  sincronizaCrea();
 }
 function xmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
-function gpx(points,name){return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Trabakutik"><metadata><name>'+xmlEscape(name)+'</name><time>'+new Date().toISOString().replace(/\.\d+Z$/,'Z')+'</time></metadata><trk><name>'+xmlEscape(name)+'</name><trkseg>'+points.map(p=>p===null?'</trkseg><trkseg>':'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>'}
-function download(points,name){if(points.length<2)return;if(window.TrabakutikAndroid&&window.TrabakutikAndroid.saveGpx){window.TrabakutikAndroid.saveGpx(gpxFilename(name)+'.gpx',gpx(points,name));return;}const url=URL.createObjectURL(new Blob([gpx(points,name)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=gpxFilename(name)+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+function gpx(points,name,hitos=[]){
+ const avisos=hitos.map(h=>'<wpt lat="'+h.p[0]+'" lon="'+h.p[1]+'"><name>'+xmlEscape(h.texto)+'</name><type>aviso en cruce</type></wpt>').join('');
+ return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Trabakutik"><metadata><name>'+xmlEscape(name)+'</name><time>'+new Date().toISOString().replace(/\.\d+Z$/,'Z')+'</time></metadata>'+avisos+'<trk><name>'+xmlEscape(name)+'</name><trkseg>'+points.map(p=>p===null?'</trkseg><trkseg>':'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>'}
+function download(points,name,hitos){if(points.length<2)return;if(window.TrabakutikAndroid&&window.TrabakutikAndroid.saveGpx){window.TrabakutikAndroid.saveGpx(gpxFilename(name)+'.gpx',gpx(points,name,hitos));return;}const url=URL.createObjectURL(new Blob([gpx(points,name,hitos)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=gpxFilename(name)+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
 function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
@@ -202,24 +204,24 @@ function canShareGpx(points,name){
  if(typeof navigator.share!=='function'||typeof navigator.canShare!=='function'||typeof File==='undefined')return false;
  try{const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});return navigator.canShare({files:[file]})}catch(e){return false}
 }
-async function shareGpx(points,name){
+async function shareGpx(points,name,hitos){
  if(window.TrabakutikAndroid&&window.TrabakutikAndroid.shareGpx){
-  try{window.TrabakutikAndroid.shareGpx(gpxFilename(name)+'.gpx',gpx(points,name));return true}
+  try{window.TrabakutikAndroid.shareGpx(gpxFilename(name)+'.gpx',gpx(points,name,hitos));return true}
   catch(e){notice('No se pudo compartir el GPX.');return false}
  }
  if(!canShareGpx(points,name)){notice('Este navegador no permite compartir archivos GPX. Puedes descargarlo.');return false}
- const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});
+ const file=new File([gpx(points,name,hitos)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});
  try{await navigator.share({files:[file],title:name,text:'Ruta GPX'});return true}
  catch(e){if(e.name!=='AbortError')notice('No se pudo compartir el GPX.');return false}
 }
-async function enviaAlReloj(points,name){
+async function enviaAlReloj(points,name,hitos){
  if(!Array.isArray(points)||points.filter(Boolean).length<2){notice('Carga una ruta para enviarla al reloj.');return false}
  notice('Elige la aplicación de tu reloj e importa el recorrido. El envío se completa allí.');
  if(window.TrabakutikAndroid?.sendGpxToWatch){
-  try{window.TrabakutikAndroid.sendGpxToWatch(gpxFilename(name)+'.gpx',gpx(points,name));return true}
+  try{window.TrabakutikAndroid.sendGpxToWatch(gpxFilename(name)+'.gpx',gpx(points,name,hitos));return true}
   catch(e){notice('No se pudo abrir el GPX. Puedes descargarlo e importarlo en la aplicación del reloj.');return false}
  }
- return shareGpx(points,name);
+ return shareGpx(points,name,hitos);
 }
 function closeSaveDialog(){
  $('saveDialog').classList.add('hidden');
@@ -441,6 +443,7 @@ function loadSaved(item){
  junctions=[];junctionsReves=null;
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);pintaBotonMapa();
+ hitosDeAviso=Array.isArray(item.hitos)?item.hitos:[];
  // El perfil y las alturas, con TODOS los puntos: la copia simplificada se
  // come una cima en mitad de una recta (navigationProfilePoints).
  perfilGuardado={compacta:routePoints,completa:item.points};
@@ -517,7 +520,7 @@ function clearActiveRoute(){
  // El dibujo provisional del creador es otra capa distinta de la ruta activa.
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
- routePoints=[];chosen=-1;activeSavedId=null;updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
+ routePoints=[];chosen=-1;activeSavedId=null;hitosDeAviso=[];updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
  junctions=[];junctionsReves=null;junctionWarned.clear();routeCumulative=[];crucesOsm=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
@@ -560,7 +563,16 @@ function parseImportedGpx(text,filename){
  const named=els(xml,'trk')[0]||els(xml,'rte')[0];
  const nameEl=named?Array.from(named.children).find(x=>x.localName==='name'):null;
  const name=(nameEl?.textContent||filename.replace(/\.gpx$/i,'')).trim().slice(0,110)||'Ruta importada';
- return {name,points,excluded};
+ const hitos=[];
+ for(const wpt of els(xml,'wpt')){
+  if(els(wpt,'type')[0]?.textContent?.trim().toLowerCase()!=='aviso en cruce')continue;
+  const lat=wpt.getAttribute('lat')?.trim(),lon=wpt.getAttribute('lon')?.trim();
+  const texto=els(wpt,'name')[0]?.textContent?.replace(/\s+/g,' ').trim().slice(0,45);
+  if(lat&&lon&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180&&texto)
+   hitos.push({p:[Number(lat),Number(lon)],texto});
+  if(hitos.length===50)break;
+ }
+ return hitos.length?{name,points,excluded,hitos}:{name,points,excluded};
 }
 $('importGpxBtn').onclick=()=>$('importGpxFile').click();
 // IMPORTAR UN GPX: desde el boton de «Mis rutas» y, desde el 17 nov 2026,
@@ -582,7 +594,7 @@ function importaTextoGpx(texto,nombre,abrir){
   if(result.excluded){
    if(!confirm('El GPX contiene '+(result.excluded+1)+' tramos separados. Para no unirlos con líneas rectas se importará únicamente el tramo más largo. ¿Continuar?'))return false;
   }
-  const item={name:result.name,points:result.points,created:Date.now(),imported:true};
+  const item={name:result.name,points:result.points,created:Date.now(),imported:true,...(result.hitos?{hitos:result.hitos}:{})};
   if(!putSaved([item,...list]))throw new Error('No hay espacio para guardar la ruta. No se ha importado.');
   // Desde fuera se abre DIRECTAMENTE como ruta activa: el autor quiere pulsar
   // el GPX en Descargas y tenerlo en el navegador. Desde el boton, la lista.
@@ -610,8 +622,8 @@ function showSaved(){
   const nombre=$('mapTitle').textContent||'Ruta';
   const actual=document.createElement('div');actual.className='routeitem';
   const titulo=document.createElement('span');titulo.textContent='Ruta cargada · '+nombre;titulo.style.flex='1';
-  const descargar=document.createElement('button');descargar.className='btn-sub';descargar.textContent='↓ GPX';descargar.onclick=()=>download(puntos,nombre);
-  const reloj=document.createElement('button');reloj.className='btn-sub';reloj.textContent='Enviar al reloj';reloj.onclick=()=>{void enviaAlReloj(puntos,nombre)};
+  const descargar=document.createElement('button');descargar.className='btn-sub';descargar.textContent='↓ GPX';descargar.onclick=()=>download(puntos,nombre,hitosDeAviso);
+  const reloj=document.createElement('button');reloj.className='btn-sub';reloj.textContent='Enviar al reloj';reloj.onclick=()=>{void enviaAlReloj(puntos,nombre,hitosDeAviso)};
   actual.append(titulo,descargar,reloj);target.append(actual);
  }
  const list=savedList();
@@ -619,8 +631,8 @@ function showSaved(){
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
   const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
-  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name);
-  const share=document.createElement('button');share.className='btn-sub';share.textContent='Enviar al reloj';share.title='Abrir el GPX con la aplicación del reloj';share.onclick=()=>{void enviaAlReloj(item.points,item.name)};
+  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name,item.hitos);
+  const share=document.createElement('button');share.className='btn-sub';share.textContent='Enviar al reloj';share.title='Abrir el GPX con la aplicación del reloj';share.onclick=()=>{void enviaAlReloj(item.points,item.name,item.hitos)};
   const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
   row.append(open,dl,share,del);target.append(row);
  });

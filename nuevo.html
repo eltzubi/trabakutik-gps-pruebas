@@ -1170,6 +1170,7 @@ async function loadDetailedSelected(i,request){
  }
 }
 function selectRoute(i){
+ hitosDeAviso=[];
  const request=++selectedRouteRequest;
  activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute(guiaIniciada()&&routePoints.length>1);resetJunctionView();junctionWarned.clear();junctionZoom=null;
@@ -2806,8 +2807,10 @@ if(typeof document!=='undefined'&&typeof $==='function'&&$('creaMas')&&typeof $(
  sincronizaCrea();
 }
 function xmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
-function gpx(points,name){return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Trabakutik"><metadata><name>'+xmlEscape(name)+'</name><time>'+new Date().toISOString().replace(/\.\d+Z$/,'Z')+'</time></metadata><trk><name>'+xmlEscape(name)+'</name><trkseg>'+points.map(p=>p===null?'</trkseg><trkseg>':'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>'}
-function download(points,name){if(points.length<2)return;if(window.TrabakutikAndroid&&window.TrabakutikAndroid.saveGpx){window.TrabakutikAndroid.saveGpx(gpxFilename(name)+'.gpx',gpx(points,name));return;}const url=URL.createObjectURL(new Blob([gpx(points,name)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=gpxFilename(name)+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+function gpx(points,name,hitos=[]){
+ const avisos=hitos.map(h=>'<wpt lat="'+h.p[0]+'" lon="'+h.p[1]+'"><name>'+xmlEscape(h.texto)+'</name><type>aviso en cruce</type></wpt>').join('');
+ return '<?xml version="1.0" encoding="utf-8"?><gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="Trabakutik"><metadata><name>'+xmlEscape(name)+'</name><time>'+new Date().toISOString().replace(/\.\d+Z$/,'Z')+'</time></metadata>'+avisos+'<trk><name>'+xmlEscape(name)+'</name><trkseg>'+points.map(p=>p===null?'</trkseg><trkseg>':'<trkpt lat="'+p[0]+'" lon="'+p[1]+'">'+(Number.isFinite(p[2])?'<ele>'+p[2]+'</ele>':'')+'</trkpt>').join('')+'</trkseg></trk></gpx>'}
+function download(points,name,hitos){if(points.length<2)return;if(window.TrabakutikAndroid&&window.TrabakutikAndroid.saveGpx){window.TrabakutikAndroid.saveGpx(gpxFilename(name)+'.gpx',gpx(points,name,hitos));return;}const url=URL.createObjectURL(new Blob([gpx(points,name,hitos)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=gpxFilename(name)+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
 function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
@@ -2823,24 +2826,24 @@ function canShareGpx(points,name){
  if(typeof navigator.share!=='function'||typeof navigator.canShare!=='function'||typeof File==='undefined')return false;
  try{const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});return navigator.canShare({files:[file]})}catch(e){return false}
 }
-async function shareGpx(points,name){
+async function shareGpx(points,name,hitos){
  if(window.TrabakutikAndroid&&window.TrabakutikAndroid.shareGpx){
-  try{window.TrabakutikAndroid.shareGpx(gpxFilename(name)+'.gpx',gpx(points,name));return true}
+  try{window.TrabakutikAndroid.shareGpx(gpxFilename(name)+'.gpx',gpx(points,name,hitos));return true}
   catch(e){notice('No se pudo compartir el GPX.');return false}
  }
  if(!canShareGpx(points,name)){notice('Este navegador no permite compartir archivos GPX. Puedes descargarlo.');return false}
- const file=new File([gpx(points,name)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});
+ const file=new File([gpx(points,name,hitos)],gpxFilename(name)+'.gpx',{type:'application/gpx+xml'});
  try{await navigator.share({files:[file],title:name,text:'Ruta GPX'});return true}
  catch(e){if(e.name!=='AbortError')notice('No se pudo compartir el GPX.');return false}
 }
-async function enviaAlReloj(points,name){
+async function enviaAlReloj(points,name,hitos){
  if(!Array.isArray(points)||points.filter(Boolean).length<2){notice('Carga una ruta para enviarla al reloj.');return false}
  notice('Elige la aplicación de tu reloj e importa el recorrido. El envío se completa allí.');
  if(window.TrabakutikAndroid?.sendGpxToWatch){
-  try{window.TrabakutikAndroid.sendGpxToWatch(gpxFilename(name)+'.gpx',gpx(points,name));return true}
+  try{window.TrabakutikAndroid.sendGpxToWatch(gpxFilename(name)+'.gpx',gpx(points,name,hitos));return true}
   catch(e){notice('No se pudo abrir el GPX. Puedes descargarlo e importarlo en la aplicación del reloj.');return false}
  }
- return shareGpx(points,name);
+ return shareGpx(points,name,hitos);
 }
 function closeSaveDialog(){
  $('saveDialog').classList.add('hidden');
@@ -3062,6 +3065,7 @@ function loadSaved(item){
  junctions=[];junctionsReves=null;
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);pintaBotonMapa();
+ hitosDeAviso=Array.isArray(item.hitos)?item.hitos:[];
  // El perfil y las alturas, con TODOS los puntos: la copia simplificada se
  // come una cima en mitad de una recta (navigationProfilePoints).
  perfilGuardado={compacta:routePoints,completa:item.points};
@@ -3138,7 +3142,7 @@ function clearActiveRoute(){
  // El dibujo provisional del creador es otra capa distinta de la ruta activa.
  // Al quitar la ruta creada hay que eliminar ambas capas.
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
- routePoints=[];chosen=-1;activeSavedId=null;updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
+ routePoints=[];chosen=-1;activeSavedId=null;hitosDeAviso=[];updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
  junctions=[];junctionsReves=null;junctionWarned.clear();routeCumulative=[];crucesOsm=[];
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
@@ -3181,7 +3185,16 @@ function parseImportedGpx(text,filename){
  const named=els(xml,'trk')[0]||els(xml,'rte')[0];
  const nameEl=named?Array.from(named.children).find(x=>x.localName==='name'):null;
  const name=(nameEl?.textContent||filename.replace(/\.gpx$/i,'')).trim().slice(0,110)||'Ruta importada';
- return {name,points,excluded};
+ const hitos=[];
+ for(const wpt of els(xml,'wpt')){
+  if(els(wpt,'type')[0]?.textContent?.trim().toLowerCase()!=='aviso en cruce')continue;
+  const lat=wpt.getAttribute('lat')?.trim(),lon=wpt.getAttribute('lon')?.trim();
+  const texto=els(wpt,'name')[0]?.textContent?.replace(/\s+/g,' ').trim().slice(0,45);
+  if(lat&&lon&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180&&texto)
+   hitos.push({p:[Number(lat),Number(lon)],texto});
+  if(hitos.length===50)break;
+ }
+ return hitos.length?{name,points,excluded,hitos}:{name,points,excluded};
 }
 $('importGpxBtn').onclick=()=>$('importGpxFile').click();
 // IMPORTAR UN GPX: desde el boton de «Mis rutas» y, desde el 17 nov 2026,
@@ -3203,7 +3216,7 @@ function importaTextoGpx(texto,nombre,abrir){
   if(result.excluded){
    if(!confirm('El GPX contiene '+(result.excluded+1)+' tramos separados. Para no unirlos con líneas rectas se importará únicamente el tramo más largo. ¿Continuar?'))return false;
   }
-  const item={name:result.name,points:result.points,created:Date.now(),imported:true};
+  const item={name:result.name,points:result.points,created:Date.now(),imported:true,...(result.hitos?{hitos:result.hitos}:{})};
   if(!putSaved([item,...list]))throw new Error('No hay espacio para guardar la ruta. No se ha importado.');
   // Desde fuera se abre DIRECTAMENTE como ruta activa: el autor quiere pulsar
   // el GPX en Descargas y tenerlo en el navegador. Desde el boton, la lista.
@@ -3231,8 +3244,8 @@ function showSaved(){
   const nombre=$('mapTitle').textContent||'Ruta';
   const actual=document.createElement('div');actual.className='routeitem';
   const titulo=document.createElement('span');titulo.textContent='Ruta cargada · '+nombre;titulo.style.flex='1';
-  const descargar=document.createElement('button');descargar.className='btn-sub';descargar.textContent='↓ GPX';descargar.onclick=()=>download(puntos,nombre);
-  const reloj=document.createElement('button');reloj.className='btn-sub';reloj.textContent='Enviar al reloj';reloj.onclick=()=>{void enviaAlReloj(puntos,nombre)};
+  const descargar=document.createElement('button');descargar.className='btn-sub';descargar.textContent='↓ GPX';descargar.onclick=()=>download(puntos,nombre,hitosDeAviso);
+  const reloj=document.createElement('button');reloj.className='btn-sub';reloj.textContent='Enviar al reloj';reloj.onclick=()=>{void enviaAlReloj(puntos,nombre,hitosDeAviso)};
   actual.append(titulo,descargar,reloj);target.append(actual);
  }
  const list=savedList();
@@ -3240,8 +3253,8 @@ function showSaved(){
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
   const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
-  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name);
-  const share=document.createElement('button');share.className='btn-sub';share.textContent='Enviar al reloj';share.title='Abrir el GPX con la aplicación del reloj';share.onclick=()=>{void enviaAlReloj(item.points,item.name)};
+  const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name,item.hitos);
+  const share=document.createElement('button');share.className='btn-sub';share.textContent='Enviar al reloj';share.title='Abrir el GPX con la aplicación del reloj';share.onclick=()=>{void enviaAlReloj(item.points,item.name,item.hitos)};
   const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};
   row.append(open,dl,share,del);target.append(row);
  });
@@ -3788,7 +3801,7 @@ function marcaAlReves(si){
 // resetOffRoute() se llama en los cinco sitios donde se cambia de ruta y en
 // ninguno mas, asi que aqui no se repite por cada posicion.
 let acercarAlTrack=false;
-function resetOffRoute(cambioEnMarcha=false){acercarAlTrack=cambioEnMarcha;entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;sentidoRuta=1;
+function resetOffRoute(cambioEnMarcha=false){if(typeof confirmaRamalWeb!=='undefined')confirmaRamalWeb.reinicia();acercarAlTrack=cambioEnMarcha;entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;sentidoRuta=1;
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
 refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;if(typeof document!=='undefined')marcaAlReves(false);
@@ -3816,7 +3829,8 @@ function puntoMasCercano(p,track){
  }
  return punto;
 }
-function updateOffRoute(d,accuracy,posicion){
+function updateOffRoute(d,accuracy,posicion,ramalEquivocado=false){
+ if(ramalEquivocado)d=Math.max(d,Math.max(15,accuracy+7)+1);
  if(!guiaIniciada()){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
  if(!Number.isFinite(d)||d<0||!Number.isFinite(accuracy)||accuracy<0||accuracy>60){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
  const now=Date.now();
@@ -3845,8 +3859,8 @@ function updateOffRoute(d,accuracy,posicion){
   return;
  }
  cercaDesdePag=0;
- if(!farSince){farSince=now;return;}
- if(!alerted&&now-farSince>=4000){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,acercarAlTrack?puntoMasCercano(posicion,routePoints):routePoints[0],acercarAlTrack):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
+ if(!farSince)farSince=now;
+ if(!alerted&&(ramalEquivocado||now-farSince>=4000)){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,acercarAlTrack?puntoMasCercano(posicion,routePoints):routePoints[0],acercarAlTrack):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
  else if(onRouteSeen&&alerted&&!recordadoPag&&d>=50&&now-fueraDesdePag>=4000){recordadoPag=true;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
 let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0,avisoRutaHastaPag=0,ultimoDesvioPag=0;
@@ -4311,6 +4325,8 @@ function enviaGirosNativos(){
    // ignora y dice «sal a la derecha/izquierda», el lado bueno.
    if(j.rotonda&&j.salida)o.rs=j.salida;
    if(j.rotonda&&j.recto)o.rr=1;
+   if(j.hito)o.ht=j.hito;
+   if(j.ramales)o.br=j.ramales.map(p=>p.slice(0,2).map(v=>Number(v.toFixed(6))));
    return o;
   }));
   // Una rotonda que se cruza RECTO solo se avisa con su numero de salida, y
@@ -4396,6 +4412,70 @@ function eligePorForma(lista,linea,punto){
 // - si cambias de calle, se decide como siempre pero con los rumbos medidos en
 //   el cruce (de un punto lejano a otro), no en la curva.
 // Devuelve undefined si la forma no lo deja claro: entonces, como siempre.
+// Misma comprobación que ConfirmaRamal.java para la guía en navegador.
+class ConfirmaRamalWeb{
+ reinicia(){this.cruce=null;this.ancla=null;this.anterior=this.lecturas=this.confirmado=0}
+ muestra(cerca,dir,lat,lon,precision,ahora){
+  if(dir!==this.sentido||ahora<=this.tiempo||ahora-this.tiempo>5000||ahora-this.inicio>45000)this.reinicia();
+  this.sentido=dir;this.tiempo=ahora;
+  if(!Number.isFinite(precision)||precision<=0||precision>20){
+   this.ancla=null;this.anterior=this.lecturas=this.confirmado=0;return 0;
+  }
+  if(!this.cruce){this.cruce=cerca;this.inicio=ahora}
+  if(!this.cruce)return 0;
+  const datos=this.cruce.ramales,origen=datos[0],escala=111195*Math.cos(origen[0]*Math.PI/180);
+  const x=(lon-origen[1])*escala,y=(lat-origen[0])*111195,radio=Math.hypot(x,y);
+  if(radio>38){this.reinicia();return 0}
+  if(radio<9||!this.ancla){
+   this.ancla=[x,y];this.anterior=this.lecturas=this.confirmado=0;return 0;
+  }
+  const dx=x-this.ancla[0],dy=y-this.ancla[1],avance=Math.hypot(dx,dy);
+  if(avance<Math.max(5,precision))return this.confirmado;
+  this.ancla=[x,y];
+  let mejor=Infinity,segundo=Infinity,producto=0,rama=-1;
+  for(let i=1;i<datos.length;i++){
+   const rx=(datos[i][1]-origen[1])*escala,ry=(datos[i][0]-origen[0])*111195,largo=Math.hypot(rx,ry);
+   if(largo<8)continue;
+   const u=Math.max(0,Math.min(1,(x*rx+y*ry)/(largo*largo))),error=Math.hypot(x-u*rx,y-u*ry);
+   if(error<mejor){segundo=mejor;mejor=error;rama=i;producto=(dx*rx+dy*ry)/(avance*largo)}
+   else if(error<segundo)segundo=error;
+  }
+  const evidencia=segundo-mejor>precision+3&&mejor<=precision&&producto>=.82&&x*dx+y*dy>0?(rama===1?1:-rama):0;
+  this.lecturas=evidencia===this.anterior?this.lecturas+1:1;
+  this.anterior=evidencia;
+  if(this.lecturas>=2)this.confirmado=evidencia;
+  return this.confirmado;
+ }
+}
+const confirmaRamalWeb=new ConfirmaRamalWeb();
+let hitosDeAviso=[];
+function aplicaHitosDeAviso(lista){
+ for(const hito of hitosDeAviso){
+  // Un hito acompaña un giro inequívoco. En un lazo con dos giros en el
+  // mismo lugar no sabemos a cuál iba dirigido el punto manual.
+  const cerca=lista.filter(g=>dist(g.point,hito.p)<=12);
+  if(cerca.length===1&&!cerca[0].hito)cerca[0].hito=hito.texto;
+ }
+}
+function compruebaRamalWeb(p,precision,progreso,ts){
+ const candidatos=sentidoRuta>0?junctions:junctionsReves;
+ let cerca=null,distancia=21;
+ if(!alerted&&!progreso.ambiguous&&progreso.distance<=12)for(const c of candidatos||[]){
+  if(!c.ramales)continue;
+  const quedan=(c.along-progreso.along)*sentidoRuta;
+  if(quedan>=0&&quedan<distancia){distancia=quedan;cerca=c}
+ }
+ return confirmaRamalWeb.muestra(cerca,sentidoRuta,p[0],p[1],precision,ts);
+}
+function ramalesParaConfirmar(cruce,ruta){
+ if(!ruta||!cruce.lejos||cruce.lejos.length<3)return null;
+ const ramas=cruce.lejos.map((lejos,i)=>({lejos,i})).filter(x=>x.lejos);
+ const entrada=eligePorForma(ramas,ruta.antes,ruta.a25);if(!entrada)return null;
+ const salidas=ramas.filter(x=>x!==entrada&&!cruce.prohibidas?.[x.i]&&cruce.clases?.[x.i]!==3);
+ const salida=eligePorForma(salidas,ruta.despues,ruta.d25);
+ if(!salida||salidas.length<2)return null;
+ return [[cruce[0],cruce[1]],salida.lejos,...salidas.filter(x=>x!==salida).map(x=>x.lejos)];
+}
 function decideCrucePorCalle(cruce,ramas,ruta){
  if(!ruta||!Array.isArray(cruce.lejos)||cruce.lejos.length!==ramas.length)return undefined;
  ramas.forEach((x,k)=>{x.lejos=cruce.lejos[k];x.clase=Array.isArray(cruce.clases)?cruce.clases[k]:0;x.prohibida=Array.isArray(cruce.prohibidas)&&!!cruce.prohibidas[k]});
@@ -4688,6 +4768,9 @@ function computeJunctions(){
    ida.sort((a,b)=>a.i-b.i);
   }
  }
+ aplicaHitosDeAviso(ida);
+ if(vuelta)aplicaHitosDeAviso(vuelta);
+ confirmaRamalWeb.reinicia();
  junctions=ida.filter(j=>!j.entradaLateral);routeCumulative=cum;junctionsReves=vuelta?.filter(j=>!j.entradaLateral)??null;
  junctionWarned.clear();junctionZoomOnce.clear();
  enviaGirosNativos();
@@ -4933,7 +5016,7 @@ function calculaCrucesDe(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false,entradaLateral=false;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false,entradaLateral=false,ramales=null;
   if(cruce){
    // El trozo de ruta de 60 m antes y despues del CRUCE (cortado en el punto
    // de la ruta mas cercano a su nodo y empalmado en el nodo), para reconocer
@@ -4972,6 +5055,7 @@ function calculaCrucesDe(){
    ruta.a25=enRuta(-25);ruta.d25=enRuta(25);
    ruta.desde=enRuta(-GIRO_CALLE_M);ruta.hasta=enRuta(GIRO_CALLE_M);ruta.llegada=enRuta(-FRENTE_M);
    let d=nodoEnRuta?decideCruce(elCruce,b,giro.antes,giro.despues,ruta):null;
+   if(d&&!d.sinRamas&&!d.curva)ramales=ramalesParaConfirmar(elCruce,ruta);
    // EL LADO DE UN CRUCE, MEDIDO EN EL CRUCE (17 nov 2026). Si hay que avisar
    // lo decide lo de siempre; el LADO se comprueba mirando la ruta en su punto
    // mas cercano al nodo del cruce, con LADO_VENTANA m a cada lado. El punto
@@ -5056,10 +5140,10 @@ function calculaCrucesDe(){
   // MANDA: si el de antes era una curva o una horquilla y este es un cruce, se
   // queda el cruce, que es lo que el autor pidio que no se perdiera nunca.
   // La revuelta de tu misma via se dice como curva, no como cruce.
-  const esCruce=nodoEnRuta&&!curvaCalle;
+  const esCruce=!!cruceAvisado&&!curvaCalle;
   const previo=junctions[junctions.length-1];
-  if(previo&&dist(previo.point,b)<35){
-   if(!(esCruce&&!previo.cruce))continue;
+  if(previo&&dist(previo.point,b)<35&&!(esCruce&&previo.cruce&&previo.nodo&&previo.nodo!==cruceAvisado)){
+   if(!((nodoEnRuta&&!curvaCalle)&&!previo.nodo))continue;
    junctions.pop();
   }
   // EL LADO SE GUARDA SIEMPRE, TAMBIEN EN UNA HERRADURA. Antes, al pasar de
@@ -5087,7 +5171,7 @@ function calculaCrucesDe(){
   // el aviso va en el punto de la ruta mas cercano a su nodo.
   const ultimo=junctions[junctions.length-1];
   const iA=cruceAvisado&&iNodo!=null&&iNodo!==i&&(!ultimo||iNodo>ultimo.i)?iNodo:i;
-  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{},entradaLateral?{entradaLateral:true}:{}));
+  junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{},entradaLateral?{entradaLateral:true}:{},nodoEnRuta&&!curvaCalle?{nodo:elCruce,ramales}:{}));
   if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
  }
  // El detector de la app Android aporta curvas por pico y por lado.
@@ -5095,7 +5179,7 @@ function calculaCrucesDe(){
  const anteriores=junctions.slice();
  for(const curva of detectaCurvasDelTrack(pts,routeCumulative)){
   const coincide=anteriores.find(j=>Math.abs(j.along-curva.along)<=
-   (j.direction==='vuelta'?42:j.cruce?35:12)&&(j.cruce||j.direction==='vuelta'||j.hacia===curva.hacia));
+   (j.direction==='vuelta'?42:j.nodo?35:12)&&(j.nodo||j.direction==='vuelta'||j.hacia===curva.hacia));
   if(!coincide)junctions.push(curva);
   else if(!coincide.cruce&&coincide.direction!=='vuelta')coincide.curvaNueva=true;
  }
@@ -5218,7 +5302,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }
@@ -5528,6 +5612,7 @@ function junctionGuidance(p,accuracy,progress){
    :(esCruce?'Gira a la '+lado:(turn.curvaNueva?'Curva a la ':'Curva cerrada a la ')+lado);
  $('turnAngle').textContent=turn.deFrente?'':turn.mantente?(turn.noRecto?'Lo de frente no es tu camino':'Dejas el camino que llevas')
    :'Giro de '+Math.round(grados)+'\u00b0';
+ if(turn.hito)$('turnAngle').textContent=turn.hito;
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // La ficha muestra las dos fases que se anuncian.
  $('turnRot1').textContent=Math.round(d1/5)*5+' m';
@@ -5584,7 +5669,7 @@ function junctionGuidance(p,accuracy,progress){
    if(fase==='1')junctionWarned.add(j+':v');
    hablarGiro(fase==='3'
      ?(giroTxt.charAt(0).toUpperCase()+giroTxt.slice(1)+(turn.sigue||turn.deFrente?'':' ahora'))
-     :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt,
+     :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+(turn.hito?turn.hito+'. ':'')+giroTxt,
      fase==='3'?siguienteManiobra(lista,turn,progress.along,sentidoRuta):'');
   }
   if(fase!=='v')notice(fase==='3'
@@ -5862,7 +5947,8 @@ function onFix(pos){
   pintaAvance(fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
   liveProfileAlong=guiaIniciada()&&fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
-   updateOffRoute(d,pos.coords.accuracy,[pos.coords.latitude,pos.coords.longitude]);
+   const ramal=compruebaRamalWeb(p,pos.coords.accuracy,progreso,Number.isFinite(pos.timestamp)?pos.timestamp:Date.now());
+   updateOffRoute(d,pos.coords.accuracy,p,ramal<0);
    junctionGuidance(p,pos.coords.accuracy,progreso);
    if(alerted){liveProfileAlong=null;liveNativeMetrics=null;}
   }

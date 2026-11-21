@@ -23,7 +23,7 @@ import java.util.*;
 public class NativeTurnsTest {
  boolean acercarAlTrack=false;boolean entradaAvisada=false;boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
  long avisoRutaHasta=0,lastImportantAudio=0;
- double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
+ double alongPrevio=Double.NaN,alongAcum=0;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;Map<double[],String> hitosDeGiro=new HashMap<>();
  double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
@@ -40,11 +40,12 @@ public class NativeTurnsTest {
  void habla(String s){dicho.add(s);try{spoken.add(Integer.parseInt(s.split("[ .]")[0]));}catch(NumberFormatException e){}}
  void hablaGiro(String s,String siguiente){habla(s);if(!siguiente.isEmpty())habla(siguiente);}
  // Lo mismo que hace onLocationChanged con cada posicion, en el mismo orden.
+ void checkDeviation(Location l){checkDeviation(l,false);}
  void posicion(Location l){posicion(l,true);}
  void posicion(Location l,boolean decide){
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());
-  checkDeviation(l);
   NavigationMetrics.Projection position=metrics.project(l.getLatitude(),l.getLongitude(),sentido,l.getAccuracy()<=35&&!offRoute);
+  checkDeviation(l);
   if(decide&&!offRoute&&l.getAccuracy()<=35&&position.distance()<=30)decideSentido(position.along(),l.getLatitude(),l.getLongitude());
   checkTurns(l,position);
  }
@@ -70,7 +71,7 @@ public class NativeTurnsTest {
  ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' double avisoYa()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
- ' void protegeAvisoRuta()',' String avisoSalida(Location l)',' void checkDeviation(Location l)',' double closest(double lat,double lon,double[] punto)', ' double closest(double lat,double lon)'))+'''
+ ' void protegeAvisoRuta()',' String avisoSalida(Location l)',' void checkDeviation(Location l,boolean ramalEquivocado)',' double closest(double lat,double lon,double[] punto)', ' double closest(double lat,double lon)'))+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}

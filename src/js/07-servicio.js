@@ -466,7 +466,7 @@ function marcaAlReves(si){
 // resetOffRoute() se llama en los cinco sitios donde se cambia de ruta y en
 // ninguno mas, asi que aqui no se repite por cada posicion.
 let acercarAlTrack=false;
-function resetOffRoute(cambioEnMarcha=false){acercarAlTrack=cambioEnMarcha;entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;sentidoRuta=1;
+function resetOffRoute(cambioEnMarcha=false){if(typeof confirmaRamalWeb!=='undefined')confirmaRamalWeb.reinicia();acercarAlTrack=cambioEnMarcha;entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;sentidoRuta=1;
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
 refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;if(typeof document!=='undefined')marcaAlReves(false);
@@ -494,7 +494,8 @@ function puntoMasCercano(p,track){
  }
  return punto;
 }
-function updateOffRoute(d,accuracy,posicion){
+function updateOffRoute(d,accuracy,posicion,ramalEquivocado=false){
+ if(ramalEquivocado)d=Math.max(d,Math.max(15,accuracy+7)+1);
  if(!guiaIniciada()){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
  if(!Number.isFinite(d)||d<0||!Number.isFinite(accuracy)||accuracy<0||accuracy>60){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
  const now=Date.now();
@@ -523,8 +524,8 @@ function updateOffRoute(d,accuracy,posicion){
   return;
  }
  cercaDesdePag=0;
- if(!farSince){farSince=now;return;}
- if(!alerted&&now-farSince>=4000){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,acercarAlTrack?puntoMasCercano(posicion,routePoints):routePoints[0],acercarAlTrack):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
+ if(!farSince)farSince=now;
+ if(!alerted&&(ramalEquivocado||now-farSince>=4000)){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,acercarAlTrack?puntoMasCercano(posicion,routePoints):routePoints[0],acercarAlTrack):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
  else if(onRouteSeen&&alerted&&!recordadoPag&&d>=50&&now-fueraDesdePag>=4000){recordadoPag=true;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
 let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0,avisoRutaHastaPag=0,ultimoDesvioPag=0;

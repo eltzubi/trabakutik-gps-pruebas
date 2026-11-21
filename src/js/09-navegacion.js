@@ -304,6 +304,7 @@ function junctionGuidance(p,accuracy,progress){
    :(esCruce?'Gira a la '+lado:(turn.curvaNueva?'Curva a la ':'Curva cerrada a la ')+lado);
  $('turnAngle').textContent=turn.deFrente?'':turn.mantente?(turn.noRecto?'Lo de frente no es tu camino':'Dejas el camino que llevas')
    :'Giro de '+Math.round(grados)+'\u00b0';
+ if(turn.hito)$('turnAngle').textContent=turn.hito;
  $('turnDistance').textContent=ahead>0?Math.max(0,Math.round(ahead/5)*5):0;
  // La ficha muestra las dos fases que se anuncian.
  $('turnRot1').textContent=Math.round(d1/5)*5+' m';
@@ -360,7 +361,7 @@ function junctionGuidance(p,accuracy,progress){
    if(fase==='1')junctionWarned.add(j+':v');
    hablarGiro(fase==='3'
      ?(giroTxt.charAt(0).toUpperCase()+giroTxt.slice(1)+(turn.sigue||turn.deFrente?'':' ahora'))
-     :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+giroTxt,
+     :'En '+Math.max(5,Math.round(ahead/10)*10)+' metros, '+(turn.hito?turn.hito+'. ':'')+giroTxt,
      fase==='3'?siguienteManiobra(lista,turn,progress.along,sentidoRuta):'');
   }
   if(fase!=='v')notice(fase==='3'
@@ -638,7 +639,8 @@ function onFix(pos){
   pintaAvance(fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:ultimoAlong,{enRuta:fiable?progreso.distance<=30:null,distRuta:d,precision:pos.coords.accuracy});
   liveProfileAlong=guiaIniciada()&&fiable&&!progreso.ambiguous&&progreso.distance<=30?progreso.along:null;
   if(guiaIniciada()){
-   updateOffRoute(d,pos.coords.accuracy,[pos.coords.latitude,pos.coords.longitude]);
+   const ramal=compruebaRamalWeb(p,pos.coords.accuracy,progreso,Number.isFinite(pos.timestamp)?pos.timestamp:Date.now());
+   updateOffRoute(d,pos.coords.accuracy,p,ramal<0);
    junctionGuidance(p,pos.coords.accuracy,progreso);
    if(alerted){liveProfileAlong=null;liveNativeMetrics=null;}
   }

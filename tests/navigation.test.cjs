@@ -84,9 +84,9 @@ test('Sin OSM: el detector nuevo distingue curvas de quiebros suaves',()=>{
   assert.equal(turns[0].direction,angle>=160?'vuelta':'izquierda',`${angle} grados`);
  }
 });
-test('En un cruce identificado anuncia un cambio de camino y lo distingue de una curva',()=>{
+test('Un nodo sin ramales puede orientar el aviso geométrico sin llamarlo cruce',()=>{
  const turns=detector().detect(corner(60),[point(0,0)]);
- assert.equal(turns.length,1);assert.equal(turns[0].cruce,true);
+ assert.equal(turns.length,1);assert.equal(turns[0].cruce,false);
  // En un cruce conocido basta con 45°, que es lo que distingue un cambio de
  // camino de una curva: 50 avisa, 40 y 20 se callan.
  assert.equal(detector().detect(corner(50),[point(0,0)]).length,1);
@@ -94,7 +94,7 @@ test('En un cruce identificado anuncia un cambio de camino y lo distingue de una
  assert.equal(detector().detect(corner(20),[point(0,0)]).length,0);
  // El cruce cuenta si esta a menos de 25 m del giro, no solo justo encima:
  // el nodo de OSM casi nunca cae en el mismo punto que el vertice del GPX.
- assert.equal(detector().detect(corner(60),[point(0,20)])[0].cruce,true);
+ assert.equal(detector().detect(corner(60),[point(0,20)])[0].cruce,false);
  assert.equal(detector().detect(corner(60),[point(0,30)]).length,0);
 });
 test('Detecta giros cerrados cerca de los extremos de la ruta',()=>{
@@ -369,7 +369,7 @@ test('De dos avisos pegados se queda el cruce, no la curva',()=>{
  const puntos=zigzag(30),q=vertice(30);
  const turns=detector().detect(puntos,[point(q[0],q[1])]);
  assert.equal(turns.length,1);
- assert.equal(turns[0].cruce,true,'el que se queda es el cruce');
+ assert.equal(turns[0].cruce,false,'el nodo sin ramales usa una indicación geométrica');
  // Sin cruce conocido, se conservan las dos curvas de distinto lado.
  const solas=detector().detect(puntos);
  assert.equal(solas.length,2);assert(solas.every(g=>!g.cruce));
@@ -386,7 +386,7 @@ test('Los índices enviados a Android corresponden a la ruta simplificada',()=>{
  // otra manera -«toma el camino de la derecha» y no «gira a la derecha»-.
  const d=detector(),cruces=[];d.window.TrabakutikAndroid.setJunctions=json=>cruces.push(JSON.parse(json));
  d.detect(corner(60),[point(0,0)]);
- assert.deepEqual(cruces.at(-1),[{i:1,dir:-1,t:1}]);
+ assert.deepEqual(cruces.at(-1),[{i:1,dir:-1,t:0}]);
 });
 function savedFlow(){
  const c=entornoIntegracion(),nodes=new Map(),calls=[];
@@ -1166,7 +1166,7 @@ test('Un cruce de verdad donde el GPS bailo parado no se toma por un pico',()=>{
  const cruces=[[48.1,-32.8,[[108,288],[228]]],[-15.9,1.7,[[24,198],[162]]],[2.8,41.7,[[168,336],[204]]],[-118.8,158.5,[[114,306],[144]]],[-170.7,192.9,[[120,306],[144]]],[-245.3,250.7,[[126,324],[300]]]];
  const c=detector(),pts=ruta.map(q=>point(q[0],q[1])),osm=cruces.map(q=>point(q[0],q[1]).concat([q[2]]));
  const ida=c.detectCrudo(pts,osm).filter(j=>meters(pts[j.i],point(0,0))<25);
- assert(ida.some(j=>j.cruce&&j.direction==='derecha'),'el cruce a la derecha sigue: '+JSON.stringify(ida.map(t=>t.direction)));
+ assert(ida.some(j=>j.direction==='derecha'),'el aviso a la derecha sigue: '+JSON.stringify(ida.map(t=>t.direction)));
 });
 test('Un bailoteo del GPS de 2 m en una recta no es una herradura',()=>{
  // Trabakua-Mendibil, km 3,93: el GPX da un paso de 2,3 m a un lado y vuelve

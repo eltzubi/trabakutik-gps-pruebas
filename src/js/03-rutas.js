@@ -263,6 +263,7 @@ async function loadDetailedSelected(i,request){
  }
 }
 function selectRoute(i){
+ hitosDeAviso=[];
  const request=++selectedRouteRequest;
  activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
  resetOffRoute(guiaIniciada()&&routePoints.length>1);resetJunctionView();junctionWarned.clear();junctionZoom=null;

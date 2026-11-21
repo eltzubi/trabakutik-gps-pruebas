@@ -54,7 +54,7 @@ public class FueraTest {
  boolean acercarAlTrack=false;boolean entradaAvisada=false;boolean navigating=true,offRoute=false,routeReached=false;long farSince=0,cercaDesde=0;
  ArrayList<double[]> route=new ArrayList<>();
  void updateNotice(){}void pitidos(int n,int s){}void pitidos(int n,int s,int t){}ArrayList<String> dicho=new ArrayList<>();void habla(String s){dicho.add(s);}void tonoBien(){}
-''' + metodo(' void protegeAvisoRuta()') + metodo(' void vuelveALaRuta()') + metodo(' String avisoSalida(Location l)') + metodo(' void checkDeviation(Location l)') + metodo(' double closest(double lat,double lon,double[] punto)') + metodo(' double closest(double lat,double lon)') + '''
+''' + metodo(' void protegeAvisoRuta()') + metodo(' void vuelveALaRuta()') + metodo(' String avisoSalida(Location l)') + metodo(' void checkDeviation(Location l,boolean ramalEquivocado)') + metodo(' double closest(double lat,double lon,double[] punto)') + metodo(' double closest(double lat,double lon)') + '''
  ''' + re.search(r' static final double FUERA_M=[^;]+;',src).group(0) + re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0) + '''
  long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;long avisoRutaHasta=0,lastImportantAudio=0;
  public static void main(String[] a){
@@ -62,7 +62,7 @@ public class FueraTest {
   Scanner in=new Scanner(System.in);StringBuilder out=new StringBuilder();
   while(in.hasNextLong()){long t=in.nextLong();double d=in.nextDouble();float acc=(float)in.nextDouble();
    SystemClock.reloj=t;double lat=43.2+100/111195.0,lon=-2.5+d/(111195.0*Math.cos(Math.toRadians(lat)));
-   c.checkDeviation(new Location(lat,lon,acc));out.append(t).append(' ').append(c.offRoute?1:0).append('\\n');}
+   c.checkDeviation(new Location(lat,lon,acc),false);out.append(t).append(' ').append(c.offRoute?1:0).append('\\n');}
   if(Collections.frequency(c.dicho,"Sigues fuera del recorrido")!=2)throw new AssertionError("dos salidas, dos recordatorios: "+c.dicho);
   if(Collections.frequency(c.dicho,"De nuevo en la ruta")!=4)throw new AssertionError("cada regreso avisa: "+c.dicho);
   System.out.print(out);
@@ -131,3 +131,53 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(['javac','-d',tmp,str(f)],check=True,capture_output=True)
     subprocess.run(['java','-cp',tmp,'com.trabakutik.gps.VozRutaTest'],check=True,capture_output=True)
 print('OK: el giro se encola tras el regreso y una nueva salida tiene prioridad')
+
+# Misma traza para Java y la página. Los dos ramales de salida se separan
+# poco al principio. El tercero es perpendicular.
+ramas = [[0, 0], [30, 0], [30, 12], [0, -30]]
+def recorrido(xs):
+    return [[x / 111195, y / 111195, p] for x, y, p in xs]
+trayectos = [
+    recorrido([(-8, 0, 6), (0, 0, 6), (6, 2.4, 6), (12, 4.8, 6), (20, 8, 6)]),
+    recorrido([(-8, 0, 3), (0, 0, 3), (5, 0, 3), (18, 0, 3), (24, 0, 3), (30, 0, 3)]),
+    recorrido([(-8, 0, 3), (0, 0, 3), (5, 2, 3), (18, 7.2, 3), (24, 9.6, 3), (30, 12, 3)]),
+]
+ramas = [[x / 111195, y / 111195] for x, y in ramas]
+js = """
+const {ConfirmaRamalWeb}=require('./src/js/08-cruces.js');
+const [ramales,trazas]=JSON.parse(process.argv[1]);
+console.log(JSON.stringify(trazas.map(traza=>{
+ const c=new ConfirmaRamalWeb();
+ return traza.map(([lat,lon,p],i)=>Math.sign(c.muestra(i===0?{ramales}:null,1,lat,lon,p,1000*(i+1))));
+})));
+"""
+web = json.loads(subprocess.check_output(['node','-e',js,json.dumps([ramas,trayectos])],cwd=ROOT))
+def java_arreglo(rows):
+    return '{' + ','.join('{' + ','.join(map(str,row)) + '}' for row in rows) + '}'
+lang = '''
+package com.trabakutik.gps;
+class PruebaRamal {
+ public static void main(String[] args) {
+  double[][] ramas = RAMAS;
+  double[][][] trazas = TRAZAS;
+  for(double[][] traza:trazas){
+   ConfirmaRamal c=new ConfirmaRamal();
+   for(int i=0;i<traza.length;i++){
+    double[] p=traza[i];
+    System.out.print(Integer.signum(c.muestra(i==0?new ConfirmaRamal.Cruce(0,ramas):null,1,p[0],p[1],p[2],1000*(i+1)))+" ");
+   }
+   System.out.println();
+  }
+ }
+}
+'''.replace('RAMAS',java_arreglo(ramas)).replace('TRAZAS','{'+','.join(map(java_arreglo,trayectos))+'}')
+with tempfile.TemporaryDirectory() as tmp:
+    f=Path(tmp,'PruebaRamal.java'); f.write_text(lang)
+    detector=ROOT/'android/app/src/main/java/com/trabakutik/gps/ConfirmaRamal.java'
+    subprocess.run(['javac','-d',tmp,str(detector),str(f)],check=True)
+    salida=subprocess.check_output(['java','-cp',tmp,'com.trabakutik.gps.PruebaRamal'],text=True)
+android = [list(map(int, row.split())) for row in salida.splitlines()]
+assert web == android, (web, android)
+assert web[0] == [0]*5, web
+assert web[1] == [0,0,0,0,1,1] and web[2] == [0,0,0,0,-1,-1], web
+print('OK: los ramales paralelos esperan precisión y rumbo en la página y el servicio')

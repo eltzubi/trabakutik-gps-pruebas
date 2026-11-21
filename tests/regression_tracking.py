@@ -71,7 +71,7 @@ public class TrackingRegression {
  final FiltroDeriva filtroGrabacion=new FiltroDeriva();
  File dirBase;File getFilesDir(){return dirBase;}
  File file;static String GRABANDO;String errorGrabacion="";long lastRecordedTime;double lastRecordedLat,lastRecordedLon;int points;boolean recording;
- boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;
+ boolean navigating=true,offRoute=false;ArrayList<double[]> route=new ArrayList<>(),turns=new ArrayList<>(),turnsReves=new ArrayList<>();boolean hayReves=false;Map<double[],String> hitosDeGiro=new HashMap<>();
  double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double velocidadSuave=1.2;int beeps=0;
  double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}double avisoYa(){return 4;}
