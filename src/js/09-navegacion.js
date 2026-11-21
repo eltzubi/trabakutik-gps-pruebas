@@ -851,7 +851,10 @@ function syncNativeRoute(){
  nativeRouteKey=0;
  for(let i=0;i<json.length;i++)nativeRouteKey=(Math.imul(nativeRouteKey,31)+json.charCodeAt(i))|0;
  try{
-  if(window.TrabakutikAndroid.setRouteWithApproach)window.TrabakutikAndroid.setRouteWithApproach(json,acercarAlTrack);
+  if(window.TrabakutikAndroid.setNamedRouteWithApproach){
+   const nombre=chosen>=0&&tracks[chosen]?toName(tracks[chosen]):($('title')?.textContent||'');
+   window.TrabakutikAndroid.setNamedRouteWithApproach(json,acercarAlTrack,nombre);
+  }else if(window.TrabakutikAndroid.setRouteWithApproach)window.TrabakutikAndroid.setRouteWithApproach(json,acercarAlTrack);
   else window.TrabakutikAndroid.setRoute(json);
   enviaGirosNativos();
   window.TrabakutikAndroid.setSentido?.(sentidoRuta);

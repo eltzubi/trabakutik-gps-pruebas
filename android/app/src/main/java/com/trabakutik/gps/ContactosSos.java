@@ -119,12 +119,42 @@ final class ContactosSos {
         return cab + "\n" + String.format(Locale.ROOT, "https://maps.google.com/?q=%.6f,%.6f", lat, lon);
     }
 
-    static String mensaje(boolean hayPosicion, double lat, double lon, double precision, long segundos) {
-        String cab = "NECESITO AYUDA. Posible caida: aviso automatico de Trabakutik GPS, nadie lo ha cancelado en 30 s.";
-        if (!hayPosicion) return cab + "\nSin posicion GPS reciente.";
-        String cuando = segundos < 60 ? "hace " + segundos + " s" : "hace " + (segundos / 60) + " min";
-        return cab + "\n" + String.format(Locale.ROOT, "https://maps.google.com/?q=%.6f,%.6f", lat, lon)
-                + "\n" + String.format(Locale.ROOT, "%.6f, %.6f", lat, lon)
-                + " (+/-" + (int) Math.ceil(precision) + " m, " + cuando + ")";
+    static String mensaje(boolean automatico, boolean hayPosicion, double lat, double lon, double precision,
+                          double altitud, long segundos, String ruta, double pkMetros, int bateria, String hora,
+                          String usuario, String datoMedico) {
+        StringBuilder texto = new StringBuilder("NECESITO AYUDA - SOS TRABAKUTIK GPS");
+        texto.append(automatico ? "\nPosible caida: aviso automatico." : "\nSOS activado manualmente.");
+        texto.append("\nHora: ").append(hora);
+        if (bateria >= 0 && bateria <= 100) texto.append(" | Bateria: ").append(bateria).append('%');
+        if (hayPosicion) {
+            String latTexto = String.format(Locale.ROOT, "%.6f", lat);
+            String lonTexto = String.format(Locale.ROOT, "%.6f", lon);
+            String cuando = segundos < 60 ? "hace " + segundos + " s" : "hace " + (segundos / 60) + " min";
+            texto.append("\nUbicacion: ").append(latTexto).append(", ").append(lonTexto).append(" (");
+            if (Double.isFinite(precision) && precision > 0) texto.append("+/-").append((int) Math.ceil(precision)).append(" m, ");
+            if (Double.isFinite(altitud)) texto.append("alt. aprox. ").append(Math.round(altitud)).append(" m, ");
+            texto.append(cuando).append(')');
+            texto.append("\nMapa: https://maps.google.com/?q=").append(latTexto).append(',').append(lonTexto);
+            texto.append("\nOSM: https://www.openstreetmap.org/?mlat=").append(latTexto).append("&mlon=").append(lonTexto)
+                    .append("#map=16/").append(latTexto).append('/').append(lonTexto);
+        } else {
+            texto.append("\nSin posicion GPS reciente.");
+        }
+        String nombre = compacto(ruta, 100);
+        if (!nombre.isEmpty()) texto.append("\nRuta: ").append(nombre);
+        if (Double.isFinite(pkMetros) && pkMetros >= 0) {
+            texto.append(String.format(Locale.ROOT, "%sPK aprox. %.1f km desde el inicio del GPX",
+                    nombre.isEmpty() ? "\n" : " - ", pkMetros / 1000));
+        }
+        if (!usuario.isEmpty()) texto.append("\nUsuario: ").append(compacto(usuario, 40));
+        if (!datoMedico.isEmpty()) texto.append("\nDato medico: ").append(compacto(datoMedico, 90));
+        return texto.toString();
+    }
+
+    static String compacto(String valor, int limite) {
+        if (valor == null) return "";
+        String limpio = java.text.Normalizer.normalize(valor, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").replaceAll("[^A-Za-z0-9 .,_+()/-]", " ").replaceAll(" +", " ").trim();
+        return limpio.length() <= limite ? limpio : limpio.substring(0, limite).trim();
     }
 }

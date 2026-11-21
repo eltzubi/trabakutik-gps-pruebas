@@ -533,6 +533,15 @@ function pintaSos(){
  chk.onchange=()=>{app.setFallDetection(chk.checked);pintaSos()};
  sw.append(chk,el('span'));cab.append(tit,sw);sec.append(cab);
  sec.append(el('p',null,'Si te caes con fuerza mientras grabas o navegas y te quedas quieto, suena una alarma. '+(c.envioManual===true?'La alarma se cierra tras 30 s. Para enviar tu posición a tus contactos, pulsa «Enviar S.O.S. ya».':'Si no respondes en 30 s, se envía un SMS con tu posición a tus contactos. Para cancelarlo, pulsa «Estoy bien».')+' Es una ayuda: no avisa al 112 y no detecta todas las caídas.'));
+ if(typeof app.setSosProfile==='function'){
+  const perfil=el('button','sos-boton ancho','Datos opcionales del SOS');perfil.type='button';
+  perfil.onclick=()=>{
+   const nombre=prompt('Nombre que se incluirá en el SOS (opcional)',c.usuario||'');if(nombre===null)return;
+   const dato=prompt('Dato médico o contacto secundario que recibirán tus contactos (opcional)',c.datoMedico||'');if(dato===null)return;
+   app.setSosProfile(nombre,dato);pintaSos();
+  };
+  sec.append(perfil);
+ }
  const lista=c.contactos||[];
  sec.append(el('div','sos-titulo','Contactos ('+lista.length+' de '+(c.max||3)+')'));
  if(!lista.length)sec.append(el('p','sos-aviso','Sin ningún contacto no se puede avisar a nadie: añade uno.'));
@@ -556,6 +565,7 @@ function pintaSos(){
   bot.append(agenda,mano);sec.append(bot);
  }
  if(lista.length&&c.notificaciones===false)sec.append(el('p','sos-aviso','Las notificaciones de la app están desactivadas: sin ellas no salen los botones para cancelar la alarma y el aviso no se activa. Actívalas en Ajustes › Aplicaciones › Trabakutik GPS › Notificaciones.'));
+ sec.append(el('p','sos-aviso','El SOS automático usa SMS y depende de la cobertura móvil y los permisos de Android en el momento del envío.'));
  if(lista.length&&!c.permisoSms){
   sec.append(el('p','sos-aviso','Falta el permiso para mandar SMS: sin él no se puede enviar el aviso. Si Android no te deja darlo, ve a Ajustes › Aplicaciones › Trabakutik GPS › ⋮ › Permitir ajustes restringidos.'));
   const per=el('button','sos-boton ancho','Dar permiso de SMS');per.type='button';per.onclick=()=>app.requestSmsPermission();sec.append(per);

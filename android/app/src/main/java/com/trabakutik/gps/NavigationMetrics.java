@@ -135,7 +135,7 @@ final class NavigationMetrics {
 
     double total() { return distance.length == 0 ? 0 : distance[distance.length - 1]; }
 
-    private static double meters(double lat, double lon, double otherLat, double otherLon) {
+    static double meters(double lat, double lon, double otherLat, double otherLon) {
         return 111195 * Math.hypot(otherLat - lat,
                 (otherLon - lon) * Math.cos(Math.toRadians((lat + otherLat) / 2)));
     }

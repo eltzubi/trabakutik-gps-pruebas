@@ -19,6 +19,7 @@ public class CaidaSosTest{
  boolean envio;
  void terminaCaida(boolean enviar){envio=enviar;}
  TEMPORIZADOR_CAIDA
+ ESTADO_ENVIO
  static void require(boolean ok,String m){if(!ok)throw new AssertionError(m);}
  static final double G=9.80665;
  static Random rnd=new Random(7);
@@ -110,6 +111,20 @@ public class CaidaSosTest{
   tramo(d,20,0.05,4.0);
   for(int k=1;k<=12;k++)golpe(d,1.0+k*0.2);
   require(!tramo(d,12,0.05,0.0)&&d.golpes==0,"la aceleración gradual no inicia una alarma");
+  MarchaTrasCaida marcha=new MarchaTrasCaida();
+  marcha.inicia(1000);
+  require(!marcha.muestra(900,4),"una posición previa a la alarma no cuenta");
+  for(int t=1000;t<6000;t+=1000)require(!marcha.muestra(t,1.3),"menos de cinco segundos");
+  require(marcha.muestra(6000,1.3),"cinco segundos de marcha cancelan la alarma");
+  marcha.inicia(1000);
+  marcha.muestra(1000,2);marcha.muestra(2000,2);marcha.muestra(3000,Double.NaN);
+  marcha.muestra(4000,2);
+  require(!marcha.muestra(7000,2),"un hueco de GPS interrumpe la confirmación");
+  require(!marcha.muestra(8000,0.2)&&!marcha.muestra(9000,2),"parar reinicia la confirmación");
+  require(estadoEnvio(3,0,3,3)==Estado.SIN_COBERTURA,"todos sin cobertura: reintentable");
+  require(estadoEnvio(3,1,2,2)==Estado.PARCIAL,"un fragmento enviado: no reenviar");
+  require(estadoEnvio(3,0,2,2)==Estado.DUDOSO,"falta respuesta: no reenviar");
+  require(estadoEnvio(3,0,3,2)==Estado.FALLO,"error mixto: no reenviar");
   // CONTACTOS
   require("+34600111222".equals(ContactosSos.normaliza("+34 600 11 12 22")),"con prefijo y espacios");
   require("+34600111222".equals(ContactosSos.normaliza("0034-600-111-222")),"00 es +");
@@ -127,10 +142,13 @@ public class CaidaSosTest{
   require(ContactosSos.json(ContactosSos.lee(ContactosSos.anade("","Jon \"el\" de\\Garai","600111222"))).equals("[{\"nombre\":\"Jon \\\"el\\\" de\\\\Garai\",\"telefono\":\"600111222\"}]"),"json escapado");
   require(ContactosSos.lee("basura\nsin tab\n\t\n").isEmpty(),"lo guardado roto no rompe");
   // MENSAJE
-  String m=ContactosSos.mensaje(true,43.123456,-2.5,8.2,95);
-  require(m.startsWith("NECESITO AYUDA")&&m.contains("aviso automatico")&&m.contains("https://maps.google.com/?q=43.123456,-2.500000")&&m.contains("+/-9 m, hace 1 min"),m);
+  String m=ContactosSos.mensaje(true,true,43.123456,-2.5,8.2,415.4,95,"Oíz - Mallabia",6350,37,"21/11/2026 17:05:00 +0100","Íñigo","Alergia: ejemplo");
+  require(m.startsWith("NECESITO AYUDA")&&m.contains("aviso automatico")&&m.contains("https://maps.google.com/?q=43.123456,-2.500000")&&m.contains("+/-9 m, alt. aprox. 415 m, hace 1 min"),m);
+  require(m.contains("Ruta: Oiz - Mallabia - PK aprox. 6.4 km desde el inicio del GPX")&&m.contains("Bateria: 37%"),m);
+  require(m.contains("OSM: https://www.openstreetmap.org/?mlat=43.123456&mlon=-2.500000")&&m.contains("Hora: 21/11/2026 17:05:00 +0100"),m);
+  require(m.contains("Usuario: Inigo")&&m.contains("Dato medico: Alergia ejemplo"),m);
   require(m.chars().allMatch(c->c<128),"solo ASCII: el SMS no se parte en trozos de 70");
-  require(ContactosSos.mensaje(false,0,0,0,0).contains("Sin posicion GPS reciente"),"sin posicion se dice");
+  require(ContactosSos.mensaje(false,false,0,0,0,Double.NaN,0,"",Double.NaN,-1,"17:05","","").contains("SOS activado manualmente.\nHora: 17:05\nSin posicion GPS reciente."),"sin posicion se dice");
   String pr=ContactosSos.mensajePrueba(true,43.1,-2.5,5,10);
   require(pr.startsWith("PRUEBA")&&pr.contains("no es una emergencia")&&!pr.contains("NECESITO AYUDA")&&pr.chars().allMatch(ch->ch<128),"la prueba se ve que es prueba: "+pr);
   require(ContactosSos.textoEnvio("Ama","","").equals("Enviado a Ama."),"enviado");
@@ -144,11 +162,15 @@ public class CaidaSosTest{
 
 with tempfile.TemporaryDirectory() as d:
     pkg = Path(d, 'com/trabakutik/gps'); pkg.mkdir(parents=True)
-    for n in ('DetectorCaidas.java', 'ContactosSos.java'):
+    for n in ('DetectorCaidas.java', 'ContactosSos.java', 'MarchaTrasCaida.java'):
         (pkg / n).write_text((PKG / n).read_text())
     servicio=(PKG / 'TrackingService.java').read_text()
     temporizador=re.search(r'final Runnable finCuentaCaida=.*?;', servicio).group()
-    (pkg / 'CaidaSosTest.java').write_text(prueba.replace('TEMPORIZADOR_CAIDA', temporizador))
+    envio = (PKG / 'EnvioSms.java').read_text()
+    clasificador = re.search(r'enum Estado \{[^}]+\}', envio).group() + '\n' + re.search(
+        r'static Estado estadoEnvio\(.*?\n    \}', envio, re.S).group()
+    (pkg / 'CaidaSosTest.java').write_text(prueba.replace('TEMPORIZADOR_CAIDA', temporizador)
+                                           .replace('ESTADO_ENVIO', clasificador))
     out = Path(d, 'out')
-    subprocess.run(['javac', '-d', str(out)] + [str(pkg / n) for n in ('DetectorCaidas.java', 'ContactosSos.java', 'CaidaSosTest.java')], check=True)
+    subprocess.run(['javac', '-d', str(out)] + [str(pkg / n) for n in ('DetectorCaidas.java', 'ContactosSos.java', 'MarchaTrasCaida.java', 'CaidaSosTest.java')], check=True)
     subprocess.run(['java', '-cp', str(out), 'com.trabakutik.gps.CaidaSosTest'], check=True)

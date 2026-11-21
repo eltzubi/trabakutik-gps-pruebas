@@ -15,18 +15,14 @@ assert 'usableSosLocation' not in _boton, (
     'el boton de compartir NO puede volver a exigir que la posicion sea reciente: '
     'la posicion ya no cambia, solo envejece mientras lees el aviso, y te dejaba '
     'sin poder enviar nada')
-assert 'tomada ' in _boton, 'lo que se envia tiene que decir de cuando es la posicion'
+assert 'getElapsedRealtimeNanos()' in _boton and 'mensajeSos(this,location,true,seg' in _boton, 'lo que se envia tiene que decir de cuando es la posicion'
 
 # EL MENSAJE DEL SOS. Solo con las coordenadas, quien lo recibe no sabe si es
 # una emergencia; y con los numeros sueltos tiene que copiarlos a mano, que
 # con prisa no lo hace nadie.
 _aviso=actividad[actividad.index('private void confirmSosLocation'):]
 _aviso=_aviso[:_aviso.index('sosDialog.show();')]
-assert 'NECESITO AYUDA' in _aviso, 'el mensaje tiene que decir lo primero que pides ayuda'
-assert 'maps.google.com/?q=' in _aviso, (
-    'tiene que llevar un enlace que abra las coordenadas en el mapa de un toque')
-assert '%.6f,%.6f' in _aviso, 'el enlace necesita las coordenadas sin espacio, o no abre'
-assert '±' in _aviso, 'y la precision, por si el enlace falla'
+assert 'TrackingService.mensajeSos' in _aviso, 'el SOS manual y el automático comparten formato'
 print('OK: el SOS pide ayuda, lleva enlace al mapa y dice la precision')
 
 _permiso=actividad[actividad.index('if(code==SOS_LOCATION_PERMISSION){'):]

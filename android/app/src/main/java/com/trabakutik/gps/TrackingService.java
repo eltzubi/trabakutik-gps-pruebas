@@ -216,9 +216,10 @@ public class TrackingService extends Service implements LocationListener {
  double bateriaMetros=0;
  boolean bateriaCargando=false;
  String gastoUltimo="";
- int nivelBateria(){
+ int nivelBateria(){return nivelBateria(this);}
+ static int nivelBateria(Context context){
   try{
-   BatteryManager bm=(BatteryManager)getSystemService(BATTERY_SERVICE);
+   BatteryManager bm=(BatteryManager)context.getSystemService(BATTERY_SERVICE);
    if(bm!=null){int n=bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);if(n>=0&&n<=100)return n;}
   }catch(Exception e){android.util.Log.w("TrabakutikGPS","Sin lectura de bateria",e);}
   return -1;
@@ -620,6 +621,8 @@ public class TrackingService extends Service implements LocationListener {
  final DetectorCaidas detectorCaidas=new DetectorCaidas();
  SensorManager sensores;Location ultimaPosicion;
  boolean caidaEnCurso=false,caidaPrueba=false;
+ long horaAlertaCaida;
+ final MarchaTrasCaida marchaTrasCaida=new MarchaTrasCaida();
  ToneGenerator tonoCaida;
  final Handler caidaHandler=new Handler(Looper.getMainLooper());
  int golpesGuardados=0,caidasGuardadas=0;
@@ -682,7 +685,10 @@ public class TrackingService extends Service implements LocationListener {
   // que no se podria parar (revision con GPT).
   if(!avisosCaidaVisibles(this)){android.util.Log.w("TrabakutikGPS","Aviso de caida sin notificaciones visibles: no se arranca");return;}
   caidaEnCurso=true;caidaPrueba=prueba;CAIDA_PRUEBA=prueba;
-  CAIDA_FIN=SystemClock.elapsedRealtime()+CUENTA_MS;
+  long inicio=SystemClock.elapsedRealtime();
+  marchaTrasCaida.inicia(inicio);
+  horaAlertaCaida=System.currentTimeMillis();
+  CAIDA_FIN=inicio+CUENTA_MS;
   NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
   nm.cancel(NOTIF_CAIDA_FIN);
   nm.notify(NOTIF_CAIDA,notificacionCaida());
@@ -707,7 +713,8 @@ public class TrackingService extends Service implements LocationListener {
   }catch(Exception ignored){}
   caidaHandler.postDelayed(this,2000);
  }};
- void terminaCaida(boolean enviar){
+ void terminaCaida(boolean enviar){terminaCaida(enviar,false);}
+ void terminaCaida(boolean enviar,boolean enMarcha){
   if(!caidaEnCurso)return;
   caidaEnCurso=false;CAIDA_FIN=0;
   caidaHandler.removeCallbacks(finCuentaCaida);caidaHandler.removeCallbacks(pitaCaida);
@@ -720,7 +727,7 @@ public class TrackingService extends Service implements LocationListener {
    avisoCaida(enviar?"Prueba terminada: aquí se habría enviado el SOS a "+nombres(contactos)+". No se ha enviado nada."
      :"Prueba cancelada. No se ha enviado nada.");
   }else if(enviar)enviaSos(contactos);
-  else avisoCaida("Aviso de caída cancelado. No se ha enviado nada.");
+  else avisoCaida(enMarcha?"Marcha reanudada. SOS cancelado.":"Aviso de caída cancelado. No se ha enviado nada.");
   if(!active)stopSelf();
  }
  static String nombres(List<ContactosSos.Contacto> l){
@@ -737,15 +744,36 @@ public class TrackingService extends Service implements LocationListener {
   try{if(p==null)p=manager.getLastKnownLocation(LocationManager.GPS_PROVIDER);}catch(SecurityException ignored){}
   long seg=p==null?0:Math.max(0,(SystemClock.elapsedRealtimeNanos()-p.getElapsedRealtimeNanos())/1_000_000_000L);
   boolean hay=p!=null&&seg<=15*60;
-  String msg=ContactosSos.mensaje(hay,hay?p.getLatitude():0,hay?p.getLongitude():0,hay&&p.hasAccuracy()?p.getAccuracy():0,seg);
+  String msg=mensajeSos(this,p,hay,seg,true,horaAlertaCaida);
   // Se dice primero que se esta enviando y, cuando el telefono contesta
   // trozo a trozo (EnvioSms), a quien ha salido y a quien no.
   prefsSos().edit().putLong("ultimo_sos",System.currentTimeMillis()).apply();
   avisoCaida("Enviando el SOS por SMS a "+nombres(contactos)+"…");
   final boolean conPosicion=hay;
-  EnvioSms.envia(this,contactos,msg,res->avisoCaida(res.startsWith("Enviado")
-    ?"SOS: "+res+(conPosicion?" Con tu posición.":" Sin posición GPS reciente.")
-    :"No se ha podido enviar el SOS por SMS ("+res+"). Comprueba la cobertura y pide ayuda con el botón SOS."));
+  EnvioSms.enviaEmergencia(this,contactos,msg,this::avisoCaida,res->avisoCaida("SOS: "+res
+    +(res.startsWith("Enviado")?(conPosicion?" Con tu posición.":" Sin posición GPS reciente.")
+    :" Comprueba la cobertura y pide ayuda con el botón SOS.")));
+ }
+ static String mensajeSos(Context contexto,Location p,boolean hay,long seg,boolean automatico,long hora){
+  SharedPreferences estado=contexto.getSharedPreferences("tracking_live",MODE_PRIVATE);
+  SharedPreferences datos=contexto.getSharedPreferences("ruta_activa",MODE_PRIVATE);
+  String ruta="";
+  double pk=Double.NaN;
+  if(ACTIVO&&estado.getBoolean("navigating",false)){
+   if(datos.contains("clave")&&datos.getInt("clave",0)==estado.getInt("sosRutaClave",0))ruta=datos.getString("nombre","");
+   float kilometraje=estado.getFloat("sosRutaPk",Float.NaN);
+   if(hay&&seg<=30&&Float.isFinite(kilometraje)
+      &&Math.abs(p.getElapsedRealtimeNanos()-estado.getLong("sosRutaFix",0))<=3_000_000_000L){
+    double lat=Double.longBitsToDouble(estado.getLong("latBits",0));
+    double lon=Double.longBitsToDouble(estado.getLong("lonBits",0));
+    if(NavigationMetrics.meters(lat,lon,p.getLatitude(),p.getLongitude())<=15)pk=kilometraje;
+   }
+  }
+  String tiempo=new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss Z",Locale.ROOT).format(new Date(hora));
+  SharedPreferences perfil=contexto.getSharedPreferences("sos",MODE_PRIVATE);
+  return ContactosSos.mensaje(automatico,hay,hay?p.getLatitude():0,hay?p.getLongitude():0,
+    hay&&p.hasAccuracy()?p.getAccuracy():Double.NaN,hay&&p.hasAltitude()?p.getAltitude():Double.NaN,
+    seg,ruta,pk,nivelBateria(contexto),tiempo,perfil.getString("usuario",""),perfil.getString("datoMedico",""));
  }
  void avisoCaida(String texto){
   Intent abre=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -1361,8 +1389,18 @@ public class TrackingService extends Service implements LocationListener {
   ultimaPosicion=l;
   // Una velocidad de una posicion mala no arma ni descarta un golpe.
   detectorCaidas.velocidad(l.hasSpeed()&&l.hasAccuracy()&&l.getAccuracy()<=30?l.getSpeed():Double.NaN,l.getElapsedRealtimeNanos()/1_000_000L);
+  if(caidaEnCurso&&!caidaPrueba){
+   boolean fiable=LocationManager.GPS_PROVIDER.equals(l.getProvider())&&l.hasSpeed()
+     &&l.hasAccuracy()&&l.getAccuracy()<=20
+     &&(!l.hasSpeedAccuracy()||l.getSpeedAccuracyMetersPerSecond()<=0.7f);
+   long muestra=l.getElapsedRealtimeNanos()/1_000_000L;
+   long ahora=SystemClock.elapsedRealtime();
+   if(ahora<CAIDA_FIN&&marchaTrasCaida.muestra(muestra,fiable&&ahora-muestra<=2000?l.getSpeed():Double.NaN))
+    terminaCaida(false,true);
+  }
   if(recording&&!pausado)bateriaFixes++;
   String liveMetrics="{}";
+  float pkSos=Float.NaN;
   if(navigating&&route.size()>1){
    boolean entradaAnterior=entradaAvisada;
    boolean wasOff=offRoute;
@@ -1384,6 +1422,7 @@ public class TrackingService extends Service implements LocationListener {
     if(wasOff!=offRoute||previousWarnings!=warnedTurns.size())lastImportantAudio=now;
     if(offRoute||climbRejoinDirection!=sentido)climbRejoinAlong=Double.NaN;
     if(!offRoute&&!position.ambiguous()&&position.distance()<=30&&l.getAccuracy()<=35){
+     pkSos=(float)position.along();
      if(wasOff){
       climbRejoinAlong=position.along();climbRejoinDirection=sentido;climbRejoinTime=now;
      }
@@ -1395,7 +1434,7 @@ public class TrackingService extends Service implements LocationListener {
   if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L,l.hasSpeed()?l.getSpeed():Double.NaN);
   convierteAltura(l);
   final Altura alt=ultimaAltura;  // una sola lectura: altura, error y hora de la misma muestra
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",alt==null?-9999f:(float)alt.mar).putFloat("altError",alt==null?-1f:alt.error).putLong("altTiempo",alt==null?0L:alt.tiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",alt==null?-9999f:(float)alt.mar).putFloat("altError",alt==null?-1f:alt.error).putLong("altTiempo",alt==null?0L:alt.tiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putInt("sosRutaClave",metricsRouteKey).putLong("sosRutaFix",l.getElapsedRealtimeNanos()).putFloat("sosRutaPk",pkSos).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   boolean hayPunto=lastRecordedTime>0&&Double.isFinite(lastRecordedLat);
   double salto=hayPunto?l.distanceTo(makePreviousLocation()):0;

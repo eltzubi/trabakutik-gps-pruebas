@@ -28,7 +28,67 @@ final class EnvioSms {
     private static int serie = 0;
 
 
+    enum Estado { ENVIADO, FALLO, PARCIAL, DUDOSO, SIN_COBERTURA }
+
     static void envia(Context ctx, List<ContactosSos.Contacto> contactos, String mensaje, Consumer<String> fin) {
+        intento(ctx, contactos, mensaje, estados -> fin.accept(resumen(contactos, estados)));
+    }
+
+    static void enviaEmergencia(Context ctx, List<ContactosSos.Contacto> contactos, String mensaje,
+                               Consumer<String> pendiente, Consumer<String> fin) {
+        reintenta(ctx.getApplicationContext(), contactos, mensaje, new Estado[contactos.size()], 0, pendiente, fin);
+    }
+
+    private static void reintenta(Context app, List<ContactosSos.Contacto> contactos, String mensaje,
+                                  Estado[] estados, int ronda, Consumer<String> pendiente, Consumer<String> fin) {
+        List<ContactosSos.Contacto> actuales = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < contactos.size(); i++) {
+            if (estados[i] == null || estados[i] == Estado.SIN_COBERTURA) {
+                actuales.add(contactos.get(i));
+                indices.add(i);
+            }
+        }
+        intento(app, actuales, mensaje, resultado -> {
+            boolean hayPendiente = false;
+            for (int i = 0; i < resultado.length; i++) {
+                estados[indices.get(i)] = resultado[i];
+                hayPendiente |= resultado[i] == Estado.SIN_COBERTURA;
+            }
+            if (!hayPendiente || ronda >= 2) {
+                fin.accept(resumen(contactos, estados));
+                return;
+            }
+            pendiente.accept("SOS pendiente por falta de cobertura. Se volverá a intentar. " + resumen(contactos, estados));
+            new Handler(Looper.getMainLooper()).postDelayed(
+                    () -> reintenta(app, contactos, mensaje, estados, ronda + 1, pendiente, fin), ronda == 0 ? 30_000 : 60_000);
+        });
+    }
+
+    private static String resumen(List<ContactosSos.Contacto> contactos, Estado[] estados) {
+        StringBuilder si = new StringBuilder(), no = new StringBuilder(), duda = new StringBuilder(), medias = new StringBuilder();
+        for (int i = 0; i < estados.length; i++) {
+            StringBuilder lista = switch (estados[i]) {
+                case ENVIADO -> si;
+                case PARCIAL -> medias;
+                case DUDOSO -> duda;
+                default -> no;
+            };
+            if (lista.length() > 0) lista.append(", ");
+            lista.append(contactos.get(i).nombre());
+        }
+        return ContactosSos.textoEnvio(si.toString(), no.toString(), duda.toString(), medias.toString());
+    }
+
+    static Estado estadoEnvio(int partes, int bien, int mal, int sinRed) {
+        if (partes == 0) return Estado.FALLO;
+        if (bien == partes) return Estado.ENVIADO;
+        if (bien + mal < partes) return Estado.DUDOSO;
+        if (bien > 0) return Estado.PARCIAL;
+        return sinRed == partes ? Estado.SIN_COBERTURA : Estado.FALLO;
+    }
+
+    private static void intento(Context ctx, List<ContactosSos.Contacto> contactos, String mensaje, Consumer<Estado[]> fin) {
         final Context app = ctx.getApplicationContext();
         // CLAVE SECRETA POR ENVIO. En Android 8-12 un receptor registrado asi
         // lo puede llamar cualquier app, y con una accion adivinable podria
@@ -38,7 +98,7 @@ final class EnvioSms {
         final long clave = new java.security.SecureRandom().nextLong();
         final String accion = app.getPackageName() + ".SMS_ENVIADO." + Long.toHexString(clave);
         final int n = contactos.size();
-        final int[] partesDe = new int[n], bien = new int[n], mal = new int[n];
+        final int[] partesDe = new int[n], bien = new int[n], mal = new int[n], sinRed = new int[n];
         final java.util.HashSet<Integer> vistos = new java.util.HashSet<>();
         final boolean[] cerrado = {false};
         final Handler h = new Handler(Looper.getMainLooper());
@@ -47,25 +107,23 @@ final class EnvioSms {
             if (cerrado[0]) return;
             cerrado[0] = true;
             try { app.unregisterReceiver(oyente[0]); } catch (Exception ignored) {}
-            // Tres casos, que no son lo mismo: enviado (todos los trozos bien),
-            // no ha salido (algun trozo con error, o ni se pudo pedir) y sin
-            // confirmar (faltan respuestas a los 60 s: puede salir aun).
-            // Y un cuarto: a medias (algun trozo bien y otro mal), que no es «no ha salido».
-            StringBuilder si = new StringBuilder(), no = new StringBuilder(), duda = new StringBuilder(), medias = new StringBuilder();
+            Estado[] estados = new Estado[n];
             for (int c = 0; c < n; c++) {
-                StringBuilder sb = partesDe[c] == 0 || (mal[c] > 0 && bien[c] == 0) ? no
-                        : mal[c] > 0 ? medias : bien[c] == partesDe[c] ? si : duda;
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(contactos.get(c).nombre());
+                estados[c] = estadoEnvio(partesDe[c], bien[c], mal[c], sinRed[c]);
             }
-            fin.accept(ContactosSos.textoEnvio(si.toString(), no.toString(), duda.toString(), medias.toString()));
+            fin.accept(estados);
         };
         oyente[0] = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) {
                 if (i.getLongExtra("k", 0) != clave) return;
                 int k = i.getIntExtra("c", -1), parte = i.getIntExtra("p", -1);
                 if (k < 0 || k >= n || parte < 0 || !vistos.add(k * 1000 + parte)) return;
-                if (getResultCode() == Activity.RESULT_OK) bien[k]++; else mal[k]++;
+                int codigo = getResultCode();
+                if (codigo == Activity.RESULT_OK) bien[k]++;
+                else {
+                    mal[k]++;
+                    if (codigo == SmsManager.RESULT_ERROR_NO_SERVICE || codigo == SmsManager.RESULT_ERROR_RADIO_OFF) sinRed[k]++;
+                }
                 boolean todo = true;
                 for (int q = 0; q < n; q++) if (partesDe[q] > 0 && bien[q] + mal[q] < partesDe[q]) todo = false;
                 if (todo) h.post(cierra);

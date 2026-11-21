@@ -505,8 +505,14 @@ public class MainActivity extends Activity {
    boolean sms=checkSelfPermission(Manifest.permission.SEND_SMS)==PackageManager.PERMISSION_GRANTED;
    return "{\"activo\":"+p.getBoolean("caidas_activo",true)
     +",\"contactos\":"+ContactosSos.json(ContactosSos.lee(p.getString("contactos","")))
+    +",\"usuario\":"+org.json.JSONObject.quote(p.getString("usuario",""))
+    +",\"datoMedico\":"+org.json.JSONObject.quote(p.getString("datoMedico",""))
     +",\"max\":"+ContactosSos.MAX+",\"permisoSms\":"+sms
     +",\"notificaciones\":"+TrackingService.avisosCaidaVisibles(MainActivity.this)+",\"golpes\":"+p.getInt("golpes",0)+",\"caidas\":"+p.getInt("caidas",0)+"}";
+  }
+  @JavascriptInterface public void setSosProfile(String usuario,String datoMedico){
+   getSharedPreferences("sos",MODE_PRIVATE).edit().putString("usuario",ContactosSos.compacto(usuario,40))
+    .putString("datoMedico",ContactosSos.compacto(datoMedico,90)).apply();
   }
   @JavascriptInterface public void setFallDetection(boolean activo){
    getSharedPreferences("sos",MODE_PRIVATE).edit().putBoolean("caidas_activo",activo).apply();
@@ -700,11 +706,17 @@ public class MainActivity extends Activity {
   }
   @JavascriptInterface public void setRoute(String json){setRouteWithApproach(json,false);}
   @JavascriptInterface public void setRouteWithApproach(String json,boolean acercarAlTrack){
+   setNamedRouteWithApproach(json,acercarAlTrack,"");
+  }
+  @JavascriptInterface public void setNamedRouteWithApproach(String json,boolean acercarAlTrack,String nombre){
    try{
     org.json.JSONArray list=new org.json.JSONArray(json);
     if(list.length()<2||list.length()>15000||json.length()>2000000)return;
     File f=new File(getFilesDir(),"ruta-activa.json");
     try(FileOutputStream out=new FileOutputStream(f)){out.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    String etiqueta=nombre==null?"":nombre.trim();
+    if(etiqueta.length()>150)etiqueta=etiqueta.substring(0,150);
+    getSharedPreferences("ruta_activa",MODE_PRIVATE).edit().putString("nombre",etiqueta).putInt("clave",json.hashCode()).apply();
     // Y AVISAR AL SERVICIO. Antes solo se guardaba el fichero, con un
     // comentario que decia que NAVIGATE lo lee una vez al empezar. Eso dejaba
     // al servicio midiendo la ruta vieja: al cambiar de ruta con el servicio
@@ -1023,39 +1035,16 @@ public class MainActivity extends Activity {
   }
  }
  private void confirmSosLocation(LocationManager manager,Location location){
-  // EL MENSAJE DEL SOS, EN TRES LINEAS Y POR ESTE ORDEN. Antes salian solo
-  // las coordenadas y quien lo recibia no sabia si era una emergencia o si
-  // le estabas enseñando donde habias comido. Lo dijo el autor al probarlo.
-  //  1. QUE PASA, en mayusculas y lo primero que se lee.
-  //  2. UN ENLACE que abre el mapa de un toque. Esto es lo que mas cambia:
-  //     con numeros sueltos hay que copiarlos a mano, y con prisa eso no lo
-  //     hace nadie. El enlace de Google Maps abre la aplicacion si la hay y
-  //     el navegador si no, asi que le vale a cualquiera que lo reciba.
-  //  3. LOS NUMEROS, su precision y de cuando son, por si el enlace falla o
-  //     quien lo lee los quiere meter en otro sitio.
-  // Y nada mas: cuanto mas corto, antes se entiende.
-  String grados=String.format(java.util.Locale.ROOT,"%.6f, %.6f",location.getLatitude(),location.getLongitude());
-  String mapa=String.format(java.util.Locale.ROOT,"https://maps.google.com/?q=%.6f,%.6f",
-    location.getLatitude(),location.getLongitude());
-  String message="NECESITO AYUDA\n"+mapa+"\n"+grados+" · ±"+(int)Math.ceil(location.getAccuracy())+" m";
+  // La vista previa y el texto compartido describen la misma alerta manual.
+  long hora=System.currentTimeMillis();
   long age=Math.max(0,(SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos())/1_000_000_000L);
+  String message=TrackingService.mensajeSos(this,location,true,age,false,hora);
   sosDialog=new AlertDialog.Builder(this).setTitle("Pedir ayuda")
-   .setMessage(message+" · tomada hace "+age+" s\n\nEsto es lo que se va a enviar. El envío depende del medio que elijas.")
+   .setMessage(message+"\n\nEl envío depende del medio que elijas.")
    .setNegativeButton("Cancelar",null).setPositiveButton("Elegir destinatario",(dialog,which)->{
-    // AQUI NO SE VUELVE A EXIGIR QUE LA POSICION SEA RECIENTE, y es a
-    // proposito. Antes se repetia la comprobacion de los 10 segundos, pero
-    // la posicion ya no cambia: solo envejece mientras lees el aviso. O sea
-    // que habia que leer y decidir en seis o siete segundos o te decia «la
-    // posicion ya no es reciente» y, como el dialogo se cierra solo al
-    // pulsar, a empezar otra vez. Con frio, con nervios o con alguien en el
-    // suelo, eso no funciona. Y no hace falta: una coordenada de hace dos
-    // minutos le sigue valiendo a quien te viene a buscar. Lo que se hace
-    // es DECIR la hora dentro del mensaje, que es lo que de verdad necesita
-    // quien lo recibe.
     long seg=Math.max(0,(SystemClock.elapsedRealtimeNanos()-location.getElapsedRealtimeNanos())/1_000_000_000L);
-    String cuando=seg<60?"hace "+seg+" s":"hace "+(seg/60)+" min";
     Intent share=new Intent(Intent.ACTION_SEND).setType("text/plain")
-      .putExtra(Intent.EXTRA_TEXT,message+" · tomada "+cuando);
+      .putExtra(Intent.EXTRA_TEXT,TrackingService.mensajeSos(this,location,true,seg,false,hora));
     try{startActivity(Intent.createChooser(share,"Compartir coordenadas SOS"));}
     catch(ActivityNotFoundException e){
      Toast.makeText(this,"No hay ninguna aplicación para compartir las coordenadas.",Toast.LENGTH_LONG).show();
@@ -1108,7 +1097,7 @@ public class MainActivity extends Activity {
   cuenta.setTextSize(64);cuenta.setGravity(android.view.Gravity.CENTER);cuenta.setTextColor(0xFFE5484D);
   final boolean prueba=TrackingService.CAIDA_PRUEBA;
   caidaDialog=new AlertDialog.Builder(this).setTitle(prueba?"Prueba: ¿te has caído?":"¿Te has caído?")
-   .setMessage(prueba?"Es una prueba: al terminar no se enviará nada.":"Si no respondes, al acabar se envía un SOS por SMS con tu posición.")
+   .setMessage(prueba?"Es una prueba: al terminar no se enviará nada.":"Si no respondes, al acabar se envía a tus contactos un SOS por SMS con tu posición, los datos disponibles de la ruta y la batería.")
    .setView(cuenta).setCancelable(false)
    .setPositiveButton("Estoy bien",(d,w)->mandaCaida("CAIDA_BIEN"))
    .setNegativeButton(prueba?"Terminar prueba":"Enviar S.O.S. ya",(d,w)->mandaCaida("CAIDA_ENVIA")).create();
