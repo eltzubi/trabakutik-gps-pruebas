@@ -29,6 +29,9 @@ function pintaVersion(){
 const FIRMA_FIJA_DESDE='4.9.22';
 function versionMayor(a,b){
  const x=String(a||'0').split('.').map(Number),y=String(b||'0').split('.').map(Number);
+ // La serie 1.x empezó después de la 4.9.x, aunque su número visible sea menor.
+ if(x[0]===4&&x[1]===9)x[0]=0;
+ if(y[0]===4&&y[1]===9)y[0]=0;
  for(let i=0;i<Math.max(x.length,y.length);i++){
   const d=(x[i]||0)-(y[i]||0);
   if(d)return d>0;

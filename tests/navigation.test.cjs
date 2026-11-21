@@ -662,6 +662,12 @@ test('Avisa de una APK nueva comparando con la versión publicada en instalar.ht
  assert.match((await caso('4.9.21','4.9.22')).texto,/desinstala antes la que tienes/,'4.9.21: llave vieja, hay que desinstalar');
  assert.match((await caso('','4.9.22')).texto,/desinstala antes/,'una APK muy vieja tambien');
  assert.doesNotMatch((await caso('4.9.22','4.9.23')).texto,/desinstala/,'desde la 4.9.22 se instala encima: no se aconseja borrar nada');
+ const reinicio=await caso('4.9.74','1.0.0');
+ assert.equal(reinicio.visible,true,'la 1.0.0 es posterior a la 4.9.74');
+ assert.doesNotMatch(reinicio.texto,/desinstala/,'la 4.9.74 ya usa la firma fija');
+ assert.equal((await caso('1.0.0','4.9.74')).visible,false,'no ofrece volver a la serie anterior');
+ assert.equal((await caso('1.0.2','1.0.3')).visible,true,'la serie nueva avisa de sus siguientes versiones');
+ assert.doesNotMatch((await caso('1.0.2','1.0.3')).texto,/desinstala/,'la serie nueva usa la firma fija');
  r=await caso('4.9.21','4.9.22');
  r.cerrar();
  assert.equal(r.guardado.get('actualizacionCerrada'),'4.9.22','cerrar se recuerda por version');
@@ -1266,10 +1272,15 @@ test('rotonda: el numero de la salida, contado en el sentido de giro',()=>{
 test('rotonda con numero: «rs» al servicio, y la recta solo a la APK que lo sabe decir',()=>{
  const lista=[{i:5,direction:'derecha',hacia:'derecha',cruce:true,mantente:false,retorno:false,rotonda:true,salida:1},
   {i:9,direction:'izquierda',hacia:'izquierda',cruce:true,mantente:false,retorno:false,rotonda:true,salida:2,recto:true}];
- const manda=v=>{let e=null;pieza('08-cruces.js',{junctions:lista,junctionsReves:null,versionMayor:pieza('07-servicio.js').versionMayor,
+ const manda=(v,giros=lista)=>{let e=null;pieza('08-cruces.js',{junctions:giros,junctionsReves:null,versionMayor:pieza('07-servicio.js').versionMayor,
   window:{TrabakutikAndroid:{getAppVersion:()=>v,setJunctions:j=>{e=JSON.parse(j)}}}}).enviaGirosNativos();return JSON.stringify(e)};
  assert.equal(manda('4.9.47'),JSON.stringify([{i:5,dir:1,t:1,ro:1,rs:1}]),'APK vieja: sin la recta, que diria «da la vuelta»');
  assert.equal(manda('4.9.48'),JSON.stringify([{i:5,dir:1,t:1,ro:1,rs:1},{i:9,dir:-1,t:1,ro:1,rs:2,rr:1}]),'la recta lleva rr para que la APK se calle si no vale el numero');
+ const deFrente={i:12,direction:'derecha',hacia:'derecha',cruce:true,deFrente:true};
+ const giros=[...lista,deFrente];
+ assert.equal(JSON.parse(manda('4.9.70',giros)).some(j=>j.df),false,'una APK antigua no recibe «de frente»');
+ assert.deepEqual(JSON.parse(manda('1.0.3',giros)),JSON.parse(manda('4.9.74',giros)),'el reinicio conserva los avisos nativos');
+ assert.equal(JSON.parse(manda('1.0.3',giros)).at(-1).df,1,'la 1.0.3 recibe «de frente»');
  const q=pieza('09-navegacion.js',{window:{},textoSalida:pieza('08-cruces.js').textoSalida},arranque09()).queRotonda;
  assert.equal(q(lista[1],'izquierda',false),'toma la segunda salida');
  assert.equal(q(lista[1],'derecha',true),'sigue recto','al reves con la lista de ida el numero no vale');
