@@ -698,7 +698,8 @@ public class MainActivity extends Activity {
     return o.toString();
    }catch(Exception e){return "";}
   }
-  @JavascriptInterface public void setRoute(String json){
+  @JavascriptInterface public void setRoute(String json){setRouteWithApproach(json,false);}
+  @JavascriptInterface public void setRouteWithApproach(String json,boolean acercarAlTrack){
    try{
     org.json.JSONArray list=new org.json.JSONArray(json);
     if(list.length()<2||list.length()>15000||json.length()>2000000)return;
@@ -713,7 +714,7 @@ public class MainActivity extends Activity {
     // donde no toca, y con la pantalla bloqueada ni te enteras de por que.
     // Como TURNS: solo si hay servicio vivo, aqui no se arranca nada.
     if(TrackingService.ACTIVO){
-     try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE"));}
+     try{startService(new Intent(MainActivity.this,TrackingService.class).setAction("ROUTE").putExtra("acercarAlTrack",acercarAlTrack));}
      catch(Exception ignored2){}
     }
    }catch(Exception ignored){}

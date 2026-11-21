@@ -168,7 +168,7 @@ public class TrackingService extends Service implements LocationListener {
   if(!"voz".equals(modoAudio())||texto==null)return;
   // Normalmente manda el aviso nuevo. Tras entrar, salir o volver, el giro
   // se encola: no corta el estado de ruta ni se pierde la indicacion.
-  boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido")||texto.endsWith(" está la salida de la ruta");
+  boolean estadoRuta=texto.equals("Ya estás en la ruta")||texto.equals("De nuevo en la ruta")||texto.equals("Atención, fuera del recorrido")||texto.equals("Sigues fuera del recorrido")||texto.endsWith(" está la salida de la ruta")||texto.endsWith(" está la nueva ruta");
   // El primer fix puede llegar antes de que Android prepare la voz.
   // Solo se conserva el ultimo estado: nunca se reproduce una salida vieja.
   if(!vozLista||voz==null){if(estadoRuta)avisoRutaPendiente=texto;return;}
@@ -534,6 +534,7 @@ public class TrackingService extends Service implements LocationListener {
    return START_NOT_STICKY;
   }
   if("STOP_NAVIGATION".equals(action)){
+   acercarAlTrack=false;
    navigating=false;avisoRutaPendiente=null;entradaAvisada=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;ultimoDesvio=0;fueraDesde=0;recordado=false;olvidaSentido();
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
    publicaEstado();
@@ -577,6 +578,7 @@ public class TrackingService extends Service implements LocationListener {
    return START_NOT_STICKY;
   }
   if("ROUTE".equals(action)){
+   acercarAlTrack=i.getBooleanExtra("acercarAlTrack",false);
    // Ruta nueva: el sentido de la anterior no vale. Sin esto, el servicio se
    // quedaba con el «al reves» de la ruta de antes y cantaba izquierda por
    // derecha en la nueva. Solo se reiniciaba al PARAR la navegacion.
@@ -849,6 +851,7 @@ public class TrackingService extends Service implements LocationListener {
   arrancaBaro();
   updateNotice();
  }
+ boolean acercarAlTrack=false;
  void loadRoute(){
   entradaAvisada=false;
   climbRejoinAlong=Double.NaN;
@@ -1218,14 +1221,16 @@ public class TrackingService extends Service implements LocationListener {
  void updateNotice(){if(active)((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(12,notification());}
  @Override public void onProviderEnabled(String provider){updateNotice();}
  @Override public void onProviderDisabled(String provider){updateNotice();}
- double closest(double lat,double lon){
+ double closest(double lat,double lon){return closest(lat,lon,null);}
+ double closest(double lat,double lon,double[] punto){
   if(route.size()<2)return Double.POSITIVE_INFINITY;
   double scale=111195,lonScale=scale*Math.cos(Math.toRadians(lat)),best=Double.POSITIVE_INFINITY;
   for(int i=1;i<route.size();i++){
    double[] a=route.get(i-1),b=route.get(i);
    double ax=(a[1]-lon)*lonScale,ay=(a[0]-lat)*scale,bx=(b[1]-lon)*lonScale,by=(b[0]-lat)*scale;
    double dx=bx-ax,dy=by-ay,tt=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy+1e-10)));
-   best=Math.min(best,Math.hypot(ax+tt*dx,ay+tt*dy));
+   double d=Math.hypot(ax+tt*dx,ay+tt*dy);
+   if(d<best){best=d;if(punto!=null){punto[0]=a[0]+tt*(b[0]-a[0]);punto[1]=a[1]+tt*(b[1]-a[1]);}}
   }
   return best;
  }
@@ -1284,12 +1289,13 @@ public class TrackingService extends Service implements LocationListener {
  void vuelveALaRuta(){entradaAvisada=true;routeReached=true;offRoute=false;farSince=0;cercaDesde=0;fueraDesde=0;recordado=false;protegeAvisoRuta();updateNotice();tonoBien();habla("De nuevo en la ruta");}
  String avisoSalida(Location l){
   double[] inicio=route.get(0);
+  if(acercarAlTrack){inicio=new double[2];closest(l.getLatitude(),l.getLongitude(),inicio);}
   double norte=(inicio[0]-l.getLatitude())*111195;
   double este=(inicio[1]-l.getLongitude())*111195*Math.cos(Math.toRadians(l.getLatitude()));
   long metros=Math.round(Math.hypot(norte,este)/10)*10;
   String[] rumbos={"norte","noreste","este","sureste","sur","suroeste","oeste","noroeste"};
   int rumbo=(int)Math.floorMod(Math.round(Math.toDegrees(Math.atan2(este,norte))/45),8);
-  return "Estás fuera de ruta. A "+metros+" metros hacia el "+rumbos[rumbo]+" está la salida de la ruta";
+  return "Estás fuera de ruta. A "+metros+" metros hacia el "+rumbos[rumbo]+(acercarAlTrack?" está la nueva ruta":" está la salida de la ruta");
  }
  void checkDeviation(Location l){
   if(!navigating||route.size()<2||!l.hasAccuracy()){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
@@ -1458,6 +1464,6 @@ public class TrackingService extends Service implements LocationListener {
   recording=false;GRABANDO=null;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).putString("gasto",gastoUltimo).apply();
  }
- void finish(){paraCaidas();if(caidaEnCurso)terminaCaida(false);navigating=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){paraCaidas();if(caidaEnCurso)terminaCaida(false);navigating=false;acercarAlTrack=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){try{hiloAltura.shutdownNow();}catch(Exception ignored){}avisoHandler.removeCallbacks(refrescaAviso);callaYa();if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

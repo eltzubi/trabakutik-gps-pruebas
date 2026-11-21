@@ -265,7 +265,7 @@ async function loadDetailedSelected(i,request){
 function selectRoute(i){
  const request=++selectedRouteRequest;
  activeSavedId=null;$('clearActiveRoute').classList.remove('hidden');
- resetOffRoute();resetJunctionView();junctionWarned.clear();junctionZoom=null;
+ resetOffRoute(guiaIniciada()&&routePoints.length>1);resetJunctionView();junctionWarned.clear();junctionZoom=null;
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
  updateNativeLaunchLink();

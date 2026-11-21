@@ -437,7 +437,7 @@ function loadSaved(item){
  if(drawPoints.length>1&&!createdSavedItem&&!confirm('El trazado que estás creando aún no está guardado. ¿Quieres descartarlo y abrir esta ruta?'))return;
  selectedRouteRequest++;
  activeSavedId=item.created||null;$('clearActiveRoute').classList.remove('hidden');
- resetOffRoute();resetJunctionView();
+ resetOffRoute(guiaIniciada()&&routePoints.length>1);resetJunctionView();
  junctions=[];junctionsReves=null;
  crucesOsm=[]; // una ruta tuya o un GPX de fuera no trae los cruces de OSM
  routePoints=compactRoutePoints(item.points);pintaBotonMapa();

@@ -462,7 +462,8 @@ function marcaAlReves(si){
 // web va bien, y al crear una ruta y juntarla con una guardada «va fatal».
 // resetOffRoute() se llama en los cinco sitios donde se cambia de ruta y en
 // ninguno mas, asi que aqui no se repite por cada posicion.
-function resetOffRoute(){entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;sentidoRuta=1;
+let acercarAlTrack=false;
+function resetOffRoute(cambioEnMarcha=false){acercarAlTrack=cambioEnMarcha;entradaAvisada=false;alerted=false;farCount=0;farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;fueraDesdePag=0;recordadoPag=false;avisoRutaHastaPag=0;onRouteSeen=false;sentidoRuta=1;
  try{window.TrabakutikAndroid&&window.TrabakutikAndroid.setSentido&&window.TrabakutikAndroid.setSentido(1)}catch(e){}
  marcaAlReves(false);
 refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimoPuntoAlong=null;liveProfileAlong=null;liveNativeMetrics=null;if(typeof document!=='undefined')marcaAlReves(false);
@@ -470,13 +471,25 @@ refAvance=null;refAvanceT=0;alongPrevio=null;alongAcum=0;ultimoAlong=null;ultimo
  // «Quedan 1611 m aprox.» con la salida ya terminada y el GPS apagado.
  if(typeof paintNavigationMetrics==='function')paintNavigationMetrics();
  const pr=$('routeProgress');if(pr)pr.classList.add('hidden');const br=$('compass');if(br)br.classList.add('hidden')}
-function avisoSalida(posicion,inicio){
+function avisoSalida(posicion,inicio,nuevaRuta){
  const norte=(inicio[0]-posicion[0])*111195;
  const este=(inicio[1]-posicion[1])*111195*Math.cos(posicion[0]*Math.PI/180);
  const metros=Math.round(Math.hypot(norte,este)/10)*10;
  const rumbos=['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'];
  const rumbo=(Math.round(Math.atan2(este,norte)*4/Math.PI)+8)%8;
- return 'Estás fuera de ruta. A '+metros+' metros hacia el '+rumbos[rumbo]+' está la salida de la ruta';
+ return 'Estás fuera de ruta. A '+metros+' metros hacia el '+rumbos[rumbo]+(nuevaRuta?' está la nueva ruta':' está la salida de la ruta');
+}
+function puntoMasCercano(p,track){
+ const escala=Math.cos(p[0]*Math.PI/180);
+ let mejor=Infinity,punto=track[0];
+ for(let i=1;i<track.length;i++){
+  const a=track[i-1],b=track[i],x=(a[1]-p[1])*escala,y=a[0]-p[0];
+  const dx=(b[1]-a[1])*escala,dy=b[0]-a[0];
+  const t=Math.max(0,Math.min(1,-(x*dx+y*dy)/(dx*dx+dy*dy||1)));
+  const d=Math.hypot(x+t*dx,y+t*dy);
+  if(d<mejor){mejor=d;punto=[a[0]+t*dy,a[1]+t*(b[1]-a[1])]}
+ }
+ return punto;
 }
 function updateOffRoute(d,accuracy,posicion){
  if(!guiaIniciada()){farSince=0;cercaDesdePag=0;ultimoDesvioPag=0;return;}
@@ -508,7 +521,7 @@ function updateOffRoute(d,accuracy,posicion){
  }
  cercaDesdePag=0;
  if(!farSince){farSince=now;return;}
- if(!alerted&&now-farSince>=4000){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,routePoints[0]):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
+ if(!alerted&&now-farSince>=4000){alerted=true;fueraDesdePag=now;recordadoPag=false;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}const aviso=!onRouteSeen&&posicion?avisoSalida(posicion,acercarAlTrack?puntoMasCercano(posicion,routePoints):routePoints[0],acercarAlTrack):'Atención, fuera del recorrido';hablar(aviso);notice(aviso==='Atención, fuera del recorrido'?'Fuera del recorrido · vuelve a la línea cian':aviso)}
  else if(onRouteSeen&&alerted&&!recordadoPag&&d>=50&&now-fueraDesdePag>=4000){recordadoPag=true;avisoRutaHastaPag=now+4000;if(!navegaNativo){getAudio();pitidos(4,.18)}hablar('Sigues fuera del recorrido');notice('Sigues fuera del recorrido · vuelve a la línea cian')}
 }
 let fueraDesdePag=0,recordadoPag=false,cercaDesdePag=0,avisoRutaHastaPag=0,ultimoDesvioPag=0;
@@ -541,7 +554,7 @@ let turnoVozPagina=0;
 function hablaPagina(texto,siguiente=''){
  if(gpsApagadoPorTi)return;
  if(audioModo!=='voz'||!('speechSynthesis' in window))return;
- const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto)||texto.endsWith(' está la salida de la ruta');
+ const estadoRuta=['Ya estás en la ruta','De nuevo en la ruta','Atención, fuera del recorrido','Sigues fuera del recorrido'].includes(texto)||texto.endsWith(' está la salida de la ruta')||texto.endsWith(' está la nueva ruta');
  const turno=++turnoVozPagina;
  try{
   if(estadoRuta||Date.now()>=avisoRutaHastaPag)window.speechSynthesis.cancel();

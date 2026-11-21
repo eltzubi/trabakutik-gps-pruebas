@@ -851,7 +851,8 @@ function syncNativeRoute(){
  nativeRouteKey=0;
  for(let i=0;i<json.length;i++)nativeRouteKey=(Math.imul(nativeRouteKey,31)+json.charCodeAt(i))|0;
  try{
-  window.TrabakutikAndroid.setRoute(json);
+  if(window.TrabakutikAndroid.setRouteWithApproach)window.TrabakutikAndroid.setRouteWithApproach(json,acercarAlTrack);
+  else window.TrabakutikAndroid.setRoute(json);
   enviaGirosNativos();
   window.TrabakutikAndroid.setSentido?.(sentidoRuta);
  }catch(e){console.warn('Ruta nativa no enviada',e)}
