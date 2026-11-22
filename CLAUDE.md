@@ -72,7 +72,7 @@ En este orden. Si algo falla, no se sube.
 ```
 node scripts/construye.cjs --comprueba   # src/ y nuevo.html cuadran
 node scripts/revisa-tipos.cjs            # fallos de nombre en el JavaScript
-node --test tests/*.test.cjs             # 214 pruebas
+node --test tests/*.test.cjs             # 303 pruebas
 node scripts/test-browser.cjs            # 10 bloques en Chromium de verdad
 python3 scripts/test-native-turns.py
 python3 tests/regression_tracking.py
@@ -89,6 +89,7 @@ python3 tests/tiempo_marcha.py
 python3 tests/informe_fallo.py
 python3 scripts/test-gasto-bateria.py
 python3 scripts/test-nombre-descarga.py
+node scripts/avisos-referencia.cjs      # cruces revisados y foto de avisos (sale con 2 sin Rutas-Mallabia al lado)
 ```
 
 Integración corre todo esto, pero se pasa **antes** de subir, no después.

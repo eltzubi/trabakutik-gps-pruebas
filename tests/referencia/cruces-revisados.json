@@ -1,0 +1,25 @@
+{
+ "nota": "Lo que el navegador DEBIA hacer en cruces mirados con captura o en el terreno. «debia» es la decision (accion, lado, salida), no la frase; «callar» tambien vale. «dijo» es lo que dijo entonces, con su fecha, si se sabe. Sin punto a menos de 1,5 km de Trabakua. Para apuntar uno: node scripts/avisos-referencia.cjs --ancla <ruta> <ida|vuelta> <km>",
+ "cruces": [
+  {"ruta":"mendibil","sentido":"ida","km":1.17,"llega":56,"sale":112,
+   "dijo":{"texto":"izquierda, yendo recto","fecha":"2026-11-15"},
+   "debia":"callar",
+   "fuente":"docs/decisiones.md, «Los picos del GPX no son giros», 15 nov 2026: el GPX se mete 15 m en una pista lateral y vuelve; el autor: «solo tiene que indicar giros de verdad o cruces de verdad»"},
+  {"ruta":"mendibil","sentido":"vuelta","km":1.17,"llega":292,"sale":236,
+   "dijo":{"texto":"derecha, yendo recto","fecha":"2026-11-15"},
+   "debia":"callar",
+   "fuente":"docs/decisiones.md, «Los picos del GPX no son giros», 15 nov 2026: el mismo pico al reves"},
+  {"ruta":"mendibil","sentido":"ida","km":3.93,"llega":285,"sale":293,"lugar":[43.21606,-2.52842],
+   "dijo":{"texto":"herradura a la derecha de 171 grados","fecha":"2026-11-15"},
+   "debia":"callar",
+   "fuente":"src/js/08-cruces.js, comentario de espaciaParaGiros (commit 3284ef5, 15 nov 2026); el autor: «aqui no deberia haber ninguna indicacion, no hay excusas»"},
+  {"ruta":"asuntzabira","sentido":"ida","km":4.792,"llega":187,"sale":204,"lugar":[43.2114,-2.50618],
+   "dijo":{"texto":"sigue por la derecha","fecha":"2026-11-20"},
+   "debia":"callar",
+   "fuente":"commit b891b0f del autor, 20 nov 2026, «Indica el ramal correcto en la bifurcacion de Asuntza»: indicaciones comprobadas en el trazado detallado publicado"},
+  {"ruta":"asuntzabira","sentido":"ida","km":7.12,"llega":281,"sale":301,"lugar":[43.20367,-2.51803],
+   "dijo":{"texto":"nada","fecha":"2026-11-20"},
+   "debia":{"accion":"de-frente"},
+   "fuente":"commit b891b0f del autor, 20 nov 2026, «Indica el ramal correcto en la bifurcacion de Asuntza»: indicaciones comprobadas en el trazado detallado publicado"}
+ ]
+}

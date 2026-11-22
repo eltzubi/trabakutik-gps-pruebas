@@ -1379,3 +1379,54 @@ sin aviso. Un lazo completo de 8 m de radio, que antes avisaba como
 herradura, ahora es un nudo (se cambió esa prueba en navigation.test.cjs).
 
 Pruebas en `tests/nudos.test.cjs`.
+
+## La referencia de los avisos: qué debía decir y qué dice hoy (22 de noviembre de 2026)
+
+Hasta ahora, cada vez que se tocaba una regla de giros se medía a mano
+(«1.732 avisos», «114 de más en 42 rutas») y no había forma de saber si se
+había estropeado un cruce que ya iba bien. El autor lo planteó así: lo que
+hace falta es saber qué **debía** decir el navegador en los cruces revisados,
+incluidos los que tienen que quedar en silencio, porque una lista de cruces de
+OpenStreetMap no dice si el aviso era correcto.
+
+`node scripts/avisos-referencia.cjs` corre la pieza 08 de producción sobre las
+75 rutas, ida y vuelta, con los mismos datos que baja el móvil (la ruta fina
+y los cruces de `Rutas-Mallabia`, que tiene que estar al lado o en
+`RUTAS_MALLABIA`), y compara dos cosas:
+
+- **`tests/referencia/cruces-revisados.json`**: cada cruce lleva la ruta, el
+  sentido, el km para encontrarlo rápido, la **llegada y la salida** (rumbo a
+  25 m), lo que **dijo** entonces y lo que **debía** hacer, con su fuente
+  fechada. La llegada y la salida eligen la pasada cuando la ruta pasa dos
+  veces por el mismo sitio, y si dejan de cuadrar, la ruta ha cambiado ahí y
+  el cruce sale como «NO ENCONTRADO», no como bueno. Se guarda la
+  **decisión** (callar, gira, sigue recto, sigue, curva cerrada, herradura,
+  da la vuelta, de frente, rotonda, con su lado y su salida), no la frase: la
+  redacción ha cambiado varias veces («cruce» se quitó el 17 de noviembre) y
+  no debe dar por fallado un cruce cuya decisión no ha cambiado. **«Callar»
+  es un resultado.** «Dijo» solo de una marca ✋ o una captura, nunca de
+  memoria (ver Valhalla, más arriba).
+- **`tests/referencia/avisos.json`**, la foto: todo lo que dice hoy, solo
+  con kilómetros. No dice si está bien, dice **qué ha cambiado**: tras tocar
+  una regla, lista los avisos que aparecen, se van o cambian, para mirar
+  esos uno a uno. Si son buenos, `--escribe-foto`. Lleva la huella de cada
+  ruta y de cada fichero de cruces, para que un cambio de datos no se tome
+  por un cambio de regla.
+
+**Sin coordenadas cerca de casa**: la foto no lleva ninguna, y un cruce
+revisado a menos de 1,5 km de Trabakua se apunta sin punto, solo por el km y
+los rumbos (`--ancla` lo hace solo).
+
+Se empezó con cinco cruces, todos con la decisión documentada por el autor:
+el pico de Mendibil (km 1,17, ida y vuelta: callar), el bailoteo del km 3,93
+de Mendibil (callar) y las dos correcciones de Asuntza del 20 de noviembre
+(km 4,79 callar, km 7,12 de frente). **Contraprueba**: con la regla de los
+picos desactivada, los dos de Mendibil salen «gira izquierda» y «gira
+derecha» —lo que el autor oyó— y la foto marca 37 cambios más.
+
+Se quedaron fuera, a propósito, cruces cuya decisión no está escrita con
+precisión: Asuntza km 3,13 (callarlo «sería gran error», pero hoy no hay
+ningún aviso a menos de 250 m y no se sabe en qué kilómetros estaba dicho),
+Asuntza 7,72 y 13,02 (se sabe que acertamos, no qué decíamos) y las faltas
+de Otzarreta (km 0,73, 1,77 y 2,59: en la ruta publicada no hay avisos de
+cruce ahí y puede ser otra grabación). Para el autor.
