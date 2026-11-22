@@ -169,7 +169,14 @@ async function setup(context) {
     await page.click('#choose');
     await page.locator('#search').click();
     assert(await page.locator('#routeDialog').isVisible(),'tocar dentro conserva el selector');
-    const origen=JSON.parse(fs.readFileSync(path.join(root,'data/trailhead.json'),'utf8')).tracks[0].points[0];
+    // La salida con mas salidas de otras rutas a menos de 1 km, no la de la
+    // primera ruta de la lista: desde el 22 nov 2026 esa es Uguna, en Gorbeia,
+    // sin ninguna ruta de senderismo cerca, y la prueba de los colores de
+    // fondo fallaba sin que la pagina tuviera nada mal. Asi no depende del
+    // orden de la lista.
+    const salidas=JSON.parse(fs.readFileSync(path.join(root,'data/trailhead.json'),'utf8')).tracks.map(t=>t.points[0]);
+    const cerca=(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(a[0]*Math.PI/180))<1000;
+    const origen=salidas.reduce((m,p)=>salidas.filter(q=>cerca(p,q)).length>salidas.filter(q=>cerca(m,q)).length?p:m);
     await page.evaluate(([lat,lon]) => {
       window.TrabakutikAndroid.getLastLocation = () => JSON.stringify({lat,lon,age:0,accuracy:5});
     },origen.slice(0,2));
