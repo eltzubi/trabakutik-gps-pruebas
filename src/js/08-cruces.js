@@ -771,6 +771,57 @@ function espaciaParaGiros(pts){
  if(idx[idx.length-1]!==pts.length-1){if(idx.length>1)idx[idx.length-1]=pts.length-1;else idx.push(pts.length-1)}
  return quitaPicos(pts,idx);
 }
+// LOS NUDOS DEL GPX TAMPOCO SON CURVAS. Quien grabo la ruta se paro -en el
+// coche, en una cima, en una fuente, a hacer una foto- y con el GPS encendido
+// el track se enreda: decenas de metros sin salir de unos pocos. El navegador
+// los tomaba por camino y decia «curva de herradura» donde no hay nada, y el
+// autor se salio de la ruta haciendole caso (Otzarreta, 22 de noviembre de
+// 2026): «es como estar comiendo un bocadillo de pie y moverte unos metros».
+// Un nudo es MUCHO CAMINO EN POCO SITIO: al menos NUDO_MIN_M de track sin
+// alejarse mas de NUDO_RADIO_M de donde empieza, y al menos NUDO_PROPORCION
+// veces mas camino que lo que se aleja. Una herradura de verdad no cae: avanza
+// (15 m de ida y 15 de vuelta se alejan 15: proporcion 2). Devuelve los tramos
+// [desde, hasta] en metros de la ruta. En ellos se callan las CURVAS; los
+// cruces de verdad se quedan, que pararse en un cruce a mirar por donde se va
+// tambien deja un nudo y el giro sigue haciendo falta.
+function nudosDe(pts,cum){
+ const NUDO_MIN_M=30,NUDO_RADIO_M=20,NUDO_PROPORCION=3,NUDO_MAX_M=150;
+ const n=pts.length,tramos=[];
+ let a=0;
+ while(a<n-1){
+  let fin=-1,lejos=0;
+  for(let b=a+1;b<n&&cum[b]-cum[a]<=NUDO_MAX_M;b++){
+   lejos=Math.max(lejos,dist(pts[a],pts[b]));
+   if(lejos>NUDO_RADIO_M)break;
+   const camino=cum[b]-cum[a];
+   if(b-a>=3&&camino>=NUDO_MIN_M&&camino>=NUDO_PROPORCION*lejos)fin=b;
+  }
+  if(fin>0){tramos.push([cum[a],cum[fin]]);a=fin}else a++;
+ }
+ return tramos;
+}
+// Fuera las curvas que caen en un nudo, con NUDO_HOLGURA_M de margen: una
+// curva se mide con 12 m de track a cada lado, y si esos metros entran en el
+// nudo, el rumbo sale de su baile (Otzarreta, km 5,05).
+function quitaCurvasDeNudos(lista,tramos){
+ const NUDO_HOLGURA_M=20;
+ return lista.filter(j=>j.cruce!==false||
+  !tramos.some(([a,b])=>j.along>=a-NUDO_HOLGURA_M&&j.along<=b+NUDO_HOLGURA_M));
+}
+// Y los extremos: al llegar al coche el track da vueltas alrededor de la meta
+// sin el baile apretado de un nudo (en Otzarreta, 59 m sin salir de 20 m de la
+// llegada, pero 18 m de ida y vuelta). Si los ultimos EXTREMO_MIN_M de track o
+// mas no salen de EXTREMO_RADIO_M de la llegada -o los primeros, de la
+// salida-, ese tramo tambien cuenta como nudo.
+function nudosDeExtremos(pts,cum){
+ const EXTREMO_RADIO_M=20,EXTREMO_MIN_M=30,n=pts.length,tramos=[];
+ if(n<3)return tramos;
+ let i=0;while(i+1<n&&dist(pts[0],pts[i+1])<=EXTREMO_RADIO_M)i++;
+ if(cum[i]>=EXTREMO_MIN_M)tramos.push([0,cum[i]]);
+ let k=n-1;while(k>0&&dist(pts[n-1],pts[k-1])<=EXTREMO_RADIO_M)k--;
+ if(cum[n-1]-cum[k]>=EXTREMO_MIN_M)tramos.push([cum[k],cum[n-1]]);
+ return tramos;
+}
 // LOS PICOS DEL GPX NO SON GIROS. En el km 1,17 de Trabakua-Mendibil el GPX
 // sube 15 m a un lado y vuelve -quien lo grabo se aparto del camino- y, con
 // un nodo de cruce a menos de 25 m, salia «cruce a la derecha, 133°» en plena
@@ -893,6 +944,9 @@ function computeJunctions(){
    ida.sort((a,b)=>a.i-b.i);
   }
  }
+ const nudos=nudosDe(pts,cum).concat(nudosDeExtremos(pts,cum));
+ ida=quitaCurvasDeNudos(ida,nudos);
+ if(vuelta)vuelta=quitaCurvasDeNudos(vuelta,nudos);
  aplicaHitosDeAviso(ida);
  if(vuelta)aplicaHitosDeAviso(vuelta);
  confirmaRamalWeb.reinicia();
@@ -1428,7 +1482,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={teselasDeRuta,fueraDeZona,cargaTeselas,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={teselasDeRuta,fueraDeZona,cargaTeselas,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }

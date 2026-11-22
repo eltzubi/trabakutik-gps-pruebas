@@ -184,10 +184,13 @@ test('Una horquilla de pista avisa como curva de herradura',()=>{
  // Una U de 40 m de ancho ya no se dobla dentro de los 40 m de la ventana: es
  // un lazo grande, no una horquilla, y se queda callada.
  assert.equal(detector().detect(horquilla(40)).length,0);
- // Un lazo cerradisimo tambien cuenta.
+ // Un lazo cerradisimo -una vuelta entera de 8 m de radio, 50 m de track
+ // sin salir de 16 m- contaba como herradura. Desde el 22 de noviembre de
+ // 2026 es un nudo, la forma que deja el GPS de quien se para, y se calla:
+ // el autor no quiere indicaciones en los nudos (tests/nudos.test.cjs).
  const lazo=[];
  for(let deg=0;deg<360;deg+=10)lazo.push(tramo(deg,8));
- assert.equal(detector().detect(lazo).length,1);
+ assert.equal(detector().detect(lazo).length,0);
  // El umbral son 160 grados: con el ramal de vuelta a 162 avisa y a 158 no.
  // Sin estas dos lineas, subir el umbral a 179 no se notaria: todas las
  // horquillas de arriba doblan justo 180.

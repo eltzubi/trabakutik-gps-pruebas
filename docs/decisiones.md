@@ -1343,3 +1343,39 @@ cuando no hay posición en la ruta o el perfil está oculto (`sin-alturas`).
 Es solo de la página: no hace falta reinstalar la aplicación.
 
 Pruebas en `tests/perfil-faltan.test.cjs`.
+
+## En los nudos del GPX no se avisa de curvas (22 de noviembre de 2026)
+
+El autor se salió de la ruta en Otzarreta haciendo caso a una «curva de
+herradura a la izquierda» donde no había nada: «es como estar comiendo un
+bocadillo de pie y moverte unos metros; no tiene sentido». Era un **nudo**:
+quien grabó la ruta se paró (junto al coche, en una cima, en una cascada, a
+hacer una foto) y el track se enredó en unos pocos metros.
+
+- **Qué es un nudo** (`nudosDe`): al menos 30 m de track sin alejarse más de
+  20 m de donde empieza, y al menos 3 veces más camino que lo que se aleja.
+  Una herradura de verdad no cae: 15 m de ida y 15 de vuelta se alejan 15
+  (proporción 2). Se probó antes «30 m dentro de 15 m» y cogía las herraduras
+  de verdad: 706 «nudos».
+- **Los extremos** (`nudosDeExtremos`): al llegar al coche el track da vueltas
+  alrededor de la meta sin el baile apretado de un nudo. Si los últimos 30 m o
+  más no salen de 20 m de la llegada (o los primeros, de la salida), cuentan
+  como nudo.
+- **Se callan las CURVAS**, con 20 m de margen, porque una curva se mide con
+  12 m de track a cada lado. **Los cruces de verdad se quedan**: pararse en un
+  cruce a mirar por dónde se va también deja un nudo. En Otzarreta hay dos
+  cruces dentro de un nudo (km 1,61 y 1,71), junto al «Faltó aquí» del
+  autor en el km 1,77.
+- El trazado dibujado y las distancias no se tocan.
+
+Medido en las 74 rutas de la web (zona de Mallabia): de 1.915 avisos de curva
+se quitan 292 (184 dentro de un nudo, 105 en su margen, 3 en los extremos;
+112 eran herraduras), y **los cruces no cambian en ninguna ruta**. En
+Otzarreta se van las herraduras falsas de los km 0,01, 1,49, 5,05, 5,21,
+5,31 y 7,43; la herradura real del km 1,88 sigue.
+
+El riesgo aceptado: una curva de verdad a menos de 20 m de un nudo se queda
+sin aviso. Un lazo completo de 8 m de radio, que antes avisaba como
+herradura, ahora es un nudo (se cambió esa prueba en navigation.test.cjs).
+
+Pruebas en `tests/nudos.test.cjs`.
