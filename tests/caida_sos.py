@@ -108,6 +108,31 @@ public class CaidaSosTest{
   // 15 s para quedarse quieto (21 nov 2026): rodar 4 s tras el golpe y
   // quedarte tumbado ES una caida, y de las graves. Antes, con 2 s, no saltaba.
   require(tramo(d,12,0.05,0.0,true),"rodar 4 s y quedarte tumbado: salta");
+  // 10. SIN VELOCIDAD DE GPS (22 nov 2026). El servicio solo pasa la velocidad
+  //     con 30 m de precision o mejor, y bajo arbolado son 25-35: dejaban de
+  //     llegar y el golpe NO SE ARMABA -medido, ni se registraba-. Ahora el
+  //     acelerometro hace de suplente, pero SOLO cuando el GPS lleva callado,
+  //     para no devolver la falsa alarma de pararse a mirar el movil.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,Double.NaN);golpe(d,4.0);
+  require(tramo(d,12,0.05,Double.NaN,true),"caida andando sin velocidad de GPS: salta");
+  require(d.golpes==1&&d.caidas==1,"y queda registrada");
+  // 10b. Lo que NO puede pasar: pararse a mirar el movil sin velocidad de GPS.
+  //      Es la falsa alarma que conto el autor; sacar el movil es un golpe,
+  //      mirarlo son 8 s quieto y el bolsillo a la mano es un cambio de giro.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,0.3,Double.NaN);golpe(d,4.0);
+  require(!tramo(d,12,0.05,Double.NaN,true),"parado y sin GPS: no salta");
+  require(d.golpes==0,"ni se registra el golpe");
+  // 10c. Una sacudida suelta de un segundo no es ir en marcha.
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,0.3,Double.NaN);tramo(d,1,3.0,Double.NaN);golpe(d,4.0);
+  require(!tramo(d,12,0.05,Double.NaN,true),"una sacudida suelta no acredita marcha");
+  // 10d. Con el GPS hablando manda el GPS: si dice 0, no se arma aunque te
+  //      muevas (es justo lo que tapa la falsa alarma de mirar el movil).
+  d=new DetectorCaidas();t=0;
+  tramo(d,20,2.5,0.0);golpe(d,4.0);
+  require(!tramo(d,12,0.05,0.0,true),"GPS diciendo 0 manda sobre el acelerometro");
   // Moverte un momento antes de quedarte quieto tampoco la descarta.
   d=new DetectorCaidas();t=0;
   tramo(d,20,2.5,4.0);golpe(d,4.0);

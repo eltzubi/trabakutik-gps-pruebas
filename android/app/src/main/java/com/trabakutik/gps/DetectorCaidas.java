@@ -19,6 +19,26 @@ package com.trabakutik.gps;
  * Y el GPS en marcha solo descarta a partir de SIGUE_MARCHA_TRAS_MS: un
  * deslizamiento de unos segundos tambien da velocidad. Lo aprobo el autor.
  *
+ * SIN VELOCIDAD DE GPS, LA MARCHA LA DICE EL ACELEROMETRO (22 nov 2026).
+ * El servicio solo pasa la velocidad cuando la posicion tiene 30 m de
+ * precision o mejor, asi que bajo arbolado -donde esta medido que son 25-35 m-
+ * dejan de llegar velocidades. Y sin velocidad, ultimoMovimiento envejece y
+ * el golpe NO SE ARMA: medido, basta con que la ultima posicion buena tenga
+ * mas de 1,9 s para que no se registre ni el golpe. Es decir, el aviso de
+ * caida se apagaba solo justo donde peor es la señal y mas falta hace.
+ *
+ * El arreglo NO es acreditar la marcha con el acelerometro siempre: eso
+ * devolveria la falsa alarma que conto el autor -«cada vez que paraba para
+ * mirar el movil, saltaba la alarma»-, porque sacar el movil del bolsillo es
+ * un golpe, mirarlo son ocho segundos quieto y el bolsillo a la mano es un
+ * cambio de orientacion. Con el GPS diciendo que te has parado, eso no se
+ * arma, y asi tiene que seguir.
+ *
+ * Por eso el acelerometro solo vale de SUPLENTE: entra unicamente cuando
+ * hace mas de SIN_VELOCIDAD_MS que no llega ninguna velocidad utilizable, y
+ * aun asi pide dos segundos seguidos de agitacion por encima de MARCHA_DESV,
+ * que una sacudida suelta no da. Si el GPS habla, manda el GPS.
+ *
  * Sin nada de Android, para poder probarlo con javac a secas.
  */
 final class DetectorCaidas {
@@ -34,6 +54,9 @@ final class DetectorCaidas {
     static final int QUIETO_S = 8;                // segundos seguidos quieto
     static final double QUIETO_DESV = 0.6;        // m/s2: dispersion del vector en un segundo
     static final double SIGUE_MARCHA_MS = 1.0;    // m/s tras el golpe: sigues, no te has caido
+    static final long SIN_VELOCIDAD_MS = 4_000;   // sin velocidad utilizable desde hace esto: entra el suplente
+    static final double MARCHA_DESV = 1.0;        // m/s2: dispersion del modulo en un segundo que ya es andar
+    static final int MARCHA_SEGUNDOS = 2;         // segundos seguidos asi: vas en marcha
     static final long ESPERA_MS = 60_000;         // tras un aviso, no otro en este tiempo
     // QUIETO DE VERDAD: un segundo cuenta si trae al menos MUESTRAS_MIN
     // muestras. Un hueco de mas de HUECO_MS invalida la quietud. Con una sola muestra la desviacion sale cero y parecia quieto; y
@@ -51,12 +74,18 @@ final class DetectorCaidas {
     private int n = 0, quietos = 0;
     private long ultimoAviso = Long.MIN_VALUE / 2;
     private long ultimaMuestra = Long.MIN_VALUE / 2;
+    private long ultimaVelocidad = Long.MIN_VALUE / 2;
+    private long movimientoAcc = Long.MIN_VALUE / 2;
+    private long marchaSegundoEn = -1;
+    private double marchaSuma, marchaSuma2;
+    private int marchaN = 0, marchaSeguidos = 0;
     int golpes = 0;           // golpes fuertes estando en marcha (el registro)
     int caidas = 0;           // de ellos, los que acabaron en aviso
 
     /** Velocidad del GPS (m/s) en el instante t (ms). NaN si no la trae. */
     void velocidad(double v, long t) {
         if (!Double.isFinite(v)) return;
+        ultimaVelocidad = t;
         if (v >= MARCHA_MS) ultimoMovimiento = t;
         if (golpeEn >= 0 && t - golpeEn > SIGUE_MARCHA_TRAS_MS && v >= SIGUE_MARCHA_MS) descarta();
     }
@@ -69,8 +98,13 @@ final class DetectorCaidas {
         ultimaMuestra = t;
         moduloAnterior = m;
         if (golpeEn < 0) {
+            miraMarchaAcc(m, t);
+            // El GPS manda; el acelerometro solo habla si el GPS lleva callado.
+            boolean sinGps = t - ultimaVelocidad > SIN_VELOCIDAD_MS;
+            boolean enMarcha = t - ultimoMovimiento <= MOVIENDO_MS
+                    || (sinGps && t - movimientoAcc <= MOVIENDO_MS);
             boolean pico = t >= antes && t - antes <= PICO_MS && m - anterior >= AUMENTO_G * G;
-            if (pico && m >= GOLPE_G * G && t - ultimoMovimiento <= MOVIENDO_MS && t - ultimoAviso >= ESPERA_MS) {
+            if (pico && m >= GOLPE_G * G && enMarcha && t - ultimoAviso >= ESPERA_MS) {
                 golpeEn = t;
                 golpeG = m / G;
                 golpes++;
@@ -128,6 +162,34 @@ final class DetectorCaidas {
 
     /** El golpe en curso, en g, o 0 si no hay. */
     double golpeEnCurso() { return golpeEn >= 0 ? golpeG : 0; }
+
+    /**
+     * Agitacion del acelerometro, segundo a segundo, mientras no hay golpe en
+     * curso. Dos segundos seguidos por encima de MARCHA_DESV valen por una
+     * velocidad de GPS; uno solo no, para que una sacudida al sacar el movil
+     * del bolsillo no cuente como ir andando.
+     */
+    private void miraMarchaAcc(double m, long t) {
+        if (marchaSegundoEn < 0 || t < marchaSegundoEn || t - ultimaMuestra > HUECO_MS) {
+            marchaSegundoEn = t;
+            marchaSuma = marchaSuma2 = 0;
+            marchaN = 0;
+            marchaSeguidos = 0;
+            return;
+        }
+        marchaSuma += m;
+        marchaSuma2 += m * m;
+        marchaN++;
+        if (t - marchaSegundoEn < 1000) return;
+        double media = marchaSuma / marchaN;
+        double desv = Math.sqrt(Math.max(0, marchaSuma2 / marchaN - media * media));
+        if (marchaN >= MUESTRAS_MIN && desv >= MARCHA_DESV) {
+            if (++marchaSeguidos >= MARCHA_SEGUNDOS) movimientoAcc = t;
+        } else marchaSeguidos = 0;
+        marchaSegundoEn = t;
+        marchaSuma = marchaSuma2 = 0;
+        marchaN = 0;
+    }
 
     private void reiniciaSegundo() {
         sumaX = sumaY = sumaZ = suma2 = 0;
