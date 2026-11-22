@@ -106,6 +106,7 @@ public class VozRutaTest {
  String avisoRutaPendiente=null;boolean navigating=true;boolean vozLista=true;TextToSpeech voz=new TextToSpeech();long avisoRutaHasta=5000;
  String modo="voz";String modoAudio(){return modo;}
  void protegeAvisoRuta(){avisoRutaHasta=SystemClock.reloj+4000;}
+ String idFraseVoz(){return "prueba";}
 ''' + metodo(' void habla(String texto)') + metodo(' void entregaAvisoRutaPendiente()') + '''
  public static void main(String[] args){
   VozRutaTest v=new VozRutaTest();

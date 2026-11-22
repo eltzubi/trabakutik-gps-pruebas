@@ -165,7 +165,7 @@ public class TrackingService extends Service implements LocationListener {
   if(audioVoz==null)return;
   focoVoz=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
     .setAudioAttributes(atributos)
-    .setOnAudioFocusChangeListener(cambio->{},avisoHandler).build();
+    .setOnAudioFocusChangeListener(cambio->{if(cambio==AudioManager.AUDIOFOCUS_LOSS)sueltaFocoVoz();},avisoHandler).build();
   voz.setOnUtteranceProgressListener(new UtteranceProgressListener(){
    @Override public void onStart(String id){avisoHandler.post(()->iniciaFocoVoz(id));}
    @Override public void onDone(String id){termina(id);}
