@@ -11,6 +11,7 @@ import java.util.*;
 import org.json.*;
 import android.media.*;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -143,16 +144,61 @@ public class TrackingService extends Service implements LocationListener {
       if(r2==TextToSpeech.LANG_MISSING_DATA||r2==TextToSpeech.LANG_NOT_SUPPORTED){
        apuntaVoz("El motor de voz no tiene castellano");return;}
      }
-     // USAGE_ASSISTANCE_NAVIGATION_GUIDANCE es la clave de que esto suene
-     // como un navegador de verdad: Android baja la musica mientras habla
-     // en vez de cortarla, y lo manda al manos libres si hay uno puesto.
-     voz.setAudioAttributes(new AudioAttributes.Builder()
+     AudioAttributes atributos=new AudioAttributes.Builder()
        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-       .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+       .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
+     voz.setAudioAttributes(atributos);
+     preparaFocoVoz(atributos);
      vozLista=true;apuntaVoz("ok");entregaAvisoRutaPendiente();
     }catch(Exception e){apuntaVoz("No se pudo preparar la voz");}
    });
   }catch(Exception e){apuntaVoz("No hay motor de voz instalado");}
+ }
+ private AudioManager audioVoz;
+ private AudioFocusRequest focoVoz;
+ private String fraseConFoco;
+ private long serieVoz, generacionVoz;
+ private final Runnable limiteFocoVoz=this::sueltaFocoVoz;
+
+ private void preparaFocoVoz(AudioAttributes atributos){
+  audioVoz=(AudioManager)getSystemService(AUDIO_SERVICE);
+  if(audioVoz==null)return;
+  focoVoz=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+    .setAudioAttributes(atributos)
+    .setOnAudioFocusChangeListener(cambio->{},avisoHandler).build();
+  voz.setOnUtteranceProgressListener(new UtteranceProgressListener(){
+   @Override public void onStart(String id){avisoHandler.post(()->iniciaFocoVoz(id));}
+   @Override public void onDone(String id){termina(id);}
+   @Override public void onError(String id){termina(id);}
+   @Override public void onStop(String id,boolean interrumpida){termina(id);}
+   private void termina(String id){avisoHandler.post(()->terminaFocoVoz(id));}
+  });
+ }
+
+ private String idFraseVoz(){return "voz-"+generacionVoz+"-"+(++serieVoz);}
+
+ private void iniciaFocoVoz(String id){
+  // Las pausas entre avisos también emiten callbacks de TextToSpeech.
+  if(focoVoz==null||id==null||!id.startsWith("voz-"+generacionVoz+"-"))return;
+  if(fraseConFoco==null){
+   try{
+    if(audioVoz.requestAudioFocus(focoVoz)!=AudioManager.AUDIOFOCUS_REQUEST_GRANTED)return;
+   }catch(RuntimeException e){return;}
+  }
+  fraseConFoco=id;
+  avisoHandler.removeCallbacks(limiteFocoVoz);
+  avisoHandler.postDelayed(limiteFocoVoz,20000);
+ }
+
+ private void terminaFocoVoz(String id){
+  if(fraseConFoco!=null&&fraseConFoco.equals(id))sueltaFocoVoz();
+ }
+
+ private void sueltaFocoVoz(){
+  avisoHandler.removeCallbacks(limiteFocoVoz);
+  if(fraseConFoco==null)return;
+  fraseConFoco=null;
+  try{audioVoz.abandonAudioFocusRequest(focoVoz);}catch(RuntimeException ignored){}
  }
  void apuntaVoz(String motivo){
   vozEstado=motivo;
@@ -174,7 +220,7 @@ public class TrackingService extends Service implements LocationListener {
   if(!vozLista||voz==null){if(estadoRuta)avisoRutaPendiente=texto;return;}
   if(estadoRuta)avisoRutaPendiente=null;
   int cola=!estadoRuta&&SystemClock.elapsedRealtime()<avisoRutaHasta?TextToSpeech.QUEUE_ADD:TextToSpeech.QUEUE_FLUSH;
-  try{voz.speak(texto,cola,null,"trabakutik");}catch(Exception ignored){}
+  try{voz.speak(texto,cola,null,idFraseVoz());}catch(Exception ignored){}
  }
  void hablaGiro(String instruccion,String siguiente){
   habla(instruccion);
@@ -182,7 +228,7 @@ public class TrackingService extends Service implements LocationListener {
   try{
    int cola=TextToSpeech.QUEUE_ADD;
    if(voz.playSilentUtterance(2500,cola,"pausa-siguiente-giro")==TextToSpeech.SUCCESS)
-    voz.speak(siguiente,cola,null,"siguiente-giro");
+    voz.speak(siguiente,cola,null,idFraseVoz());
   }catch(Exception ignored){}
  }
  // CALLAR AHORA MISMO, no «a partir de ahora». Antes el modo se miraba solo
@@ -191,6 +237,8 @@ public class TrackingService extends Service implements LocationListener {
  // saliendo uno detras de otro.
  void callaYa(){
   avisoRutaPendiente=null;
+  generacionVoz++;
+  sueltaFocoVoz();
   try{if(voz!=null)voz.stop();}catch(Exception ignored){}
   pitidoHandler.removeCallbacksAndMessages(null);
   // Los pitidos pendientes se han quedado sin reloj, asi que el que iba a
