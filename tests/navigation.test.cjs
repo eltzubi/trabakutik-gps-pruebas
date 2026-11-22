@@ -1552,6 +1552,29 @@ function desvioDesdeCero(){
  const paso=(d,acc=4,ms=1000)=>{now+=ms;c.updateOffRoute(d,acc)};
  return {c,avisos,paso};
 }
+test('Con mala precisión también se vuelve a la ruta, y el anuncio de entrada sigue pidiendo buena',()=>{
+ // El corte accuracy<=35 && d<=15 es la confianza que pide ANUNCIAR la
+ // primera entrada. El 19 de noviembre de 2026 se saco a una variable y se
+ // le colgo tambien «near» y la franja: desde entonces, por encima de 35 m
+ // de precision el aviso de fuera de ruta saltaba y NO SE APAGABA NUNCA
+ // -comprobado parado encima del track-, y con el se callaban todos los
+ // avisos de giro, que la 09 los corta mientras «alerted». Salir admite
+ // hasta 60 m; volver tiene que admitir las mismas.
+ for(const acc of [5,20,35,36,40,50,60]){
+  const {c,paso}=desvioDesdeCero();
+  for(let i=0;i<5;i++)paso(80,acc);
+  assert.equal(c.alerted,true,`a 80 m con precision ${acc} tiene que avisar`);
+  for(let i=0;i<10;i++)paso(0,acc);
+  assert.equal(c.alerted,false,`con precision ${acc} tiene que volver a la ruta`);
+ }
+ // Y el anuncio de la primera entrada sigue pidiendo precision buena y estar
+ // de verdad encima: con 36 m o a 16 m del track no se canta.
+ for(const [d,acc,espera] of [[2,5,true],[2,35,true],[14,10,true],[2,36,false],[2,50,false],[16,5,false],[20,5,false]]){
+  const {c,paso}=desvioDesdeCero();
+  for(let i=0;i<10;i++)paso(d,acc);
+  assert.equal(c.entradaAvisada,espera,`entrada a ${d} m con precision ${acc}`);
+ }
+});
 test('19 m con precisión de 4 m avisa también al empezar sin pisar antes el track',()=>{
  const {c,paso,avisos}=desvioDesdeCero();for(let i=0;i<5;i++)paso(19);
  assert.equal(c.alerted,true);assert.equal(avisos.filter(s=>s.startsWith('Fuera del recorrido')).length,1);

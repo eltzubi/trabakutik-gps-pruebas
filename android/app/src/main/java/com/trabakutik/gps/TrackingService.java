@@ -1421,9 +1421,17 @@ public class TrackingService extends Service implements LocationListener {
   // Un hueco de señal no cuenta como cuatro segundos de posiciones fuera.
   if(ultimoDesvio>0&&(now<ultimoDesvio||now-ultimoDesvio>10000)){farSince=0;cercaDesde=0;}
   ultimoDesvio=now;
-  boolean dentro=acc<=35&&d<=FUERA_M;
-  if(dentro&&d<=Math.max(11,acc+4)){
-   if(!entradaAvisada&&!offRoute&&acc<=35&&d<=FUERA_M){entradaAvisada=true;protegeAvisoRuta();tonoBien();habla("Ya estás en la ruta");}
+  // LAS DOS MITADES DEL CORTE HACEN COSAS DISTINTAS. «encima» (d<=FUERA_M)
+  // es estar de verdad sobre el camino, y hace falta para volver: a 30 m no
+  // estas de vuelta aunque el GPS dude. «acc<=35» es confianza, y solo la
+  // pide ANUNCIAR la primera entrada. El 19 nov 2026 se juntaron en una sola
+  // variable que colgaba tambien del regreso, y por encima de 35 m de
+  // precision el aviso de fuera de ruta no se apagaba nunca -llevandose por
+  // delante los avisos de giro-. Salir admite hasta 60 m; volver tambien.
+  boolean encima=d<=FUERA_M;
+  boolean dentro=encima&&acc<=35;
+  if(encima&&d<=Math.max(11,acc+4)){
+   if(!entradaAvisada&&!offRoute&&dentro){entradaAvisada=true;protegeAvisoRuta();tonoBien();habla("Ya estás en la ruta");}
    routeReached=true;farSince=0;cercaDesde=0;
    if(offRoute)vuelveALaRuta();
    return;
@@ -1432,11 +1440,11 @@ public class TrackingService extends Service implements LocationListener {
   // acaba de elegir otra ruta. Antes routeReached bloqueaba ambos casos.
   if(d<=Math.max(FUERA_M,acc+7)){
    farSince=0;
-   if(dentro&&(offRoute||!entradaAvisada)){
+   if((offRoute&&encima)||(dentro&&!entradaAvisada)){
     if(cercaDesde==0)cercaDesde=now;
     else if(now-cercaDesde>=4000){
      if(offRoute)vuelveALaRuta();
-     else if(acc<=35&&d<=FUERA_M){entradaAvisada=true;routeReached=true;cercaDesde=0;protegeAvisoRuta();tonoBien();habla("Ya estás en la ruta");}
+     else if(dentro){entradaAvisada=true;routeReached=true;cercaDesde=0;protegeAvisoRuta();tonoBien();habla("Ya estás en la ruta");}
     }
    }else cercaDesde=0;
    return;
