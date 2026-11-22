@@ -430,6 +430,31 @@ function pintaAlturas(fracRuta,estado){
  const p=$('tripPerfilPunto');
  if(altura===null)p.setAttribute('r','0');
  else{p.setAttribute('r','5');p.setAttribute('cx',xDe(pos).toFixed(1));p.setAttribute('cy',y(altura))}
+ pintaMarcasFalta(P,altura===null?null:pos);
+}
+// LO QUE FALTA, EN EL PERFIL (22 nov 2026). El perfil va en el sentido de la
+// marcha, asi que la meta esta siempre a la derecha: una marca a «f» metros
+// de la meta cae en el (1 - f/T) del ancho. El trecho entre marcas se elige
+// para que por delante quepan como mucho tres.
+function pasoMarcas(queda){
+ for(const s of [500,1000,2000,5000,10000,20000])if(Math.floor((queda-1)/s)<=3)return s;
+ return 50000;
+}
+function textoFalta(m){
+ if(m>=1000)return (Math.round(m/100)/10).toLocaleString('es-ES')+' km';
+ return Math.max(0,Math.round(m/10)*10)+' m';
+}
+function pintaMarcasFalta(P,pos){
+ const caja=$('tripPerfilMarcas');if(!caja)return;
+ if(!P||pos===null||!Number.isFinite(pos)){if(caja.innerHTML)caja.innerHTML='';return}
+ const queda=Math.max(0,sentidoRuta>0?P.T-pos:pos);
+ const paso=pasoMarcas(queda),pct=f=>(100*(1-f/P.T)).toFixed(2)+'%';
+ let html='<i class="tm-meta"></i><span class="tm-km meta">meta</span>';
+ for(let f=paso;f<queda-paso*0.25;f+=paso)html+='<i class="tm-raya" style="left:'+pct(f)+'"></i><span class="tm-km" style="left:'+pct(f)+'">'+textoFalta(f)+'</span>';
+ // «faltan …» sobre tu punto, sin salirse por los lados.
+ const x=Math.min(86,Math.max(14,100*(1-queda/P.T)));
+ html+='<span class="tm-faltan" style="left:'+x.toFixed(2)+'%">faltan '+textoFalta(queda)+'</span>';
+ if(caja.innerHTML!==html)caja.innerHTML=html;
 }
 // «1:42» (horas:minutos) o «42 min» si no llega a la hora; «—» sin dato.
 function formatoTiempo(ms){
@@ -650,6 +675,6 @@ function flechaGiro(deg,dir,tam,grosor){
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={avisoSalida,altitudGps,pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
+ module.exports={pasoMarcas,textoFalta,pintaMarcasFalta,avisoSalida,altitudGps,pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
  Object.defineProperties(module.exports,{altGpsNativa:{get:()=>altGpsNativa,set:v=>{altGpsNativa=v},enumerable:true},rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true},tiempoMovNativo:{get:()=>tiempoMovNativo,set:v=>{tiempoMovNativo=v},enumerable:true}});
 }

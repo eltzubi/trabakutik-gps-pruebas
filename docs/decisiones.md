@@ -1324,3 +1324,22 @@ Euskadi»:
   Eltzubi salen idénticos.
 
 Pruebas en `tests/cruces-euskadi.test.cjs`.
+
+## Lo que falta para acabar, sobre el perfil (22 de noviembre de 2026)
+
+El autor pidió ver en la gráfica de alturas los kilómetros que faltan para
+acabar la ruta. Se le enseñaron dos maneras y eligió la A:
+
+- Encima del punto azul, una pastilla «faltan 710 m».
+- Por delante, rayas discontinuas con lo que queda desde ahí hasta la meta:
+  cada 500 m, o cada 1, 2, 5, 10… km en rutas largas, **como mucho tres**
+  (`pasoMarcas`), para que los rótulos no se pisen a 390 px.
+- A la derecha, una raya verde «meta». El perfil ya se dibuja en el sentido
+  de la marcha, así que la meta está siempre a la derecha, también al revés.
+
+Las marcas van en HTML encima del SVG y no dentro: el SVG lleva
+`preserveAspectRatio="none"` y un texto dentro saldría estirado. Se quitan
+cuando no hay posición en la ruta o el perfil está oculto (`sin-alturas`).
+Es solo de la página: no hace falta reinstalar la aplicación.
+
+Pruebas en `tests/perfil-faltan.test.cjs`.
