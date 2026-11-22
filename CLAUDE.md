@@ -125,6 +125,24 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
 
 - **Cuando el autor pide un cambio, en cuanto esta resuelto y comprobado se sube sin volver a preguntar.** Lo pidio el 15 de noviembre de 2026: «si te pido cambios, subes; no tienes que estar pidiendo otra vez "sube", siempre que hayas solucionado algo y no te hayas inventado nada, sin avisarme». Vale para lo que el pide, no para cambios que se te ocurran a ti: esos se proponen y se espera.
 
+- **Un aviso que falla se apunta ANTES de tocar la regla** (lo pidió el autor
+  el 22 de noviembre de 2026: «no podemos estar siempre retocando»). Siempre
+  en este orden:
+  1. Se añade el cruce a `tests/referencia/cruces-revisados.json`: qué dijo y
+     qué **debía** hacer (la decisión, no la frase; «callar» también vale),
+     con su fuente fechada, que tiene que ser una marca ✋ o una captura,
+     nunca un kilómetro de memoria. `node scripts/avisos-referencia.cjs
+     --ancla <ruta> <ida|vuelta> <km>` da la llegada, la salida y el punto.
+  2. Se cambia la regla.
+  3. `node scripts/avisos-referencia.cjs`: el cambio vale solo si ese cruce
+     sale bien y **ninguno de los ya revisados se rompe**. Los avisos que la
+     foto marca como cambiados se miran uno a uno; si son buenos,
+     `--escribe-foto`.
+  4. Si se rompe un cruce revisado, no se sube: se busca otra solución, o se
+     le pregunta al autor cuál de los dos manda.
+  Un cruce revisado no se borra ni se cambia su «debía» sin que lo diga el
+  autor.
+
 - **Nunca sus coordenadas** en nada que se suba. Un commit se bloqueó una vez
   por eso.
 - **Los avisos hablados no dicen nombres de sitios.** Medido y decidido: ver
