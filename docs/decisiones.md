@@ -1294,3 +1294,33 @@ nuevos: deslizarse 3 s con velocidad GPS, moverse un momento antes de la
 quietud, quedarse quieto pasados 15 s (no salta) y moverse pasados 15 s (no
 salta). El caso del GPS en marcha se reforzó: pasaba por faltar el giro, no
 por el GPS.
+
+## Los cruces de toda Euskadi, en cuadrados (22 de noviembre de 2026)
+
+El autor hizo una ruta en Gorbeia (Otzarreta y Uguna) y apuntó con «✋ Faltó
+aquí» una docena de sitios sin aviso. En todos, la lista decía que el guiado
+no estaba callando (ni fuera de ruta, ni parado, ni con mal GPS): es que
+Gorbeia (43,05 N) queda fuera de `cruces-zona.json` (43,10-43,42 N), y allí
+el navegador solo sabía de las curvas del trazado. El aviso «Ruta fuera de la
+zona» salía, pero se va solo y no se ve.
+
+Con las vías de OpenStreetMap de alrededor, su ruta pasa de 0 a 18 avisos de
+cruce, y caen donde marcó la falta (km 0,73, 1,77 y 2,59). Pidió «toda
+Euskadi»:
+
+- Un fichero único serían unos 6 MB, que no caben en `localStorage` y tardan
+  en bajar en el monte. Va en **cuadrados de 0,1°** en
+  `Rutas-Mallabia/data/cruces/` (123 cuadrados, 275.000 cruces, 5,7 MB; los
+  más grandes, Vitoria y Bilbao, 478 y 409 KB), con el mismo formato que
+  `cruces-zona.json`. Los escribe `scripts/make_cruces_euskadi.py` desde el
+  extracto de Euskadi de OpenStreetMap, con el mismo cálculo que
+  `make_cruces_calles.py`.
+- La página (pieza 08), si la ruta se sale de la zona de Mallabia, baja el
+  índice y los cuadrados que toca la ruta (con 200 m de margen), los guarda en
+  la **caché del navegador** y los junta con la zona sin repetir cruces. La
+  segunda vez valen sin cobertura. Sin red y sin copia, se queda como antes y
+  lo dice.
+- Con los cuadrados en vez de la zona, los once controles de recyde y
+  Eltzubi salen idénticos.
+
+Pruebas en `tests/cruces-euskadi.test.cjs`.

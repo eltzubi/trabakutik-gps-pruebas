@@ -264,6 +264,84 @@ function cargaZonaCruces(){
   .catch(e=>{console.warn('Cruces de la zona no disponibles',e);zonaPide=null;return null});
  return zonaPide;
 }
+// LOS CRUCES DE TODA EUSKADI, EN CUADRADOS (22 nov 2026). El autor hizo una
+// ruta en Gorbeia, fuera de la zona de Mallabia, y no oyo ni un cruce: alli
+// solo se sabia de las curvas del trazado. «¿Puedes bajarte de toda Euskadi?».
+// Rutas-Mallabia/data/cruces/ trae un fichero por cuadrado de 0,1 grados (lo
+// escribe scripts/make_cruces_euskadi.py) con el mismo formato que
+// cruces-zona.json, y un indice. Cuando la ruta se sale de la zona se bajan
+// solo los cuadrados que toca y se guardan en la cache del navegador (no en
+// localStorage, que es pequeño y lo comparten las rutas guardadas), asi que
+// la segunda vez valen sin cobertura.
+const URL_TESELAS='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/cruces/';
+const TESELA_PASO=0.1,TESELA_MARGEN=0.002,CACHE_TESELAS='cruces-teselas';
+const teselasCargadas=new Map();
+let indiceTeselas=null;
+function teselasDeRuta(pts){
+ const s=new Set();
+ for(const p of pts)for(const dla of [-TESELA_MARGEN,TESELA_MARGEN])for(const dlo of [-TESELA_MARGEN,TESELA_MARGEN])
+  s.add(Math.floor((p[0]+dla)/TESELA_PASO+1e-9)+'_'+Math.floor((p[1]+dlo)/TESELA_PASO+1e-9));
+ return [...s];
+}
+function fueraDeZona(pts,b){
+ if(!Array.isArray(b))return false;
+ const m=TESELA_MARGEN;
+ return pts.some(p=>p[0]<b[0]+m||p[0]>b[2]-m||p[1]<b[1]+m||p[1]>b[3]-m);
+}
+async function cacheTeselas(){
+ try{return typeof caches!=='undefined'?await caches.open(CACHE_TESELAS):null}catch(e){return null}
+}
+// El indice, de la red primero (es pequeño y trae la fecha); sin cobertura,
+// la copia guardada.
+async function cargaIndiceTeselas(){
+ if(indiceTeselas)return indiceTeselas;
+ const cache=await cacheTeselas(),url=URL_TESELAS+'indice.json';
+ try{
+  const r=await fetch(url,{cache:'no-store'});
+  if(r.ok){if(cache)try{await cache.put(url,r.clone())}catch(e){}indiceTeselas=await r.json();return indiceTeselas}
+ }catch(e){}
+ try{const r=cache&&await cache.match(url);if(r){indiceTeselas=await r.json();return indiceTeselas}}catch(e){}
+ return null;
+}
+// Un cuadrado: primero el guardado de esa fecha; si no, la red; si no hay
+// red, cualquier copia guardada aunque sea de otra fecha. null = no existe,
+// undefined = no se ha podido saber.
+async function leeTesela(k,fecha){
+ const cache=await cacheTeselas(),base=URL_TESELAS+'t_'+k+'.json',url=fecha?base+'?f='+encodeURIComponent(fecha):base;
+ try{const r=cache&&await cache.match(url);if(r)return await r.json()}catch(e){}
+ try{
+  const r=await fetch(url,{cache:'no-store'});
+  if(r.ok){if(cache)try{await cache.put(url,r.clone())}catch(e){}return await r.json()}
+  if(r.status===404)return null;
+ }catch(e){}
+ try{const r=cache&&await cache.match(base,{ignoreSearch:true});if(r)return await r.json()}catch(e){}
+ return undefined;
+}
+async function cargaTeselas(pts){
+ const ind=await cargaIndiceTeselas();
+ const existe=ind&&Array.isArray(ind.teselas)?new Set(ind.teselas.map(t=>t[0]+'_'+t[1])):null;
+ const fecha=ind&&ind.fecha_osm||'';
+ const zonas=[];let faltan=0;
+ for(const k of teselasDeRuta(pts)){
+  if(existe&&!existe.has(k))continue;
+  if(teselasCargadas.has(k+'@'+fecha)){zonas.push(teselasCargadas.get(k+'@'+fecha));continue}
+  const j=await leeTesela(k,fecha);
+  if(!j){if(j===undefined)faltan++;continue}
+  try{const z=descifraZona(j);teselasCargadas.set(k+'@'+fecha,z);zonas.push(z)}catch(e){faltan++}
+ }
+ return {zonas,faltan};
+}
+// Junta zonas sin repetir cruces ni rotondas (los cuadrados cubren tambien
+// la zona de Mallabia).
+function juntaZonas(lista){
+ const puntos=[],rotondas=[],vistos=new Set(),vistas=new Set();
+ for(const z of lista){
+  if(!z)continue;
+  for(const c of z.puntos||[]){const k=c[0]+','+c[1];if(!vistos.has(k)){vistos.add(k);puntos.push(c)}}
+  for(const c of z.rotondas||[]){const k=c[0]+','+c[1];if(!vistas.has(k)){vistas.add(k);rotondas.push(c)}}
+ }
+ return {puntos,rotondas,bbox:null};
+}
 // Se queda con los cruces pegados al track que lleves cargado y rehace los
 // avisos. Si el track esta fuera de Mallabia no hay cruces y se dice: mejor
 // eso que avisar de curvas haciendolas pasar por cruces.
@@ -271,6 +349,22 @@ function aplicaCruces(){
  const pet=++crucesPeticion;
  if(routePoints.length<3){crucesOsm=[];return}
  cargaZonaCruces().then(z=>{
+  if(!z||pet!==crucesPeticion||routePoints.length<3)return;
+  aplicaZona(z,pet,true);
+  // Fuera de la zona de Mallabia, los cuadrados de Euskadi que toque la ruta.
+  if(fueraDeZona(routePoints,z.bbox)){
+   const pts=routePoints;
+   cargaTeselas(pts).then(({zonas,faltan})=>{
+    if(pet!==crucesPeticion||routePoints!==pts)return;
+    if(zonas.length)aplicaZona(juntaZonas([z,...zonas]),pet,false);
+    if(faltan)notice('Sin cobertura · faltan datos de cruces de parte de esta ruta');
+   }).catch(e=>console.warn('Cruces de Euskadi no disponibles',e));
+  }
+ });
+}
+// Aplica una zona de cruces al track cargado. La primera vez (con la zona de
+// Mallabia) avisa si la ruta queda fuera; con los cuadrados ya no hace falta.
+function aplicaZona(z,pet,primera){
   if(!z||pet!==crucesPeticion||routePoints.length<3)return;
   const CEL=0.0006,celdas=new Set();
   for(const p of routePoints)celdas.add(Math.floor(p[0]/CEL)+'/'+Math.floor(p[1]/CEL));
@@ -293,13 +387,11 @@ function aplicaCruces(){
   });
   try{syncNativeRoute()}catch(e){console.warn('Ruta no enviada',e)}
   computeJunctions();
-  if(!cerca.length){
+  if(!cerca.length&&primera){
    const p=routePoints[Math.floor(routePoints.length/2)],b=z.bbox;
    if(b&&(p[0]<b[0]||p[0]>b[2]||p[1]<b[1]||p[1]>b[3]))
-    notice('Ruta fuera de la zona de Mallabia · solo avisos de giros cerrados del trazado');
-   return;
+    notice('Ruta fuera de la zona de Mallabia · buscando los cruces de Euskadi…');
   }
- });
 }
 // Los giros van SIEMPRE detras de los puntos, nunca antes. Los indices de un
 // giro son posiciones dentro de la ruta que tenga el servicio: si se mandan
@@ -1336,7 +1428,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={teselasDeRuta,fueraDeZona,cargaTeselas,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }
