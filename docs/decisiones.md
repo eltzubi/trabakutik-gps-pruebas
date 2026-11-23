@@ -1770,3 +1770,51 @@ que sobrevive a cerrarla.
 que hay —5,5 %/h dormido y 10 %/h despierto— da unos 7 %/h a 18 km/h con la
 pantalla encendida 12 s por cruce. Es una estimación, no una medida: hay que
 hacer una salida con ella encendida y mirar el resumen del final.
+
+## La curva se avisa cinco segundos antes de ENTRAR, no diez metros antes del punto (23 de noviembre de 2026)
+
+El autor, en el campo: «una curva me debería avisar con un poco de
+antelación, "gira ahora", pero cinco segundos antes, no cuando estoy en la
+mitad de la curva. En la mitad de la curva ya sé yo que tengo que girar, ya
+lo veo. Tiene que avisar con antelación, cuando estoy entrando o antes de
+entrar en la curva». Y dijo con qué velocidades va: «tal vez sea porque voy
+en coche, más de veinte kilómetros por hora, treinta y cinco, cuarenta» y
+«en bici puedo alcanzar velocidades de hasta sesenta kilómetros por hora
+cuesta abajo, hay que tenerlo en cuenta».
+
+**No era una impresión, era aritmética.** El aviso de curva estaba escrito a
+**diez metros fijos** del punto de la curva, el único de los cinco avisos que
+no mira la velocidad:
+
+| velocidad | 10 m son |
+|---|---|
+| andando, 4 km/h | 9 s |
+| bici, 18 km/h | 2 s |
+| coche, 40 km/h | 0,9 s |
+| bici cuesta abajo, 60 km/h | **0,6 s** |
+
+Y encima el punto de una curva es donde **más se dobla** el track, medido con
+12 m a cada lado: la **entrada** de la curva cae unos 12 m antes de ese punto.
+Avisar a 10 m del punto es avisar 2 m **dentro** de la curva. Las dos cosas
+que dijo el autor, y las dos ciertas.
+
+**La regla nueva**: los 12 m de la entrada más cinco segundos de marcha,
+entre 18 y 120 m.
+
+| velocidad | avisa a | antes de entrar |
+|---|---|---|
+| andando, 4 km/h | 18 m | 5 s (el suelo) |
+| bici, 18 km/h | 37 m | 5 s |
+| coche, 40 km/h | 67 m | 5 s |
+| bici cuesta abajo, 60 km/h | 95 m | 5 s |
+
+Está en `distanciasDeAviso()` de la página (el quinto número) y en
+`avisoCurva()` del servicio, con el mismo cálculo, porque lo que se oye con
+la pantalla apagada lo dice el servicio.
+
+**Lo que NO se ha tocado todavía**, medido el mismo día y pendiente: los
+techos de los otros cuatro avisos también se pusieron andando y en bici
+despacio, y recortan la intención escrita en cuanto se corre. A 60 km/h el
+«… ahora» está escrito para dos segundos y el techo de 12 m lo deja en 0,7 s;
+el segundo pitido está escrito para tres segundos y el techo de 30 m lo deja
+en 1,8 s. Eso es otro cambio, con su propia batería.

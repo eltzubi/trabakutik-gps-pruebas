@@ -1100,7 +1100,7 @@ test('Al revés se usan los avisos calculados al revés, con su lado, sin darles
  const c={$,mode:'nav',routePoints:corner(140),recording:true,navegaNativo:true,gpsApagadoPorTi:false,routeCumulative:[0,100,200],
   sigueMoviendose:()=>true,alerted:false,junctions:ida,junctionsReves:vuelta,sentidoRuta:-1,junctionWarned:new Set(),junctionActive:-1,
   junctionZoomOnce:new Set(),turnMarker:null,map:{removeLayer(){},addLayer(){},getZoom:()=>15,setView(){},flyTo(){},panTo(){},setZoom(){},getCenter:()=>({lat:0,lng:0}),stop(){}},L:{divIcon:()=>({}),marker:()=>({addTo(){return this},options:{}})},
-  distanciasDeAviso:()=>[50,10,90],avanzaPorLaRuta:()=>true,progressOnRoute:()=>({along:120,distance:2}),dist:()=>10,
+  distanciasDeAviso:()=>[50,10,90,4,40],avanzaPorLaRuta:()=>true,progressOnRoute:()=>({along:120,distance:2}),dist:()=>10,
   resetJunctionView(){},flechaGiro:()=>'',hablarGiro(){},notice(){},getAudio(){},pitidos(){},giraNativo:true,Number,Math,Date,String};
  vm.createContext(c);
  c.guiaIniciada=()=>true;c.setTimeout=()=>0;c.clearTimeout=()=>{};c.junctionBlocked=null;
@@ -1160,7 +1160,7 @@ test('Si al revés no hace falta ningún aviso, no se usan los de la ida dados l
  let resets=0;
  const c={$:()=>({classList:{add(){},remove(){}},textContent:'',innerHTML:''}),guiaIniciada:()=>true,alerted:false,sigueMoviendose:()=>true,
   routePoints:[[0,0],[0,1]],junctions:[{i:1,along:50,point:[0,0],direction:'derecha',cruce:true}],junctionsReves:[],sentidoRuta:-1,
-  junctionWarned:new Set(),junctionActive:-1,resetJunctionView(){resets++},distanciasDeAviso:()=>[50,10,90],
+  junctionWarned:new Set(),junctionActive:-1,resetJunctionView(){resets++},distanciasDeAviso:()=>[50,10,90,4,40],
   avanzaPorLaRuta:()=>true,progressOnRoute:()=>({along:60,distance:2}),dist:()=>10,Date};
  vm.createContext(c);vm.runInContext(source('let listaCrucesActiva=null;','function rumboDeLaRuta(progreso){'),c);
  c.junctionGuidance([0,0],5);
@@ -1315,6 +1315,13 @@ test('la pagina dice «ahora» dos segundos antes del cruce, como el servicio',(
  assert.equal(a[3],12,'en bici rapida, 12 m antes');
  c.velocidadSuave=1.2;assert.equal(c.distanciasDeAviso()[3],4,'andando, 4 m antes');
  assert(a[3]<a[1],'siempre por debajo del aviso corto');
+ // EL QUINTO, LAS CURVAS: cinco segundos antes de ENTRAR en la curva, que
+ // cae 12 m antes del punto. Antes eran diez metros fijos, o sea dentro.
+ assert.equal(a[4],62,'a 36 km/h, 62 m antes del punto de la curva');
+ c.velocidadSuave=60/3.6;assert.equal(Math.round(c.distanciasDeAviso()[4]),95,'bajando a 60 km/h, 95 m');
+ c.velocidadSuave=1.2;assert.equal(c.distanciasDeAviso()[4],18,'andando, el suelo: 18 m');
+ assert(String(pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance).includes('ahead<=dCurva'),
+  'la curva usa la distancia que va con la velocidad, no un numero fijo');
  const jg=String(pieza('09-navegacion.js',{window:{}},arranque09()).junctionGuidance);
  assert(jg.includes("else if(ahead<=dYa)fase='3'"),'la fase del cruce empieza en dYa, no en 0');
 });

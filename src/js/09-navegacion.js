@@ -210,7 +210,7 @@ function junctionGuidance(p,accuracy,progress){
  progress=progress??progressOnRoute(p,false);
  estadoGuia.along=progress.along;estadoGuia.distancia=Math.round(progress.distance);
  const curvaConfirmada=confirmaMarchaCurva(routePoints,sentidoRuta,progress.along,accuracy>0&&accuracy<=35&&progress.distance<=25&&!progress.ambiguous,Date.now());
- const [d1,d2,dv,dYa]=distanciasDeAviso();
+ const [d1,d2,dv,dYa,dCurva]=distanciasDeAviso();
  if(progress.ambiguous||progress.distance>25||!avanzaPorLaRuta(progress.along,Date.now())){
   if(junctionActive>=0)resetJunctionView();return;
  }
@@ -334,7 +334,7 @@ function junctionGuidance(p,accuracy,progress){
  }
  // Solo suena el cruce que está mostrando la ficha.
  if(turn.curvaNueva){
-  if(ahead<=10&&!junctionWarned.has(j+':curva')){
+  if(ahead<=dCurva&&!junctionWarned.has(j+':curva')){
    junctionWarned.add(j+':curva');
    hablarGiro('Sigue por este camino, que curva a la '+lado,siguienteManiobra(lista,turn,progress.along,sentidoRuta));
   }

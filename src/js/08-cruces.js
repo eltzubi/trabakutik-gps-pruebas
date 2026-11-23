@@ -39,7 +39,20 @@ function distanciasDeAviso(){
          // El cuarto: donde se dice «… ahora». Dos segundos ANTES del cruce
          // (4-12 m), no encima: con el retraso del GPS y de la voz caia ya
          // dentro o pasado el giro. Igual que avisoYa() del servicio.
-         Math.min(Math.min(30,Math.max(8,v*3))-2,Math.min(12,Math.max(4,v*2)))];
+         Math.min(Math.min(30,Math.max(8,v*3))-2,Math.min(12,Math.max(4,v*2))),
+         // EL QUINTO ES PARA LAS CURVAS, Y ANTES ERAN DIEZ METROS FIJOS.
+         // El punto de una curva es donde mas se dobla el track, y se mide
+         // con 12 m a cada lado: la ENTRADA cae 12 m antes de ese punto, asi
+         // que avisar a 10 m del punto es avisar DENTRO de la curva. Y diez
+         // metros no miran la velocidad: en bici cuesta abajo a 60 km/h son
+         // seis decimas de segundo. El autor, el 23 de noviembre de 2026:
+         // «tiene que avisar con antelacion, cuando estoy entrando o antes
+         // de entrar en la curva, no cuando estoy en la mitad; en la mitad
+         // ya se yo que tengo que girar, lo veo». Pidio cinco segundos, y
+         // dijo con que velocidades va: coche a 35-40 km/h y bici cuesta
+         // abajo hasta 60. Son los 12 m de la entrada mas cinco segundos de
+         // marcha: 18 m andando, 37 en bici a 18 km/h, 67 a 40 y 95 a 60.
+         Math.min(120,Math.max(18,12+v*5))];
 }
 // Los pitidos de una tanda se programan todos de golpe para que suenen
 // seguidos. Se guardan para poder cortarlos: si no, al poner silencio

@@ -1249,6 +1249,18 @@ public class TrackingService extends Service implements LocationListener {
  // Dos segundos de marcha, entre 4 y 12 m, y siempre por debajo del aviso
  // corto para que este no se quede sin sitio.
  double avisoYa(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(avisoCorto()-2,Math.min(12,Math.max(4,v*2)));}
+ // LA CURVA SE AVISABA A DIEZ METROS FIJOS, QUE ES DENTRO DE LA CURVA. El
+ // punto de una curva es donde mas se dobla el track, y se mide con 12 m a
+ // cada lado: la ENTRADA cae 12 m antes de ese punto, asi que avisar a 10 m
+ // del punto es avisar 2 m DENTRO. Y diez metros no miran la velocidad: en
+ // bici cuesta abajo a 60 km/h son seis decimas de segundo. El autor, el 23
+ // de noviembre de 2026: «tiene que avisar con antelacion, cuando estoy
+ // entrando o antes de entrar en la curva, no cuando estoy en la mitad; en la
+ // mitad ya se yo que tengo que girar, lo veo». Pidio cinco segundos, y dijo
+ // con que velocidades va: coche a 35-40 km/h y bici cuesta abajo hasta 60.
+ // Son los 12 m de la entrada mas cinco segundos de marcha: 18 m andando, 37
+ // en bici a 18 km/h, 67 a 40 km/h y 95 bajando a 60.
+ double avisoCurva(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(120,Math.max(18,12+v*5));}
  // Cual de los giros de la ventana es «el tuyo». Manda el que tienes
  // DELANTE y mas cerca; uno ya pasado solo gana si lo acabas de cruzar,
  // que es para lo que existe el suelo negativo de la ventana: que no se
@@ -1357,7 +1369,7 @@ public class TrackingService extends Service implements LocationListener {
      // reves con la lista de ida el numero no vale, y sin el diria «sal a la
      // izquierda» en una recta: entonces, nada (revision con GPT).
      boolean rectaSinNumero=tipo==5&&salida==0&&giro.length>4&&giro[4]==1;
-     if(curvaNueva&&ahead<=10&&warnedTurns.add((usaReves?"r":"")+mejor+":curva"))
+     if(curvaNueva&&ahead<=avisoCurva()&&warnedTurns.add((usaReves?"r":"")+mejor+":curva"))
       hablaGiro("Sigue por este camino, que curva a la "+(lado<0?"izquierda":"derecha"),siguienteManiobra(turns,mejor,usaReves,along));
      if(fase!=null&&!rectaSinNumero){
       String clave=(usaReves?"r":"")+mejor+":"+fase;

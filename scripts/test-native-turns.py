@@ -76,7 +76,7 @@ public class NativeTurnsTest {
  ' boolean confirmaMarchaCurva(double along,boolean fiable)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
  ' String siguienteManiobra(ArrayList<double[]> turns,int actual,boolean usaReves,double along)',
- ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' double avisoYa()',
+ ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' double avisoYa()',' double avisoCurva()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' static int gradosDelGiro(int tipo)',' static String textoCorto(int lado,int tipo,int salida)',
@@ -383,12 +383,20 @@ public class NativeTurnsTest {
   c.turns.clear();
   c.turns.add(new double[]{10,-1,0,0,0,1});
   c.turns.add(new double[]{12,1,0,0,0,1});
-  for(int m:new int[]{60,72,89})c.checkTurns(new Location(m));
-  require(c.dicho.isEmpty(),"Las curvas no avisan de lejos");
-  for(int m:new int[]{93,97,101,113,117})c.checkTurns(new Location(m));
-  require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda","Sigue por este camino, que curva a la derecha")),"Dos curvas cercanas: "+c.dicho);
+  // CINCO SEGUNDOS ANTES DE ENTRAR EN LA CURVA, no diez metros fijos. Aqui
+  // la velocidad es 10 m/s, asi que avisoCurva() son 12+50 = 62 m: la curva
+  // del metro 100 se canta a partir del metro 38 y NO antes.
+  for(int m:new int[]{10,22,30})c.checkTurns(new Location(m));
+  require(c.dicho.isEmpty(),"La curva no se canta a 70 m, que son siete segundos: "+c.dicho);
+  c.checkTurns(new Location(40));
+  require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda","Siguiente curva a 80 metros")),
+    "a 60 m de la curva, cinco segundos antes de entrar: "+c.dicho);
+  // La segunda del par espera a ser la de delante: hasta entonces manda la
+  // primera, y por eso se dice «siguiente curva» al cantar la primera.
+  for(int m:new int[]{60,80,100,108})c.checkTurns(new Location(m));
+  require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda","Siguiente curva a 80 metros","Sigue por este camino, que curva a la derecha")),"Dos curvas cercanas: "+c.dicho);
   require(c.beeps==0,"El aviso de curva nuevo tiene una sola locución");
-  System.out.println("PASS: curvas separadas 20 m, una locución por curva");
+  System.out.println("PASS: la curva se canta cinco segundos antes de entrar, una locución por curva");
   c=setup();c.turns.clear();c.turns.add(new double[]{10,-1,0,0,0,1});
   for(int m:new int[]{55,70,85,101,103})c.checkTurns(new Location(m,25));
   require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda")),"Con 25 m de precisión y lectura pasada 1 m avisa una vez: "+c.dicho);
