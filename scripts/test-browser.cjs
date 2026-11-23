@@ -138,9 +138,18 @@ async function setup(context) {
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("dialog", (dialog) => dialog.accept());
     await page.goto(base + "nuevo.html");
-    await page.waitForFunction(() =>
-      document.querySelector(".leaflet-container"),
-    );
+    // SI LA PAGINA SE MUERE AL CARGAR, DECIR POR QUE (23 nov 2026). El aviso de
+    // errores de JavaScript estaba al final del bloque, 250 lineas mas abajo:
+    // una pagina que no arranca no llega nunca ahi y esto se quedaba esperando
+    // a Leaflet treinta segundos para morir con «Timeout exceeded», sin una
+    // palabra del motivo. Paso hoy con un «const» repetido entre dos piezas y
+    // costo tres minutos a ciegas. Se mira aqui, en cuanto carga.
+    try {
+      await page.waitForFunction(() => document.querySelector(".leaflet-container"));
+    } catch (e) {
+      assert.deepEqual(errors, [], "la página no arranca");
+      throw e;
+    }
     // El vigilante tarda cinco segundos: comprobar su efecto real, no solo la carga.
     await page.waitForTimeout(5300);
     assert(
