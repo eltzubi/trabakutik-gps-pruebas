@@ -4707,6 +4707,33 @@ function aplicaZona(z,pet,primera){
 // giros del trazado fino cuando el servicio aun tiene el general, apuntan a
 // otro sitio. Por eso esto esta aparte y lo llama tambien syncNativeRoute,
 // justo despues de escribir los puntos.
+// LOS RAMALES QUE TE PUEDEN ENGAÑAR (23 nov 2026). Lo pidio el autor para la
+// pantalla del cruce: «mas que nada para ver que no me equivoco en el cruce,
+// por si hay un ramal; lo justo para ver cuantos ramales hay».
+// De las ramas del nodo se quitan las DOS QUE SON TUYAS -por donde llegas y
+// por donde sales- y queda lo que de verdad puede confundir. Si no queda
+// ninguna, el cruce no tiene perdida y no hace falta dibujar nada.
+// Los rumbos van en grados enteros: son tres o cuatro numeros por cruce.
+const RAMAL_TUYO=35;     // a menos de esto, esa rama es por la que vas
+function ramalesQueConfunden(j,pts){
+ const n=j&&j.nodo,grupos=Array.isArray(n)?n[2]:null;
+ if(!Array.isArray(grupos)||!Array.isArray(pts)||!Number.isFinite(j.i))return [];
+ if(typeof bearingBetween!=='function')return [];
+ const todas=[];
+ for(const g of grupos)for(const r of g)if(Number.isFinite(r))todas.push((r+360)%360);
+ if(todas.length<3)return [];
+ const k=Math.max(1,Math.min(pts.length-2,j.i));
+ const antes=pts[Math.max(0,k-6)],aqui=pts[k],despues=pts[Math.min(pts.length-1,k+6)];
+ const llega=(bearingBetween(antes,aqui)+180)%360,sale=bearingBetween(aqui,despues);
+ const dif=(a,b)=>{const d=Math.abs(a-b)%360;return d>180?360-d:d};
+ const mias=[];
+ for(const mio of [llega,sale]){
+  let mejor=null;
+  for(const r of todas)if(!mias.includes(r)&&(mejor===null||dif(r,mio)<dif(mejor,mio)))mejor=r;
+  if(mejor!==null&&dif(mejor,mio)<=RAMAL_TUYO)mias.push(mejor);
+ }
+ return todas.filter(r=>!mias.includes(r)).map(Math.round);
+}
 function enviaGirosNativos(){
  if(!window.TrabakutikAndroid?.setJunctions)return;
  try{
@@ -4741,6 +4768,10 @@ function enviaGirosNativos(){
    if(j.rotonda&&j.recto)o.rr=1;
    if(j.hito)o.ht=j.hito;
    if(j.ramales)o.br=j.ramales.map(p=>p.slice(0,2).map(v=>Number(v.toFixed(6))));
+   // «rb»: los rumbos de los ramales que NO son el tuyo, para la pantalla del
+   // cruce. Si no hay ninguno, no se manda: el cruce no tiene perdida.
+   const confunden=ramalesQueConfunden(j,typeof routePoints==='undefined'?null:routePoints);
+   if(confunden.length)o.rb=confunden;
    return o;
   }));
   // Una rotonda que se cruza RECTO solo se avisa con su numero de salida, y
@@ -5888,7 +5919,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={juntaAvisosPegados,juntaAvisosDelMismoSitio,teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={juntaAvisosPegados,ramalesQueConfunden,juntaAvisosDelMismoSitio,teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }

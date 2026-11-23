@@ -288,3 +288,35 @@ test('un nudo calla las curvas, pero no un cruce que está en el mapa',()=>{
  assert.deepEqual(quitaCurvasDeNudos([b],[],nudo),[],'en el aparcamiento, no');
  assert.deepEqual(quitaCurvasDeNudos([d],[],nudo),[d],'pero un cruce de verdad sí');
 });
+test('los ramales que te pueden engañar: los del nodo menos los tuyos',()=>{
+ // Para la pantalla del cruce. Lo pidió el autor: «por si hay un ramal, lo
+ // justo para ver cuántos ramales hay». De las ramas del nodo se quitan las
+ // dos que son tuyas -por donde llegas y por donde sales- y queda lo que de
+ // verdad puede confundir. Si no queda ninguna, el cruce no tiene pérdida.
+ // bearingBetween vive en la pieza 02; en la pagina comparten ambito.
+ const R=Math.PI/180;
+ const bearingBetween=(a,b)=>(Math.atan2(Math.sin((b[1]-a[1])*R)*Math.cos(b[0]*R),
+   Math.cos(a[0]*R)*Math.sin(b[0]*R)-Math.sin(a[0]*R)*Math.cos(b[0]*R)*Math.cos((b[1]-a[1])*R))/R+360)%360;
+ const c=pieza('08-cruces.js',{bearingBetween,R});
+ const M=111195,kx=Math.cos(43.2*Math.PI/180);
+ const recta=[];for(let m=-60;m<=60;m+=10)recta.push([43.2,-2.5+m/(M*kx)]);
+ // Vas al este por una recta; el nodo tiene tu vía (90/270) y un ramal al sur.
+ assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270],[180]]]},recta),[180]);
+ // Sin ramal de más, nada que dibujar.
+ assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270]]]},recta),[]);
+ // Dos ramales de más: los dos.
+ assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270],[180],[0]]]},recta),[180,0]);
+ // El cruce real del km 1,755 de Otzarreta: ramas 78, 258 y 216. El autor
+ // llega a 82 -o sea por la rama de 258- y sale a 139, que NO se parece a
+ // ninguna: sale por algo que OSM no tiene ahí. Así que las otras dos, la de
+ // 78 y la de 216, son ramales que puede coger por error, y las dos se
+ // dibujan. Es el cruce donde marcó «faltó aquí».
+ const otz=[[43.05188,-2.73760],[43.05186,-2.73750],[43.05185,-2.73740],[43.05178,-2.73733],[43.05170,-2.73727]];
+ const r=c.ramalesQueConfunden({i:2,nodo:[43.05185,-2.73740,[[78,258],[216]]]},otz);
+ assert.deepEqual(r,[78,216],'los dos ramales donde se puede equivocar');
+ // Sin datos, nada: ni se inventa ni revienta.
+ assert.deepEqual(c.ramalesQueConfunden({i:2},otz),[]);
+ assert.deepEqual(c.ramalesQueConfunden({i:2,nodo:[43,-2,null]},otz),[]);
+ assert.deepEqual(c.ramalesQueConfunden(null,otz),[]);
+ assert.deepEqual(c.ramalesQueConfunden({i:2,nodo:[43,-2,[[90,270],[180]]]},null),[]);
+});
