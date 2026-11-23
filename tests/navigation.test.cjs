@@ -1529,6 +1529,15 @@ test('«✋ Faltó aquí»: siempre a mano guiando, apunta el sitio, el aviso m�
  // Y al salir el «Sobraba», el de «Faltó» se aparta.
  c.buscaAvisoMarcable(lista,{along:1040});
  assert(!nodo('avisoMal').classList.contains('hidden')&&nodo('avisoFalta').classList.contains('hidden'));
+ // Y CON LA FICHA DEL GIRO DELANTE SIGUEN SALIENDO (23 nov 2026): antes se
+ // escondian con junctionActive>=0 y el autor se quedaba sin poder marcar
+ // justo el aviso que estaba sonando mal.
+ c.junctionActive=3;
+ c.buscaAvisoMarcable(lista,{along:1040});
+ assert(!nodo('avisoMal').classList.contains('hidden'),'«Sobraba» sale aunque haya ficha de giro');
+ c.avisoMarcable=null;c.pintaAvisoMal();
+ assert(!nodo('avisoFalta').classList.contains('hidden'),'«Faltó aquí» tambien');
+ c.junctionActive=-1;
 });
 
 test('el giro se oye despues del regreso, sin cortar el aviso ni perderse',()=>{

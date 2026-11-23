@@ -162,7 +162,7 @@ button{min-width:0}
 #map.con-giro .leaflet-bottom{bottom:var(--turn-alto,0px)}
 /* «✋ Sobraba»: despues de pasar un aviso, para apuntarlo si estaba de mas. */
 .aviso-mal{position:absolute;z-index:1050;left:50%;transform:translateX(-50%);bottom:30px;width:max-content;max-width:calc(100% - 24px);margin:0;padding:9px 14px;border-radius:18px;background:#0f1a20eb;color:#e6edf0;border:1px solid #3d8ea4;font-size:13px;font-weight:700;text-align:center;line-height:1.3;box-shadow:0 2px 10px #0008}
-.aviso-mal.hidden{display:none}
+.aviso-mal.hidden{display:none}#map.con-giro .aviso-mal{bottom:calc(26px + var(--turn-alto,0px))}
 .aviso-falta{left:12px;transform:none;font-size:12px;padding:7px 11px;border-color:#7a6a2f;opacity:.9}
 #appVersion.con-mano::after{content:" ✋"}
 #avisosTexto{width:100%;box-sizing:border-box;min-height:140px;font:12px/1.4 ui-monospace,monospace;background:#0b1820;color:#e6edf0;border:1px solid #2a3d4b;border-radius:10px;padding:8px;resize:vertical}
@@ -6164,14 +6164,21 @@ function buscaAvisoMarcable(lista,progress){
 }
 function pintaAvisoMal(){
  if(typeof $!=='function')return;const b=$('avisoMal');if(!b)return;
- const ver=botonAvisosActivo()&&!!avisoMarcable&&!(avisoMarcadoJ===avisoMarcable.j&&avisoMarcadoLista===avisoMarcable.lista)&&junctionActive<0;
+ // LOS BOTONES NO SE QUITAN CON LA FICHA DEL GIRO DELANTE. Se escondian
+ // mientras hubiera ficha (junctionActive>=0) para no taparla, y eso dejaba
+ // sin marcar justo el momento en que hace falta: el autor, el 23 de
+ // noviembre de 2026, con un aviso que le salio tarde y repetido cinco
+ // veces, «no me ha dado la opcion de sobra aqui o falta aqui». Ahora salen
+ // tambien con la ficha puesta, y el CSS los sube por encima de ella con
+ // la altura que ya publica el mapa (--turn-alto).
+ const ver=botonAvisosActivo()&&!!avisoMarcable&&!(avisoMarcadoJ===avisoMarcable.j&&avisoMarcadoLista===avisoMarcable.lista);
  b.classList.toggle('hidden',!ver);
  if(ver)b.textContent='✋ Sobraba: «'+avisoMarcable.texto+'»';
  // «✋ FALTO AQUI» (18 nov 2026): el autor oia pocos avisos y el ✋ solo
  // apuntaba los que sobran. Siempre a mano mientras se sigue una ruta (solo
  // con el ✋ activado), y se aparta cuando sale el de «Sobraba» o un giro.
  const f=$('avisoFalta');
- if(f)f.classList.toggle('hidden',!(botonAvisosActivo()&&typeof guiaIniciada==='function'&&guiaIniciada()&&!ver&&junctionActive<0));
+ if(f)f.classList.toggle('hidden',!(botonAvisosActivo()&&typeof guiaIniciada==='function'&&guiaIniciada()&&!ver));
 }
 // Apunta tu posicion como un aviso que FALTO, con lo necesario para saber
 // por que: el aviso calculado mas cercano (si lo habia, el problema no es la
