@@ -125,7 +125,29 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
 
 ## Reglas permanentes del autor
 
-- **Cuando el autor pide un cambio, en cuanto esta resuelto y comprobado se sube sin volver a preguntar.** Lo pidio el 15 de noviembre de 2026: «si te pido cambios, subes; no tienes que estar pidiendo otra vez "sube", siempre que hayas solucionado algo y no te hayas inventado nada, sin avisarme». Vale para lo que el pide, no para cambios que se te ocurran a ti: esos se proponen y se espera.
+- **Cuando el autor pide un cambio, en cuanto esta resuelto y comprobado se sube sin volver a preguntar.** Lo pidio el 15 de noviembre de 2026: «si te pido cambios, subes; no tienes que estar pidiendo otra vez "sube", siempre que hayas solucionado algo y no te hayas inventado nada, sin avisarme».
+
+- **Y desde el 23 de noviembre de 2026, tampoco hace falta pedirle permiso
+  para arreglar un fallo que veas tu.** Sus palabras: «no hace falta que tenga
+  que pedir yo nada; si ves errores, los solucionas, siempre que sea para
+  mejor. No hace falta que te dé permiso, ya lo tienes. Solo quiero que el
+  navegador vaya 100 × 100 seguro y bien. No es que te busques un trabajo que
+  sea cómodo. Haz lo que haga falta, pero siempre asegurando que todo funcione
+  perfectamente». Lo que eso NO cambia: el orden de siempre -medir antes de
+  tocar, un cambio, una bateria entera en verde y un push-, la regla de los
+  avisos (la marca ✋ se apunta antes de tocar la regla) y que un cruce
+  revisado no se cambia sin que lo diga el. Un fallo se arregla; un capricho
+  de diseño, no. Y si una idea cambia lo que el ya decidio, se le pregunta.
+
+- **El creador tiene que facilitar trazar la ruta.** Lo dijo el 23 de
+  noviembre de 2026: «a la hora de crear tiene que facilitar trazar la ruta,
+  teniendo en cuenta todas las opciones que puedan ocurrir al guiarnos luego».
+  Las dos mitades cuentan: dibujar tiene que ser fácil -nada de obligarle a
+  dar puntos cortísimos- y lo que salga tiene que guiar bien después. Cuando
+  las dos chocan, se busca la condición que separa los dos casos, no se elige
+  una. Ejemplo hecho: dos calzadas juntas en la misma dirección son una sola
+  al dibujar, y lo que de verdad influiría en el cruce lo sigue parando
+  `calculaCalzada`.
 
 - **Un aviso que falla se apunta ANTES de tocar la regla** (lo pidió el autor
   el 22 de noviembre de 2026: «no podemos estar siempre retocando»). Siempre
