@@ -63,12 +63,6 @@ function applyNearbyPosition(p){
  notice(nearbyCount?nearbyCount+' rutas cerca de ti · de la que más cerca te pasa a la que menos':'No hay ninguna ruta con salida a 4 km ni que te pase a 1,5 km');
 }
 function showRoutesIfOpen(){if(!$('routeDialog').classList.contains('hidden'))showRoutes()}
-function nearbyError(err){
- if(!nearbyOnly)return;
- nearbyOrigin=null;nearbyLast=null;
- updateNearbyLayers();
- warnGps(err);
-}
 function quickNativePosition(){
  try{
   if(!window.TrabakutikAndroid?.getLastLocation)return null;
@@ -78,27 +72,6 @@ function quickNativePosition(){
   if(!Number.isFinite(info.lat)||!Number.isFinite(info.lon)||info.age>120000||info.accuracy>150)return null;
   return [info.lat,info.lon];
  }catch(e){return null}
-}
-function locateNearby(){
- const cached=position||quickNativePosition();
- if(cached){applyNearbyPosition(cached);map.panTo(cached,{animate:false})}
- // Empezar a buscar ubicación inmediatamente, sin iniciar una grabación.
- if(!navigator.geolocation){if(!cached)nearbyError();return}
- navigator.geolocation.getCurrentPosition(pos=>{
-  if(!nearbyOnly||pos.coords.accuracy>150)return;
-  const p=[pos.coords.latitude,pos.coords.longitude];
-  position=p;applyNearbyPosition(p);map.panTo(p,{animate:false});
- },err=>{if(!cached)nearbyError(err)},{
-  enableHighAccuracy:false,maximumAge:15000,timeout:4500
- });
- // Afinar en segundo plano; no bloquear la pantalla esperando satélites.
- navigator.geolocation.getCurrentPosition(pos=>{
-  if(!nearbyOnly||pos.coords.accuracy>150)return;
-  const p=[pos.coords.latitude,pos.coords.longitude];
-  position=p;applyNearbyPosition(p);map.panTo(p,{animate:false});
- },err=>{if(!nearbyOrigin)nearbyError(err)},{
-  enableHighAccuracy:true,maximumAge:10000,timeout:12000
- });
 }
 // Flechas pequeñas sobre el recorrido azul, siguiendo el orden real del GPX.
 let directionArrows=L.layerGroup().addTo(map);
