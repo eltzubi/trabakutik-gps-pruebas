@@ -689,7 +689,9 @@ function onFix(pos){
    if(alerted){liveProfileAlong=null;liveNativeMetrics=null;}
   }
   paintNavigationMetrics();
-  if(alerted)notice('Fuera del recorrido · vuelve a la línea cian')
+  // El que decidio updateOffRoute, no uno fijo: si no, el aviso bueno de
+  // salida -«a 320 metros hacia el noreste esta la salida»- duraba un segundo.
+  if(alerted)notice(textoFuera||'Fuera del recorrido · vuelve a la línea cian')
  }else if(mode==='nav')notice(recording?'Grabando · sin ruta activa para navegar':'Ubicación encontrada · selecciona una ruta')}
 // Recupera los puntos capturados por Android mientras la pantalla estuvo apagada.
 window.trabakutikSyncNative=()=>{

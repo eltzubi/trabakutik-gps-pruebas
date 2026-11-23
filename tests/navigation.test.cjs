@@ -1698,3 +1698,23 @@ test('El «próximo cruce» de arriba va por la ruta, no en línea recta',()=>{
  assert.equal(proximoCruceAviso([{along:200}],NaN,1),null);
  assert.equal(proximoCruceAviso([{},{along:200}],0,1).falta,200);
 });
+test('El aviso bueno de salida no se borra en la siguiente posición (23 nov 2026)',()=>{
+ // Al salir de casa, con la ruta empezando lejos, updateOffRoute calcula un
+ // aviso util: «a 320 metros hacia el noreste esta la salida de la ruta». Lo
+ // ponia en pantalla y onFix lo repisaba un segundo despues con el generico.
+ let ahora=1e6;const dicho=[];
+ const c=pieza('07-servicio.js',{mode:'nav',routePoints:[[0.01,0],[0.01,0.01]],recording:true,
+  navegaNativo:true,gpsApagadoPorTi:false,alerted:false,onRouteSeen:false,farSince:0,
+  position:[0,0],notice:t=>dicho.push(t),Date:{now:()=>ahora}});
+ for(let k=0;k<5;k++){ahora+=1500;c.updateOffRoute(900,5,[0,0])}
+ assert.equal(c.alerted,true,'a 900 m del track, fuera');
+ assert.match(dicho[dicho.length-1],/^Estás fuera de ruta\. A \d+ metros hacia el \w+/,'el aviso con rumbo y distancia');
+ assert.equal(c.textoFuera,dicho[dicho.length-1],'y se guarda para poder repetirlo');
+ // Al volver a la ruta se olvida, para que no reaparezca en la salida siguiente.
+ ahora+=1500;c.updateOffRoute(3,5,[0.01,0]);
+ assert.equal(c.textoFuera,'');
+ // Y onFix repite ESE, no uno fijo.
+ const n9=fs.readFileSync(path.join(__dirname,'../src/js/09-navegacion.js'),'utf8');
+ assert(n9.includes("if(alerted)notice(textoFuera||'Fuera del recorrido"),
+   'onFix tiene que repetir el aviso que decidió updateOffRoute');
+});
