@@ -5259,8 +5259,12 @@ function computeJunctions(){
  aplicaHitosDeAviso(ida);
  if(vuelta)aplicaHitosDeAviso(vuelta);
  confirmaRamalWeb.reinicia();
- junctions=juntaAvisosPegados(ida.filter(j=>!j.entradaLateral));routeCumulative=cum;
- junctionsReves=vuelta?juntaAvisosPegados(vuelta.filter(j=>!j.entradaLateral)):null;
+ // Primero las tandas del mismo lado y DESPUES los que caen en el mismo
+ // sitio. Al reves no: quitando uno, una tanda de tres se quedaba en dos,
+ // dejaba de ser tanda y volvian a sonar dos avisos donde antes sonaba uno.
+ const limpia=l=>juntaAvisosDelMismoSitio(juntaAvisosPegados(l.filter(j=>!j.entradaLateral)));
+ junctions=limpia(ida);routeCumulative=cum;
+ junctionsReves=vuelta?limpia(vuelta):null;
  junctionWarned.clear();junctionZoomOnce.clear();
  if(typeof updateDirectionArrows==='function')updateDirectionArrows();
  enviaGirosNativos();
@@ -5281,6 +5285,32 @@ function computeJunctions(){
 // Las rotondas NO se juntan ni se dejan juntar: su aviso lleva el numero de
 // salida, que es informacion que no esta en ningun otro.
 const AVISOS_JUNTOS_M=60,AVISOS_JUNTOS_MIN=3;
+// Y DESPUES, LOS QUE CAEN EN EL MISMO SITIO (23 nov 2026). Dos avisos a menos
+// de MISMO_SITIO_M no son dos decisiones: es el mismo punto contado dos
+// veces. Medido en las 75 rutas: 24 parejas, y algunas se contradicen -en
+// baldaburuakarregi km 16,28, «curva derecha 153°» y «curva izquierda 179°»
+// en el mismo metro-. Ni andando caben dos frases en cinco metros: a 4,5
+// km/h son cuatro segundos y una frase tarda tres; en bici, un segundo.
+// Se queda el giro mas grande, que es la maniobra de verdad. Una rotonda no
+// se junta nunca, por su numero de salida, y esto corre DESPUES de juntar
+// las tandas del mismo lado: al reves, quitar uno dejaba una tanda de tres
+// en dos, dejaba de ser tanda y volvian a sonar dos donde sonaba uno.
+const MISMO_SITIO_M=5;
+function juntaAvisosDelMismoSitio(lista){
+ if(!Array.isArray(lista)||lista.length<2)return lista;
+ const out=[];
+ for(let i=0;i<lista.length;){
+  let f=i+1;
+  while(f<lista.length&&lista[f]&&lista[f-1]&&!lista[f].rotonda&&!lista[f-1].rotonda
+     &&Math.abs(lista[f].along-lista[f-1].along)<MISMO_SITIO_M)f++;
+  const juntos=lista.slice(i,f);
+  out.push(juntos.length>1
+   ?juntos.reduce((a,b)=>Math.abs(b.angle||0)>Math.abs(a.angle||0)?b:a)
+   :juntos[0]);
+  i=f;
+ }
+ return out;
+}
 function juntaAvisosPegados(lista){
  if(!Array.isArray(lista)||lista.length<AVISOS_JUNTOS_MIN)return lista;
  // El lado QUE SE OYE, no el de dentro: en una herradura «direction» es
@@ -5830,7 +5860,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={juntaAvisosPegados,teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={juntaAvisosPegados,juntaAvisosDelMismoSitio,teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }

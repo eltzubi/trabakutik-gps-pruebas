@@ -288,17 +288,67 @@ function ancla(slug,sentido,kmTexto){
  for(const a of r[sentido].filter(a=>Math.abs(a.m-m)<=150))console.log(`  km ${km(a.m)}: ${texto(a.d)}`);
 }
 
+// --- 2 bis. dos avisos no pueden caer en el mismo sitio ----------------------
+// Un aviso a menos de 5 m del anterior no es otra decision: es el mismo punto
+// contado dos veces, y no cabe decirlo. Antes habia 24 parejas asi en las 75
+// rutas, algunas contradiciendose. Esto no deja que vuelvan.
+const MISMO_SITIO_M=5;
+function miraElMismoSitio(){
+ const malos=[];
+ for(const slug of rutas()){
+  const r=avisosDe(slug);
+  for(const s of ['ida','vuelta']){
+   const o=r[s].slice().sort((a,b)=>a.m-b.m);
+   for(let i=1;i<o.length;i++)
+    if(Math.abs(o[i].m-o[i-1].m)<MISMO_SITIO_M)
+     malos.push(`${slug} ${s} km ${km(o[i].m)}: «${texto(o[i-1].d)}» y «${texto(o[i].d)}» a ${Math.round(Math.abs(o[i].m-o[i-1].m))} m`);
+  }
+ }
+ for(const m of malos)console.log('  MISMO SITIO  '+m);
+ console.log(malos.length?`Dos avisos en el mismo sitio: ${malos.length}`:'Mismo sitio: ninguno');
+ return malos.length;
+}
+
+// --- 3. el reparto, para decidir si una regla tiene que separarse ------------
+// «Las normas tendrian que ser diferentes en algunas; la misma situacion no va
+// para todos» (el autor, 23 nov 2026). Esto no cambia nada: enseña como se
+// reparten hoy los avisos entre las rutas de bici y las de andar, por
+// kilometro y por tipo de decision. Es lo que hay que mirar antes de separar
+// una regla, y otra vez despues.
+function reparto(){
+ const act=actividadDe(),tot={};
+ for(const slug of rutas()){
+  const a=act[slug]||'(sin actividad)';
+  const r=avisosDe(slug);
+  const t=tot[a]||(tot[a]={rutas:0,km:0,avisos:0,tipos:{}});
+  t.rutas++;t.km+=r.cum[r.cum.length-1]/1000;
+  for(const s of ['ida','vuelta'])for(const x of r[s]){
+   t.avisos++;
+   const clave=x.d==='callar'?'callar':x.d.accion;
+   t.tipos[clave]=(t.tipos[clave]||0)+1;
+  }
+ }
+ for(const a of Object.keys(tot).sort()){
+  const t=tot[a];
+  console.log(`\n${a.toUpperCase()}: ${t.rutas} rutas, ${t.km.toFixed(0)} km, ${t.avisos} avisos`
+    +` (ida y vuelta) = ${(t.avisos/(2*t.km)).toFixed(1)} avisos por km`);
+  for(const [k,n] of Object.entries(t.tipos).sort((x,y)=>y[1]-x[1]))
+   console.log(`   ${String(n).padStart(5)}  ${(100*n/t.avisos).toFixed(1).padStart(5)}%  ${k}`);
+ }
+}
+
 if(require.main===module){
  if(!hayDatos()){console.log(`AVISO: no estan los datos de Rutas-Mallabia en ${DATOS} (o RUTAS_MALLABIA=<ruta>). No se ha comprobado nada.`);process.exit(2)}
  const a=process.argv.slice(2);
  if(a[0]==='--ancla'){ancla(a[1],a[2]||'ida',a[3]);process.exit(0)}
+ if(a[0]==='--reparto'){reparto();process.exit(0)}
  if(a[0]==='--escribe-foto'){
   fs.mkdirSync(path.dirname(FOTO),{recursive:true});
   const f=fotoDeHoy();
   fs.writeFileSync(FOTO,JSON.stringify(f,null,0).replace(/("[a-z0-9_-]+":\{"huella")/g,'\n$1')+'\n');
   console.log(`Foto escrita: ${Object.keys(f.rutas).length} rutas`);process.exit(0);
  }
- const mal=compruebaRevisados(),cambios=comparaFoto();
- process.exit(mal||cambios?1:0);
+ const mal=compruebaRevisados(),juntos=miraElMismoSitio(),cambios=comparaFoto();
+ process.exit(mal||juntos||cambios?1:0);
 }
 module.exports={decision,texto,cumple,encuentra,rumbos,avisosDe};

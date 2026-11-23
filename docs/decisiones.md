@@ -1643,3 +1643,41 @@ de pedales. Y el sentido manda, como en `junctionGuidance`: yendo al revés
 **Las coordenadas duraron una tarde.** Se probaron en una cuarta línea debajo
 y el autor las quitó el mismo día: «no me hacen falta, el SOS me las da». La
 ficha vuelve de 115 a 96 px de alto.
+
+## Dos avisos en el mismo metro son uno (23 nov 2026)
+
+Comprobando invariantes sobre las 75 rutas —cosas que nunca pueden pasar—
+aparecieron **24 parejas de avisos a menos de 5 m**, y algunas se
+contradicen:
+
+```
+baldaburuakarregi ida km 16,28:  curva derecha 153°  +  curva izquierda 179°
+trabakuamallabia  vuelta km 0,73: gira izquierda 33° +  gira derecha 38°
+egoarbitza        ida km 9,73:   sigue izquierda 11° +  gira derecha 42°
+karabieta         ida km 17,58:  gira derecha 80°    +  gira derecha 63°
+```
+
+No son dos decisiones: es el mismo punto contado dos veces, por dos nodos de
+OSM pegados o por un nodo y la forma del track. **Y no caben**: a 4,5 km/h,
+cinco metros son cuatro segundos y una frase tarda tres; en bici, un segundo.
+
+**La regla: dos avisos a menos de 5 m se quedan en uno, el del giro más
+grande.** Las rotondas no, por su número de salida.
+
+**El orden importa.** Esto corre DESPUÉS de juntar las tandas de tres o más
+del mismo lado. Al revés —probado— quitar un aviso dejaba una tanda de tres
+en dos, dejaba de ser tanda y volvían a sonar dos donde sonaba uno: salían
+seis avisos nuevos.
+
+Resultado en las 75 rutas: **24 avisos menos, cero nuevos**, cinco cambian de
+texto (gana el giro grande) y los cinco cruces revisados siguen bien.
+
+**Un caso queda flojo y se deja escrito**: en trabakuamallabia vuelta km 0,73
+son 33° a la izquierda y 38° a la derecha, que casi se anulan —el giro neto
+son 5°, o sea recto— y la regla se queda con «gira a la derecha». Lo correcto
+sería el ángulo neto, pero no hay con qué comprobarlo en el terreno y es un
+caso de 8.725: no se toca sin una marca ✋ que lo diga.
+
+**El instrumento se queda**: `node scripts/avisos-referencia.cjs` falla si
+vuelve a haber dos avisos a menos de 5 m, y su «reparto» dice cuántos avisos
+mueve un cambio en las rutas de andar y cuántos en las de bici, por separado.

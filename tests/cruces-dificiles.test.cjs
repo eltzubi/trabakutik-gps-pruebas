@@ -237,3 +237,33 @@ test('los avisos pegados del mismo lado se juntan en uno',()=>{
  const herraduras=c.juntaAvisosPegados([j(100,'vuelta',170,{hacia:'izquierda'}),j(150,'vuelta',160,{hacia:'derecha'})]);
  assert.equal(herraduras.length,2,'una herradura a la izquierda no se come otra a la derecha');
 });
+test('dos avisos en el mismo metro son uno: se queda el giro más grande',()=>{
+ // Medido en las 75 rutas publicadas: 24 parejas de avisos a menos de 5 m,
+ // y algunas contradiciéndose -«curva derecha 153°» y «curva izquierda 179°»
+ // en el mismo metro de baldaburuakarregi-. Ni andando caben dos frases en
+ // cinco metros: a 4,5 km/h son cuatro segundos y una frase tarda tres.
+ const {juntaAvisosDelMismoSitio}=pieza('08-cruces.js');
+ const j=(along,direction,angle,extra)=>({along,direction,angle,hacia:direction,...extra});
+ // La pareja contradictoria: se queda la de 179°.
+ const a=juntaAvisosDelMismoSitio([j(100,'derecha',153),j(100.4,'izquierda',179)]);
+ assert.equal(a.length,1);
+ assert.equal(a[0].angle,179);
+ // Del mismo lado, también: 63 y 119 son el mismo cruce.
+ const b=juntaAvisosDelMismoSitio([j(100,'izquierda',63),j(101,'izquierda',119)]);
+ assert.equal(b.length,1);assert.equal(b[0].angle,119);
+ // A 40 m son dos decisiones y se dicen las dos (caso 13).
+ const c=juntaAvisosDelMismoSitio([j(100,'izquierda',63),j(140,'izquierda',119)]);
+ assert.equal(c.length,2);
+ // Justo en el límite: 5 m ya no se juntan, 4,9 sí.
+ assert.equal(juntaAvisosDelMismoSitio([j(100,'izquierda',63),j(105,'izquierda',119)]).length,2);
+ assert.equal(juntaAvisosDelMismoSitio([j(100,'izquierda',63),j(104.9,'izquierda',119)]).length,1);
+ // Una rotonda no se junta nunca: lleva su número de salida.
+ const d=juntaAvisosDelMismoSitio([j(100,'derecha',40,{rotonda:true,salida:2}),j(101,'derecha',90)]);
+ assert.equal(d.length,2,'la rotonda se queda aparte');
+ // Y una cadena de tres pegados se queda en uno.
+ const e=juntaAvisosDelMismoSitio([j(100,'derecha',40),j(102,'izquierda',150),j(104,'derecha',60)]);
+ assert.equal(e.length,1);assert.equal(e[0].angle,150);
+ // Listas cortas o vacías, tal cual.
+ assert.equal(juntaAvisosDelMismoSitio([]).length,0);
+ assert.equal(juntaAvisosDelMismoSitio([j(1,'derecha',10)]).length,1);
+});
