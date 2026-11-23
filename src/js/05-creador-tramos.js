@@ -42,18 +42,50 @@ function planLocalMapa(coords){
 // su sentido, de la misma entrada a la misma salida. Un punto marcado DENTRO
 // de la rotonda no se toca: lo ha puesto el autor.
 const ROTONDA_MARGEN=6,ROTONDA_GIRO_MIN=15,ROTONDA_PASO=4;
+// LAS ROTONDAS DE FUERA DE MALLABIA TAMBIEN (23 nov 2026). «Vamos siempre por
+// el lado derecho de la carretera», y por eso existe rotondasPorLaDerecha.
+// Pero sus rotondas salian SOLO de cruces-zona.json, el cuadro de Mallabia:
+// creando una ruta en Gorbeia o en Otzarreta no habia ni una rotonda que
+// corregir y el planificador la rodeaba por el lado corto, que a pie es el
+// izquierdo. El navegador si se baja los cuadrados de 0,1 grados de Euskadi
+// (cargaTeselas); el creador no los miraba. Ahora si, y como el navegador:
+// solo cuando el trozo se sale del cuadro base, y con los cuadrados que ya
+// estan en memoria no se vuelve a pedir nada.
+let rotondasTeselas=[];
 function rotondasDelCreador(){
- try{return typeof zonaCruces!=='undefined'&&zonaCruces&&Array.isArray(zonaCruces.rotondas)?zonaCruces.rotondas:[]}
- catch(e){return []}
+ try{
+  const base=typeof zonaCruces!=='undefined'&&zonaCruces&&Array.isArray(zonaCruces.rotondas)?zonaCruces.rotondas:[];
+  if(!rotondasTeselas.length)return base;
+  const vistas=new Set(base.map(r=>r[0]+','+r[1]));
+  return base.concat(rotondasTeselas.filter(r=>!vistas.has(r[0]+','+r[1])));
+ }catch(e){return []}
+}
+async function cargaRotondas(pts){
+ if(typeof cargaZonaCruces==='function'&&(typeof zonaCruces==='undefined'||!zonaCruces))
+  await cargaZonaCruces().catch(()=>null);
+ if(!Array.isArray(pts)||pts.length<2)return;
+ if(typeof fueraDeZona!=='function'||typeof cargaTeselas!=='function')return;
+ const bbox=typeof zonaCruces!=='undefined'&&zonaCruces?zonaCruces.bbox:null;
+ if(bbox&&!fueraDeZona(pts,bbox))return;
+ const r=await cargaTeselas(pts).catch(()=>null);
+ const vistas=new Set(rotondasTeselas.map(x=>x[0]+','+x[1]));
+ for(const z of (r&&r.zonas)||[])for(const rot of z.rotondas||[]){
+  const k=rot[0]+','+rot[1];
+  if(!vistas.has(k)){vistas.add(k);rotondasTeselas.push(rot)}
+ }
 }
 // Que esten cargadas antes de calcular, sin esperar mas de un par de segundos.
 // Devuelve null si no hay nada que esperar: un await de mas cambia el orden
 // en que se cancela un calculo.
-function esperaRotondas(){
+function esperaRotondas(pts){
  try{
   if(typeof cargaZonaCruces!=='function')return null;
-  if(typeof zonaCruces!=='undefined'&&zonaCruces)return null;
-  return Promise.race([cargaZonaCruces().catch(()=>null),new Promise(ok=>setTimeout(ok,2500))]);
+  const hayBase=typeof zonaCruces!=='undefined'&&!!zonaCruces;
+  const fuera=hayBase&&Array.isArray(pts)&&pts.length>=2
+    &&typeof fueraDeZona==='function'&&typeof cargaTeselas==='function'
+    &&fueraDeZona(pts,zonaCruces.bbox);
+  if(hayBase&&!fuera)return null;
+  return Promise.race([cargaRotondas(pts),new Promise(ok=>setTimeout(ok,2500))]);
  }catch(e){return null}
 }
 function rumboDesde(c,p){return (Math.atan2((p[1]-c[1])*Math.cos(c[0]*Math.PI/180),p[0]-c[0])*180/Math.PI+360)%360}
@@ -433,7 +465,7 @@ async function planificaTramoMapa(desde,hasta){
  $('saveCreated').disabled=true;estadoMapaGps('Calculando tramo…');
  const timer=setTimeout(()=>controller.abort(),30000);
  try{
-  {const espera=esperaRotondas();if(espera)await espera}
+  {const espera=esperaRotondas([desde,hasta]);if(espera)await espera}
   const result=await solicitaMapaGps([desde,hasta],controller.signal);
   if(version!==calculoMapaGps)return;
   try{await alturasTerrenoGps(result,controller.signal);}catch(e){}
@@ -474,7 +506,7 @@ async function planificaMapaGps(coords){
  $('saveCreated').disabled=true;estadoMapaGps('Calculando recorrido…');
  const timer=setTimeout(()=>controller.abort(),30000);
  try{
-  {const espera=esperaRotondas();if(espera)await espera}
+  {const espera=esperaRotondas(coords);if(espera)await espera}
   const result=await solicitaMapaGps(coords,controller.signal);
   if(version!==calculoMapaGps)return;
   aplicaMapaGps(result);$('saveCreated').disabled=true;estadoMapaGps('Calculando desnivel…');
@@ -1012,4 +1044,4 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={mismaCalzada,ofreceRectaTrasFallo,rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={mismaCalzada,cargaRotondas,esperaRotondas,ofreceRectaTrasFallo,rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};

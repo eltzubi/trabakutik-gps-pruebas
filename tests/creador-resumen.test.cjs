@@ -106,3 +106,38 @@ test('Dos calzadas juntas en la misma dirección son una sola (23 nov 2026)',()=
  assert(/dist\(result\.anchors\[0\],coords\[0\]\)>3\s*\n?\s*&&!mismaCalzada\(coords\[0\],result\.anchors\[0\],rumbo\)/.test(n05),
    'el «otra calzada» tiene que consultar mismaCalzada antes de saltar');
 });
+test('El creador corrige las rotondas también fuera de Mallabia (23 nov 2026)',()=>{
+ // «Vamos siempre por el lado derecho de la carretera», y para eso está
+ // rotondasPorLaDerecha. Pero sus rotondas salían solo del cuadro de
+ // Mallabia: creando en Gorbeia no había ni una que corregir y el
+ // planificador rodeaba por el lado corto, que a pie es el izquierdo.
+ const bbox=[43.1,-2.72,43.42,-2.34];
+ const dentro=[[43.2,-2.5],[43.21,-2.49]],fuera=[[43.05,-2.73],[43.06,-2.74]];
+ let pedidas=null;
+ const caja=()=>{
+  const zona={bbox,rotondas:[[43.2,-2.5,18]],puntos:[]};
+  return pieza('05-creador-tramos.js',{
+   zonaCruces:zona,cargaZonaCruces:()=>Promise.resolve(zona),
+   fueraDeZona:(pts,b)=>pts.some(p=>p[0]<b[0]||p[0]>b[2]||p[1]<b[1]||p[1]>b[3]),
+   cargaTeselas:pts=>{pedidas=pts;return Promise.resolve({zonas:[{rotondas:[[43.05,-2.73,22]]}],faltan:0,fuera:0})}});
+ };
+ // Dentro del cuadro: no se pide nada, como siempre. Un await de más cambia
+ // el orden en que se cancela un cálculo.
+ const c1=caja();
+ assert.equal(c1.esperaRotondas(dentro),null,'dentro no hay nada que esperar');
+ assert.equal(pedidas,null,'y no se piden cuadrados');
+ // Fuera: se piden los cuadrados y sus rotondas se suman a las del creador.
+ const c2=caja();
+ const espera=c2.esperaRotondas(fuera);
+ assert(espera&&typeof espera.then==='function','fuera sí hay que esperar');
+ return espera.then(()=>{
+  assert.deepEqual(pedidas,fuera,'se piden los cuadrados del trozo que se dibuja');
+  const r=c2.rotondasDelCreador();
+  assert.equal(r.length,2,'la del cuadro base y la del cuadrado');
+  assert.deepEqual(r[1],[43.05,-2.73,22]);
+  // Y no se repiten al volver a pasar por ahí.
+  return c2.cargaRotondas(fuera).then(()=>{
+   assert.equal(c2.rotondasDelCreador().length,2,'sin repetir');
+  });
+ });
+});
