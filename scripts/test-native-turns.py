@@ -39,7 +39,7 @@ public class NativeTurnsTest {
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
- double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}
+ double avisoLargo(){return 80;}double avisoCorto(){return 30;}double avisoVoz(){return 200;}
  static class ToneGenerator{static final int TONE_PROP_ACK=2,TONE_PROP_BEEP=1;}
  void updateNotice(){}double posActual=Double.NaN,tresEn=Double.NaN;void pitidos(int n,int ms){beeps++;if(n==3&&Double.isNaN(tresEn))tresEn=posActual;}void pitidos(int n,int ms,int t){beeps++;}
  void pitidos(int n,int ms,int t,int volumen){require(t==ToneGenerator.TONE_PROP_BEEP&&volumen==100,"giro a volumen máximo");pitidos(n,ms);}
@@ -206,7 +206,7 @@ public class NativeTurnsTest {
   require(c.siguienteManiobra(c.turns,2,false,200).equals("Siguiente cruce a 80 metros"),"distancia al volver");
   NativeTurnsTest fases=setup();
   fases.checkTurns(new Location(30));
-  fases.checkTurns(new Location(83));
+  fases.checkTurns(new Location(75));
   require(fases.beeps==1,"sin pitido intermedio");
   fases.checkTurns(new Location(95));
   fases.checkTurns(new Location(95));
@@ -238,7 +238,7 @@ public class NativeTurnsTest {
    c.turns.add(new double[]{10,-1,1});
    for(int m=0;m<=110;m+=1){c.posActual=m;c.posicion(new Location(m));}
    double ya=c.avisoYa(),antes=100-c.tresEn;
-   require(Math.abs(ya-(v>5?12:4))<0.01,"adelanto a "+v+" m/s: "+ya);
+   require(Math.abs(ya-(v>5?20:4))<0.01,"adelanto a "+v+" m/s: "+ya);
    require(antes>=ya-1.01&&antes<=ya+0.01,"el «ahora» suena "+ya+" m antes, no encima: sono a "+antes+" m");
   }
  }
@@ -438,7 +438,7 @@ public class NativeTurnsTest {
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();
   curvasCercanas();
-  NativeTurnsTest late=setup();late.checkTurns(new Location(72));
+  NativeTurnsTest late=setup();late.checkTurns(new Location(60));
   require(late.spoken.equals(Arrays.asList(-1)),"First fix in phase 1 still speaks");
   late.checkTurns(new Location(72));require(late.spoken.size()==1,"Late turn voice is deduplicated");
   NativeTurnsTest c=setup();c.checkTurns(new Location(0));require(c.spoken.equals(Arrays.asList(-1)),"Debe anunciar solo la izquierda próxima, no la derecha posterior: "+c.spoken);require(c.upcomingTurn.startsWith("Izquierda"),c.upcomingTurn);
@@ -533,7 +533,7 @@ public class NativeTurnsTest {
  }
 }'''
 if replay:
- code=code.replace('double avisoLargo(){return 80;}double avisoCorto(){return 20;}double avisoVoz(){return 200;}',
+ code=code.replace('double avisoLargo(){return 80;}double avisoCorto(){return 30;}double avisoVoz(){return 200;}',
      ''.join(method(m) for m in (' void actualizaVelocidad(Location l)', ' double avisoLargo()', ' double avisoCorto()', ' double avisoVoz()')))
  code=code.replace('float acc=4;', 'float acc=4,speed=0; boolean hasSpeed(){return true;} float getSpeed(){return speed;}')
  code=code.replace('String fraseGiro(int lado,int tipo,String fase,double ahead,int salida){return ""+lado;}',

@@ -4386,12 +4386,19 @@ function distanciasDeAviso(){
  // 18 segundos de margen, 35 m de suelo y 200 de techo. El suelo estaba en
  // 60 y andando a 4 km/h daba 54 s de antelacion: demasiado. Con 35 son 32 s
  // andando, y de 12 km/h para arriba no cambia nada.
- return [Math.min(90,Math.max(25,v*9)),Math.min(30,Math.max(8,v*3)),
-         Math.min(200,Math.max(35,v*18)),
+ // LOS TECHOS SE PUSIERON ANDANDO Y RECORTABAN EL TIEMPO EN CUANTO SE CORRE.
+ // Estaban en 90, 30, 200 y 12 m, y a partir de 22 km/h empezaban a morder:
+ // a 40 km/h el «… ahora» esta escrito para dos segundos y los 12 m lo
+ // dejaban en 1,1 s, y bajando en bici a 60 km/h en 0,7 s, encima del cruce.
+ // La velocidad ya esta tapada en actualizaVelocidad a 20 m/s, asi que el
+ // techo de cada aviso es su tiempo a esos 20 m/s. Por debajo de 22 km/h no
+ // cambia ni un metro. Igual que el servicio, que es quien habla dormido.
+ return [Math.min(180,Math.max(25,v*9)),Math.min(60,Math.max(8,v*3)),
+         Math.min(360,Math.max(35,v*18)),
          // El cuarto: donde se dice «… ahora». Dos segundos ANTES del cruce
          // (4-12 m), no encima: con el retraso del GPS y de la voz caia ya
          // dentro o pasado el giro. Igual que avisoYa() del servicio.
-         Math.min(Math.min(30,Math.max(8,v*3))-2,Math.min(12,Math.max(4,v*2))),
+         Math.min(Math.min(60,Math.max(8,v*3))-2,Math.min(40,Math.max(4,v*2))),
          // EL QUINTO ES PARA LAS CURVAS, Y ANTES ERAN DIEZ METROS FIJOS.
          // El punto de una curva es donde mas se dobla el track, y se mide
          // con 12 m a cada lado: la ENTRADA cae 12 m antes de ese punto, asi
