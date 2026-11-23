@@ -1541,6 +1541,31 @@ test('Tu carretera sale a la izquierda y luego curva a la derecha: el aviso dice
  // Y el aviso esta en el propio cruce (el punto 0,0 de la ruta), no antes.
  assert(meters(enCruce[0].point,point(0,0))<1,'el aviso cuenta desde el cruce: '+meters(enCruce[0].point,point(0,0)));
 });
+test('La primera marca de una ruta propia guarda su trazado, y solo una vez',()=>{
+ // Una marca de una ruta suya no se puede reproducir aqui: la ruta solo
+ // esta en su movil. El 23 de noviembre de 2026 hubo que deducir un fallo de
+ // una rotonda midiendo las 75 publicadas porque la suya no estaba.
+ const almacen={},nodos={},guardados=[];
+ const nodo=id=>nodos[id]||(nodos[id]={textContent:id==='tripRuta'?'Mi ruta 23/11/2026':'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}}});
+ const base={window:{},$:nodo,notice(){},junctionActive:-1,sentidoRuta:1,junctions:[],guiaIniciada:()=>true,
+  localStorage:{getItem:k=>almacen[k]??null,setItem:(k,v)=>{almacen[k]=v},removeItem:k=>{delete almacen[k]}},
+  routePoints:[[43.2,-2.5],[43.201,-2.5],[43.202,-2.5]],
+  download:(puntos,nombre)=>{guardados.push({n:puntos.length,nombre})}};
+ const c=pieza('09-navegacion.js',{...base,chosen:-1},arranque09());
+ c.estadoGuia={p:[43.2,-2.5],lista:[],fuera:false,parado:false,precision:5,along:500,distancia:3};
+ assert.equal(c.guardaTrazadoDeMarca('Mi ruta 23/11/2026'),true,'ruta propia: se guarda');
+ assert.deepEqual(JSON.stringify(guardados),JSON.stringify([{n:3,nombre:'Mi ruta 23/11/2026'}]),
+  'con el mismo nombre que lleva la marca');
+ assert.equal(c.guardaTrazadoDeMarca('Mi ruta 23/11/2026'),false,'la segunda marca de la misma ruta no repite');
+ assert.equal(guardados.length,1);
+ // Una ruta publicada ya esta en el repositorio: no se guarda nada.
+ const p=pieza('09-navegacion.js',{...base,chosen:4},arranque09());
+ assert.equal(p.guardaTrazadoDeMarca('recyde'),false,'ruta publicada: no hace falta');
+ assert.equal(guardados.length,1);
+ // Y si la aplicacion no sabe guardar, la marca no se pierde por eso.
+ const sin=pieza('09-navegacion.js',{...base,chosen:-1,download:undefined},arranque09());
+ assert.equal(sin.guardaTrazadoDeMarca('Mi ruta'),false,'sin guardado, no revienta');
+});
 test('«✋ Faltó aquí»: siempre a mano guiando, apunta el sitio, el aviso más cercano y si el guiado callaba',()=>{
  const almacen={},nodos={};
  const nodo=id=>nodos[id]||(nodos[id]={textContent:id==='tripRuta'?'recyde':'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}}});

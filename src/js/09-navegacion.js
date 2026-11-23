@@ -464,6 +464,24 @@ function pintaAvisoMal(){
 // Apunta tu posicion como un aviso que FALTO, con lo necesario para saber
 // por que: el aviso calculado mas cercano (si lo habia, el problema no es la
 // regla) y si el guiado estaba callando (fuera de ruta, parado, GPS malo).
+// EL TRAZADO VIAJA CON LA MARCA. Una marca de una ruta tuya no se puede
+// reproducir en el ordenador: la ruta solo esta en el movil, y entonces un
+// aviso que falla se adivina en vez de repetirse. Paso el 23 de noviembre de
+// 2026 con una rotonda: hubo que deducir el fallo midiendo las 75 rutas
+// publicadas porque la suya no estaba. Asi que al apuntar la PRIMERA marca
+// de una ruta propia se guarda su GPX con el mismo nombre que lleva la
+// marca, y con el se vuelve a calcular el aviso igual que lo calculo el
+// movil. En una ruta publicada no hace falta: esa ya esta en el repositorio.
+// Una vez por ruta, no en cada marca.
+let trazadoDeMarca='';
+function guardaTrazadoDeMarca(nombre){
+ if(typeof chosen==='undefined'||chosen>=0)return false;
+ if(typeof routePoints==='undefined'||!Array.isArray(routePoints)||routePoints.length<2)return false;
+ if(typeof download!=='function')return false;
+ const clave=nombre||'Ruta propia';
+ if(trazadoDeMarca===clave)return false;
+ try{download(routePoints,clave);trazadoDeMarca=clave;return true}catch(e){return false}
+}
 function marcaAvisoFalta(){
  const e=estadoGuia;if(!e||!e.p)return;
  const l=avisosMarcados();
@@ -476,7 +494,8 @@ function marcaAvisoFalta(){
  while(l.length>300)l.shift();
  try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l))}catch(err){}
  pintaBotonAvisos();
- try{notice('Apuntado: aquí faltó un aviso · '+l.length+' en la lista')}catch(err){}
+ const trazado=guardaTrazadoDeMarca(ruta);
+ try{notice('Apuntado: aquí faltó un aviso · '+l.length+' en la lista'+(trazado?' · trazado guardado':''))}catch(err){}
 }
 function marcaAvisoMal(){
  if(!avisoMarcable)return;
@@ -488,7 +507,8 @@ function marcaAvisoMal(){
  try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l))}catch(e){}
  avisoMarcadoJ=avisoMarcable.j;avisoMarcadoLista=avisoMarcable.lista;
  pintaAvisoMal();pintaBotonAvisos();
- try{notice('Apuntado: «'+avisoMarcable.texto+'» sobraba · '+l.length+' en la lista')}catch(e){}
+ const trazado=guardaTrazadoDeMarca(ruta);
+ try{notice('Apuntado: «'+avisoMarcable.texto+'» sobraba · '+l.length+' en la lista'+(trazado?' · trazado guardado':''))}catch(e){}
 }
 function pintaBotonAvisos(){
  if(typeof $!=='function')return;const b=$('avisosMarcados');if(!b)return;
@@ -952,7 +972,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});
