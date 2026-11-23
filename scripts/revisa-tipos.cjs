@@ -11,12 +11,17 @@
 //   TS2304 no existe ese nombre      TS2552 no existe, ¿querias decir...?
 //   TS2448 usado antes de declarar   TS2454 usado sin asignar
 //   TS2300 declarado dos veces       TS2588 asignar a una constante
+//   TS2451 const/let repetido en el mismo ambito
+// TS2451 se anadio el 23 de noviembre de 2026: un «const JUNTOS_M» nuevo en la
+// pieza 08 choco con el de la 04, las diez piezas comparten un ambito y la
+// pagina entera murio al cargar. Esto decia «0 de nombres» y el fallo salio
+// en Chromium, tres minutos mas tarde y sin decir por que.
 // Lo demas -propiedades sobre any, un numero donde se espera un texto- sale
 // como aviso y no corta: en JavaScript funciona y el codigo lleva asi años.
 const {execFileSync}=require('node:child_process');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const raiz=path.resolve(__dirname,'..');
-const MORTALES=new Set(['TS2304','TS2552','TS2448','TS2454','TS2300','TS2588']);
+const MORTALES=new Set(['TS2451','TS2304','TS2552','TS2448','TS2454','TS2300','TS2588']);
 const html=fs.readFileSync(path.join(raiz,'nuevo.html'),'utf8');
 const a=html.indexOf('<script>'),b=html.lastIndexOf('</script>');
 if(a<0||b<a){console.error('No encuentro el bloque de JavaScript de nuevo.html');process.exit(1)}
