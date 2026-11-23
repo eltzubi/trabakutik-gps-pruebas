@@ -727,6 +727,18 @@ test('Una ida y vuelta por el mismo camino es «da la vuelta», sin lado; una he
  pieza('08-cruces.js',{junctions:c.junctions,junctionsReves:c.junctionsReves??null,window:c.window}).enviaGirosNativos();
  assert.equal(JSON.stringify(enviado),JSON.stringify([{i:5,dir:0,t:0}]),'sin lado ni h: el servicio dice «da la vuelta»');
 });
+test('Una rotonda manda sus grados y sus bocas, para que la pantalla dibuje el anillo',()=>{
+ // Sin «ga» la pantalla daba por buenos 90 grados y pintaba un giro
+ // corriente donde el texto decia «Rotonda, 3.ª salida».
+ let enviado=null;
+ const w={TrabakutikAndroid:{setJunctions:j=>{enviado=JSON.parse(j)}}};
+ const j={i:7,direction:'izquierda',hacia:'izquierda',cruce:true,mantente:false,
+   rotonda:true,salida:3,angle:125,bocas:[-70,95]};
+ pieza('08-cruces.js',{junctions:[j],junctionsReves:null,window:w}).enviaGirosNativos();
+ assert.equal(JSON.stringify(enviado),
+  JSON.stringify([{i:7,dir:-1,t:1,ro:1,rs:3,ga:125,rb:[-70,95]}]),
+  'los grados de verdad y las otras bocas, relativas a tu marcha');
+});
 test('Puntos muy juntos (cada 30 cm) no se borran, y el pico sigue desde donde vuelve a la ida',()=>{
  const c=pieza('06-creador-formas.js',{R:Math.PI/180,dist:meters},arranque10());
  const densa=[];for(let x=0;x<=300;x+=0.3)densa.push(point(x,0));

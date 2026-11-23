@@ -4852,12 +4852,17 @@ function enviaGirosNativos(){
    // ignora y dice «sal a la derecha/izquierda», el lado bueno.
    if(j.rotonda&&j.salida)o.rs=j.salida;
    if(j.rotonda&&j.recto)o.rr=1;
+   // «ga»: los GRADOS que giras de verdad en la rotonda, para dibujar el
+   // anillo con tu salida en su sitio. Sin esto la pantalla daba por buenos
+   // 90 grados y pintaba un giro corriente. Una APK anterior lo ignora.
+   if(j.rotonda&&Number.isFinite(j.angle))o.ga=Math.round(Math.abs(j.angle));
+   if(j.rotonda&&Array.isArray(j.bocas)&&j.bocas.length&&j.bocas.length<=8)o.rb=j.bocas;
    if(j.hito)o.ht=j.hito;
    if(j.ramales)o.br=j.ramales.map(p=>p.slice(0,2).map(v=>Number(v.toFixed(6))));
    // «rb»: los rumbos de los ramales que NO son el tuyo, para la pantalla del
    // cruce. Si no hay ninguno, no se manda: el cruce no tiene perdida.
    const confunden=ramalesQueConfunden(j,typeof routePoints==='undefined'?null:routePoints);
-   if(confunden.length)o.rb=confunden;
+   if(confunden.length&&!o.rb)o.rb=confunden;
    return o;
   }));
   // Una rotonda que se cruza RECTO solo se avisa con su numero de salida, y
@@ -6018,7 +6023,8 @@ function resuelveRotondas(pts){
    // La entrada y la salida, donde la ruta esta a radio+20 m del centro (como
    // las bocas del fichero); si no llega a alejarse tanto, en el borde.
    const lejos=rot[2]+20,aLejos=(m0,paso)=>{for(let m=m0,k=0;k<90&&m>=0&&m<=total;k++,m+=paso)if(dist(enMetro(m),c)>=lejos)return enMetro(m);return enMetro(m0)};
-   const salida=salidaDeRotonda(rot,bearingBetween(c,aLejos(mIn,-1)),bearingBetween(c,aLejos(mOut,1)));
+   const rIn=bearingBetween(c,aLejos(mIn,-1)),rOut=bearingBetween(c,aLejos(mOut,1));
+   const salida=salidaDeRotonda(rot,rIn,rOut);
    const recto=Math.abs(neto)<ROT_RECTO;
    if(recto&&!salida)continue;
    let i=1;while(i+1<n&&cum[i+1]<=mIn)i++;
@@ -6026,6 +6032,19 @@ function resuelveRotondas(pts){
    const aviso={i,point:pts[i],along:cum[i],direction:vuelta?'vuelta':lado,hacia:lado,
     angle:Math.round(Math.abs(neto)),cruce:true,mantente:false,retorno:vuelta,rotonda:true};
    if(salida){aviso.salida=salida;if(recto)aviso.recto=true}
+   // LAS BOCAS DE LA ROTONDA, relativas a tu marcha al entrar, para que la
+   // pantalla del cruce dibuje el anillo con sus salidas en su sitio. Se
+   // quitan las dos tuyas -por donde entras y por donde sales-, igual que en
+   // ramalesQueConfunden. Una APK que no sepa de esto las ignora.
+   const S=rot&&rot[3];
+   if(S&&Array.isArray(S.salidas)&&S.salidas.length&&S.salidas.length<=SAL_BOCAS){
+    const frente=(rIn+180)%360;
+    const sep=(a,b)=>{const d=Math.abs(a-b)%360;return d>180?360-d:d};
+    const rel=a=>{let d=(a-frente)%360;if(d>180)d-=360;if(d<-180)d+=360;return Math.round(d)};
+    const otras=S.salidas.map(a=>((a%360)+360)%360)
+      .filter(a=>sep(a,rIn)>25&&sep(a,rOut)>25).map(rel);
+    if(otras.length)aviso.bocas=otras;
+   }
    let p=0;while(p<junctions.length&&junctions[p].i<i)p++;
    junctions.splice(p,0,aviso);
   }

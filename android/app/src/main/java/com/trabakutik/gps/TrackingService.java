@@ -785,12 +785,11 @@ public class TrackingService extends Service implements LocationListener {
  // caida: desde Android 10 un servicio no puede abrir una Activity a secas.
  // Si Android ha quitado ese permiso -desde la 14 lo reserva para llamadas y
  // alarmas-, queda la notificacion, que al menos se asoma.
- void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales){
+ void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados){
   try{
    if(!pantallaCruces())return;
-   int grados=gradosDelGiro(tipo);
    String texto=textoCorto(lado,tipo,salida);
-   Intent i=GiroActivity.intent(this,lado,grados,metros,texto,ramales,12);
+   Intent i=GiroActivity.intent(this,lado,grados,metros,texto,ramales,12,tipo);
    PendingIntent pa=PendingIntent.getActivity(this,45,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
    Notification.Builder b=new Notification.Builder(this,CANAL_GIRO)
      .setSmallIcon(android.R.drawable.ic_menu_directions)
@@ -1110,6 +1109,10 @@ public class TrackingService extends Service implements LocationListener {
  // pagina solo los manda cuando hay alguno, asi que un giro sin entrada aqui
  // es un cruce sin perdida y no se dibuja croquis.
  final Map<double[],int[]> ramalesDeGiro=new java.util.HashMap<>();
+ // Los grados que giras de verdad en una rotonda («ga» de la pagina). Van
+ // aparte y no en el propio giro porque la casilla 5 del array ya es la
+ // curva nueva y una APK no puede cambiar de forma sin romper las pruebas.
+ final Map<double[],Integer> gradosDeGiro=new java.util.HashMap<>();
  ConfirmaRamal.Cruce cruceProximo(double along){
   Map<Integer,ConfirmaRamal.Cruce> candidatos=sentido>0?ramalesIda:ramalesVuelta;
   ConfirmaRamal.Cruce mejor=null;
@@ -1134,7 +1137,7 @@ public class TrackingService extends Service implements LocationListener {
   (lista==turns?ramalesIda:ramalesVuelta).put(indice,new ConfirmaRamal.Cruce(metrics.distance[indice],puntos));
  }
  void loadTurns(){
-  confirmaRamal.reinicia();ramalesIda.clear();ramalesVuelta.clear();hitosDeGiro.clear();ramalesDeGiro.clear();
+  confirmaRamal.reinicia();ramalesIda.clear();ramalesVuelta.clear();hitosDeGiro.clear();ramalesDeGiro.clear();gradosDeGiro.clear();
   turns.clear();turnsReves.clear();warnedTurns.clear();upcomingTurn="";
   leeGiros(new File(getFilesDir(),"giros-activos.json"),turns);
   // Los calculados al reves (la pagina nueva los manda aparte): yendo al
@@ -1208,6 +1211,8 @@ public class TrackingService extends Service implements LocationListener {
       }
       if(vale)ramalesDeGiro.put(turns.get(turns.size()-1),rr);
      }
+     int ga=p.optInt("ga",-1);
+     if(tipo==5&&ga>=0&&ga<=180)gradosDeGiro.put(turns.get(turns.size()-1),ga);
     }
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
@@ -1397,7 +1402,8 @@ public class TrackingService extends Service implements LocationListener {
          habla((hito==null?"":hito+". ")+fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
          // Y LA PANTALLA, si el autor la ha encendido para la bici. Va con el
          // primer aviso de voz, que es cuando aun da tiempo a mirarla.
-         abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro));
+         abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro),
+           gradosDeGiro.containsKey(giro)?gradosDeGiro.get(giro):gradosDelGiro(tipo));
         }
       }
      }

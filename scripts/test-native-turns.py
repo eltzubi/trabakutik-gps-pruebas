@@ -30,9 +30,10 @@ public class NativeTurnsTest {
  // La pantalla del cruce no se puede abrir aqui: se apunta lo que se le
  // habria mandado, que es lo que interesa comprobar.
  Map<double[],int[]> ramalesDeGiro=new HashMap<>();
+ Map<double[],Integer> gradosDeGiro=new HashMap<>();
  ArrayList<String> pantallas=new ArrayList<>();
- void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales){
-  pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+gradosDelGiro(tipo)+"|"+(ramales==null?0:ramales.length));
+ void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados){
+  pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+grados+"|"+(ramales==null?0:ramales.length));
  }
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
 '''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+'''
@@ -181,6 +182,22 @@ public class NativeTurnsTest {
   require(p[0].equals("Derecha"),"la palabra: "+p[0]);
   require(Integer.parseInt(p[1])>0,"los metros que faltan: "+p[1]);
   require(p[3].equals("1"),"un ramal que puede engañar: "+p[3]);
+  // UNA ROTONDA SE DIBUJA CON SUS GRADOS, no con los 90 del tipo. Hasta el 23
+  // de noviembre de 2026 gradosDelGiro(5) caia en el «return 90» y la pantalla
+  // pintaba un giro corriente donde el texto decia «Rotonda, 3.ª salida». El
+  // autor: «me ha marcado, en vez de la cuarta salida, un dibujo de giro a la
+  // izquierda directamente».
+  NativeTurnsTest rot=new NativeTurnsTest();
+  for(int m=0;m<=300;m+=10)rot.route.add(new double[]{m/111195.,0});
+  rot.turns.add(new double[]{10,-1,5,3,0});
+  rot.gradosDeGiro.put(rot.turns.get(0),125);
+  rot.ramalesDeGiro.put(rot.turns.get(0),new int[]{-70,95});
+  for(int m=0;m<=99;m+=5)rot.posicion(new Location(m));
+  require(rot.pantallas.size()==1,"una pantalla por rotonda: "+rot.pantallas);
+  String[] q=rot.pantallas.get(0).split("[|]");
+  require(q[0].equals("Rotonda, 3.ª salida"),"la palabra de la rotonda: "+q[0]);
+  require(q[2].equals("125"),"los grados de verdad de la rotonda, no 90: "+q[2]);
+  require(q[3].equals("2"),"las otras bocas del anillo: "+q[3]);
   // Sin ramales que engañen, no se dibuja croquis.
   NativeTurnsTest d=new NativeTurnsTest();
   for(int m=0;m<=300;m+=10)d.route.add(new double[]{m/111195.,0});

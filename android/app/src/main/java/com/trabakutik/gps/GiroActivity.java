@@ -38,15 +38,18 @@ import android.widget.FrameLayout;
  */
 public class GiroActivity extends Activity {
  public static final String EXTRA_LADO="lado",EXTRA_GRADOS="grados",EXTRA_METROS="metros",
-   EXTRA_TEXTO="texto",EXTRA_RAMALES="ramales",EXTRA_SEGUNDOS="segundos";
+   EXTRA_TEXTO="texto",EXTRA_RAMALES="ramales",EXTRA_SEGUNDOS="segundos",EXTRA_TIPO="tipo";
  static final int FONDO=0xFF06121A,CIAN=0xFF66E5FF,BLANCO=0xFFE9FDFF,GRIS=0xFF8FA6B2,RAMAL=0xFF5D7079;
  final Handler cierra=new Handler(Looper.getMainLooper());
 
  public static Intent intent(Context c,int lado,int grados,int metros,String texto,int[] ramales,int segundos){
+  return intent(c,lado,grados,metros,texto,ramales,segundos,1);
+ }
+ public static Intent intent(Context c,int lado,int grados,int metros,String texto,int[] ramales,int segundos,int tipo){
   Intent i=new Intent(c,GiroActivity.class)
     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_NO_HISTORY|Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
   i.putExtra(EXTRA_LADO,lado).putExtra(EXTRA_GRADOS,grados).putExtra(EXTRA_METROS,metros)
-   .putExtra(EXTRA_TEXTO,texto==null?"":texto).putExtra(EXTRA_SEGUNDOS,segundos);
+   .putExtra(EXTRA_TEXTO,texto==null?"":texto).putExtra(EXTRA_SEGUNDOS,segundos).putExtra(EXTRA_TIPO,tipo);
   if(ramales!=null&&ramales.length>0)i.putExtra(EXTRA_RAMALES,ramales);
   return i;
  }
@@ -79,7 +82,7 @@ public class GiroActivity extends Activity {
 
  /** El dibujo. Nada de layouts: una vista que se pinta sola. */
  static class Ficha extends View {
-  final int lado,grados,metros;final String texto;final int[] ramales;
+  final int lado,grados,metros,tipo;final String texto;final int[] ramales;
   final Paint trazo=new Paint(Paint.ANTI_ALIAS_FLAG),relleno=new Paint(Paint.ANTI_ALIAS_FLAG),
     letra=new Paint(Paint.ANTI_ALIAS_FLAG);
   Ficha(Context c,Intent i){
@@ -87,6 +90,7 @@ public class GiroActivity extends Activity {
    lado=i==null?1:i.getIntExtra(EXTRA_LADO,1);
    grados=i==null?90:Math.max(0,Math.min(180,i.getIntExtra(EXTRA_GRADOS,90)));
    metros=i==null?0:Math.max(0,i.getIntExtra(EXTRA_METROS,0));
+   tipo=i==null?1:i.getIntExtra(EXTRA_TIPO,1);
    texto=i==null?"":String.valueOf(i.getStringExtra(EXTRA_TEXTO));
    int[] r=i==null?null:i.getIntArrayExtra(EXTRA_RAMALES);
    ramales=r==null?new int[0]:r;
@@ -99,11 +103,19 @@ public class GiroActivity extends Activity {
   void pinta(Canvas g){
    final int w=getWidth(),h=getHeight();
    if(w<=0||h<=0)return;
-   final boolean croquis=ramales.length>0;
+   // UNA ROTONDA SE DIBUJA COMO UNA ROTONDA. Antes caia en el dibujo de
+   // giro corriente -gradosDelGiro() devolvia 90 para el tipo 5- y el autor
+   // veia una flecha de giro a la izquierda donde el texto decia «Rotonda,
+   // 4.ª salida»: «me ha marcado, en vez de la cuarta salida, un dibujo de
+   // giro a la izquierda directamente». El anillo ya ensena las bocas, asi
+   // que no lleva croquis aparte.
+   final boolean esRotonda=tipo==5;
+   final boolean croquis=ramales.length>0&&!esRotonda;
    // Reparto del alto: la flecha manda. Con croquis se le deja un cuarto.
    final float altoFlecha=h*(croquis?0.40f:0.52f);
    final float cxF=w/2f,cyF=h*(croquis?0.055f:0.085f)+altoFlecha/2f;
-   flecha(g,cxF,cyF,Math.min(w*0.78f,altoFlecha));
+   if(esRotonda)rotonda(g,cxF,cyF,Math.min(w*0.78f,altoFlecha));
+   else flecha(g,cxF,cyF,Math.min(w*0.78f,altoFlecha));
    // Los metros, lo mas grande que cabe.
    float yNum=cyF+altoFlecha/2f+h*(croquis?0.085f:0.115f);
    letra.setColor(Color.WHITE);letra.setTextSize(h*(croquis?0.105f:0.135f));
@@ -118,6 +130,49 @@ public class GiroActivity extends Activity {
    letra.setColor(GRIS);letra.setTextSize(h*0.028f);
    int n=ramales.length+1;
    g.drawText(n+(n==1?" ramal":" ramales")+" · tú por donde marca la flecha",cxF,h*0.955f,letra);
+  }
+  /** La rotonda: el anillo, por donde entras abajo, el arco que recorres y
+   *  tu salida con punta. SE CIRCULA POR LA DERECHA, o sea al reves de las
+   *  agujas del reloj visto desde arriba: entrando por abajo se va hacia la
+   *  derecha del dibujo, que es lo que se ve al llegar. Las otras bocas, en
+   *  gris, para contar las salidas de un vistazo. */
+  void rotonda(Canvas g,float cx,float cy,float tam){
+   float t=Math.max(10f,tam);
+   float R=t*0.30f,fuera=t*0.22f,grosor=Math.max(3f,t*0.085f);
+   // Las otras bocas.
+   trazo.setColor(RAMAL);trazo.setStrokeWidth(grosor);
+   for(int r:ramales){
+    double a=Math.toRadians(r);
+    float sx=(float)Math.sin(a),sy=(float)-Math.cos(a);
+    g.drawLine(cx+sx*R,cy+sy*R,cx+sx*(R+fuera),cy+sy*(R+fuera),trazo);
+   }
+   // El anillo.
+   trazo.setColor(GRIS);trazo.setStrokeWidth(Math.max(2f,grosor*0.7f));
+   g.drawCircle(cx,cy,R,trazo);
+   // Por donde llegas, abajo.
+   trazo.setColor(BLANCO);trazo.setStrokeWidth(grosor*1.5f);
+   g.drawLine(cx,cy+R,cx,cy+R+fuera*1.3f,trazo);
+   // El arco recorrido. En grados de Android el 0 son las tres y se crece en
+   // el sentido del reloj; el rumbo b son b-90 grados, y entrando por abajo
+   // (rumbo 180, o sea 90) se va RESTANDO hasta la salida.
+   float s=Math.max(-170,Math.min(170,grados*(lado<0?-1:1)));
+   RectF caja=new RectF(cx-R,cy-R,cx+R,cy+R);
+   Path arco=new Path();
+   arco.addArc(caja,90f,s-180f);
+   g.drawPath(arco,trazo);
+   // Tu salida, con punta.
+   double a=Math.toRadians(s);
+   float dx=(float)Math.sin(a),dy=(float)-Math.cos(a);
+   float ex=cx+dx*R,ey=cy+dy*R,px=ex+dx*fuera*1.3f,py=ey+dy*fuera*1.3f;
+   g.drawLine(ex,ey,px-dx*grosor,py-dy*grosor,trazo);
+   float cab=t*0.13f,nx=-dy,ny=dx;
+   Path punta=new Path();
+   punta.moveTo(px+dx*cab*0.9f,py+dy*cab*0.9f);
+   punta.lineTo(px-dx*cab*0.5f+nx*cab*0.8f,py-dy*cab*0.5f+ny*cab*0.8f);
+   punta.lineTo(px-dx*cab*0.5f-nx*cab*0.8f,py-dy*cab*0.5f-ny*cab*0.8f);
+   punta.close();
+   relleno.setStyle(Paint.Style.FILL);relleno.setColor(BLANCO);
+   g.drawPath(punta,relleno);
   }
   /** La flecha del giro: sube, tuerce «grados» hacia «lado» y acaba en punta. */
   void flecha(Canvas g,float cx,float cy,float tam){
