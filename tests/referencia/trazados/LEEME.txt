@@ -1,0 +1,5 @@
+Los GPX de las rutas de las marcas que NO estan entre las 75 publicadas.
+
+Van aqui con el nombre que dice «trazado» en marcas-campo.json, y NO se
+suben: son recorridos del autor. El .gitignore de esta carpeta los deja
+fuera. Sin el GPX, scripts/marcas-campo.cjs dice «sin trazado» y sigue.

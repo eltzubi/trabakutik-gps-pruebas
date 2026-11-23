@@ -1,0 +1,22 @@
+{
+ "nota": "LAS MARCAS ✋ DEL AUTOR, TAL COMO SALEN DE LA APLICACION. Son la fuente fechada que pide CLAUDE.md antes de tocar la regla de los cruces: sitio, dia y que fallo. Aqui NO hay decision tomada: eso se apunta en cruces-revisados.json cuando se confirma. Para meter mas, se pegan las lineas de la aplicacion (ruta · km · que paso · punto · fecha). El trazado no se guarda: si la ruta no es de las 75 publicadas, se deja su GPX en tests/referencia/trazados/<trazado>, que no se sube. Se miran con: node scripts/marcas-campo.cjs",
+ "marcas": [
+  {"ruta":"matiena","trazado":"matiena.gpx","km":6.27,"que":"sobraba","aviso":"Gira a la derecha",
+   "lugar":[43.1974,-2.55579],"fecha":"2026-11-21 19:35"},
+  {"ruta":"Hayedo de Otzarreta y Cascada de Uguna desde parking de Saldropo","trazado":"hayedo-otzarreta-saldropo.gpx",
+   "km":7.41,"que":"sobraba","aviso":"Curva de herradura a la izquierda",
+   "lugar":[43.0535,-2.72982],"fecha":"2026-11-22 10:22"},
+  {"ruta":"Hayedo de Otzarreta y Cascada de Uguna desde parking de Saldropo","trazado":"hayedo-otzarreta-saldropo.gpx",
+   "km":7.45,"que":"falto","cerca":"Curva de herradura a la izquierda a -42 m","veces":5,
+   "lugar":[43.05341,-2.73031],"fecha":"2026-11-22 10:22"},
+  {"ruta":"Hayedo de Otzarreta y Cascada de Uguna desde parking de Saldropo","trazado":"hayedo-otzarreta-saldropo.gpx",
+   "km":0.73,"que":"falto","cerca":"Curva a la izquierda a 67 m","veces":2,
+   "lugar":[43.0552,-2.73769],"fecha":"2026-11-22 10:34"},
+  {"ruta":"Hayedo de Otzarreta y Cascada de Uguna desde parking de Saldropo","trazado":"hayedo-otzarreta-saldropo.gpx",
+   "km":1.77,"que":"falto","cerca":"Curva a la derecha a -27 m","veces":2,
+   "lugar":[43.05165,-2.73733],"fecha":"2026-11-22 11:15"},
+  {"ruta":"Hayedo de Otzarreta y Cascada de Uguna desde parking de Saldropo","trazado":"hayedo-otzarreta-saldropo.gpx",
+   "km":2.59,"que":"falto","cerca":"Curva a la izquierda a -48 m","veces":2,
+   "lugar":[43.04858,-2.73245],"fecha":"2026-11-22 11:34"}
+ ]
+}

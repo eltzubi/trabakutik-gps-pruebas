@@ -130,6 +130,13 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
 - **Un aviso que falla se apunta ANTES de tocar la regla** (lo pidió el autor
   el 22 de noviembre de 2026: «no podemos estar siempre retocando»). Siempre
   en este orden:
+  0. **Las marcas ✋ del autor se pegan tal cual** en
+     `tests/referencia/marcas-campo.json`, aunque su ruta no sea de las 75
+     publicadas: son la fuente fechada y antes se perdían en la pantalla del
+     móvil. `node scripts/marcas-campo.cjs` dice cuáles ha resuelto ya un
+     dato nuevo y cuáles siguen vivas. El GPX de una ruta no publicada va en
+     `tests/referencia/trazados/`, que **no se sube** (son sus recorridos);
+     sin él la marca sale como «sin trazado» y no cuenta como fallo.
   1. Se añade el cruce a `tests/referencia/cruces-revisados.json`: qué dijo y
      qué **debía** hacer (la decisión, no la frase; «callar» también vale),
      con su fuente fechada, que tiene que ser una marca ✋ o una captura,
