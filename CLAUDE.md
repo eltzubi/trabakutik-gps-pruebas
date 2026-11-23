@@ -158,8 +158,23 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
      entrada cae unos 12 m antes: avisar a 10 m del punto era avisar dentro
      de la curva. Sus palabras: «en la mitad de la curva ya se yo que tengo
      que girar, ya lo veo».
-  Al tocar cualquier distancia de aviso se imprime la tabla de segundos a 4,
-  18, 40 y 60 km/h y se mira antes de subir.
+  4. **No vale solo para la distancia a la que suena un aviso.** Cualquier
+     metro que decida CUANDO se habla es lo mismo: el corte de «y enseguida
+     a la izquierda» eran 30 m -27 s andando y 1,8 s a 60 km/h- y por eso se
+     amontonaban las palabras con dos cruces seguidos, y el de «siguiente
+     cruce a X metros» tambien. Los dos pasaron a tiempo el 23 de noviembre
+     de 2026. Si un numero en metros decide algo que se oye, es sospechoso.
+
+  **Como se comprueba, y no leyendo el codigo.** `scripts/test-native-turns.py
+  --replay <fichero>` corre el checkTurns de produccion sobre un recorrido
+  inventado y saca cada frase con su segundo. Un fichero de repeticion es:
+  el numero de puntos, los puntos (lat lon), la lista de giros de ida
+  (cuantos, y luego «indice lado tipo salida recto» por giro), la de vuelta,
+  y despues una linea por posicion con «ms lat lon precision velocidad». Se
+  hace el mismo recorrido a 4, 18, 40 y 60 km/h y se MIRA la separacion entre
+  frases: dos frases en el mismo segundo, o un aviso con menos de dos
+  segundos, es el fallo. Asi salieron los tres de esta noche, que leyendo el
+  codigo no se veian.
 
 - **El creador tiene que facilitar trazar la ruta.** Lo dijo el 23 de
   noviembre de 2026: «a la hora de crear tiene que facilitar trazar la ruta,
