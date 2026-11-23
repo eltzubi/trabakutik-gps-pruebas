@@ -22,7 +22,11 @@ const RAIZ=path.join(__dirname,'..');
 const DATOS=process.env.RUTAS_MALLABIA||path.join(RAIZ,'..','Rutas-Mallabia');
 const MARCAS=path.join(RAIZ,'tests/referencia/marcas-campo.json');
 const TRAZADOS=path.join(RAIZ,'tests/referencia/trazados');
-const CERCA_M=25;     // un aviso a esto de la marca es el de la marca
+// UNA MARCA NO SE APRIETA EN EL NODO. El autor la hace cuando se da cuenta,
+// unos metros antes o despues: en la marca del km 2,59 de Otzarreta el aviso
+// esta justo en el cruce y la marca 26 m antes. Con 25 m salia «sigue viva»
+// una que esta bien. 40 m es lo que se anda en medio minuto.
+const CERCA_M=40;     // un aviso a esto de la marca es el de la marca
 const MIRA_M=70;      // y hasta aqui se enseña lo que hay alrededor
 
 const mapa=fs.readFileSync(path.join(RAIZ,'src/js/02-mapa.js'),'utf8');

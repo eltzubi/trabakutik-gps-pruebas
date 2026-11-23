@@ -1469,3 +1469,47 @@ se cierra con sus metros.
 y en el monte uno se sale por un camino que se abre poco a poco. Los metros
 de verdad serán mayores en **todas** las reglas; lo que vale es la
 comparación entre ellas.
+
+## Las seis marcas de Matiena y Gorbeia, y por qué no se toca la regla (23 nov 2026)
+
+El autor mandó seis marcas ✋ de los días 21 y 22 de noviembre. Con sus dos
+trazados de verdad —la ruta que **seguía**, no la que acabó creando— y los
+datos de hoy:
+
+**Cuatro resueltas sin tocar nada.** Las tres de «sobraba» (matiena 6,27 y
+Otzarreta 7,41, más el aviso de más del km 2,59) ya no suenan, y la del
+km 0,73 ahora avisa. Lo que las arregló fueron **los cuadrados de cruces de
+Euskadi**, publicados *después* de su salida: aquel día, en toda la ruta de
+Gorbeia había **cero cruces de OSM** y el navegador solo veía la forma del
+track.
+
+**Las dos que siguen vivas son el mismo problema, y no es de la regla.**
+
+| marca | la ruta gira | nodo de OSM | encaje de sus ramas |
+|---|---|---|---|
+| 1,77 | **88°** | a 23 m del trazado | la rama de llegada falla **84°** |
+| 7,45 | 41° | a 21 m del trazado | la rama de llegada falla **59°** |
+
+El límite de encaje son 45°. Al no encajar, el cruce se decide «como sin
+ramas», por la forma del trazado, y ahí 88° se queda por debajo de los 100°
+de «curva cerrada»: silencio. Para avisar en esos dos sitios habría que
+deshacer una de estas dos cosas, **las dos medidas y decididas**:
+
+1. **Aceptar ramas que no encajan.** Es lo que se quitó el 14 de noviembre
+   después de medir las 72 rutas: el lado de las ramas contradecía el giro
+   del trazado en **295 avisos**. Volver atrás arregla dos y rompe esos.
+2. **Avisar de curvas de 88°.** Es justo lo que el autor pidió que no se
+   hiciera: «en realidad solo quería que me indicaran los cruces, no las
+   curvas».
+
+**Lo que falta no es regla, es mapa.** En esos dos nodos, OSM no tiene el
+camino por el que él pasa: por eso ninguna rama se parece a su llegada. El
+arreglo de verdad es darle al navegador los caminos que faltan, que es
+exactamente lo que la web ya hace con `make_caminos.py` (108 trozos suyos,
+46 km, que OSM no tiene). Eso es un trabajo aparte y se propone, no se hace
+de tapadillo.
+
+**Y una lección del comprobador**: una marca no se aprieta en el nodo. En la
+del km 2,59 el aviso está justo en el cruce y la marca 26 m antes. Con una
+ventana de 25 m salía «sigue viva» una que está bien; con 40 m —medio minuto
+andando— el veredicto cuadra con la realidad.
