@@ -1976,8 +1976,24 @@ function rumboDeCalzada(coords){
   return ancla&&dist(p,ancla.p)<=15&&[3,5].includes(redOsm.clase[ancla.tr]);
  };
  if(!carretera(a)||!carretera(b))return null;
+ // UNA ROTONDA NO ES UN ENLACE DE CALZADAS SEPARADAS (23 nov 2026). Sus
+ // nodos tienen lo mismo que los de un enlace -dos o mas ramas prohibidas y
+ // todo carretera-, asi que entraban aqui y metian al creador en el modo
+ // estricto: rumbo forzado, el punto anterior pegado a menos de 3 m y el
+ // trazado como mucho un 35 % mas largo que la recta. Dar la vuelta a una
+ // rotonda ES mas largo que la recta, asi que saltaba «El punto anterior
+ // esta en otra calzada» y la unica salida era «Unir en recta». El autor,
+ // con una ruta por la N-634 en Berriz: «coge las rotondas pero en carretera
+ // falla, me da mucha linea recta, ademas traza por donde quiere».
+ // Medido en cruces-zona.json: de los 159 nodos que pasaban por enlace, 90
+ // -el 57 %- eran nodos de rotonda.
+ // Y no hace falta el modo estricto en una rotonda: el sentido lo impone la
+ // propia rotonda, y el lado por el que se rodea ya lo arregla despues
+ // rotondasPorLaDerecha.
+ const rotondas=typeof rotondasDelCreador==='function'?rotondasDelCreador():[];
+ const enRotonda=n=>rotondas.some(r=>dist(n,[r[0],r[1]])<=r[2]+5);
  const enlace=zonaCruces.puntos.some(n=>n.prohibidas?.filter(Boolean).length>=2&&
-  n.clases?.every(c=>c===1)&&distARuta(n,coords)<=30);
+  n.clases?.every(c=>c===1)&&distARuta(n,coords)<=30&&!enRotonda(n));
  return enlace?Math.round(rumboDesde(a,b))%360:null;
 }
 // Revisa también enlaces intermedios: las anclas de usuario pueden quedar
@@ -2858,7 +2874,7 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={mismaCalzada,cargaRotondas,esperaRotondas,ofreceRectaTrasFallo,rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={mismaCalzada,rumboDeCalzada,cargaRotondas,esperaRotondas,ofreceRectaTrasFallo,rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
 // Rehacer (ver mas abajo): arriba, porque el deshacer lo usa.
 let rehacerPila=[],firmaTrasDeshacer=null;
 // CERRAR EL CIRCULO. 52 de las 68 rutas de Trabakutik empiezan y acaban a

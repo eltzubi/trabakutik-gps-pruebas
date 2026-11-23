@@ -141,3 +141,28 @@ test('El creador corrige las rotondas también fuera de Mallabia (23 nov 2026)',
   });
  });
 });
+test('Una rotonda no es un enlace de calzadas separadas (23 nov 2026)',()=>{
+ // El autor, creando por la N-634 en Berriz: «coge las rotondas pero en
+ // carretera falla, me da mucha línea recta, además traza por donde quiere».
+ // Los nodos de una rotonda tienen lo mismo que los de un enlace -dos ramas
+ // prohibidas y todo carretera- y metían al creador en el modo estricto, que
+ // exige que el trazado no sea un 35 % más largo que la recta. Dar la vuelta
+ // a una rotonda ES más largo: saltaba «otra calzada» y solo quedaba la recta.
+ const rot=[43.16848,-2.57277,18];
+ const metros=(a,b)=>111195*Math.hypot(a[0]-b[0],(a[1]-b[1])*Math.cos(a[0]*Math.PI/180));
+ const caja=rotondas=>pieza('05-creador-tramos.js',{
+  dist:metros,
+  redOsm:{clase:[3,3]},
+  enganchaOsm:(red,lat,lon)=>({p:[lat,lon],tr:0}),
+  zonaCruces:{rotondas,puntos:[Object.assign([43.16848,-2.57277],
+    {prohibidas:[1,1],clases:[1,1]})]},
+  distARuta:()=>10});
+ const coords=[[43.1680,-2.5735],[43.1690,-2.5720]];
+ // Sin rotondas conocidas, ese nodo pasa por enlace: modo estricto.
+ assert.notEqual(caja([]).rumboDeCalzada(coords),null,'sin rotondas, lo toma por enlace');
+ // Sabiendo que es una rotonda, no.
+ assert.equal(caja([rot]).rumboDeCalzada(coords),null,'en una rotonda, no hay modo estricto');
+ // Un enlace de verdad a 200 m de la rotonda sigue activándolo.
+ assert.notEqual(caja([[43.1700,-2.5600,18]]).rumboDeCalzada(coords),null,
+   'un enlace lejos de toda rotonda sigue contando');
+});
