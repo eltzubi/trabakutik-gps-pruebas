@@ -173,11 +173,22 @@ public class NativeTurnsTest {
   require(fases.beeps==2,"dos avisos sonoros, sin repetición");
   require(fases.dicho.stream().filter(d->d.contains("Siguiente cruce")).count()==1,"la distancia solo se dice con el ahora");
   // Andando de verdad: el aviso del primero lleva el segundo.
+  // 30 m entre los dos: es SEGUIDO_M justo, asi que se dicen juntos, y
+  // despues de pasar el primero el segundo todavia queda fuera del aviso
+  // corto, que es cuando antes se repetia entero.
   NativeTurnsTest w=new NativeTurnsTest();for(int m=0;m<=300;m+=10)w.route.add(new double[]{m/111195.,0});
-  w.turns.add(new double[]{10,-1,1});w.turns.add(new double[]{12,1,1});
-  for(int m=0;m<=95;m+=5)w.posicion(new Location(m));
+  w.turns.add(new double[]{10,-1,1});w.turns.add(new double[]{13,1,1});
+  for(int m=0;m<=145;m+=5)w.posicion(new Location(m));
   boolean junto=false;for(String d:w.dicho)if(d.startsWith("-1")&&d.endsWith(" y enseguida a la derecha"))junto=true;
   require(junto,"al acercarte al primero se dicen los dos: "+w.dicho);
+  // Y EL SEGUNDO NO SE REPITE ENTERO. Se comprobo el 23 de noviembre de 2026
+  // sospechando lo contrario -que el giro nombrado en «y enseguida a la
+  // derecha» se volvia a anunciar dos segundos despues y cortaba al primero,
+  // porque los avisos de giro entran con QUEUE_FLUSH-. No pasa: al segundo
+  // solo le queda su «ahora», que es la hora de girar. Queda escrito aqui
+  // para que no se rompa sin que nadie se entere.
+  long veces=w.dicho.stream().filter(d->d.equals("1")).count();
+  require(veces==1,"el giro ya nombrado solo se dice otra vez en el «ahora»: "+w.dicho);
  }
  // «AHORA» ANTES DEL CRUCE: a 36 km/h (velocidadSuave 10), 12 m antes; y
  // andando, 4 m antes. Antes sonaba al llegar a 0 m.
