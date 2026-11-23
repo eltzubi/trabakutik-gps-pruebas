@@ -5,7 +5,7 @@ resumen que ve al parar sale de este metodo, asi que se comprueba con
 numeros a mano, no a ojo.
 """
 from pathlib import Path
-import subprocess,tempfile,sys
+import subprocess,tempfile,sys,re
 produccion=Path('android/app/src/main/java/com/trabakutik/gps')
 src=(produccion/'TrackingService.java').read_text()
 def metodo(firma):
@@ -19,7 +19,13 @@ def constante(nombre):
  raise AssertionError('no esta la constante '+nombre)
 codigo='''import java.util.*;
 public class GastoTest {
-'''+constante('GASTO_SIN_LEER')+'\n'+metodo(' static String textoGasto(')+'\n'+metodo(' static String unDecimal(')+'''
+'''+constante('GASTO_SIN_LEER')+'\n'+constante('FUERA_M')+'\n'+metodo(' static String textoGasto(')+'\n'+metodo(' static String unDecimal(') \
++re.search(r' int\[\] desvioAvisos=[^\n]+',src).group(0)+re.search(r' long desvioLecturas=[^\n]+',src).group(0) \
++metodo(' static double umbralDesvio(')+metodo(' void olvidaDesvio()')+metodo(' void mideDesvio(')+metodo(' static String textoDesvio(')+'''
+ static void igualD(double esperado,double real){
+  if(Math.abs(esperado-real)>1e-9)throw new AssertionError("esperaba "+esperado+" y salio "+real);
+ }
+ static String av(int[] a){return a[0]+"/"+a[1]+"/"+a[2];}
  static void igual(String esperado,String real){
   if(!esperado.equals(real))throw new AssertionError("esperaba <"+esperado+"> y salio <"+real+">");
  }
@@ -60,7 +66,42 @@ public class GastoTest {
   // Una salida de cero minutos no divide por cero ni saca un gasto por hora.
   igual("0 min · 5 % de batería",textoGasto(0,5,0,10,false));
   igual("0 min · no se pudo leer la batería",textoGasto(0,GASTO_SIN_LEER,0,0,false));
-  System.out.println("15 comprobaciones del gasto de bateria, todas bien");
+  // LA MEDIDA DEL DESVIO. No decide nada: apunta que habria hecho cada
+  // regla, para elegir el umbral con los metros del autor y no con un modelo.
+  igualD(15,umbralDesvio(0,5));igualD(15,umbralDesvio(1,5));igualD(15,umbralDesvio(2,5));
+  igualD(32,umbralDesvio(0,25));igualD(50,umbralDesvio(1,25));igualD(75,umbralDesvio(2,25));
+  igualD(47,umbralDesvio(0,40));igualD(120,umbralDesvio(2,40));
+  // Una salida de un minuto, o sin ruta, no dice nada.
+  igual("",textoDesvio(59,590,20,5,new int[]{0,0,0}));
+  igual(" · precisión media 18 m (máx 45) · lo más lejos de la ruta 23 m · desvíos 2/0/0 (ahora, ×2, ×3)",
+        textoDesvio(3600,18*3600.0,45,23,new int[]{2,0,0}));
+  // 35 m de distancia con 25 de precisión: pasa el umbral de ahora (32 m) y
+  // no los de ×2 y ×3 (50 y 75). Diez segundos seguidos: un aviso, no diez.
+  GastoTest c=new GastoTest();long t=0;
+  for(int i=0;i<10;i++){t+=1000;c.mideDesvio(35,25,t);}
+  igual("1/0/0",av(c.desvioAvisos));
+  for(int i=0;i<20;i++){t+=1000;c.mideDesvio(35,25,t);}
+  igual("1/0/0",av(c.desvioAvisos));
+  // Vuelve a la ruta y se va otra vez: ahora sí, dos.
+  for(int i=0;i<6;i++){t+=1000;c.mideDesvio(5,25,t);}
+  for(int i=0;i<10;i++){t+=1000;c.mideDesvio(35,25,t);}
+  igual("2/0/0",av(c.desvioAvisos));
+  // Con 60 m de distancia también avisan ×2 (50) pero no ×3 (75).
+  GastoTest b=new GastoTest();long u=0;
+  for(int i=0;i<10;i++){u+=1000;b.mideDesvio(60,25,u);}
+  igual("1/1/0",av(b.desvioAvisos));
+  // Un hueco de señal no son cuatro segundos fuera.
+  GastoTest h=new GastoTest();long v=0;
+  v+=1000;h.mideDesvio(35,25,v);v+=11000;h.mideDesvio(35,25,v);v+=1000;h.mideDesvio(35,25,v);
+  igual("0/0/0",av(h.desvioAvisos));
+  // Y la media, el máximo y lo más lejos salen de lo apuntado.
+  GastoTest m=new GastoTest();long w=0;
+  for(int i=0;i<60;i++){w+=1000;m.mideDesvio(i,10+i%3,w);}
+  contiene("precisión media 11 m (máx 12)",textoDesvio(m.desvioLecturas,m.desvioAccSuma,m.desvioAccMax,m.desvioDmax,m.desvioAvisos));
+  contiene("lo más lejos de la ruta 59 m",textoDesvio(m.desvioLecturas,m.desvioAccSuma,m.desvioAccMax,m.desvioDmax,m.desvioAvisos));
+  m.olvidaDesvio();
+  igual("",textoDesvio(m.desvioLecturas,m.desvioAccSuma,m.desvioAccMax,m.desvioDmax,m.desvioAvisos));
+  System.out.println("15 comprobaciones del gasto de bateria y 18 de la medida del desvio, todas bien");
  }
 }
 '''

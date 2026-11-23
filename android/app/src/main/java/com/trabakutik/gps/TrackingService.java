@@ -264,6 +264,58 @@ public class TrackingService extends Service implements LocationListener {
  double bateriaMetros=0;
  boolean bateriaCargando=false;
  String gastoUltimo="";
+ // MEDIR ANTES DE TOCAR EL UMBRAL. El 22 de noviembre de 2026 salio la idea
+ // -de una habilidad de navegacion de robots- de ensanchar el umbral de
+ // fuera de ruta con 3 veces la precision en vez de con precision+7. Se
+ // simulo sobre las 75 rutas publicadas del autor, 368 horas por caso: sin
+ // sesgo del GPS, la regla de ahora no da NI UN falso aviso y la de 3 sigma
+ // solo detecta mas tarde (con 40 m de precision, 152 m en vez de 72, y en
+ // 54 de 225 salidas no avisa nunca). Con sesgo, se da la vuelta: la de
+ // ahora daria 7 a 10 falsos por hora y la de 3 sigma ninguno.
+ //
+ // O sea que decide un numero que NO tenemos: cuanto se desvia de verdad el
+ // GPS del autor respecto a lo que el mismo declara. El GPX no guarda la
+ // precision de cada punto, asi que no se puede sacar de las salidas viejas.
+ // Esto lo apunta: por cada salida, que habria hecho cada una de las tres
+ // reglas con las posiciones de verdad. No cambia ninguna decision; solo
+ // cuenta. Con una caminata suya bajo arbolado, la pregunta se cierra con
+ // sus metros y no con un modelo.
+ int[] desvioAvisos=new int[3];long[] desvioDesde=new long[3];boolean[] desvioFuera=new boolean[3];
+ long desvioLecturas=0,desvioUltima=0;double desvioAccSuma=0,desvioAccMax=0,desvioDmax=0;
+ static double umbralDesvio(int regla,double acc){
+  return regla==0?Math.max(FUERA_M,acc+7):regla==1?Math.max(FUERA_M,2*acc):Math.max(FUERA_M,3*acc);
+ }
+ void olvidaDesvio(){
+  desvioAvisos=new int[3];desvioDesde=new long[3];desvioFuera=new boolean[3];
+  desvioLecturas=0;desvioUltima=0;desvioAccSuma=0;desvioAccMax=0;desvioDmax=0;
+ }
+ /** Una posicion buena: se apunta y se mira que haria cada regla. */
+ void mideDesvio(double d,double acc,long ahora){
+  // Un hueco de señal no son cuatro segundos fuera, igual que en checkDeviation.
+  if(desvioUltima>0&&(ahora<desvioUltima||ahora-desvioUltima>10000)){
+   desvioDesde=new long[3];desvioFuera=new boolean[3];
+  }
+  desvioUltima=ahora;
+  desvioLecturas++;desvioAccSuma+=acc;
+  if(acc>desvioAccMax)desvioAccMax=acc;
+  if(d>desvioDmax)desvioDmax=d;
+  for(int i=0;i<3;i++){
+   if(d>umbralDesvio(i,acc)){
+    if(desvioDesde[i]==0)desvioDesde[i]=ahora;
+    else if(!desvioFuera[i]&&ahora-desvioDesde[i]>=4000){desvioFuera[i]=true;desvioAvisos[i]++;}
+   }else{desvioDesde[i]=0;desvioFuera[i]=false;}
+  }
+ }
+ /** Lo que se añade al resumen de la salida. Sin Android, para probarlo. */
+ static String textoDesvio(long lecturas,double accSuma,double accMax,double dmax,int[] avisos){
+  if(lecturas<60)return "";          // sin ruta o salida de un minuto: no dice nada
+  StringBuilder t=new StringBuilder(" · precisión media ");
+  t.append(Math.round(accSuma/lecturas)).append(" m (máx ").append(Math.round(accMax))
+   .append(") · lo más lejos de la ruta ").append(Math.round(dmax)).append(" m")
+   .append(" · desvíos ").append(avisos[0]).append("/").append(avisos[1]).append("/").append(avisos[2])
+   .append(" (ahora, ×2, ×3)");
+  return t.toString();
+ }
  int nivelBateria(){return nivelBateria(this);}
  static int nivelBateria(Context context){
   try{
@@ -391,6 +443,7 @@ public class TrackingService extends Service implements LocationListener {
  void arrancaBateria(){
   bateriaDesde=SystemClock.elapsedRealtime();bateriaApunte=0;bateriaFixes=0;bateriaMetros=0;
   bateriaInicio=nivelBateria();bateriaNivel=bateriaInicio;bateriaCargando=cargando();gastoUltimo="";
+  olvidaDesvio();
   File f=new File(getFilesDir(),"bateria.tsv");
   // El fichero es un cuaderno, no un registro eterno: si se pasa de 100 kB
   // se tira lo viejo. Son unas 5.000 lineas, muchas salidas.
@@ -1415,12 +1468,16 @@ public class TrackingService extends Service implements LocationListener {
   // Sin una medida válida no se confirma ni salida ni regreso.
   if(!Double.isFinite(acc)||acc<0||acc>60){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
   double d=closest(l.getLatitude(),l.getLongitude());
+  // La medida va con la distancia de verdad, antes de que el ramal
+  // equivocado la infle: lo que se quiere saber es cuanto baila el GPS.
+  final double dReal=d;
   if(ramalEquivocado)d=Math.max(d,Math.max(FUERA_M,acc+7)+1);
   if(!Double.isFinite(d)||d<0){farSince=0;cercaDesde=0;ultimoDesvio=0;return;}
   long now=SystemClock.elapsedRealtime();
   // Un hueco de señal no cuenta como cuatro segundos de posiciones fuera.
   if(ultimoDesvio>0&&(now<ultimoDesvio||now-ultimoDesvio>10000)){farSince=0;cercaDesde=0;}
   ultimoDesvio=now;
+  mideDesvio(dReal,acc,now);
   // LAS DOS MITADES DEL CORTE HACEN COSAS DISTINTAS. «encima» (d<=FUERA_M)
   // es estar de verdad sobre el camino, y hace falta para volver: a 30 m no
   // estas de vuelta aunque el GPS dude. «acc<=35» es confianza, y solo la
@@ -1591,7 +1648,8 @@ public class TrackingService extends Service implements LocationListener {
   catch(Exception e){android.util.Log.e("TrabakutikGPS","No se pudo cerrar GPX",e);}
   apuntaBateria(true);
   int gastado=bateriaInicio>=0&&bateriaNivel>=0?bateriaInicio-bateriaNivel:GASTO_SIN_LEER;
-  gastoUltimo=textoGasto(SystemClock.elapsedRealtime()-bateriaDesde,gastado,bateriaMetros,bateriaFixes,bateriaCargando);
+  gastoUltimo=textoGasto(SystemClock.elapsedRealtime()-bateriaDesde,gastado,bateriaMetros,bateriaFixes,bateriaCargando)
+    +textoDesvio(desvioLecturas,desvioAccSuma,desvioAccMax,desvioDmax,desvioAvisos);
   escribeBateria("# termina · "+gastoUltimo);
   bateriaDesde=0;
   paraBaro();

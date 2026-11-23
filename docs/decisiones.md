@@ -1430,3 +1430,42 @@ ningún aviso a menos de 250 m y no se sabe en qué kilómetros estaba dicho),
 Asuntza 7,72 y 13,02 (se sabe que acertamos, no qué decíamos) y las faltas
 de Otzarreta (km 0,73, 1,77 y 2,59: en la ruta publicada no hay avisos de
 cruce ahí y puede ser otra grabación). Para el autor.
+
+## Los 3 sigma del fuera de ruta: simulado, y de momento no (22-23 nov 2026)
+
+De una habilidad de navegación de robots (`outdoor-gps`, que el autor mandó
+buscar) sale una idea buena: **ensanchar el umbral de fuera de ruta con la
+incertidumbre de la posición**, y hacerlo con **3 sigma**, no con uno. La
+nuestra es `precisión + 7 m`; la precisión que da Android es el radio del
+68 %, o sea **un** sigma, así que la suya sería `3 × precisión`.
+
+**Simulado sobre las 75 rutas publicadas del autor** (geometría de verdad,
+368 h por caso andando, 225 salidas de ruta medidas por caso):
+
+| sesgo del GPS | precisión | regla de ahora | ×2 | ×3 |
+|---|---|---|---|---|
+| ninguno | 25 m | **0,00 falsos/h** · detecta a 51 m | 0,00 · 68 m | 0,00 · 97 m |
+| ninguno | 40 m | **0,00 falsos/h** · detecta a 73 m | 0,00 · 105 m | 0,00 · 147 m |
+| ×1 | 25 m | 7,14 falsos/h · 49 m | 0,32 · 74 m | **0,00** · 95 m |
+| ×1 | 40 m | 9,91 falsos/h · 72 m | 0,28 · 98 m | **0,01** · 152 m |
+
+Y lo que cuesta no detectar: con 40 m de precisión, la regla de ×3 **no
+avisa nunca en 54 de 225 salidas** (la de ahora, en 7).
+
+**El resultado lo decide el sesgo, y ese número no lo tenemos.** La espera de
+4 s ya mata el ruido sin sesgo; con sesgo, se da la vuelta la tortilla. El
+autor **no** sufre 7 avisos falsos por hora, así que su sesgo real está cerca
+de cero y la regla de ahora está bien puesta. Pero eso es deducción, no
+medida.
+
+**Por eso no se toca el umbral y se mide.** Desde esta versión, cada salida
+apunta en su resumen la precisión media y máxima, lo más lejos que se ha ido
+la posición del track, y **cuántos avisos de desvío habría dado cada una de
+las tres reglas** (`mideDesvio`, que no decide nada: solo cuenta). Con una
+caminata bajo arbolado en la que el autor sepa que no se salió, la pregunta
+se cierra con sus metros.
+
+**Aviso sobre la simulación**: la salida de ruta se simula en perpendicular,
+y en el monte uno se sale por un camino que se abre poco a poco. Los metros
+de verdad serán mayores en **todas** las reglas; lo que vale es la
+comparación entre ellas.

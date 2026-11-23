@@ -41,6 +41,7 @@ public class NativeTurnsTest {
  void hablaGiro(String s,String siguiente){habla(s);if(!siguiente.isEmpty())habla(siguiente);}
  // Lo mismo que hace onLocationChanged con cada posicion, en el mismo orden.
  void checkDeviation(Location l){checkDeviation(l,false);}
+ void mideDesvio(double d,double acc,long t){}
  void posicion(Location l){posicion(l,true);}
  void posicion(Location l,boolean decide){
   if(metrics.distance.length!=route.size())metrics.configure(route,Collections.emptyList());

@@ -89,7 +89,9 @@ python3 tests/tiempo_marcha.py
 python3 tests/informe_fallo.py
 python3 scripts/test-gasto-bateria.py
 python3 scripts/test-nombre-descarga.py
-node scripts/avisos-referencia.cjs      # cruces revisados y foto de avisos (sale con 2 sin Rutas-Mallabia al lado)
+node scripts/avisos-referencia.cjs      # cruces revisados y foto de avisos
+# (sale con 2 si no encuentra los datos; en una sesion en la nube el clon se
+#  llama en minusculas, asi que: RUTAS_MALLABIA=/home/user/rutas-mallabia)
 ```
 
 Integración corre todo esto, pero se pasa **antes** de subir, no después.
