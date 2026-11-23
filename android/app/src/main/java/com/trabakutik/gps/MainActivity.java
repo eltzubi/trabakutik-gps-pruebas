@@ -755,6 +755,24 @@ public class MainActivity extends Activity {
     return Build.VERSION.SDK_INT<34||nm==null||nm.canUseFullScreenIntent();
    }catch(Exception e){return true;}
   }
+  // Y SE LE LLEVA AL SITIO, que buscarlo en Ajustes es un mal arreglo.
+  // Android 14 trae una pantalla exacta para este permiso
+  // (ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT). Si el movil no la tiene, o
+  // falla, se abre la ficha de la aplicacion, que siempre existe.
+  @JavascriptInterface public void abreAjustesPantalla(){
+   android.net.Uri yo=android.net.Uri.parse("package:"+getPackageName());
+   try{
+    if(Build.VERSION.SDK_INT>=34){
+     startActivity(new Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT",yo)
+       .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+     return;
+    }
+   }catch(Exception ignored){}
+   try{
+    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,yo)
+      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+   }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudieron abrir los ajustes",e);}
+  }
   @JavascriptInterface public void setSentido(int s){
    try{
     if(!TrackingService.ACTIVO)return;

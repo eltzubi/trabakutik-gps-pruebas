@@ -4282,9 +4282,18 @@ function conmutaPantallaCruces(){
  // esta encendido y no se encienda nada en el monte.
  let puede=true;
  try{puede=window.TrabakutikAndroid?.puedePantallaCruces?window.TrabakutikAndroid.puedePantallaCruces():true}catch(e){}
+ if(pantallaCruces&&!puede){
+  // Buscarlo a mano en Ajustes es un mal arreglo: Android 14 tiene una
+  // pantalla exacta para este permiso y se abre directamente. Una APK
+  // anterior no la sabe abrir y entonces se dice donde esta.
+  let llevado=false;
+  try{if(window.TrabakutikAndroid?.abreAjustesPantalla){window.TrabakutikAndroid.abreAjustesPantalla();llevado=true}}catch(e){}
+  notice(llevado?'Android pide permiso para encender la pantalla · dáselo y vuelve'
+    :'Android no deja encender la pantalla a esta aplicación · actívalo en Ajustes → Aplicaciones → Trabakutik GPS');
+  return;
+ }
  notice(!pantallaCruces?'Senderismo · la pantalla no se enciende en los cruces'
-   :puede?'Bici · la pantalla se enciende en cada cruce, para el soporte'
-   :'Android no deja encender la pantalla a esta aplicación · actívalo en Ajustes → Aplicaciones → Trabakutik GPS');
+   :'Bici · la pantalla se enciende en cada cruce, para el soporte');
 }
 try{
  const g=localStorage.getItem('trabakutik-pantalla-cruces');

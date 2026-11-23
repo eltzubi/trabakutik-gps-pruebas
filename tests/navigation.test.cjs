@@ -1756,12 +1756,22 @@ test('Si Android no deja encender la pantalla, se dice en vez de callar',()=>{
  // Desde Android 14 ese permiso está reservado a llamadas y alarmas. Callar
  // sería peor: el autor creería que está encendido y en el monte no pasaría
  // nada.
- const b={hidden:true,attrs:{},dataset:{},setAttribute(k,v){this.attrs[k]=v}};
- let dicho='';
- const c=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b:({attrs:{},setAttribute(){},classList:{add(){},remove(){},toggle(){}},style:{setProperty(){},removeProperty(){}}}),
+ const nodo=()=>({hidden:true,attrs:{},dataset:{},innerHTML:'',setAttribute(k,v){this.attrs[k]=v},
+   classList:{add(){},remove(){},toggle(){}},style:{setProperty(){},removeProperty(){}}});
+ const b=nodo();let dicho='',ajustes=0;
+ const c=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b:nodo(),
   notice:t=>{dicho=t},localStorage:{getItem:()=>null,setItem(){}},
   window:{TrabakutikAndroid:{setPantallaCruces(){},getPantallaCruces:()=>false,
-   puedePantallaCruces:()=>false}}});
+   puedePantallaCruces:()=>false,abreAjustesPantalla(){ajustes++}}}});
  c.conmutaPantallaCruces();
- assert.match(dicho,/Android no deja encender la pantalla/);
+ assert.equal(ajustes,1,'se le lleva a la pantalla de ese permiso, no a buscarlo');
+ assert.match(dicho,/dáselo y vuelve/);
+ // Con una APK que no sepa abrirla, se dice dónde está.
+ const b2=nodo();let dicho2='';
+ const c2=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b2:nodo(),
+  notice:t=>{dicho2=t},localStorage:{getItem:()=>null,setItem(){}},
+  window:{TrabakutikAndroid:{setPantallaCruces(){},getPantallaCruces:()=>false,
+   puedePantallaCruces:()=>false}}});
+ c2.conmutaPantallaCruces();
+ assert.match(dicho2,/Ajustes → Aplicaciones/);
 });
