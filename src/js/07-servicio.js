@@ -659,11 +659,28 @@ function conmutaModoAudio(){
 // El boton solo sale dentro de la aplicacion: desde la web no hay servicio
 // que encienda nada.
 let pantallaCruces=false;
+// EL BOTON DICE QUE ERES, NO QUE HACE (23 nov 2026). Lo dijo el autor al ver
+// el primero: «el dibujo del recuadro no se sabe para qué es; ¿dibujo una
+// bici o senderista no es mejor?». Una bici o un caminante se entienden sin
+// leer, y de paso es la opcion que el pidio desde el principio: bici o
+// andando. Verde para el senderista es el mismo verde con el que el mapa
+// pinta las rutas de senderismo, asi que no hay dos idiomas.
+const DIBUJO_BICI='<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/>'
+ +'<path d="M5.5 17.5 L9.5 8 h5"/><path d="M18.5 17.5 L14 8"/><path d="M8 8h5"/><circle cx="15.5" cy="5" r="1.2"/>';
+const DIBUJO_ANDANDO='<circle cx="13" cy="4" r="1.8"/><path d="M12 8.5 L9.5 13 L7 21"/>'
+ +'<path d="M12 8.5 L15 12 L16 21"/><path d="M12 9 L16.5 7"/><path d="M9.5 13 L6 10"/>';
 function pintaPantallaCruces(){
  const b=$('pantallaCruces');if(!b)return;
  const hay=!!window.TrabakutikAndroid?.setPantallaCruces;
  b.hidden=!hay;
- if(hay)b.setAttribute('aria-pressed',pantallaCruces?'true':'false');
+ if(!hay)return;
+ b.setAttribute('aria-pressed',pantallaCruces?'true':'false');
+ if(b.dataset)b.dataset.modo=pantallaCruces?'bici':'andando';
+ const i=$('iconoModo');
+ if(i)i.innerHTML=pantallaCruces?DIBUJO_BICI:DIBUJO_ANDANDO;
+ if(typeof b.setAttribute==='function')b.setAttribute('aria-label',pantallaCruces
+   ?'Modo: bici. La pantalla se enciende en los cruces'
+   :'Modo: senderismo. La pantalla no se enciende en los cruces');
 }
 function conmutaPantallaCruces(){
  pantallaCruces=!pantallaCruces;
@@ -675,8 +692,8 @@ function conmutaPantallaCruces(){
  // esta encendido y no se encienda nada en el monte.
  let puede=true;
  try{puede=window.TrabakutikAndroid?.puedePantallaCruces?window.TrabakutikAndroid.puedePantallaCruces():true}catch(e){}
- notice(!pantallaCruces?'La pantalla no se encenderá en los cruces'
-   :puede?'La pantalla se encenderá en cada cruce · para el soporte de la bici'
+ notice(!pantallaCruces?'Senderismo · la pantalla no se enciende en los cruces'
+   :puede?'Bici · la pantalla se enciende en cada cruce, para el soporte'
    :'Android no deja encender la pantalla a esta aplicación · actívalo en Ajustes → Aplicaciones → Trabakutik GPS');
 }
 try{

@@ -1722,9 +1722,10 @@ test('La pantalla en los cruces: apagada de serie, solo dentro de la aplicación
  // Lo pidió el autor para la bici, con el móvil en el soporte: «que de un
  // vistazo pueda ver dónde tengo que ir». Andando no la quiere: «no quisiera
  // en una ruta de senderismo tener que consumir batería».
- const guardado={};const nodo=()=>({hidden:true,attrs:{},setAttribute(k,v){this.attrs[k]=v},hasAttribute(){return false}});
- const b=nodo();let dicho='',mandado=null;
- const c=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b:nodo(),notice:t=>{dicho=t},
+ const guardado={};const nodo=()=>({hidden:true,attrs:{},dataset:{},innerHTML:'',
+   setAttribute(k,v){this.attrs[k]=v},hasAttribute(){return false}});
+ const b=nodo(),icono=nodo();let dicho='',mandado=null;
+ const c=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b:id==='iconoModo'?icono:nodo(),notice:t=>{dicho=t},
   localStorage:{getItem:k=>guardado[k]??null,setItem:(k,v)=>{guardado[k]=v}},
   window:{TrabakutikAndroid:{setPantallaCruces(v){mandado=v},getPantallaCruces:()=>false,
    puedePantallaCruces:()=>true}}});
@@ -1732,23 +1733,30 @@ test('La pantalla en los cruces: apagada de serie, solo dentro de la aplicación
  c.pintaPantallaCruces();
  assert.equal(b.hidden,false,'dentro de la aplicación el botón se ve');
  assert.equal(b.attrs['aria-pressed'],'false','y nace apagado');
+ assert.equal(b.dataset.modo,'andando','de serie, senderista');
+ assert(icono.innerHTML.includes('M12 8.5'),'con el dibujo del caminante');
+ assert.match(b.attrs['aria-label'],/senderismo/);
  // Al encenderla se guarda, se le dice al servicio y se avisa.
  c.conmutaPantallaCruces();
  assert.equal(mandado,true,'el servicio se entera');
  assert.equal(guardado['trabakutik-pantalla-cruces'],'1','y se recuerda');
  assert.equal(b.attrs['aria-pressed'],'true');
- assert.match(dicho,/se encenderá en cada cruce/);
+ assert.equal(b.dataset.modo,'bici','pasa a bici');
+ assert(icono.innerHTML.includes('circle cx="5.5"'),'y al dibujo de la bici');
+ assert.match(b.attrs['aria-label'],/bici/i);
+ assert.match(dicho,/Bici · la pantalla se enciende/);
  // Y al apagarla, lo contrario.
  c.conmutaPantallaCruces();
  assert.equal(mandado,false);
  assert.equal(guardado['trabakutik-pantalla-cruces'],'0');
- assert.match(dicho,/no se encenderá/);
+ assert.match(dicho,/Senderismo · la pantalla no se enciende/);
+ assert.equal(b.dataset.modo,'andando','y vuelve a senderista');
 });
 test('Si Android no deja encender la pantalla, se dice en vez de callar',()=>{
  // Desde Android 14 ese permiso está reservado a llamadas y alarmas. Callar
  // sería peor: el autor creería que está encendido y en el monte no pasaría
  // nada.
- const b={hidden:true,attrs:{},setAttribute(k,v){this.attrs[k]=v}};
+ const b={hidden:true,attrs:{},dataset:{},setAttribute(k,v){this.attrs[k]=v}};
  let dicho='';
  const c=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b:({attrs:{},setAttribute(){},classList:{add(){},remove(){},toggle(){}},style:{setProperty(){},removeProperty(){}}}),
   notice:t=>{dicho=t},localStorage:{getItem:()=>null,setItem(){}},
