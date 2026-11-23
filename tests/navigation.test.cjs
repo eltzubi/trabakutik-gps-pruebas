@@ -1430,12 +1430,28 @@ test('«al revés»: entero 30 s y luego una etiqueta pequeña; si cambia de sen
  c.marcaAlReves(false);assert(n.classList.contains('hidden'));
  c.marcaAlReves(true);assert(!n.classList.contains('breve')&&/AL REVÉS/.test(n.textContent),'al volver a ir al reves, entero otra vez');
 });
-test('la ficha en marcha va en tres columnas (rumbo, al track, altitud) y se rellenan',()=>{
+test('la ficha en marcha: tres cifras grandes y la brujula con su rumbo al lateral',()=>{
+ // 23 nov 2026: las tres grandes pasan a ser PROXIMO CRUCE, AL TRACK y
+ // ALTITUD, y el rumbo se va con su brujula al hueco de arriba a la derecha.
+ // Lo pidio el autor. Las coordenadas se probaron ese dia y las quito el
+ // mismo: «no me hacen falta, el SOS me las da».
  const html=fs.readFileSync(path.join(__dirname,'../src/nuevo.plantilla.html'),'utf8');
- assert(html.includes('id="ffTrack"')&&html.includes('id="ffAlt"'),'las dos casillas nuevas');
- assert(/\.info \.ff\{display:none\}/.test(html)&&/body\.despejado \.info \.ff\{display:flex/.test(html),'solo en marcha');
+ for(const id of ['ffProx','ffTrack','ffAlt'])assert(html.includes('id="'+id+'"'),'falta la casilla '+id);
+ assert(!html.includes('ffCoords'),'las coordenadas no vuelven sin que las pida');
+ assert(/\.info \.ff\{display:none\}/.test(html)
+  &&/body\.despejado \.info \.ff\{display:flex/.test(html),'solo en marcha');
+ // Cada una en su sitio: las tres grandes en la fila 2 y una por columna.
+ for(const [id,col] of [['ffProxBox',1],['ffTrackBox',2],['ffAltBox',3]])
+  assert(new RegExp('body\\.despejado #'+id+'\\{grid-column:'+col).test(html),id+' en la columna '+col);
+ assert(/body\.despejado #compass\{grid-column:3;grid-row:1;/.test(html),'la brujula, arriba a la derecha');
+ assert(/body\.despejado #compass::before\{content:'Rumbo'/.test(html),'y con su rotulo: «brujula si, y rumbo»');
+ // Y la brujula sigue siendo la grande de 40 px que pidio el 16 de noviembre.
+ assert(/body\.despejado #compass svg\{width:40px/.test(html),'la rosa no se encoge');
  const n9=fs.readFileSync(path.join(__dirname,'../src/js/09-navegacion.js'),'utf8'),n7=fs.readFileSync(path.join(__dirname,'../src/js/07-servicio.js'),'utf8');
  assert(n9.includes("$('ffTrack').textContent=fmt(d)")&&n7.includes("if($('ffAlt'))$('ffAlt').textContent=altura!==null?Math.round(altura)+' m'"),'se rellenan');
+ assert(!n9.includes('pintaCoordenadas')&&n9.includes('pintaProximoCruce(progreso);'),'el proximo cruce, en cada posicion');
+ const n10=fs.readFileSync(path.join(__dirname,'../src/js/10-aplicacion.js'),'utf8');
+ assert(/CIFRAS_FICHA=\['compassText','ffProx','ffTrack','ffAlt'\]/.test(n10),'el proximo cruce tambien se encoge si no cabe');
 });
 test('fuera de la ruta, la altitud del GPS (sobre el mar) solo si es buena y reciente',()=>{
  const c=pieza('07-servicio.js'),ahora=1e12;
@@ -1653,4 +1669,32 @@ test('La distancia se dice 2,5 segundos después de acabar la voz y cede ante ot
  c.hablaPagina('Curva derecha');
  relojes.shift().fn();
  assert.equal(frases.length,4);
+});
+test('El «próximo cruce» de arriba va por la ruta, no en línea recta',()=>{
+ // Lo pidio el autor el 23 de noviembre de 2026: «que me marcara la distancia
+ // hasta el proximo cruce que me iba a indicar». No es la distancia del
+ // aviso -ese solo existe dentro de su ventana-, es cuanto falta para el
+ // siguiente, se avise ya o no.
+ const {proximoCruceAviso}=pieza('09-navegacion.js',{window:{}},arranque09());
+ // Una ruta que se dobla: el cruce del km 9 esta al lado a vuelo de pajaro,
+ // pero quedan tres kilometros de pedales. Manda «along».
+ const lista=[{along:200},{along:1500},{along:9000}];
+ assert.equal(proximoCruceAviso(lista,0,1).falta,200);
+ assert.equal(proximoCruceAviso(lista,300,1).falta,1200);
+ // Al reves, «along» decrece: el proximo es el de atras.
+ assert.equal(proximoCruceAviso(lista,1400,-1).falta,1200);
+ // A 8.900 ya has dejado atras el del 9.000 (yendo al reves queda delante en
+ // «along», pero a tu espalda), asi que el proximo es el del 1.500.
+ assert.equal(proximoCruceAviso(lista,8900,-1).falta,7400);
+ // Y parado encima del cruce, cero: es el que tienes.
+ assert.equal(proximoCruceAviso(lista,9000,-1).falta,0);
+ // El que tienes justo debajo sigue siendo el proximo; el que dejaste a 50 m,
+ // no.
+ assert.equal(proximoCruceAviso([{along:100}],103,1).falta,0);
+ assert.equal(proximoCruceAviso([{along:100}],150,1),null);
+ // Y sin lista, sin «along» o con cruces sin kilometro, no se inventa nada.
+ assert.equal(proximoCruceAviso([],0,1),null);
+ assert.equal(proximoCruceAviso(null,0,1),null);
+ assert.equal(proximoCruceAviso([{along:200}],NaN,1),null);
+ assert.equal(proximoCruceAviso([{},{along:200}],0,1).falta,200);
 });

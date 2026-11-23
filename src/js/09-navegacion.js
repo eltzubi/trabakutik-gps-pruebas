@@ -552,6 +552,42 @@ function rumboDeLaRuta(progreso){
  return (h+(sentidoRuta<0?180:0))%360;
 }
 
+// LA DISTANCIA AL PROXIMO CRUCE, ARRIBA (23 nov 2026, lo pidio el autor:
+// «que me marcara la distancia hasta el proximo cruce que me iba a
+// indicar»). Las coordenadas se probaron el mismo dia y las quito el: «no me
+// hacen falta, el SOS me las da».
+//
+// NO es la distancia del aviso. El aviso solo existe dentro de su ventana -90
+// m a 40 km/h- y hasta entonces en pantalla no habia nada: esto es el primer
+// cruce de la lista que tienes delante, se avise ya o no, para saber si el
+// siguiente esta a 80 m o a cuatro kilometros.
+//
+// Va por «along» y no por distancia en linea recta: en una ruta que se dobla,
+// un cruce del kilometro 9 puede estar a 50 m a vuelo de pajaro y a tres
+// kilometros de pedales. Y el sentido manda, como en junctionGuidance:
+// yendo al reves «along» decrece.
+function proximoCruceAviso(lista,along,sentido){
+ if(!Array.isArray(lista)||!Number.isFinite(along))return null;
+ const signo=sentido<0?-1:1;
+ let mejor=null;
+ for(const t of lista){
+  if(!t||!Number.isFinite(t.along))continue;
+  // -5 m y no 0: el cruce que tienes justo debajo sigue siendo el proximo.
+  const falta=(t.along-along)*signo;
+  if(falta< -5)continue;
+  if(!mejor||falta<mejor.falta)mejor={falta:Math.max(0,falta),turn:t};
+ }
+ return mejor;
+}
+function pintaProximoCruce(progreso){
+ const b=$('ffProx');if(!b)return;
+ const lista=sentidoRuta<0&&Array.isArray(junctionsReves)?junctionsReves:junctions;
+ // Sin guia, fuera de la ruta o con la posicion dudosa no hay «proximo»: un
+ // numero viejo ahi engaña mas que un guion.
+ const vale=guiaIniciada()&&progreso&&!progreso.ambiguous&&progreso.distance<=30;
+ const n=vale?proximoCruceAviso(lista,progreso.along,sentidoRuta):null;
+ b.textContent=n?fmt(n.falta):'—';
+}
 function pintaPosicionGps(p,h){
  const valido=Number.isFinite(h);
  if(!me){
@@ -604,6 +640,7 @@ function onFix(pos){
  aplicaGiroMapa(false);
  pintaMandos();
  pintaPosicionGps(p,h);
+ pintaProximoCruce(progreso);
  if(followGps&&Date.now()>=manualMapUntil){
   const center=map.getCenter();
   if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});
@@ -825,7 +862,7 @@ setInterval(()=>{
  }
  if(ubicacionApagada){
   if(junctionActive>=0)resetJunctionView();
-  if(routePoints.length>1){$('distance').textContent='Sin posición reciente del GPS';if($('ffTrack'))$('ffTrack').textContent='—'}
+  if(routePoints.length>1){$('distance').textContent='Sin posición reciente del GPS';if($('ffTrack'))$('ffTrack').textContent='—';if($('ffProx'))$('ffProx').textContent='—'}
   const mensaje='Ubicación del teléfono apagada · actívala para recibir posición GPS';
   if($('status').textContent!==mensaje)notice(mensaje);
   avisaSinGps(true);
@@ -833,7 +870,7 @@ setInterval(()=>{
  }
  if(ultimoErrorGps!==null){
   if(junctionActive>=0)resetJunctionView();
-  if(routePoints.length>1){$('distance').textContent='Sin posición reciente del GPS';if($('ffTrack'))$('ffTrack').textContent='—'}
+  if(routePoints.length>1){$('distance').textContent='Sin posición reciente del GPS';if($('ffTrack'))$('ffTrack').textContent='—';if($('ffProx'))$('ffProx').textContent='—'}
   if($('status').textContent!==ultimoErrorGpsText)notice(ultimoErrorGpsText);
   avisaSinGps(false);
   return;
@@ -913,7 +950,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={siguienteManiobra,marcaAvisoFalta,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});

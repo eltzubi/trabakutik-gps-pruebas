@@ -107,7 +107,7 @@ function cancelaQuita(){
 // queria mas grandes). Van a 28 px, pero «46,18 km» al track o «1331 m» de
 // altitud no caben a ese tamaño en su columna: entonces se encogen lo justo,
 // de px en px, solo esa cifra. Se vuelve a medir cada vez que cambia el texto.
-const CIFRAS_FICHA=['compassText','ffTrack','ffAlt'];
+const CIFRAS_FICHA=['compassText','ffProx','ffTrack','ffAlt'];
 function ajustaCifras(){
  for(const id of CIFRAS_FICHA){
   const b=$(id);if(!b||!b.parentElement||typeof getComputedStyle!=='function')continue;

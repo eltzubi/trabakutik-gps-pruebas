@@ -155,6 +155,41 @@ async function setup(context) {
         "desborde a " + width,
       );
     }
+    // LA FICHA EN MARCHA, CON LOS NUMEROS MAS LARGOS QUE PUEDE HABER (23 nov
+    // 2026). Son cuatro datos en un recuadro de 315 px: proximo cruce, al
+    // track, altitud y el rumbo con su brujula. Nada puede salirse del
+    // recuadro ni hacer que la pagina se vaya de ancho.
+    for (const ancho of [320, 360, 390, 412, 430]) {
+      await page.setViewportSize({ width: ancho, height: 844 });
+      const fuera = await page.evaluate(async () => {
+        document.body.classList.add("despejado");
+        document.getElementById("compass").classList.remove("hidden");
+        document.getElementById("gpsState").textContent = "GPS activo · 5 m";
+        document.getElementById("compassText").textContent = "245°";
+        document.getElementById("ffProx").textContent = "12,34 km";
+        document.getElementById("ffTrack").textContent = "46,18 km";
+        document.getElementById("ffAlt").textContent = "1331 m";
+        await new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        );
+        const caja = document.querySelector(".info").getBoundingClientRect();
+        const mal = [];
+        for (const id of ["gpsState","compass","compassText","ffProx","ffTrack","ffAlt"]) {
+          const r = document.getElementById(id).getBoundingClientRect();
+          const e = document.getElementById(id);
+          if (r.right > caja.right + 0.6 || r.left < caja.left - 0.6 || r.bottom > caja.bottom + 0.6)
+            mal.push(id);
+          // Y que no se corte: con nowrap y overflow:hidden la caja mide bien
+          // aunque al numero le falte media cifra.
+          else if (e.scrollWidth > e.clientWidth + 1) mal.push(id + " (cortado)");
+        }
+        if (document.documentElement.scrollWidth > innerWidth + 1) mal.push("la página");
+        return mal;
+      });
+      assert.deepEqual(fuera, [], "se sale de la ficha a " + ancho + " px: " + fuera.join(", "));
+    }
+    await page.evaluate(() => document.body.classList.remove("despejado"));
+    await page.setViewportSize({ width: 390, height: 844 });
     // Controles utilizables incluso cuando la columna no cabe completa.
     for (const size of [{width:320,height:568},{width:568,height:320},{width:390,height:844}]) {
       await page.setViewportSize(size);

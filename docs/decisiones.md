@@ -1618,3 +1618,28 @@ otra a la derecha a 50 m.
 **Comprobado, no supuesto**: de las 94 bajas en las 75 rutas, todas vienen de
 una tanda de tres o más del mismo lado. Los cinco cruces revisados siguen
 bien.
+
+## Arriba, la distancia al próximo cruce (23 nov 2026)
+
+El autor: «me gustaría arriba la brújula en un lateral, que me marcara la
+distancia hasta el próximo cruce que me iba a indicar».
+
+La ficha en marcha tenía tres cifras grandes: rumbo, al track y altitud. Ahora
+son **próximo cruce, al track y altitud**, y el rumbo se va con su brújula al
+hueco de arriba a la derecha, que estaba vacío. La brújula sigue siendo la
+grande de 40 px del 16 de noviembre y conserva su rótulo y sus grados —
+«brújula sí, y rumbo»—; lo único que pierde es tamaño en los grados, de 26 a
+20 px, porque su columna es más estrecha que antes.
+
+**El «próximo cruce» no es la distancia del aviso.** El aviso solo existe
+dentro de su ventana (90 m a 40 km/h, 200 la voz) y hasta entonces en pantalla
+no había nada. Este número es el primer cruce de la lista que tienes delante,
+se avise ya o no, para saber si el siguiente está a 80 m o a cuatro
+kilómetros. Va por `along` y no en línea recta: en una ruta que se dobla, un
+cruce del kilómetro 9 puede estar a 50 m a vuelo de pájaro y a tres kilómetros
+de pedales. Y el sentido manda, como en `junctionGuidance`: yendo al revés
+`along` decrece.
+
+**Las coordenadas duraron una tarde.** Se probaron en una cuarta línea debajo
+y el autor las quitó el mismo día: «no me hacen falta, el SOS me las da». La
+ficha vuelve de 115 a 96 px de alto.
