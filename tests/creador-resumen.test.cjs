@@ -3,6 +3,7 @@
 // esfuerzo andando, sacados de la pieza 05 con require().
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
 const {pieza}=require('./pieza.cjs');
 const c=()=>pieza('05-creador-tramos.js');
 
@@ -76,4 +77,32 @@ test('la rampa es la del último tramo, y solo de subida',()=>{
   // Bajada fuerte: tampoco es rampa.
   const baja=tramo(400,-40,5,43);
   assert.equal(rampaUltimoTramo(baja,0).pend,0);
+});
+test('Dos calzadas juntas en la misma dirección son una sola (23 nov 2026)',()=>{
+ // Lo pidió el autor: «da igual que haya dos calzadas, si son en la misma
+ // dirección para mí los dos son uno», porque el creador le decía «el punto
+ // anterior está en otra calzada» y le obligaba a dar puntos cortísimos.
+ const {mismaCalzada}=c();
+ // Un punto en el norte de Bizkaia, con la marcha hacia el este (rumbo 90).
+ const p=[43.2,-2.5],m=g=>111195*Math.cos(43.2*Math.PI/180),norte=d=>d/111195;
+ const mueve=(dn,de)=>[p[0]+norte(dn),p[1]+de/m()];
+ // DE LADO: la calzada gemela, a 12 m al norte de la mía. Es la misma vía.
+ assert.equal(mismaCalzada(p,mueve(12,0),90),true,'12 m de lado, misma carretera');
+ assert.equal(mismaCalzada(p,mueve(-25,0),90),true,'25 m al otro lado, también');
+ assert.equal(mismaCalzada(p,mueve(31,0),90),false,'a 31 m ya no es la calzada de al lado');
+ // HACIA DELANTE: eso cambia el recorrido, te saltas un trozo. No vale.
+ assert.equal(mismaCalzada(p,mueve(0,40),90),false,'40 m hacia delante, no');
+ assert.equal(mismaCalzada(p,mueve(0,-40),90),false,'40 m hacia atrás, tampoco');
+ // El error de pegado normal sí pasa.
+ assert.equal(mismaCalzada(p,mueve(0,6),90),true,'6 m de pegado');
+ // Con el rumbo girado, lo de lado y lo de delante cambian de sitio.
+ assert.equal(mismaCalzada(p,mueve(20,0),0),false,'yendo al norte, 20 m al norte es avanzar');
+ assert.equal(mismaCalzada(p,mueve(0,20),0),true,'y 20 m al este es la calzada de al lado');
+ // Sin rumbo no se decide nada: se mantiene el «no» de siempre.
+ assert.equal(mismaCalzada(p,mueve(12,0),null),false);
+ assert.equal(mismaCalzada(null,mueve(12,0),90),false);
+ // Y está enchufado donde saltaba el aviso.
+ const n05=fs.readFileSync(path.join(__dirname,'../src/js/05-creador-tramos.js'),'utf8');
+ assert(/dist\(result\.anchors\[0\],coords\[0\]\)>3\s*\n?\s*&&!mismaCalzada\(coords\[0\],result\.anchors\[0\],rumbo\)/.test(n05),
+   'el «otra calzada» tiene que consultar mismaCalzada antes de saltar');
 });

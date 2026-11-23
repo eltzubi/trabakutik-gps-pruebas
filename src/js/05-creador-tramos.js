@@ -191,11 +191,41 @@ async function calculaCalzada(coords,signal,rumbo){
   throw Error('No se pudo confirmar la continuidad de la calzada. Acerca los puntos al sentido que quieres seguir.');
  return result;
 }
+// DOS CARRILES JUNTOS EN LA MISMA DIRECCION SON UNO (23 nov 2026, lo pidio el
+// autor: «da igual que haya dos calzadas, si son en la misma direccion para mi
+// los dos son uno... que marque como uno, a menos que influya en el cruce»).
+//
+// El planificador pega el punto anterior a la calzada gemela y antes eso era
+// un «no» seco -«El punto anterior esta en otra calzada»-, asi que solo
+// quedaba ir dando puntos cortisimos. Ahora se mira COMO se ha movido el
+// punto, no cuanto:
+//  - DE LADO, perpendicular al sentido de la marcha: es la calzada de al
+//    lado, la misma carretera. Se acepta hasta 30 m, que es mas de lo que
+//    separa a dos calzadas de una nacional.
+//  - HACIA DELANTE O HACIA ATRAS: eso si cambia el recorrido -te saltarias un
+//    trozo o lo repetirias-, y se sigue diciendo que no. Ocho metros de
+//    margen, que es el error de pegado normal.
+//
+// Lo de «a menos que influya en el cruce» ya lo caza calculaCalzada, que corre
+// antes: si para pasar de una calzada a la otra hay que dar la vuelta o
+// rodear, el trazado sale un 35 % mas largo que la recta o trae una maniobra
+// de cambio de sentido, y entonces no pasa.
+const CALZADA_LADO_M=30,CALZADA_AVANCE_M=8;
+function mismaCalzada(pedido,pegado,rumbo){
+ if(!Array.isArray(pedido)||!Array.isArray(pegado)||!Number.isFinite(rumbo))return false;
+ const norte=(pegado[0]-pedido[0])*111195;
+ const este=(pegado[1]-pedido[1])*111195*Math.cos(pedido[0]*Math.PI/180);
+ const r=rumbo*Math.PI/180;
+ const avance=norte*Math.cos(r)+este*Math.sin(r);
+ const lado=-norte*Math.sin(r)+este*Math.cos(r);
+ return Math.abs(avance)<=CALZADA_AVANCE_M&&Math.abs(lado)<=CALZADA_LADO_M;
+}
 async function solicitaMapaGps(coords,signal){
  const rumbo=rumboDeCalzada(coords);
  if(rumbo!==null){
   const result=await calculaCalzada(coords,signal,rumbo).catch(e=>{e.calzadaDudosa=true;throw e});
-  if(typeof anclasGps!=='undefined'&&anclasGps.length>1&&dist(result.anchors[0],coords[0])>3)
+  if(typeof anclasGps!=='undefined'&&anclasGps.length>1&&dist(result.anchors[0],coords[0])>3
+     &&!mismaCalzada(coords[0],result.anchors[0],rumbo))
    throw Object.assign(Error('El punto anterior está en otra calzada. Acércalo al sentido que quieres seguir.'),{calzadaDudosa:true});
   result.calzada=true;
   return result;
@@ -982,4 +1012,4 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={ofreceRectaTrasFallo,rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={mismaCalzada,ofreceRectaTrasFallo,rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
