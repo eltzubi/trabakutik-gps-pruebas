@@ -1681,3 +1681,44 @@ caso de 8.725: no se toca sin una marca ✋ que lo diga.
 **El instrumento se queda**: `node scripts/avisos-referencia.cjs` falla si
 vuelve a haber dos avisos a menos de 5 m, y su «reparto» dice cuántos avisos
 mueve un cambio en las rutas de andar y cuántos en las de bici, por separado.
+
+## Un cruce que está en el mapa no lo borra nada (23 nov 2026)
+
+Marca ✋ del autor, 22 de noviembre, Otzarreta km 1,77: «faltó aquí». Medido
+sobre su propio GPX: en el km 1,755 **hay un cruce de OpenStreetMap** y el
+track gira allí 54° a la derecha (146° medidos en la ventana de 12 m). El
+navegador no decía nada. El aviso más cercano estaba 44 m antes.
+
+Tres cosas se juntaban para borrarlo, y las tres son la misma idea mal
+aplicada: **tratar un cruce de verdad como si fuera una curva del trazado.**
+
+1. `decideCruce` devuelve `sinRamas` cuando la salida real no se parece a
+   ninguna rama del nodo —aquí sale a 143° y las ramas son 78, 258 y 216—, y
+   entonces se decide por la forma. Pero no se marcaba `cruceAvisado`, así
+   que el aviso nacía sin dueño.
+2. Sin dueño, la regla de «dos avisos a menos de 35 m» lo borraba. Y esos
+   35 m son **en línea recta**: en una S, 44 m de camino son 27 de recta.
+3. Y el filtro de nudos —los metros donde el GPS se enreda porque alguien se
+   paró— también se lo comía, porque calla las curvas.
+
+**Lo que se ha cambiado**, en lo mínimo:
+- un cruce `sinRamas` que llega a avisar se queda con su nodo: se cuenta
+  desde él y no se deja borrar por un aviso de al lado que tenga otro nodo;
+- el filtro de nudos respeta el aviso que lleva su propio nodo de OSM;
+- **salvo en los extremos**, donde el nudo es el aparcamiento y lo que hay
+  son maniobras, no indicaciones.
+
+**Lo que NO se ha cambiado**: la clasificación y la frase. Una curva se sigue
+diciendo «curva». Se probó marcarlas como cruces y eran 489 avisos que
+pasaban de «curva» a «gira»: demasiado, y sin nada que lo respalde.
+
+**Medido**: 95 avisos nuevos en las 75 rutas (8.757 → 8.852, un 1,1 % más).
+De ellos, el **92 % tiene su propio nodo de OpenStreetMap** y el **97 % es un
+giro de 45° o más**. Cuatro salen en el km 0,04 de cuatro rutas: son cruces
+de verdad nada más arrancar, justo lo que el autor echó en falta el 23 de
+noviembre —«al salir de casa he tenido que girar a mano derecha y tampoco me
+lo ha indicado»—. Los cinco cruces revisados siguen bien y no hay ningún par
+de avisos en el mismo sitio.
+
+De sus siete marcas ✋, quedan **seis resueltas y una viva** (la del km 7,45
+de Otzarreta, que la hizo a 40 m del track yendo fuera de ruta).

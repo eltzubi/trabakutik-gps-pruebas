@@ -267,3 +267,24 @@ test('dos avisos en el mismo metro son uno: se queda el giro más grande',()=>{
  assert.equal(juntaAvisosDelMismoSitio([]).length,0);
  assert.equal(juntaAvisosDelMismoSitio([j(1,'derecha',10)]).length,1);
 });
+test('un nudo calla las curvas, pero no un cruce que está en el mapa',()=>{
+ // Un nudo es que alguien se paró y el GPS se enredó: ahí las curvas son
+ // ruido. Pero si en esos metros hay un nodo de OpenStreetMap, es un sitio
+ // de verdad. En el km 1,755 de Otzarreta el autor gira a la derecha en un
+ // cruce y se quedaba mudo porque la S de ahí cuenta como nudo; lo marcó en
+ // el terreno el 22 de noviembre de 2026: «faltó aquí».
+ // En los extremos no vale: ahí el nudo es el aparcamiento.
+ const {quitaCurvasDeNudos}=pieza('08-cruces.js');
+ const a={along:1000,cruce:false};                 // curva suelta
+ const b={along:1000,cruce:false,nodo:[43.2,-2.5]}; // curva con nodo de OSM
+ const d={along:1000,cruce:true};                   // cruce de verdad
+ const nudo=[[950,1050]];
+ assert.deepEqual(quitaCurvasDeNudos([a],nudo,[]),[],'la curva suelta se calla');
+ assert.deepEqual(quitaCurvasDeNudos([b],nudo,[]),[b],'la que tiene nodo se queda');
+ assert.deepEqual(quitaCurvasDeNudos([d],nudo,[]),[d],'el cruce se queda, como siempre');
+ // Fuera del nudo, todas se quedan.
+ assert.equal(quitaCurvasDeNudos([a,b,d],[[0,100]],[]).length,3);
+ // En el extremo -el aparcamiento- la del nodo tampoco: ahí se maniobra.
+ assert.deepEqual(quitaCurvasDeNudos([b],[],nudo),[],'en el aparcamiento, no');
+ assert.deepEqual(quitaCurvasDeNudos([d],[],nudo),[d],'pero un cruce de verdad sí');
+});

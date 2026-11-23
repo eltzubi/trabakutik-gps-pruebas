@@ -819,10 +819,26 @@ function nudosDe(pts,cum){
 // Fuera las curvas que caen en un nudo, con NUDO_HOLGURA_M de margen: una
 // curva se mide con 12 m de track a cada lado, y si esos metros entran en el
 // nudo, el rumbo sale de su baile (Otzarreta, km 5,05).
-function quitaCurvasDeNudos(lista,tramos){
+// UN NUDO CALLA LAS CURVAS, NO LOS CRUCES (23 nov 2026). En medio de la ruta
+// tambien se queda el aviso que tiene su propio nodo de OpenStreetMap aunque
+// este clasificado como curva: un nudo es que el GPS se enredo porque alguien
+// se paro, y eso no borra un cruce que esta en el mapa. En el km 1,755 de
+// Otzarreta el autor gira a la derecha en un cruce de verdad y se quedaba
+// mudo porque la S de ahi cuenta como nudo. Lo marco en el terreno: «faltó
+// aquí».
+// EN LOS EXTREMOS NO. Ahi el nudo es el aparcamiento: se maniobra con el
+// coche o se da una vuelta buscando el camino, y el cruce que haya en esos
+// metros no es una indicacion, es ruido. Sin esta distincion salian cuatro
+// avisos en el km 0,04 de cuatro rutas distintas.
+function quitaCurvasDeNudos(lista,tramos,extremos){
  const NUDO_HOLGURA_M=20;
- return lista.filter(j=>j.cruce!==false||
-  !tramos.some(([a,b])=>j.along>=a-NUDO_HOLGURA_M&&j.along<=b+NUDO_HOLGURA_M));
+ const dentro=(j,ts)=>ts.some(([a,b])=>j.along>=a-NUDO_HOLGURA_M&&j.along<=b+NUDO_HOLGURA_M);
+ const fuera=extremos||[];
+ return lista.filter(j=>{
+  if(j.cruce!==false)return true;        // un cruce de verdad se queda, como siempre
+  if(dentro(j,fuera))return false;       // en el aparcamiento, una curva no
+  return !!j.nodo||!dentro(j,tramos);    // en medio, se queda si tiene su nodo
+ });
 }
 // Y los extremos: al llegar al coche el track da vueltas alrededor de la meta
 // sin el baile apretado de un nudo (en Otzarreta, 59 m sin salir de 20 m de la
@@ -960,9 +976,9 @@ function computeJunctions(){
    ida.sort((a,b)=>a.i-b.i);
   }
  }
- const nudos=nudosDe(pts,cum).concat(nudosDeExtremos(pts,cum));
- ida=quitaCurvasDeNudos(ida,nudos);
- if(vuelta)vuelta=quitaCurvasDeNudos(vuelta,nudos);
+ const nudos=nudosDe(pts,cum),extremos=nudosDeExtremos(pts,cum);
+ ida=quitaCurvasDeNudos(ida,nudos,extremos);
+ if(vuelta)vuelta=quitaCurvasDeNudos(vuelta,nudos,extremos);
  aplicaHitosDeAviso(ida);
  if(vuelta)aplicaHitosDeAviso(vuelta);
  confirmaRamalWeb.reinicia();
@@ -1281,7 +1297,7 @@ function calculaCrucesDe(){
   // OSM y no de las propias rutas.
   const elCruce=cruceEn(b);
   const cruce=!!elCruce;
-  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false,entradaLateral=false,ramales=null;
+  let grados=angle,ladoCruce=null,mantente=false,porElCruce=false,cruceAvisado=null,sigue=false,via=0,curvaCalle=false,iNodo=null,noRecto=false,nodoEnRuta=false,entradaLateral=false,ramales=null,cruceSinRamas=null;
   if(cruce){
    // El trozo de ruta de 60 m antes y despues del CRUCE (cortado en el punto
    // de la ruta mas cercano a su nodo y empalmado en el nodo), para reconocer
@@ -1376,6 +1392,17 @@ function calculaCrucesDe(){
       porElCruce=true;grados=ancho.angle;ladoCruce=ancho.cross>0?'izquierda':'derecha';
      }
     }
+    // SIGUE SIENDO UN SITIO, aunque sus ramas no encajen (23 nov 2026).
+    // «sinRamas» tambien sale cuando la salida real no se parece a ninguna
+    // rama del nodo, y eso pasa en cruces de verdad. El aviso se clasifica y
+    // se dice igual que antes -curva es curva-, pero se cuenta DESDE EL NODO
+    // y no se deja borrar por un aviso de al lado que tenga otro nodo.
+    // En el km 1,755 de Otzarreta hay 44 m de camino hasta el aviso anterior
+    // y solo 27 en linea recta: el cruce donde el autor gira a la derecha se
+    // quedaba mudo. Lo marco en el terreno: «faltó aquí».
+    if(porElCruce&&nodoEnRuta&&!curvaCalle
+       &&!(crucesDichos.has(elCruce)&&!haSalido(elCruce,crucesDichos.get(elCruce),i)))
+     cruceSinRamas=elCruce;
    }else if(d&&!(crucesDichos.has(elCruce)&&!haSalido(elCruce,crucesDichos.get(elCruce),i))){
     cruceAvisado=elCruce;
     porElCruce=true;
@@ -1406,8 +1433,9 @@ function calculaCrucesDe(){
   // queda el cruce, que es lo que el autor pidio que no se perdiera nunca.
   // La revuelta de tu misma via se dice como curva, no como cruce.
   const esCruce=!!cruceAvisado&&!curvaCalle;
+  const nodoAqui=cruceAvisado||cruceSinRamas;
   const previo=junctions[junctions.length-1];
-  if(previo&&dist(previo.point,b)<35&&!(esCruce&&previo.cruce&&previo.nodo&&previo.nodo!==cruceAvisado)){
+  if(previo&&dist(previo.point,b)<35&&!(nodoAqui&&previo.nodo&&previo.nodo!==nodoAqui)){
    if(!((nodoEnRuta&&!curvaCalle)&&!previo.nodo))continue;
    junctions.pop();
   }
@@ -1435,9 +1463,9 @@ function calculaCrucesDe(){
   // ahi «en 10 metros» se decia con el cruce a 35. Si lo ha decidido un cruce,
   // el aviso va en el punto de la ruta mas cercano a su nodo.
   const ultimo=junctions[junctions.length-1];
-  const iA=cruceAvisado&&iNodo!=null&&iNodo!==i&&(!ultimo||iNodo>ultimo.i)?iNodo:i;
+  const iA=nodoAqui&&iNodo!=null&&iNodo!==i&&(!ultimo||iNodo>ultimo.i)?iNodo:i;
   junctions.push(Object.assign({i:iA,point:pts[iA],along:routeCumulative[iA],direction,hacia,angle:Math.round(grados),cruce:esCruce,mantente,retorno},sigue?{sigue:true,via}:{},noRecto?{noRecto:true}:{},entradaLateral?{entradaLateral:true}:{},nodoEnRuta&&!curvaCalle?{nodo:elCruce,ramales}:{}));
-  if(cruceAvisado)crucesDichos.set(cruceAvisado,i);
+  if(nodoAqui)crucesDichos.set(nodoAqui,i);
  }
  // El detector de la app Android aporta curvas por pico y por lado.
  // La clasificación ya calculada mantiene cruces, retornos y herraduras.
