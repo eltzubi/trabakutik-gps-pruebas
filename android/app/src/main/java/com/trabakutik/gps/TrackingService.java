@@ -785,20 +785,28 @@ public class TrackingService extends Service implements LocationListener {
  // caida: desde Android 10 un servicio no puede abrir una Activity a secas.
  // Si Android ha quitado ese permiso -desde la 14 lo reserva para llamadas y
  // alarmas-, queda la notificacion, que al menos se asoma.
- void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados){
+ void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
   try{
    if(!pantallaCruces())return;
    String texto=textoCorto(lado,tipo,salida);
-   Intent i=GiroActivity.intent(this,lado,grados,metros,texto,ramales,12,tipo);
+   Intent i=GiroActivity.intent(this,lado,grados,metros,texto,ramales,segundos,tipo);
    PendingIntent pa=PendingIntent.getActivity(this,45,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
    Notification.Builder b=new Notification.Builder(this,CANAL_GIRO)
      .setSmallIcon(android.R.drawable.ic_menu_directions)
      .setContentTitle(texto+" · "+metros+" m")
      .setContentText(ramales!=null&&ramales.length>0?(ramales.length+1)+" ramales":"Cruce")
      .setCategory(Notification.CATEGORY_NAVIGATION)
-     .setAutoCancel(true).setTimeoutAfter(20000)
+     .setAutoCancel(true).setTimeoutAfter(Math.max(6,Math.min(25,segundos))*1000L)
      .setFullScreenIntent(pa,true).setContentIntent(pa);
-   ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIF_GIRO,b.build());
+   // EL SEGUNDO CRUCE NO ENCENDIA LA PANTALLA. Android solo lanza la
+   // pantalla completa cuando la notificacion se PUBLICA; si ya hay una viva
+   // con el mismo numero, la actualiza en silencio y no abre nada. Con dos
+   // cruces a 50-100 m el segundo no salia: «el segundo no aparece en
+   // dibujo, me aparece lo que tengo en pantalla». Se retira la anterior y
+   // se publica de nuevo, que es publicar de verdad.
+   NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+   nm.cancel(NOTIF_GIRO);
+   nm.notify(NOTIF_GIRO,b.build());
   }catch(Throwable t){android.util.Log.w("TrabakutikGPS","Pantalla del cruce",t);}
  }
  void creaCanalCaida(){
@@ -1400,12 +1408,21 @@ public class TrackingService extends Service implements LocationListener {
         else {
          String hito=hitosDeGiro.get(giro);
          habla((hito==null?"":hito+". ")+fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
-         // Y LA PANTALLA, si el autor la ha encendido para la bici. Va con el
-         // primer aviso de voz, que es cuando aun da tiempo a mirarla.
-         abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro),
-           gradosDeGiro.containsKey(giro)?gradosDeGiro.get(giro):gradosDelGiro(tipo));
         }
       }
+     }
+     // LA PANTALLA DEL CRUCE VA CON EL PRIMER PITIDO, NO CON LA VOZ. Abierta
+     // con la voz se encendia 18 s antes y los 12 s fijos se le acababan 6 s
+     // ANTES de llegar: el autor veia el dibujo y luego la pantalla apagada
+     // justo en el cruce. Con el primer pitido (9 s) y los segundos que
+     // faltan de verdad mas cuatro, esta encendida AL cruzar, se apaga
+     // enseguida y gasta lo mismo o menos.
+     if(!curvaNueva&&!rectaSinNumero&&ahead<=d1&&ahead>=-2
+        &&warnedTurns.add((usaReves?"r":"")+mejor+":pant")){
+      double vp=velocidadSuave>0?velocidadSuave:1.2;
+      int seg=(int)Math.max(6,Math.min(20,Math.round(ahead/vp)+4));
+      abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro),
+        gradosDeGiro.containsKey(giro)?gradosDeGiro.get(giro):gradosDelGiro(tipo),seg);
      }
   }
   if(!next.equals(upcomingTurn)){upcomingTurn=next;updateNotice();}

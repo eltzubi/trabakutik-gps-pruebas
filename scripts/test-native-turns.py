@@ -32,8 +32,8 @@ public class NativeTurnsTest {
  Map<double[],int[]> ramalesDeGiro=new HashMap<>();
  Map<double[],Integer> gradosDeGiro=new HashMap<>();
  ArrayList<String> pantallas=new ArrayList<>();
- void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados){
-  pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+grados+"|"+(ramales==null?0:ramales.length));
+ void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
+  pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+grados+"|"+(ramales==null?0:ramales.length)+"|"+segundos);
  }
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
 '''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+'''
@@ -203,7 +203,20 @@ public class NativeTurnsTest {
   for(int m=0;m<=300;m+=10)d.route.add(new double[]{m/111195.,0});
   d.turns.add(new double[]{10,-1,1});
   for(int m=0;m<=99;m+=5)d.posicion(new Location(m));
-  require(d.pantallas.size()==1&&d.pantallas.get(0).endsWith("|0"),"sin ramales: "+d.pantallas);
+  require(d.pantallas.size()==1&&d.pantallas.get(0).split("[|]")[3].equals("0"),"sin ramales: "+d.pantallas);
+  // Y SE ABRE CON EL PRIMER PITIDO, no con la voz, y dura lo que falta mas
+  // cuatro segundos: a 10 m/s y 80 m de cruce, doce. Antes eran doce fijos
+  // abiertos 18 s antes, y se apagaba 6 s ANTES de llegar al cruce.
+  require(d.pantallas.get(0).equals("Izquierda|80|90|0|12"),"abierta con el primer pitido y con sus segundos: "+d.pantallas);
+  // DOS CRUCES SEGUIDOS ENCIENDEN LA PANTALLA DOS VECES. El autor: «si a
+  // 50-100 metros hay otro cruce se volveria a encender; el segundo no
+  // aparece en dibujo, me aparece lo que tengo en pantalla».
+  NativeTurnsTest dos=new NativeTurnsTest();
+  for(int m=0;m<=300;m+=10)dos.route.add(new double[]{m/111195.,0});
+  dos.turns.add(new double[]{10,-1,1});
+  dos.turns.add(new double[]{16,1,1});
+  for(int m=0;m<=130;m+=5)dos.posicion(new Location(m));
+  require(dos.pantallas.size()==2,"dos cruces a 60 m, dos pantallas: "+dos.pantallas);
  }
  static void girosSeguidos(){
   NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});
