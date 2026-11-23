@@ -139,6 +139,28 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
   revisado no se cambia sin que lo diga el. Un fallo se arregla; un capricho
   de diseño, no. Y si una idea cambia lo que el ya decidio, se le pregunta.
 
+- **NINGUN AVISO SE MIDE EN METROS FIJOS.** El autor va a cuatro velocidades
+  muy distintas y lo dijo el 23 de noviembre de 2026: anda, va en bici («en
+  bici puedo alcanzar velocidades de hasta sesenta kilometros por hora cuesta
+  abajo, hay que tenerlo en cuenta») y va en coche («tal vez sea porque voy en
+  coche, mas de veinte kilometros por hora, treinta y cinco, cuarenta»). De
+  4 a 60 km/h hay quince veces mas metros por segundo. Asi que:
+  1. Todo aviso se piensa en SEGUNDOS y se convierte a metros con la
+     velocidad. Un numero fijo en metros es un fallo esperando a salir.
+  2. **Un techo en metros tambien rompe el tiempo**, y eso no se ve leyendo:
+     hay que calcular que segundos deja a 60 km/h. Los techos de los cuatro
+     avisos estaban puestos andando y a 60 km/h dejaban el «... ahora» en 0,7
+     s, encima del cruce. La velocidad ya esta tapada a 20 m/s en
+     actualizaVelocidad, asi que el techo de cada aviso es su tiempo a esos
+     20 m/s y no hace falta un segundo guardia.
+  3. **Se mide desde donde EMPIEZA la maniobra, no desde su punto mas
+     marcado.** El punto de una curva es donde mas se dobla el track, y la
+     entrada cae unos 12 m antes: avisar a 10 m del punto era avisar dentro
+     de la curva. Sus palabras: «en la mitad de la curva ya se yo que tengo
+     que girar, ya lo veo».
+  Al tocar cualquier distancia de aviso se imprime la tabla de segundos a 4,
+  18, 40 y 60 km/h y se mira antes de subir.
+
 - **El creador tiene que facilitar trazar la ruta.** Lo dijo el 23 de
   noviembre de 2026: «a la hora de crear tiene que facilitar trazar la ruta,
   teniendo en cuenta todas las opciones que puedan ocurrir al guiarnos luego».
