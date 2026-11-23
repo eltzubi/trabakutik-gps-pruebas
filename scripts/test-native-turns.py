@@ -36,7 +36,7 @@ public class NativeTurnsTest {
   pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+grados+"|"+(ramales==null?0:ramales.length)+"|"+segundos);
  }
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
-'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double SEGUIDO_M=[^;]+;',src).group(0)+'''
+'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double SEGUIDO_MIN=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
@@ -77,7 +77,7 @@ public class NativeTurnsTest {
  ' boolean confirmaMarchaCurva(double along,boolean fiable)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
  ' String siguienteManiobra(ArrayList<double[]> turns,int actual,boolean usaReves,double along)',
- ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' double avisoYa()',' double avisoCurva()',
+ ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' int seguidoDe(ArrayList<double[]> turns,int actual)',' double seguido()',' double avisoYa()',' double avisoCurva()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' static int gradosDelGiro(int tipo)',' static String textoCorto(int lado,int tipo,int salida)',
@@ -230,10 +230,14 @@ public class NativeTurnsTest {
   require(c.giroSeguido(c.turns,0,false).isEmpty(),"al reves, el primero ya es el ultimo");
   require(c.giroSeguido(c.turns,1,true).equals(" y enseguida a la izquierda"),"con la lista de vuelta, el lado ya viene puesto");
   c.sentido=1;
-  require(c.siguienteManiobra(c.turns,1,false,120).equals("Siguiente cruce a 80 metros"),"distancia al siguiente cruce");
+  // «Siguiente cruce a X» va pegado al «... ahora», asi que solo se dice de
+  // lo que NO se va a anunciar solo: con 80 m por delante y la voz avisando
+  // a 200, en unos segundos suena su propia frase y serian dos seguidas.
+  require(c.siguienteManiobra(c.turns,1,false,120).isEmpty(),"no se adelanta lo que se avisa solo");
+  require(c.siguienteManiobra(c.turns,1,false,-90).equals("Siguiente cruce a 290 metros"),"solo lo que queda lejos de verdad");
   require(c.siguienteManiobra(c.turns,2,false,200).isEmpty(),"sin maniobra después de la última");
   c.sentido=-1;
-  require(c.siguienteManiobra(c.turns,2,false,200).equals("Siguiente cruce a 80 metros"),"distancia al volver");
+  require(c.siguienteManiobra(c.turns,2,false,330).equals("Siguiente cruce a 210 metros"),"distancia al volver");
   NativeTurnsTest fases=setup();
   fases.checkTurns(new Location(30));
   fases.checkTurns(new Location(75));
@@ -241,7 +245,17 @@ public class NativeTurnsTest {
   fases.checkTurns(new Location(95));
   fases.checkTurns(new Location(95));
   require(fases.beeps==2,"dos avisos sonoros, sin repetición");
-  require(fases.dicho.stream().filter(d->d.contains("Siguiente cruce")).count()==1,"la distancia solo se dice con el ahora");
+  require(fases.dicho.stream().noneMatch(d->d.contains("Siguiente cruce")),
+    "con el siguiente a 85 m no se adelanta nada: se va a avisar solo");
+  // Y cuando el siguiente queda DE VERDAD lejos -mas que la voz-, se dice, y
+  // una sola vez, pegado al «... ahora».
+  NativeTurnsTest lejos=new NativeTurnsTest();
+  for(int m=0;m<=600;m+=10)lejos.route.add(new double[]{m/111195.,0});
+  lejos.turns.add(new double[]{10,-1,1});
+  lejos.turns.add(new double[]{45,1,1});
+  for(int m=0;m<=99;m+=5)lejos.posicion(new Location(m));
+  require(lejos.dicho.stream().filter(d->d.contains("Siguiente cruce")).count()==1,
+    "la distancia solo se dice con el ahora: "+lejos.dicho);
   // Andando de verdad: el aviso del primero lleva el segundo.
   // 30 m entre los dos: es SEGUIDO_M justo, asi que se dicen juntos, y
   // despues de pasar el primero el segundo todavia queda fuera del aviso
@@ -419,12 +433,13 @@ public class NativeTurnsTest {
   for(int m:new int[]{10,22,30})c.checkTurns(new Location(m));
   require(c.dicho.isEmpty(),"La curva no se canta a 70 m, que son siete segundos: "+c.dicho);
   c.checkTurns(new Location(40));
-  require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda","Siguiente curva a 80 metros")),
+  require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda")),
     "a 60 m de la curva, cinco segundos antes de entrar: "+c.dicho);
   // La segunda del par espera a ser la de delante: hasta entonces manda la
-  // primera, y por eso se dice «siguiente curva» al cantar la primera.
+  // primera. No se adelanta con «siguiente curva» porque se va a cantar
+  // sola en unos segundos.
   for(int m:new int[]{60,80,100,108})c.checkTurns(new Location(m));
-  require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda","Siguiente curva a 80 metros","Sigue por este camino, que curva a la derecha")),"Dos curvas cercanas: "+c.dicho);
+  require(c.dicho.equals(Arrays.asList("Sigue por este camino, que curva a la izquierda","Sigue por este camino, que curva a la derecha")),"Dos curvas cercanas: "+c.dicho);
   require(c.beeps==0,"El aviso de curva nuevo tiene una sola locución");
   System.out.println("PASS: la curva se canta cinco segundos antes de entrar, una locución por curva");
   c=setup();c.turns.clear();c.turns.add(new double[]{10,-1,0,0,0,1});

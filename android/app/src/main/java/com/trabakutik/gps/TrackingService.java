@@ -508,13 +508,30 @@ public class TrackingService extends Service implements LocationListener {
  }
  static String unDecimal(double v){return String.format(Locale.ROOT,"%.1f",v).replace('.',',');}
  // DOS GIROS MUY SEGUIDOS SE DICEN JUNTOS. Si el siguiente esta a menos de
- // SEGUIDO_M, al decir este se añade «y enseguida a la izquierda»: si no, el
+ // seguido(), al decir este se añade «y enseguida a la izquierda»: si no, el
  // segundo llegaba cuando ya estabas en el, o se te pasaba. Lo hace Locus
  // («dos giros a la vez») y lo piden los estudios de navegacion a pie. Lo
  // decidio el autor el 15 de noviembre de 2026.
- static final double SEGUIDO_M=30;
- String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves){
-  if(actual<0||actual>=turns.size())return "";
+ //
+ // ERAN 30 METROS FIJOS, Y POR ESO SE AMONTONABAN LAS PALABRAS. Mientras no
+ // has pasado el primer cruce manda el primero, asi que el segundo no se
+ // elige hasta que llevas un quinto del hueco: con 40 m de hueco a 40 km/h
+ // eso deja al segundo a 32 m, ya dentro del aviso corto, y se quedaba SIN
+ // su frase de voz -solo «gira a la derecha ahora», dos segundos antes-.
+ // Simulado con el banco de repeticion: a 11 m/s y 40 m de hueco salian
+ // «ahora» del primero y «ahora» del segundo con cuatro segundos entre
+ // medias y ni una frase con antelacion para el segundo. El autor: «este
+ // cruce deberia haberme dicho gira mano derecha, pero se amontonan los
+ // cruces si hay poca distancia».
+ // En tiempo: seis segundos de marcha, de 25 a 150 m. Andando son los 25 del
+ // suelo, en bici 30 -lo mismo que antes-, a 40 km/h 66 y a 60 km/h 100.
+ static final double SEGUIDO_MIN=25,SEGUIDO_MAX=150;
+ double seguido(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(SEGUIDO_MAX,Math.max(SEGUIDO_MIN,v*6));}
+ // Cual es el giro que va pegado a este, o -1. Hace falta el numero y no
+ // solo la frase: al decir «y enseguida a la derecha» ese giro YA esta
+ // anunciado, y su propia frase de voz sobra.
+ int seguidoDe(ArrayList<double[]> turns,int actual){
+  if(actual<0||actual>=turns.size())return -1;
   double aqui=metrics.distance[(int)turns.get(actual)[0]];
   int sig=-1;double mejor=Double.POSITIVE_INFINITY;
   for(int k=0;k<turns.size();k++){
@@ -523,7 +540,11 @@ public class TrackingService extends Service implements LocationListener {
    double hasta=(metrics.distance[i]-aqui)*sentido;
    if(hasta>0.5&&hasta<mejor){mejor=hasta;sig=k;}
   }
-  if(sig<0||mejor>SEGUIDO_M)return "";
+  return sig<0||mejor>seguido()?-1:sig;
+ }
+ String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves){
+  int sig=seguidoDe(turns,actual);
+  if(sig<0)return "";
   int d=(int)turns.get(sig)[1],lado=usaReves?d:d*sentido;
   if(lado==0)return "";
   return " y enseguida a la "+(lado<0?"izquierda":"derecha");
@@ -540,7 +561,14 @@ public class TrackingService extends Service implements LocationListener {
    double quedan=(progreso-along)*sentido;
    if(quedan>0.5&&quedan<distancia){distancia=quedan;tipoSiguiente=tipo;}
   }
-  if(!Double.isFinite(distancia)||distancia<=SEGUIDO_M)return "";
+  // «SIGUIENTE CRUCE A X METROS» SOLO SI NO SE VA A ANUNCIAR SOLO. Se dice
+  // pegado al «... ahora» del cruce que estas tomando, asi que si el de
+  // despues va a cantar su propia frase en unos segundos son dos frases
+  // seguidas para nada: a 40 km/h con 80 m de hueco sonaba «gira a la
+  // izquierda ahora. Siguiente cruce a 100 metros» y cuatro segundos
+  // despues «en 50 metros, gira a la derecha». Con avisoVoz() en vez de 30 m
+  // fijos solo se dice lo que de verdad queda lejos.
+  if(!Double.isFinite(distancia)||distancia<=Math.max(seguido(),avisoVoz()))return "";
   String maniobra=tipoSiguiente==5?"Siguiente rotonda":tipoSiguiente==0||tipoSiguiente==3?"Siguiente curva":"Siguiente cruce";
   long metros=Math.max(1,Math.round(distancia/10)*10);
   if(metros<1000)return maniobra+" a "+metros+(metros==1?" metro":" metros");
@@ -1407,7 +1435,16 @@ public class TrackingService extends Service implements LocationListener {
         if("3".equals(fase))hablaGiro(fraseGiro(lado,tipo,fase,ahead,salida),siguienteManiobra(turns,mejor,usaReves,along));
         else {
          String hito=hitosDeGiro.get(giro);
-         habla((hito==null?"":hito+". ")+fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
+         String cola=giroSeguido(turns,mejor,usaReves);
+         habla((hito==null?"":hito+". ")+fraseGiro(lado,tipo,fase,ahead,salida)+cola);
+         // Dicho «y enseguida a la derecha», ese giro ya esta anunciado: se
+         // le da por hablado para que no repita «en 60 metros, gira a la
+         // derecha» dos segundos antes de su propio «... ahora». Sus
+         // pitidos y su «ahora» siguen, que son los que avisan en el sitio.
+         if(!cola.isEmpty()){
+          int sig=seguidoDe(turns,mejor);
+          if(sig>=0)warnedTurns.add((usaReves?"r":"")+sig+":v");
+         }
         }
       }
      }
