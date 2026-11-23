@@ -39,10 +39,15 @@ public class GirosLimiteTest {
  // org.json de mentira: solo lo que lee loadTurns, y solo el formato de giros.
  static class JSONObject{String optString(String k,String d){return d;}final Map<String,Integer> m=new HashMap<>();
   JSONObject(String s){Matcher k=Pattern.compile("\"(\\w+)\":(-?\\d+)").matcher(s);while(k.find())m.put(k.group(1),Integer.parseInt(k.group(2)));}
-  int optInt(String k,int d){return m.getOrDefault(k,d);}}
+  int optInt(String k,int d){return m.getOrDefault(k,d);}
+  // «rb», los ramales que pueden engañar, es una lista de numeros. Este JSON
+  // de mentira solo lee enteros sueltos, asi que aqui nunca hay lista: basta
+  // con que no reviente.
+  JSONArray optJSONArray(String k){return null;}}
  static class JSONArray{final List<JSONObject> l=new ArrayList<>();
   JSONArray(String s){Matcher k=Pattern.compile("\\{[^}]*\\}").matcher(s);while(k.find())l.add(new JSONObject(k.group()));}
-  int length(){return l.size();} JSONObject optJSONObject(int i){return l.get(i);}}
+  int length(){return l.size();} JSONObject optJSONObject(int i){return l.get(i);}
+  int optInt(int i,int d){return d;}}
  static class Log{static void w(String a,String b,Throwable t){}}
  static class android{static class util{static class Log{static void w(String a,String b,Throwable t){}}}}
  File dir;File getFilesDir(){return dir;}
@@ -53,6 +58,8 @@ public class GirosLimiteTest {
  Map<Integer,ConfirmaRamal.Cruce> ramalesIda=new HashMap<>(),ramalesVuelta=new HashMap<>();
  void cargaRamales(JSONObject p,int at,ArrayList<double[]> lista){}
  Map<double[],String> hitosDeGiro=new HashMap<>();
+ Map<double[],int[]> ramalesDeGiro=new HashMap<>();
+ void abrePantallaGiro(int a,int b,int c,int d,int[] e){}
 ''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + linea(' static final String[] ORDINALES=') + '\n' + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead,int salida)') + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead){') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  static String lista(int n,int desde){StringBuilder b=new StringBuilder("[");

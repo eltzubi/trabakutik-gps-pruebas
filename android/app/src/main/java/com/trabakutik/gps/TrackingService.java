@@ -67,7 +67,7 @@ public class TrackingService extends Service implements LocationListener {
   int n=0;for(File f:all)if(cierraGpxSiQuedoAbierto(f))n++;
   return n;
  }
- @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);audioModo=getSharedPreferences("tracking_live",MODE_PRIVATE).getString("audioModo","voz");arrancaVoz();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));creaCanalCaida();avisoHandler.postDelayed(refrescaAviso,5000);}
+ @Override public void onCreate(){super.onCreate();manager=(LocationManager)getSystemService(LOCATION_SERVICE);audioModo=getSharedPreferences("tracking_live",MODE_PRIVATE).getString("audioModo","voz");arrancaVoz();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(channel,"Grabación de rutas",NotificationManager.IMPORTANCE_LOW));creaCanalCaida();creaCanalGiro();avisoHandler.postDelayed(refrescaAviso,5000);}
  final Runnable refrescaAviso=new Runnable(){
   @Override public void run(){
    if(!active)return;
@@ -221,6 +221,25 @@ public class TrackingService extends Service implements LocationListener {
   if(estadoRuta)avisoRutaPendiente=null;
   int cola=!estadoRuta&&SystemClock.elapsedRealtime()<avisoRutaHasta?TextToSpeech.QUEUE_ADD:TextToSpeech.QUEUE_FLUSH;
   try{voz.speak(texto,cola,null,idFraseVoz());}catch(Exception ignored){}
+ }
+ // Lo que se dibuja en la pantalla del cruce: una palabra y el angulo. El
+ // angulo exacto no viaja en el giro -solo el tipo-, asi que se usa el que
+ // mejor lo representa: una herradura dibuja 160, un cruce 90 y un «sigue por
+ // la derecha» 30. Es un dibujo, no una medida.
+ static int gradosDelGiro(int tipo){
+  if(tipo==3||tipo==4)return 160;      // herradura
+  if(tipo==2||tipo==6)return 30;       // sigue por un lado
+  if(tipo==0)return 70;                // curva
+  return 90;                           // cruce
+ }
+ static String textoCorto(int lado,int tipo,int salida){
+  if(tipo==5)return salida>=1?"Rotonda, "+salida+".ª salida":"Rotonda";
+  if(tipo==7)return "De frente";
+  if(lado==0)return "Da la vuelta";
+  String l=lado<0?"Izquierda":"Derecha";
+  if(tipo==3||tipo==4)return "Herradura "+l.toLowerCase();
+  if(tipo==2||tipo==6)return "Sigue "+l.toLowerCase();
+  return l;
  }
  void hablaGiro(String instruccion,String siguiente){
   habla(instruccion);
@@ -745,6 +764,44 @@ public class TrackingService extends Service implements LocationListener {
   NotificationChannel canal=nm.getNotificationChannel(CANAL_CAIDA);
   return canal==null||canal.getImportance()!=NotificationManager.IMPORTANCE_NONE;
  }
+ // LA PANTALLA DEL CRUCE (23 nov 2026). Apagada de serie: la enciende el
+ // autor para la bici, con el movil en el soporte. Andando no interesa, que
+ // se va mucho mas despacio y la bateria se nota.
+ static final String CANAL_GIRO="giro";
+ static final int NOTIF_GIRO=14;
+ boolean pantallaCruces(){
+  try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getBoolean("pantallaCruces",false);}
+  catch(Exception e){return false;}
+ }
+ void creaCanalGiro(){
+  try{
+   NotificationChannel c=new NotificationChannel(CANAL_GIRO,"Pantalla en los cruces",NotificationManager.IMPORTANCE_HIGH);
+   c.setDescription("Enciende la pantalla al llegar a un cruce, para verlo en el soporte de la bici");
+   c.enableVibration(false);c.setSound(null,null);
+   ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);
+  }catch(Exception ignored){}
+ }
+ // Se abre con una notificacion de pantalla completa, igual que el aviso de
+ // caida: desde Android 10 un servicio no puede abrir una Activity a secas.
+ // Si Android ha quitado ese permiso -desde la 14 lo reserva para llamadas y
+ // alarmas-, queda la notificacion, que al menos se asoma.
+ void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales){
+  try{
+   if(!pantallaCruces())return;
+   int grados=gradosDelGiro(tipo);
+   String texto=textoCorto(lado,tipo,salida);
+   Intent i=GiroActivity.intent(this,lado,grados,metros,texto,ramales,12);
+   PendingIntent pa=PendingIntent.getActivity(this,45,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+   Notification.Builder b=new Notification.Builder(this,CANAL_GIRO)
+     .setSmallIcon(android.R.drawable.ic_menu_directions)
+     .setContentTitle(texto+" · "+metros+" m")
+     .setContentText(ramales!=null&&ramales.length>0?(ramales.length+1)+" ramales":"Cruce")
+     .setCategory(Notification.CATEGORY_NAVIGATION)
+     .setAutoCancel(true).setTimeoutAfter(20000)
+     .setFullScreenIntent(pa,true).setContentIntent(pa);
+   ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIF_GIRO,b.build());
+  }catch(Throwable t){android.util.Log.w("TrabakutikGPS","Pantalla del cruce",t);}
+ }
  void creaCanalCaida(){
   NotificationChannel c=new NotificationChannel(CANAL_CAIDA,"Aviso de caída",NotificationManager.IMPORTANCE_HIGH);
   c.setDescription("La cuenta atrás de 30 s antes de enviar el SOS");
@@ -1048,6 +1105,11 @@ public class TrackingService extends Service implements LocationListener {
  final ConfirmaRamal confirmaRamal=new ConfirmaRamal();
  final Map<double[],String> hitosDeGiro=new IdentityHashMap<>();
  final Map<Integer,ConfirmaRamal.Cruce> ramalesIda=new LinkedHashMap<>(),ramalesVuelta=new LinkedHashMap<>();
+ // LOS RAMALES QUE PUEDEN ENGAÑAR, para la pantalla del cruce. Rumbos
+ // relativos a por donde llegas: 0 de frente, negativo a tu izquierda. La
+ // pagina solo los manda cuando hay alguno, asi que un giro sin entrada aqui
+ // es un cruce sin perdida y no se dibuja croquis.
+ final Map<double[],int[]> ramalesDeGiro=new java.util.HashMap<>();
  ConfirmaRamal.Cruce cruceProximo(double along){
   Map<Integer,ConfirmaRamal.Cruce> candidatos=sentido>0?ramalesIda:ramalesVuelta;
   ConfirmaRamal.Cruce mejor=null;
@@ -1072,7 +1134,7 @@ public class TrackingService extends Service implements LocationListener {
   (lista==turns?ramalesIda:ramalesVuelta).put(indice,new ConfirmaRamal.Cruce(metrics.distance[indice],puntos));
  }
  void loadTurns(){
-  confirmaRamal.reinicia();ramalesIda.clear();ramalesVuelta.clear();hitosDeGiro.clear();
+  confirmaRamal.reinicia();ramalesIda.clear();ramalesVuelta.clear();hitosDeGiro.clear();ramalesDeGiro.clear();
   turns.clear();turnsReves.clear();warnedTurns.clear();upcomingTurn="";
   leeGiros(new File(getFilesDir(),"giros-activos.json"),turns);
   // Los calculados al reves (la pagina nueva los manda aparte): yendo al
@@ -1136,6 +1198,16 @@ public class TrackingService extends Service implements LocationListener {
                          :new double[]{at,direction,tipo,salida,recta});
      String hito=p.optString("ht","").trim();
      if(!hito.isEmpty())hitosDeGiro.put(turns.get(turns.size()-1),hito.substring(0,Math.min(45,hito.length())));
+     JSONArray rb=p.optJSONArray("rb");
+     if(rb!=null&&rb.length()>0&&rb.length()<=8){
+      int[] rr=new int[rb.length()];boolean vale=true;
+      for(int k=0;k<rb.length();k++){
+       int g=rb.optInt(k,999);
+       if(g<-180||g>180){vale=false;break;}
+       rr[k]=g;
+      }
+      if(vale)ramalesDeGiro.put(turns.get(turns.size()-1),rr);
+     }
     }
    }
    // Ordenados por el punto de la ruta al que pertenecen. El recorrido de
@@ -1298,6 +1370,9 @@ public class TrackingService extends Service implements LocationListener {
         else {
          String hito=hitosDeGiro.get(giro);
          habla((hito==null?"":hito+". ")+fraseGiro(lado,tipo,fase,ahead,salida)+giroSeguido(turns,mejor,usaReves));
+         // Y LA PANTALLA, si el autor la ha encendido para la bici. Va con el
+         // primer aviso de voz, que es cuando aun da tiempo a mirarla.
+         abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro));
         }
       }
      }

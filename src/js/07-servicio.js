@@ -652,6 +652,39 @@ function conmutaModoAudio(){
  if(audioModo==='voz')hablar('Voz activada');
  else callaYa(audioModo==='silencio');
 }
+// LA PANTALLA EN LOS CRUCES (23 nov 2026). Lo pidio el autor para la bici,
+// con el movil en el soporte: «que de un vistazo pueda ver donde tengo que
+// ir». Andando no la quiere, que se va mas despacio y la bateria se nota, asi
+// que nace APAGADA y es el quien la enciende.
+// El boton solo sale dentro de la aplicacion: desde la web no hay servicio
+// que encienda nada.
+let pantallaCruces=false;
+function pintaPantallaCruces(){
+ const b=$('pantallaCruces');if(!b)return;
+ const hay=!!window.TrabakutikAndroid?.setPantallaCruces;
+ b.hidden=!hay;
+ if(hay)b.setAttribute('aria-pressed',pantallaCruces?'true':'false');
+}
+function conmutaPantallaCruces(){
+ pantallaCruces=!pantallaCruces;
+ try{localStorage.setItem('trabakutik-pantalla-cruces',pantallaCruces?'1':'0')}catch(e){}
+ try{window.TrabakutikAndroid?.setPantallaCruces?.(pantallaCruces)}catch(e){}
+ pintaPantallaCruces();
+ // Desde Android 14 el permiso de pantalla completa esta reservado a
+ // llamadas y alarmas. Si no lo hay se dice, en vez de que el autor crea que
+ // esta encendido y no se encienda nada en el monte.
+ let puede=true;
+ try{puede=window.TrabakutikAndroid?.puedePantallaCruces?window.TrabakutikAndroid.puedePantallaCruces():true}catch(e){}
+ notice(!pantallaCruces?'La pantalla no se encenderá en los cruces'
+   :puede?'La pantalla se encenderá en cada cruce · para el soporte de la bici'
+   :'Android no deja encender la pantalla a esta aplicación · actívalo en Ajustes → Aplicaciones → Trabakutik GPS');
+}
+try{
+ const g=localStorage.getItem('trabakutik-pantalla-cruces');
+ if(g==='1'||g==='0')pantallaCruces=g==='1';
+ else if(window.TrabakutikAndroid?.getPantallaCruces)pantallaCruces=!!window.TrabakutikAndroid.getPantallaCruces();
+}catch(e){}
+try{window.TrabakutikAndroid?.setPantallaCruces?.(pantallaCruces)}catch(e){}
 function getAudio(){try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch(e){}}
 // Un grupo de n pitidos agudos, y el numero es el dato: 1 pitido = cruce a
 // 50 m, 2 = a 10 m, 3 = lo tienes encima, 4 = fuera de ruta. Los cuatro de
@@ -698,6 +731,6 @@ function flechaGiro(deg,dir,tam,grosor){
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={pasoMarcas,textoFalta,pintaMarcasFalta,avisoSalida,altitudGps,pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,getAudio,flechaGiro};
+ module.exports={pasoMarcas,textoFalta,pintaMarcasFalta,avisoSalida,altitudGps,pintaVersion,versionMayor,miraActualizacion,decideSentido,pintaBrujula,guiaIniciada,metrosGrabados,pintaAvance,clavePerfil,mismaClave,perfilDeAlturas,primeroDesde,alturaEnPerfil,nuevaCuenta,cuenta,recorrePerfil,subidaEntre,casaEnRuta,subidaSesion,pintaAlturas,marcaAlReves,resetOffRoute,updateOffRoute,formatoTiempo,avisaModoAudioNativo,pintaModoAudio,hablarGiro,hablar,hablaPagina,vuelvePagALaRuta,avisaSinGps,vuelveElGps,conmutaModoAudio,conmutaPantallaCruces,pintaPantallaCruces,getAudio,flechaGiro};
  Object.defineProperties(module.exports,{altGpsNativa:{get:()=>altGpsNativa,set:v=>{altGpsNativa=v},enumerable:true},rumboSuave:{get:()=>rumboSuave,set:v=>{rumboSuave=v},enumerable:true},textoFuera:{get:()=>textoFuera,set:v=>{textoFuera=v},enumerable:true},sentidoRuta:{get:()=>sentidoRuta,set:v=>{sentidoRuta=v},enumerable:true},refAvance:{get:()=>refAvance,set:v=>{refAvance=v},enumerable:true},refAvanceT:{get:()=>refAvanceT,set:v=>{refAvanceT=v},enumerable:true},alongPrevio:{get:()=>alongPrevio,set:v=>{alongPrevio=v},enumerable:true},alongAcum:{get:()=>alongAcum,set:v=>{alongAcum=v},enumerable:true},ultimoAlong:{get:()=>ultimoAlong,set:v=>{ultimoAlong=v},enumerable:true},ultimoPuntoAlong:{get:()=>ultimoPuntoAlong,set:v=>{ultimoPuntoAlong=v},enumerable:true},cortesGrabacion:{get:()=>cortesGrabacion,set:v=>{cortesGrabacion=v},enumerable:true},nativeTrackComplete:{get:()=>nativeTrackComplete,set:v=>{nativeTrackComplete=v},enumerable:true},anguloBrujula:{get:()=>anguloBrujula,set:v=>{anguloBrujula=v},enumerable:true},anguloFlecha:{get:()=>anguloFlecha,set:v=>{anguloFlecha=v},enumerable:true},metrosAndados:{get:()=>metrosAndados,set:v=>{metrosAndados=v},enumerable:true},enRutaUltimo:{get:()=>enRutaUltimo,set:v=>{enRutaUltimo=v},enumerable:true},perfilTrip:{get:()=>perfilTrip,set:v=>{perfilTrip=v},enumerable:true},subSes:{get:()=>subSes,set:v=>{subSes=v},enumerable:true},baroNativo:{get:()=>baroNativo,set:v=>{baroNativo=v},enumerable:true},sinGpsAvisado:{get:()=>sinGpsAvisado,set:v=>{sinGpsAvisado=v},enumerable:true},entradaAvisada:{get:()=>entradaAvisada,set:v=>{entradaAvisada=v},enumerable:true},tiempoMovNativo:{get:()=>tiempoMovNativo,set:v=>{tiempoMovNativo=v},enumerable:true}});
 }

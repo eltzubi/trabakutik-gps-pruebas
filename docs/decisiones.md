@@ -1722,3 +1722,51 @@ de avisos en el mismo sitio.
 
 De sus siete marcas ✋, quedan **seis resueltas y una viva** (la del km 7,45
 de Otzarreta, que la hizo a 40 m del track yendo fuera de ruta).
+
+## La pantalla se enciende en el cruce, en bici (23 nov 2026)
+
+Lo pidió el autor, con el móvil en el soporte de la bici: «¿hay alguna forma
+de que cuando venga al cruce se active la pantalla del móvil y se vean las
+indicaciones? Pero eso sería en caso de bicicleta… no quisiera en una ruta de
+senderismo, que vas mucho más despacio, tener que consumir batería».
+
+**Lo caro no es la luz, es despertar la página.** Está medido: el salto de
+10 %/h a 5,5 %/h salió de dormirla, porque con la pantalla apagada el mapa
+seguía bajando teselas. Por eso la pantalla del cruce **no abre el
+navegador**: es una `Activity` nativa que dibuja en Java y no toca la página,
+ni el mapa, ni la red.
+
+**Qué se ve.** La flecha del giro lo más grande que cabe, los metros y el
+lado en una palabra. Nada más. El autor fue claro: «lo que no puedo es
+ponerme a leer un texto; tiene que ser un giro, un dibujo, algo que se
+entienda de un plumazo».
+
+**El croquis, solo cuando hay algo que confundir.** Se dibuja únicamente si
+el cruce tiene algún ramal que no es el tuyo: «más que nada para ver que no
+me equivoco en el cruce, por si hay un ramal». En una curva del camino no
+sale nada. Si saliera siempre, dejaría de mirarse.
+
+Los rumbos de esos ramales van **relativos a por dónde llegas**, así que el
+croquis se dibuja con tu marcha hacia arriba. Un croquis con el norte arriba
+habría que interpretarlo, y eso ya se descartó: «hay que interpretarlo, no se
+lee solo».
+
+**Se descartó la notificación sola.** Era lo barato y fue lo primero que se
+propuso, pero Android le da un cuadrado de kilo y medio al lado del texto. El
+autor lo vio en el dibujo y lo dijo: «si no se va a entender el dibujo, ¿para
+qué lo quiero?».
+
+**Cómo se abre.** Con una notificación de pantalla completa, igual que el
+aviso de caída, que es lo único que Android deja a un servicio desde la 10.
+**Desde Android 14 ese permiso está reservado a llamadas y alarmas**; si el
+sistema lo ha quitado, la aplicación lo dice al encender el interruptor en
+vez de callarse y no encender nada en el monte.
+
+**Nace apagada** y se enciende con un botón en la columna del mapa, que solo
+sale dentro de la aplicación. El ajuste se guarda donde los del servicio, así
+que sobrevive a cerrarla.
+
+**Lo que falta por medir**: el gasto de verdad. La cuenta con los dos datos
+que hay —5,5 %/h dormido y 10 %/h despierto— da unos 7 %/h a 18 km/h con la
+pantalla encendida 12 s por cruce. Es una estimación, no una medida: hay que
+hacer una salida con ella encendida y mirar el resumen del final.

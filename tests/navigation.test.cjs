@@ -1718,3 +1718,42 @@ test('El aviso bueno de salida no se borra en la siguiente posición (23 nov 202
  assert(n9.includes("if(alerted)notice(textoFuera||'Fuera del recorrido"),
    'onFix tiene que repetir el aviso que decidió updateOffRoute');
 });
+test('La pantalla en los cruces: apagada de serie, solo dentro de la aplicación (23 nov 2026)',()=>{
+ // Lo pidió el autor para la bici, con el móvil en el soporte: «que de un
+ // vistazo pueda ver dónde tengo que ir». Andando no la quiere: «no quisiera
+ // en una ruta de senderismo tener que consumir batería».
+ const guardado={};const nodo=()=>({hidden:true,attrs:{},setAttribute(k,v){this.attrs[k]=v},hasAttribute(){return false}});
+ const b=nodo();let dicho='',mandado=null;
+ const c=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b:nodo(),notice:t=>{dicho=t},
+  localStorage:{getItem:k=>guardado[k]??null,setItem:(k,v)=>{guardado[k]=v}},
+  window:{TrabakutikAndroid:{setPantallaCruces(v){mandado=v},getPantallaCruces:()=>false,
+   puedePantallaCruces:()=>true}}});
+ // De serie, apagada, y el botón se ve porque hay aplicación.
+ c.pintaPantallaCruces();
+ assert.equal(b.hidden,false,'dentro de la aplicación el botón se ve');
+ assert.equal(b.attrs['aria-pressed'],'false','y nace apagado');
+ // Al encenderla se guarda, se le dice al servicio y se avisa.
+ c.conmutaPantallaCruces();
+ assert.equal(mandado,true,'el servicio se entera');
+ assert.equal(guardado['trabakutik-pantalla-cruces'],'1','y se recuerda');
+ assert.equal(b.attrs['aria-pressed'],'true');
+ assert.match(dicho,/se encenderá en cada cruce/);
+ // Y al apagarla, lo contrario.
+ c.conmutaPantallaCruces();
+ assert.equal(mandado,false);
+ assert.equal(guardado['trabakutik-pantalla-cruces'],'0');
+ assert.match(dicho,/no se encenderá/);
+});
+test('Si Android no deja encender la pantalla, se dice en vez de callar',()=>{
+ // Desde Android 14 ese permiso está reservado a llamadas y alarmas. Callar
+ // sería peor: el autor creería que está encendido y en el monte no pasaría
+ // nada.
+ const b={hidden:true,attrs:{},setAttribute(k,v){this.attrs[k]=v}};
+ let dicho='';
+ const c=pieza('07-servicio.js',{$:id=>id==='pantallaCruces'?b:({attrs:{},setAttribute(){},classList:{add(){},remove(){},toggle(){}},style:{setProperty(){},removeProperty(){}}}),
+  notice:t=>{dicho=t},localStorage:{getItem:()=>null,setItem(){}},
+  window:{TrabakutikAndroid:{setPantallaCruces(){},getPantallaCruces:()=>false,
+   puedePantallaCruces:()=>false}}});
+ c.conmutaPantallaCruces();
+ assert.match(dicho,/Android no deja encender la pantalla/);
+});

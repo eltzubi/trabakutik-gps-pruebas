@@ -2,6 +2,7 @@ package com.trabakutik.gps;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.NotificationManager;
 import android.content.*;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -734,6 +735,26 @@ public class MainActivity extends Activity {
   // La pagina decide si vas al reves comparando tu rumbo con el del tramo.
   // El servicio lo necesita para sus avisos con la pantalla apagada. No
   // arranca nada: si no hay servicio vivo, no hay a quien avisar.
+  // LA PANTALLA DEL CRUCE, encendida o apagada desde la pagina (23 nov 2026).
+  // Se guarda donde el resto de los ajustes del servicio, asi que sobrevive a
+  // cerrar la aplicacion. De serie, apagada.
+  @JavascriptInterface public void setPantallaCruces(boolean on){
+   try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("pantallaCruces",on).apply();}
+   catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo guardar la pantalla de cruces",e);}
+  }
+  @JavascriptInterface public boolean getPantallaCruces(){
+   try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getBoolean("pantallaCruces",false);}
+   catch(Exception e){return false;}
+  }
+  // Desde Android 14 el permiso de pantalla completa esta reservado a
+  // llamadas y alarmas. Si no lo hay, la pagina lo dice en vez de callarse.
+  @JavascriptInterface public boolean puedePantallaCruces(){
+   try{
+    if(Build.VERSION.SDK_INT<29)return true;
+    NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+    return Build.VERSION.SDK_INT<34||nm==null||nm.canUseFullScreenIntent();
+   }catch(Exception e){return true;}
+  }
   @JavascriptInterface public void setSentido(int s){
    try{
     if(!TrackingService.ACTIVO)return;
