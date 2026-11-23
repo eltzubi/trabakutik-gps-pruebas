@@ -3,6 +3,10 @@
 //   node scripts/marcas-campo.cjs            lo que pasa hoy en cada marca
 //   node scripts/marcas-campo.cjs --estricto sale con 1 si alguna sigue mal
 //
+// Cada marca dice que paso: «sobraba» (no tenia que haber aviso ahi),
+// «falto» (tenia que haber uno y no hubo) o «amontonado» (hubo demasiados;
+// «deja» dice cuantos bastaban, uno por defecto).
+//
 // Por que existe. CLAUDE.md pide que un aviso que falla se apunte ANTES de
 // tocar la regla, con su fuente fechada. Las marcas que el autor hace en el
 // monte son esa fuente, pero vivian en la pantalla del movil y se perdian; y
@@ -102,7 +106,15 @@ for(const m of marcas){
   }
  }
  const r=cache.get(clave);
- const cabeza=m.ruta+' km '+String(m.km).replace('.',',')+' · '+(m.que==='sobraba'?'sobraba «'+m.aviso+'»':'faltó un aviso')+' · '+m.fecha;
+ // TRES CLASES DE MARCA, no dos. «sobraba» quiere cero avisos ahi, «falto»
+ // quiere uno, y «amontonado» quiere UNO en vez de los cuatro o cinco que
+ // soltó: el aviso era bueno, la repeticion no. Sin esta tercera clase, el
+ // enlace de Osma del 23 de noviembre de 2026 salia «SIGUE» con el aviso ya
+ // arreglado, porque seguia habiendo uno, que es justo lo que se queria.
+ const cabeza=m.ruta+' km '+String(m.km).replace('.',',')+' · '+(
+  m.que==='sobraba'?'sobraba «'+m.aviso+'»':
+  m.que==='amontonado'?'se amontonaron '+(m.veces||'varios')+' avisos «'+m.aviso+'» (bastaba '+(m.deja||1)+')':
+  'faltó un aviso')+' · '+m.fecha;
  if(!r){sinTrazado++;console.log('\n'+cabeza+'\n   SIN TRAZADO · deja el GPX en tests/referencia/trazados/'+(m.trazado||''));continue}
  // EL KILOMETRO MANDA, NO EL PUNTO. En una ruta circular -la de Otzarreta
  // vuelve al parking- el punto mas cercano de una marca del km 7,45 cae en el
@@ -126,10 +138,12 @@ for(const m of marcas){
  const fuera=mejor.d>CERCA_M?' · la marca se hizo a '+mejor.d.toFixed(0)+' m del trazado (ibas fuera de la ruta)':'';
  const cerca=r.avisos.filter(a=>Math.abs(a.m-aqui)<=MIRA_M);
  const suyo=cerca.filter(a=>Math.abs(a.m-aqui)<=CERCA_M);
- const bien=m.que==='sobraba'?!suyo.length:!!suyo.length;
+ const bien=m.que==='sobraba'?!suyo.length
+  :m.que==='amontonado'?(suyo.length>0&&suyo.length<=(m.deja||1))
+  :!!suyo.length;
  if(bien)resueltas++;else vivas++;
  console.log('\n'+cabeza+fuera);
- console.log('   hoy: '+(bien?'RESUELTA':'SIGUE')+(suyo.length?' · '+suyo.map(a=>'«'+a.t+' '+Math.round(a.g)+'°»').join(', '):' · sin aviso a '+CERCA_M+' m'));
+ console.log('   hoy: '+(bien?'RESUELTA':'SIGUE')+(suyo.length?' · '+suyo.length+' aviso'+(suyo.length>1?'s':'')+': '+suyo.map(a=>'«'+a.t+' '+Math.round(a.g)+'°»').join(', '):' · sin aviso a '+CERCA_M+' m'));
  for(const a of cerca)if(!suyo.includes(a))
   console.log('      (cerca, a '+(a.m-aqui>0?'+':'')+Math.round(a.m-aqui)+' m: '+a.t+' '+Math.round(a.g)+'°'+(a.nodo?', nodo de OSM':', forma del track')+')');
 }

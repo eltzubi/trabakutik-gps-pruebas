@@ -17,6 +17,10 @@
    "lugar":[43.05165,-2.73733],"fecha":"2026-11-22 11:15"},
   {"ruta":"Hayedo de Otzarreta y Cascada de Uguna desde parking de Saldropo","trazado":"hayedo-otzarreta-saldropo.gpx",
    "km":2.59,"que":"falto","cerca":"Curva a la izquierda a -48 m","veces":2,
-   "lugar":[43.04858,-2.73245],"fecha":"2026-11-22 11:34"}
+   "lugar":[43.04858,-2.73245],"fecha":"2026-11-22 11:34"},
+  {"ruta":"Mi ruta 23/11/2026","trazado":"mi-ruta-23-11-2026.gpx",
+   "km":4.79,"que":"amontonado","aviso":"Gira a la izquierda","veces":4,"deja":1,
+   "lugar":[43.19717,-2.55583],"fecha":"2026-11-23 13:00",
+   "nota":"El enlace de Osma, bajando a Miravalles. El autor: «ese aviso se ha amontonado cuatro, cinco veces». Medido sobre su trazado: cuatro avisos de «gira izquierda» (59, 113, 38 y 84 grados) en 90 m. Es el MISMO sitio que la marca de matiena km 6,27, a 25 m: ese enlace falla en las dos rutas."}
  ]
 }

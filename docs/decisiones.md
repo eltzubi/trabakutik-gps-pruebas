@@ -1579,3 +1579,42 @@ Ampliar la caja es barato en código y caro en descarga (Overpass, 27 MB por
 zona y responde 504 la mitad de las veces), así que se amplía cuando haga
 falta de verdad, no por si acaso: `make_cruces.py --fusiona` suma cuadrados
 sin rehacer el fichero.
+
+## Cuatro avisos en noventa metros no son cuatro avisos (23 nov 2026)
+
+El autor, en una ruta creada por él: «ese aviso se ha amontonado cuatro,
+cinco veces». Reproducido sobre su trazado, en el enlace de Osma bajando a
+Miravalles:
+
+```
+km 4,75 · gira izquierda 59°
+km 4,79 · gira izquierda 113°
+km 4,79 · gira izquierda 38°
+km 4,84 · gira izquierda 84°
+```
+
+Cada uno, por separado, está bien calculado: son cuatro nodos de OSM del
+mismo enlace. **El problema es que no caben.** El primer aviso de un cruce
+sale hasta 90 m antes y la voz hasta 200: con cuatro en noventa metros, cada
+uno empieza a hablar encima del anterior y lo único que se entiende es
+«izquierda, izquierda, izquierda».
+
+**La regla: tres o más avisos del mismo lado a menos de 60 m se quedan en
+uno**, el del giro más grande, que es el que se nota y el que hay que
+acertar.
+
+**Por qué tres y no dos.** Porque dos sí se distinguen, y eso ya estaba
+decidido: el caso 13 de `cruces-dificiles` —dos cruces de verdad a 40 m, los
+dos a la izquierda— pide dos avisos, y es de la revisión con GPT. Juntando
+parejas, esa prueba se rompía y se perdían 571 avisos de las rutas
+publicadas. Con tres, se pierden 94 y el caso del autor queda en un aviso.
+
+**Dos cosas que NO se juntan nunca**: las rotondas (su aviso lleva el número
+de salida, que no está en ningún otro) y dos herraduras de mano contraria
+—por dentro las dos son «vuelta», así que se compara el lado que se oye
+(`hacia`), no el de dentro; sin eso, una herradura a la izquierda se comía
+otra a la derecha a 50 m.
+
+**Comprobado, no supuesto**: de las 94 bajas en las 75 rutas, todas vienen de
+una tanda de tres o más del mismo lado. Los cinco cruces revisados siguen
+bien.

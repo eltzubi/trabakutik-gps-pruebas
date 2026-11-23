@@ -210,3 +210,30 @@ test('Una carretera que continúa entre enlaces de sentido único se mantiene en
  const ramal=[...carretera.slice(0,8),P(-1,-5),P(-3,-15),P(-6,-25),P(-10,-40),P(-16,-65)];
  assert.deepEqual(lados(enCruce(calcular(ramal,[centro]))),['derecha']);
 });
+
+// CUATRO AVISOS EN NOVENTA METROS NO SON CUATRO AVISOS (23 nov 2026). En el
+// enlace de Osma, bajando a Miravalles, cada nodo de OSM soltaba el suyo y
+// salian cuatro «gira a la izquierda» seguidos. El autor: «ese aviso se ha
+// amontonado cuatro, cinco veces». Se queda uno: el del giro mas grande.
+test('los avisos pegados del mismo lado se juntan en uno',()=>{
+ const {pieza}=require('./pieza.cjs');
+ const c=pieza('08-cruces.js',{R:Math.PI/180,notice(){},$:()=>null});
+ const j=(along,direction,angle,mas={})=>Object.assign({along,direction,angle,cruce:true},mas);
+ // El caso del autor: 59, 113, 38 y 84 grados en 90 m.
+ const osma=c.juntaAvisosPegados([j(4750,'izquierda',59),j(4790,'izquierda',113),
+   j(4790,'izquierda',38),j(4840,'izquierda',84)]);
+ assert.equal(osma.length,1,'queda uno solo: '+JSON.stringify(osma.map(x=>x.angle)));
+ assert.equal(osma[0].angle,113,'y es el giro mas grande');
+ assert.equal(osma[0].along,4790);
+ // Dos lados distintos pegados son dos decisiones: no se tocan.
+ assert.equal(c.juntaAvisosPegados([j(100,'izquierda',40),j(130,'derecha',40)]).length,2);
+ // Separados de verdad, tampoco.
+ assert.equal(c.juntaAvisosPegados([j(100,'izquierda',40),j(165,'izquierda',40)]).length,2);
+ // Una rotonda no se come a nadie ni se la comen: lleva el numero de salida.
+ assert.equal(c.juntaAvisosPegados([j(100,'derecha',40),j(120,'derecha',165,{rotonda:true,salida:3})]).length,2);
+ assert.equal(c.juntaAvisosPegados([j(100,'derecha',165,{rotonda:true,salida:3}),j(120,'derecha',40)]).length,2);
+ // Y dos herraduras de MANO CONTRARIA no se juntan, aunque por dentro las dos
+ // sean «vuelta»: se mira el lado que se oye.
+ const herraduras=c.juntaAvisosPegados([j(100,'vuelta',170,{hacia:'izquierda'}),j(150,'vuelta',160,{hacia:'derecha'})]);
+ assert.equal(herraduras.length,2,'una herradura a la izquierda no se come otra a la derecha');
+});

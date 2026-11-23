@@ -966,10 +966,49 @@ function computeJunctions(){
  aplicaHitosDeAviso(ida);
  if(vuelta)aplicaHitosDeAviso(vuelta);
  confirmaRamalWeb.reinicia();
- junctions=ida.filter(j=>!j.entradaLateral);routeCumulative=cum;junctionsReves=vuelta?.filter(j=>!j.entradaLateral)??null;
+ junctions=juntaAvisosPegados(ida.filter(j=>!j.entradaLateral));routeCumulative=cum;
+ junctionsReves=vuelta?juntaAvisosPegados(vuelta.filter(j=>!j.entradaLateral)):null;
  junctionWarned.clear();junctionZoomOnce.clear();
  if(typeof updateDirectionArrows==='function')updateDirectionArrows();
  enviaGirosNativos();
+}
+// CUATRO AVISOS EN NOVENTA METROS NO SON CUATRO AVISOS. En un enlace de
+// carretera -el de Osma bajando a Miravalles- cada nodo de OSM soltaba el
+// suyo, y en el km 4,75-4,84 de una ruta del autor salian CUATRO «gira a la
+// izquierda» seguidos (59, 113, 38 y 84 grados). El lo conto el 23 de
+// noviembre de 2026: «ese aviso se ha amontonado cuatro, cinco veces».
+//
+// No es un fallo de cada aviso: cada uno, por separado, esta bien calculado.
+// Es que no caben. El primer aviso de un cruce sale hasta 90 m antes y la voz
+// hasta 200: con dos cruces a 40 m, el segundo empieza a hablar antes de que
+// acabe el primero y lo unico que se entiende es «izquierda, izquierda,
+// izquierda». Se queda UNO: el del giro mas grande, que es el que se nota y
+// el que hay que acertar.
+//
+// Las rotondas NO se juntan ni se dejan juntar: su aviso lleva el numero de
+// salida, que es informacion que no esta en ningun otro.
+const AVISOS_JUNTOS_M=60,AVISOS_JUNTOS_MIN=3;
+function juntaAvisosPegados(lista){
+ if(!Array.isArray(lista)||lista.length<AVISOS_JUNTOS_MIN)return lista;
+ // El lado QUE SE OYE, no el de dentro: en una herradura «direction» es
+ // «vuelta» para las dos manos, y juntando por ahi una herradura a la
+ // izquierda se comia otra a la derecha a 50 m.
+ const mano=x=>x.hacia||x.direction;
+ const pegado=(a,b)=>a&&b&&!a.rotonda&&!b.rotonda&&mano(a)===mano(b)&&Math.abs(b.along-a.along)<AVISOS_JUNTOS_M;
+ const out=[];
+ for(let i=0;i<lista.length;){
+  let f=i+1;
+  while(f<lista.length&&pegado(lista[f-1],lista[f]))f++;
+  const racha=lista.slice(i,f);
+  // DOS SE DISTINGUEN; TRES YA NO. Una pareja a 40 m son dos decisiones y
+  // las dos se dicen (caso 13 de cruces-dificiles, de la revision con GPT).
+  // Lo que no se entiende es la tanda: se queda el giro mas grande, que es
+  // el que se nota y el que hay que acertar.
+  if(racha.length>=AVISOS_JUNTOS_MIN)out.push(racha.reduce((a,b)=>Math.abs(b.angle||0)>Math.abs(a.angle||0)?b:a));
+  else out.push(...racha);
+  i=f;
+ }
+ return out;
 }
 function detectaCurvasDelTrack(pts,cum){
  const indices=[];
@@ -1498,7 +1537,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={juntaAvisosPegados,teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }

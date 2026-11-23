@@ -133,8 +133,10 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
   0. **Las marcas ✋ del autor se pegan tal cual** en
      `tests/referencia/marcas-campo.json`, aunque su ruta no sea de las 75
      publicadas: son la fuente fechada y antes se perdían en la pantalla del
-     móvil. `node scripts/marcas-campo.cjs` dice cuáles ha resuelto ya un
-     dato nuevo y cuáles siguen vivas. El GPX de una ruta no publicada va en
+     móvil. Cada marca dice qué pasó: `sobraba` (no tenía que haber aviso),
+     `falto` (tenía que haber uno) o `amontonado` (hubo demasiados; `deja`
+     dice cuántos bastaban). `node scripts/marcas-campo.cjs` dice cuáles ha
+     resuelto ya un dato nuevo y cuáles siguen vivas. El GPX de una ruta no publicada va en
      `tests/referencia/trazados/`, que **no se sube** (son sus recorridos);
      sin él la marca sale como «sin trazado» y no cuenta como fallo.
   1. Se añade el cruce a `tests/referencia/cruces-revisados.json`: qué dijo y
