@@ -1513,3 +1513,34 @@ de tapadillo.
 del km 2,59 el aviso está justo en el cruce y la marca 26 m antes. Con una
 ventana de 25 m salía «sigue viva» una que está bien; con 40 m —medio minuto
 andando— el veredicto cuadra con la realidad.
+
+## Los caminos del autor en los cruces: medido, y no sale a cuenta (23 nov 2026)
+
+Idea propuesta y aprobada: si la web ya sabe de **108 tramos suyos (45,8 km)
+que OSM no tiene**, que el navegador los use también para los cruces. Medido
+antes de construir nada, sobre `caminos-zona.json` y `cruces-zona.json`:
+
+| qué aportarían los 108 tramos | |
+|---|---|
+| cruces de OSM que ganarían alguna rama suya | **1** (2 ramas) |
+| extremos de sus tramos que tocan un camino de OSM | 45 |
+| de esos, cruces de verdad (3 caminos o más) que el navegador **no** conoce | **4** |
+| de esos 4, pegados a una ruta publicada | **2** (astarlokoatxa a 1 m, markinaurjauziak a 3 m) |
+| en Gorbeia, donde están sus dos marcas vivas | **0** |
+
+**Dos conclusiones.**
+
+La primera: **en su zona, los cruces de OSM están prácticamente completos**.
+Añadir 45 km de caminos suyos descubre cuatro cruces. No es que la idea sea
+mala; es que no queda casi nada por descubrir.
+
+La segunda, la que importa: **en Gorbeia no aporta nada**, porque la caja de
+`caminos-zona.json` es la de Mallabia (43,1–43,42) y Barazar y Otzarreta
+están en 43,05, por debajo. Allí el navegador tiene los cuadrados de cruces
+de Euskadi —que sí llegan— pero ningún camino suyo, y lo que falta en sus dos
+marcas vivas es justo eso: la rama por la que él pasa.
+
+**Lo que haría falta para Gorbeia** es otra cosa y es más grande: ampliar la
+caja de caminos hacia el suroeste (otra descarga de Overpass) y meter ahí sus
+recorridos de esa zona, que hoy no están publicados. Se propone cuando haga
+falta; no se hace de tapadillo por cuatro cruces.
