@@ -96,6 +96,22 @@ function rutas(){
  const t=JSON.parse(fs.readFileSync(path.join(RAIZ,'data/trailhead.json'),'utf8'));
  return (t.tracks||t).map(x=>x.href.replace(/\.html$/,''));
 }
+// BICI O ANDANDO, SEPARADO (23 nov 2026). Lo pidio el autor: «las normas
+// tendrian que ser diferentes en algunas; para no ir rompiendo una cosa
+// arreglando otra, porque la misma situacion no va para todos». Antes de
+// separar ninguna regla hay que poder VER cual de las dos mitades mueve un
+// cambio: hasta hoy la foto daba un numero solo y no se sabia. La actividad
+// sale del color de la ficha, que es de donde la saca la pagina: teal es
+// bici, violet es senderismo. Las que figuran en las dos cuentan en las dos.
+function actividadDe(){
+ const t=JSON.parse(fs.readFileSync(path.join(RAIZ,'data/trailhead.json'),'utf8'));
+ const m={};
+ for(const x of (t.tracks||t)){
+  const slug=x.href.replace(/\.html$/,'');
+  m[slug]=x.color==='teal'?'bici':x.color==='violet'?'andando':'(sin actividad)';
+ }
+ return m;
+}
 function trazado(slug){
  const t=JSON.parse(fs.readFileSync(path.join(RAIZ,'data/trailhead.json'),'utf8'));
  const gruesa=(t.tracks||t).find(x=>x.href===slug+'.html')?.points||[];
@@ -245,6 +261,19 @@ function comparaFoto(){
  const avisos=Object.values(hoy.rutas).reduce((n,r)=>n+r.ida.length+r.vuelta.length,0);
  console.log(lineas.length?`Foto: ${lineas.length} diferencias (${avisos} avisos hoy). Si son buenas: --escribe-foto`
                           :`Foto: igual (${avisos} avisos en ${Object.keys(hoy.rutas).length} rutas, ida y vuelta)`);
+ // Y el reparto, que es lo que dice si un cambio ha tocado una mitad o las dos.
+ const act=actividadDe(),cuenta={},mueve={};
+ for(const [slug,r] of Object.entries(hoy.rutas)){
+  const a=act[slug]||'(sin actividad)';
+  cuenta[a]=(cuenta[a]||0)+r.ida.length+r.vuelta.length;
+  mueve[a]=mueve[a]||0;
+ }
+ for(const l of lineas){
+  const slug=l.split(' ')[0].replace(/:$/,'');
+  const a=act[slug];if(a)mueve[a]=(mueve[a]||0)+1;
+ }
+ console.log('  reparto: '+Object.keys(cuenta).sort().map(a=>
+   `${a} ${cuenta[a]} avisos${lineas.length?` (${mueve[a]||0} movidos)`:''}`).join(' · '));
  return lineas.length;
 }
 
