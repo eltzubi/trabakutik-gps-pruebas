@@ -4732,7 +4732,14 @@ function ramalesQueConfunden(j,pts){
   for(const r of todas)if(!mias.includes(r)&&(mejor===null||dif(r,mio)<dif(mejor,mio)))mejor=r;
   if(mejor!==null&&dif(mejor,mio)<=RAMAL_TUYO)mias.push(mejor);
  }
- return todas.filter(r=>!mias.includes(r)).map(Math.round);
+ // RELATIVOS A POR DONDE LLEGAS, no al norte: 0 es seguir de frente, los
+ // negativos quedan a tu izquierda y los positivos a tu derecha. Asi la
+ // pantalla del cruce se dibuja siempre con tu marcha hacia arriba, que es
+ // como se lee de un vistazo yendo en bici, y vale igual en la ida y en la
+ // vuelta sin darle la vuelta a nada.
+ const frente=(llega+180)%360;
+ const rel=r=>{let d=(r-frente)%360;if(d>180)d-=360;if(d<-180)d+=360;return Math.round(d)};
+ return todas.filter(r=>!mias.includes(r)).map(rel);
 }
 function enviaGirosNativos(){
  if(!window.TrabakutikAndroid?.setJunctions)return;

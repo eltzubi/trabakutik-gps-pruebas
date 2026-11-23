@@ -300,20 +300,26 @@ test('los ramales que te pueden engañar: los del nodo menos los tuyos',()=>{
  const c=pieza('08-cruces.js',{bearingBetween,R});
  const M=111195,kx=Math.cos(43.2*Math.PI/180);
  const recta=[];for(let m=-60;m<=60;m+=10)recta.push([43.2,-2.5+m/(M*kx)]);
- // Vas al este por una recta; el nodo tiene tu vía (90/270) y un ramal al sur.
- assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270],[180]]]},recta),[180]);
+ // Los rumbos salen RELATIVOS a por dónde llegas: 0 es de frente, negativo
+ // a tu izquierda, positivo a tu derecha. Vas al este (rumbo 90), así que un
+ // ramal al sur (180) te queda a 90 grados a la derecha.
+ assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270],[180]]]},recta),[90]);
  // Sin ramal de más, nada que dibujar.
  assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270]]]},recta),[]);
- // Dos ramales de más: los dos.
- assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270],[180],[0]]]},recta),[180,0]);
+ // Uno al sur y otro al norte: a tu derecha y a tu izquierda.
+ assert.deepEqual(c.ramalesQueConfunden({i:6,nodo:[43.2,-2.5,[[90,270],[180],[0]]]},recta),[90,-90]);
  // El cruce real del km 1,755 de Otzarreta: ramas 78, 258 y 216. El autor
  // llega a 82 -o sea por la rama de 258- y sale a 139, que NO se parece a
  // ninguna: sale por algo que OSM no tiene ahí. Así que las otras dos, la de
  // 78 y la de 216, son ramales que puede coger por error, y las dos se
  // dibujan. Es el cruce donde marcó «faltó aquí».
  const otz=[[43.05188,-2.73760],[43.05186,-2.73750],[43.05185,-2.73740],[43.05178,-2.73733],[43.05170,-2.73727]];
+ // Con estos cinco puntos llega con rumbo 282, así que «de frente» son 102:
+ // el ramal de 78 le queda 24 grados a la izquierda y el de 216, 114 a la
+ // derecha. Los dos se dibujan.
  const r=c.ramalesQueConfunden({i:2,nodo:[43.05185,-2.73740,[[78,258],[216]]]},otz);
- assert.deepEqual(r,[78,216],'los dos ramales donde se puede equivocar');
+ assert.deepEqual(r,[-24,114],'los dos ramales donde se puede equivocar, relativos');
+ assert(r.every(x=>x>=-180&&x<=180),'siempre entre -180 y 180');
  // Sin datos, nada: ni se inventa ni revienta.
  assert.deepEqual(c.ramalesQueConfunden({i:2},otz),[]);
  assert.deepEqual(c.ramalesQueConfunden({i:2,nodo:[43,-2,null]},otz),[]);
