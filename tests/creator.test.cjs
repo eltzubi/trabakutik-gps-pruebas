@@ -394,6 +394,19 @@ test('sin camino se ofrece unir en recta, y solo entonces',async()=>{
  c.uneEnRectaMapa();
  assert.equal(c.state().anchors.length,2,'no se puede unir dos veces el mismo tramo');
 });
+// Y EN UNA CALZADA SEPARADA TAMBIEN HAY SALIDA (23 nov 2026). En la N-634 de
+// Areitiogana el planificador no sabe en que calzada estas, dice «el punto
+// anterior esta en otra calzada» y antes no quedaba mas remedio que ir dando
+// puntos cortisimos. Los caminos guardados no valen ahi -te meterian a
+// contramano-, pero la recta si.
+test('la calzada dudosa ofrece la recta; un servicio caido no',()=>{
+ const c=creatorContext();
+ assert.equal(c.ofreceRectaTrasFallo({calzadaDudosa:true},false),true,'calzada dudosa, aunque no haya red local');
+ assert.equal(c.ofreceRectaTrasFallo({sinCamino:true},true),true,'sin camino y con los caminos bajados');
+ assert.equal(c.ofreceRectaTrasFallo({sinCamino:true},false),false,'sin camino pero sin caminos bajados: esperar');
+ assert.equal(c.ofreceRectaTrasFallo(new Error('HTTP 500'),true),false,'un servicio caido no es que no haya camino');
+ assert.equal(c.ofreceRectaTrasFallo(null,true),false);
+});
 test('si falla el servicio NO se ofrece trazar a mano',async()=>{
  // Un servidor caido no significa que no haya camino. Ofrecer la recta ahi
  // seria empujar a dibujar a mano un sendero que existe.

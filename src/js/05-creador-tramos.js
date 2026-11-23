@@ -166,6 +166,20 @@ async function revisaCalzadas(result,signal){
  }
  return result;
 }
+// CUANDO SE PUEDE OFRECER LA RECTA. Dos casos, y solo dos:
+// 1. No hay camino en OpenStreetMap y los caminos de la zona YA estan
+//    bajados -si no, lo que toca es esperar, no ponerse a dibujar rectas-.
+// 2. El planificador no sabe en que calzada estas. Es lo que pasa en una
+//    nacional de calzadas separadas, como la N-634 en Areitiogana: el punto
+//    anterior le cae en la calzada contraria y se niega a seguir. Ahi los
+//    caminos guardados NO valen -no respetan los sentidos unicos y te
+//    meterian a contramano-, pero la recta si: entre dos puntos de la misma
+//    calzada el trozo es casi recto, y quien decide es el autor. Antes no
+//    habia salida ninguna y solo quedaba ir dando puntos cortisimos; lo
+//    conto el 23 de noviembre de 2026: «le cuesta coger, tengo que ir
+//    cogiendo puntos muy muy cortos».
+// Un servicio caido no entra: eso no significa que no haya camino.
+function ofreceRectaTrasFallo(e,hayRed){return !!(e&&(e.sinCamino&&hayRed||e.calzadaDudosa))}
 async function calculaCalzada(coords,signal,rumbo){
  const respuesta=await pideMapaGps(coords,signal,null,rumbo);
  const result=respuestaMapaGps(respuesta,coords);
@@ -410,7 +424,7 @@ async function planificaTramoMapa(desde,hasta){
    // Solo se ofrece trazarlo a mano cuando SABEMOS que no hay camino: con
    // los caminos de la zona ya bajados. Si todavia no estan, lo que toca es
    // esperar unos segundos, no ponerse a dibujar rectas.
-   tramoSinCamino=e&&e.sinCamino&&redOsm?[desde,hasta]:null;
+   tramoSinCamino=ofreceRectaTrasFallo(e,!!redOsm)?[desde,hasta]:null;
    estadoMapaGps(e.calzadaDudosa?e.message:porQueNoHayCamino(e),!!tramoSinCamino);
   }
  }finally{
@@ -968,4 +982,4 @@ if(typeof map!=='undefined')map.on('click',e=>{
  else notice((segment.manual?'Tramo manual en recta · ':'Punto añadido · ')+(drawPoints.reduce((v,p,i)=>i?v+metros(drawPoints[i-1],p):0,0)/1000).toFixed(2)+' km · Guardar GPX cuando quieras');
 });
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports)module.exports={rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
+if(typeof module==='object'&&module&&module.exports)module.exports={ofreceRectaTrasFallo,rotondasPorLaDerecha,rotondasDelCreador,letraPunto,tiempoMIDE,esfuerzoAndando,pendienteBloque,rampaUltimoTramo,textoEsfuerzo,textoMetros,textoHoras,pintaCreaResumen,porQueNoHayCamino,planLocalMapa,respuestaMapaGps,solicitaMapaGps,pideMapaGps,interpolaMapaGps,muestrasAlturaGps,aplicaMapaGps,anadeTramoMapa,cierraEnElInicio,uneEnRectaMapa,planificaTramoMapa,planificaMapaGps,metros,expireNavigationMetrics,paintNavigationMetrics,navigationProfilePoints,profileDistanceText,loadProfileHeights,updateElevation,updateDraw};
