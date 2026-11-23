@@ -100,14 +100,31 @@ for(const m of marcas){
  const r=cache.get(clave);
  const cabeza=m.ruta+' km '+String(m.km).replace('.',',')+' · '+(m.que==='sobraba'?'sobraba «'+m.aviso+'»':'faltó un aviso')+' · '+m.fecha;
  if(!r){sinTrazado++;console.log('\n'+cabeza+'\n   SIN TRAZADO · deja el GPX en tests/referencia/trazados/'+(m.trazado||''));continue}
+ // EL KILOMETRO MANDA, NO EL PUNTO. En una ruta circular -la de Otzarreta
+ // vuelve al parking- el punto mas cercano de una marca del km 7,45 cae en el
+ // km 0,09, que es el mismo sitio del suelo pero la otra punta del recorrido,
+ // y ahi los avisos son otros. El kilometro lo da la aplicacion y es el bueno;
+ // el punto sirve para comprobar que la ruta es esa y no otra.
+ const aqui=Math.max(0,Math.min(r.cum[r.cum.length-1],m.km*1000));
  let mejor=null;
- for(let k=0;k<r.pts.length;k++){const d=dist(m.lugar,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k}}
- if(mejor.d>CERCA_M){sinTrazado++;console.log('\n'+cabeza+'\n   EL PUNTO NO CAE EN ESE TRAZADO (a '+mejor.d.toFixed(0)+' m)');continue}
- const aqui=r.cum[mejor.k],cerca=r.avisos.filter(a=>Math.abs(a.m-aqui)<=MIRA_M);
+ for(let k=0;k<r.pts.length;k++){
+  if(Math.abs(r.cum[k]-aqui)>MIRA_M)continue;
+  const d=dist(m.lugar,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k};
+ }
+ if(!mejor){
+  sinTrazado++;
+  console.log('\n'+cabeza+'\n   ESE KILOMETRO NO EXISTE EN ESTE TRAZADO · ¿es otra ruta?');
+  continue;
+ }
+ // Una marca hecha estando FUERA de la ruta queda lejos del trazado, y no por
+ // eso vale menos: el kilometro que da la aplicacion es el avance sobre la
+ // ruta, que es con lo que se calculan los avisos. Se dice y se sigue.
+ const fuera=mejor.d>CERCA_M?' · la marca se hizo a '+mejor.d.toFixed(0)+' m del trazado (ibas fuera de la ruta)':'';
+ const cerca=r.avisos.filter(a=>Math.abs(a.m-aqui)<=MIRA_M);
  const suyo=cerca.filter(a=>Math.abs(a.m-aqui)<=CERCA_M);
  const bien=m.que==='sobraba'?!suyo.length:!!suyo.length;
  if(bien)resueltas++;else vivas++;
- console.log('\n'+cabeza);
+ console.log('\n'+cabeza+fuera);
  console.log('   hoy: '+(bien?'RESUELTA':'SIGUE')+(suyo.length?' · '+suyo.map(a=>'«'+a.t+' '+Math.round(a.g)+'°»').join(', '):' · sin aviso a '+CERCA_M+' m'));
  for(const a of cerca)if(!suyo.includes(a))
   console.log('      (cerca, a '+(a.m-aqui>0?'+':'')+Math.round(a.m-aqui)+' m: '+a.t+' '+Math.round(a.g)+'°'+(a.nodo?', nodo de OSM':', forma del track')+')');
