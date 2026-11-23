@@ -33,6 +33,26 @@ test('Los cuadrados que toca una ruta, y si se sale de la zona de Mallabia',()=>
  assert.equal(c.fueraDeZona(gorbeia,zona),true);
  assert.equal(c.fueraDeZona([[43.2,-2.55]],zona),false);
 });
+// FUERA DEL MAPA DE CRUCES SE DICE. Lo pregunto el autor el 23 de noviembre
+// de 2026: «¿que pasaria si empiezo a abarcar distancias mas lejanas, o
+// alguien usa la APK?». Hasta ahora, un cuadrado que no existe se saltaba en
+// silencio y el ultimo mensaje en pantalla era «buscando los cruces de
+// Euskadi…», que ya no vuelve nunca.
+test('Una ruta fuera de los cuadrados publicados lo dice, y no se queda buscando',async()=>{
+ const {c,pedidas}=entorno({on:true});
+ // Los Pirineos: su cuadrado no esta en el indice (que solo trae el de Gorbeia).
+ const lejos=[[42.70,-0.60],[42.701,-0.601]];
+ const r=await c.cargaTeselas(lejos);
+ assert.equal(r.zonas.length,0,'no hay cuadrado que bajar');
+ assert.equal(r.faltan,0,'y no es un fallo de red');
+ assert(r.fuera>0,'se cuenta como fuera del mapa: '+r.fuera);
+ assert(!pedidas.some(u=>u.includes('t_427_-6')),'ni se pide: no existe');
+ // Y el aviso que se dice en cada caso.
+ assert.match(c.avisoDeCruces(2,0,0),/no hay datos de cruces/);
+ assert.match(c.avisoDeCruces(1,0,14),/Parte de esta ruta/);
+ assert.match(c.avisoDeCruces(0,3,14),/Sin cobertura/);
+ assert.equal(c.avisoDeCruces(0,0,14),'','con todo en su sitio no se dice nada');
+});
 test('Baja el cuadrado, lo guarda, no lo vuelve a pedir y sin red usa la copia guardada',async()=>{
  const red={on:true},{c,pedidas,guardado}=entorno(red);
  let r=await c.cargaTeselas(gorbeia);

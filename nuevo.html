@@ -4536,15 +4536,30 @@ async function cargaTeselas(pts){
  const ind=await cargaIndiceTeselas();
  const existe=ind&&Array.isArray(ind.teselas)?new Set(ind.teselas.map(t=>t[0]+'_'+t[1])):null;
  const fecha=ind&&ind.fecha_osm||'';
- const zonas=[];let faltan=0;
+ const zonas=[];let faltan=0,fuera=0;
  for(const k of teselasDeRuta(pts)){
-  if(existe&&!existe.has(k))continue;
+  // UN CUADRADO QUE NO EXISTE NO ES UN FALLO DE RED: es que ahi no llega el
+  // mapa de cruces. Antes se saltaba en silencio y el ultimo mensaje que
+  // quedaba en pantalla era «buscando los cruces de Euskadi…», que no vuelve
+  // nunca. Quien se baje la APK y ande fuera de Euskadi se creeria que le
+  // vamos a avisar de los cruces. Se cuenta aparte y se dice.
+  if(existe&&!existe.has(k)){fuera++;continue}
   if(teselasCargadas.has(k+'@'+fecha)){zonas.push(teselasCargadas.get(k+'@'+fecha));continue}
   const j=await leeTesela(k,fecha);
   if(!j){if(j===undefined)faltan++;continue}
   try{const z=descifraZona(j);teselasCargadas.set(k+'@'+fecha,z);zonas.push(z)}catch(e){faltan++}
  }
- return {zonas,faltan};
+ return {zonas,faltan,fuera};
+}
+// LO QUE SE DICE CUANDO EL MAPA DE CRUCES NO LLEGA. Aparte para poder
+// probarlo: «fuera» son cuadrados que no existen -ahi no hay datos-, «faltan»
+// son cuadrados que existen y no se han podido bajar -eso si es cobertura-, y
+// «hay» es cuantos cruces han quedado pegados a la ruta.
+function avisoDeCruces(fuera,faltan,hay){
+ if(fuera&&!hay)return 'Aqu\u00ed no hay datos de cruces \u00b7 te avisar\u00e9 si te sales de la ruta, pero no de los cruces';
+ if(fuera)return 'Parte de esta ruta se sale del mapa de cruces \u00b7 ah\u00ed no habr\u00e1 avisos de cruce';
+ if(faltan)return 'Sin cobertura \u00b7 faltan datos de cruces de parte de esta ruta';
+ return '';
 }
 // Junta zonas sin repetir cruces ni rotondas (los cuadrados cubren tambien
 // la zona de Mallabia).
@@ -4569,10 +4584,11 @@ function aplicaCruces(){
   // Fuera de la zona de Mallabia, los cuadrados de Euskadi que toque la ruta.
   if(fueraDeZona(routePoints,z.bbox)){
    const pts=routePoints;
-   cargaTeselas(pts).then(({zonas,faltan})=>{
+   cargaTeselas(pts).then(({zonas,faltan,fuera})=>{
     if(pet!==crucesPeticion||routePoints!==pts)return;
     if(zonas.length)aplicaZona(juntaZonas([z,...zonas]),pet,false);
-    if(faltan)notice('Sin cobertura · faltan datos de cruces de parte de esta ruta');
+    const aviso=avisoDeCruces(fuera,faltan,crucesOsm.length);
+    if(aviso)notice(aviso);
    }).catch(e=>console.warn('Cruces de Euskadi no disponibles',e));
   }
  });
@@ -5697,7 +5713,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={teselasDeRuta,fueraDeZona,cargaTeselas,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }

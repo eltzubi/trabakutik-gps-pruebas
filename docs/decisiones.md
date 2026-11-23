@@ -1544,3 +1544,38 @@ marcas vivas es justo eso: la rama por la que él pasa.
 caja de caminos hacia el suroeste (otra descarga de Overpass) y meter ahí sus
 recorridos de esa zona, que hoy no están publicados. Se propone cuando haga
 falta; no se hace de tapadillo por cuatro cruces.
+
+## Hasta dónde llega cada cosa, y qué se dice cuando no llega (23 nov 2026)
+
+El autor preguntó qué pasaría yendo más lejos del Duranguesado, o si alguien
+se baja la APK y anda por otro sitio. Medido:
+
+| qué | hasta dónde | superficie |
+|---|---|---|
+| el mapa (ver y guardar) | cualquier sitio: IGN y OSM son mundiales | — |
+| fuera de ruta, brújula, perfil, GPX, batería | cualquier sitio: salen del propio track | — |
+| **avisos de cruces** | lat 42,4–43,5 · lon −3,5 a −1,7 (123 cuadrados) | ~11.000 km² |
+| el lápiz sin cobertura y las fuentes | la caja de Mallabia (43,1–43,42 · −2,72 a −2,34) | ~1.100 km² |
+
+O sea que los cruces cubren **toda Euskadi y sus bordes** —Gorbeia incluido—,
+y fuera de ahí el navegador se queda con lo que saca del propio trazado.
+
+**El agujero que había: no se decía.** Un cuadrado que no existe se saltaba
+en silencio (`continue`, sin contarlo), así que el último mensaje en pantalla
+era «Ruta fuera de la zona de Mallabia · buscando los cruces de Euskadi…», y
+ese ya no vuelve nunca. Quien use la APK en Madrid se creería que el
+navegador le va a cantar los cruces.
+
+Ahora se cuentan aparte los cuadrados **que no existen** (no hay datos) de
+los que **existen y no se bajan** (eso sí es cobertura), y se dice lo que
+toca:
+
+- toda la ruta fuera → «Aquí no hay datos de cruces · te avisaré si te sales
+  de la ruta, pero no de los cruces»;
+- parte fuera → «Parte de esta ruta se sale del mapa de cruces»;
+- cuadrados que existen y no bajan → el de siempre, «Sin cobertura».
+
+Ampliar la caja es barato en código y caro en descarga (Overpass, 27 MB por
+zona y responde 504 la mitad de las veces), así que se amplía cuando haga
+falta de verdad, no por si acaso: `make_cruces.py --fusiona` suma cuadrados
+sin rehacer el fichero.
