@@ -1592,7 +1592,23 @@ function salidaDeRotonda(rot,rIn,rOut){
 var ORDINALES=['','primera','segunda','tercera','cuarta','quinta','sexta','séptima','octava'];
 function textoSalida(n){return ORDINALES[n]?'toma la '+ORDINALES[n]+' salida':''}
 function resuelveRotondas(pts){
- const ROT_MARGEN=10,ROT_DENTRO=3,ROT_BRAZO=30,ROT_RECTO=35,ROT_VUELTA=150;
+ // ROT_DENTRO ERA 3 m Y PERDIA ROTONDAS DE VERDAD. Para contar como cruzada,
+ // la ruta tenia que meterse a radio+3 m del centro, y una ruta dibujada en el
+ // creador pasa unos metros por fuera del anillo: no va por su eje. Medido el
+ // 23 de noviembre de 2026 sobre las 75 rutas publicadas, 9 rotondas buenas se
+ // quedaban fuera por entre 3,2 y 6,8 m, y en su sitio sonaban dos giros
+ // sueltos -la entrada y la salida-, que es justo lo que conto el autor: «en
+ // esta ruta no me indica la tercera salida, sino que primero gira a la
+ // izquierda y luego gira a la derecha», y «hay algo a la hora de crear que
+ // hace que no lo detecte al leerlo».
+ //
+ // El margen solo no vale: a 9,6 m hay una calle que pasa al lado de una
+ // rotonda de 28 m en cuatro rutas (markinaurjauziak, santaeufemia,
+ // mallukitoko y markinabolibar), y esa no se cruza. Lo que de verdad separa
+ // «la cruzo» de «paso a su lado» es el ANGULO QUE DAS ALREDEDOR DEL CENTRO:
+ // las 9 buenas barren de 53 a 151 grados, y las que pasan de largo, de 0 a
+ // 27. Asi que las dos cosas: meterse a radio+8 y barrer 45 grados.
+ const ROT_MARGEN=10,ROT_DENTRO=8,ROT_BARRIDO=45,ROT_VENTANA=14,ROT_BRAZO=30,ROT_RECTO=35,ROT_VUELTA=150;
  const cum=routeCumulative,n=pts.length,total=cum[n-1];
  const enMetro=m=>{
   let k=1;while(k<n-1&&cum[k]<m)k++;
@@ -1619,12 +1635,24 @@ function resuelveRotondas(pts){
    // punto en el borde.
    let mIn=-1,mOut=-1,cerca=Infinity;
    const m0=cum[Math.max(a-1,0)],m1=cum[Math.min(b+1,n-1)];
-   for(let m=m0;m<=m1;m+=1){const d=dist(enMetro(m),c);if(d<cerca)cerca=d;if(d<=r){if(mIn<0)mIn=m;mOut=m}}
+   let barrido=0,rumboAnt=null;
+   const ventana=Math.max(rot[2],6)+ROT_VENTANA;
+   for(let m=m0;m<=m1;m+=1){
+    const q=enMetro(m),d=dist(q,c);
+    if(d<cerca)cerca=d;
+    if(d<=r){if(mIn<0)mIn=m;mOut=m}
+    // Grados recorridos alrededor del centro, que es lo que distingue
+    // cruzar la rotonda de pasar por una calle de al lado.
+    if(d>ventana){rumboAnt=null;continue}
+    const rumbo=bearingBetween(c,q);
+    if(rumboAnt!==null){let dr=rumbo-rumboAnt;if(dr>180)dr-=360;if(dr<-180)dr+=360;barrido+=Math.abs(dr)}
+    rumboAnt=rumbo;
+   }
    // PASAR AL LADO NO ES CRUZARLA. El margen sirve para medir, pero la ruta
    // tiene que meterse en el anillo (su radio y ROT_DENTRO de error de GPS):
    // en markinaurjauziak y santaeufemia la ruta pasa por una calle a 10 m de
    // una rotonda de 28 m de radio, sin entrar, y su cruce de al lado es suyo.
-   if(mIn<0||cerca>Math.max(rot[2],6)+ROT_DENTRO)continue;
+   if(mIn<0||cerca>Math.max(rot[2],6)+ROT_DENTRO||barrido<ROT_BARRIDO)continue;
    junctions=junctions.filter(j=>!(j.along>=mIn-15&&j.along<=mOut+15&&dist(j.point,c)<=r+15));
    // Sin brazo antes o despues (la ruta empieza o acaba en la rotonda) no
    // hay con que comparar: se quitan los de dentro y no se dice nada.
