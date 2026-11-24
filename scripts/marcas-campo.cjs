@@ -69,6 +69,16 @@ function zonaDe(pts){
 // El trazado: el de la ruta publicada si lo es, y si no el GPX que se haya
 // dejado en tests/referencia/trazados/.
 function trazado(m){
+ // LA GRABACION DE LA SALIDA SIRVE AUNQUE NO ESTE LA RUTA. Es lo que el
+ // autor puede mandar enseguida -la aplicacion ya la guarda- y pasa por el
+ // mismo sitio. Entonces manda el PUNTO y no el kilometro, porque una
+ // grabacion empieza donde le dio a grabar.
+ if(m.grabacion){
+  const gr=path.join(TRAZADOS,m.grabacion);
+  if(!fs.existsSync(gr))return null;
+  const t=fs.readFileSync(gr,'utf8');
+  return [...t.matchAll(/lat="([\d.-]+)"\s+lon="([\d.-]+)"/g)].map(x=>[+x[1],+x[2]]);
+ }
  const slug=String(m.ruta||'').toLowerCase();
  const fino=path.join(DATOS,'data/'+slug+'.json');
  if(fs.existsSync(fino)){
@@ -94,7 +104,7 @@ const {marcas}=JSON.parse(fs.readFileSync(MARCAS,'utf8'));
 const cache=new Map();
 let vivas=0,resueltas=0,sinTrazado=0;
 for(const m of marcas){
- const clave=m.trazado||m.ruta;
+ const clave=m.grabacion||m.trazado||m.ruta;
  if(!cache.has(clave)){
   const pts=trazado(m);
   if(!pts)cache.set(clave,null);
@@ -113,7 +123,7 @@ for(const m of marcas){
  // arreglado, porque seguia habiendo uno, que es justo lo que se queria.
  // Una marca contada de viva voz no trae kilometro: se apunta igual, que es
  // la fuente fechada, y se dice que falta el dato en vez de escribir «null».
- const cabeza=m.ruta+(Number.isFinite(m.km)?' km '+String(m.km).replace('.',','):' (sin kilometro)')+' · '+(
+ const cabeza=m.ruta+((m.grabacion||m.porPunto)?' (por el punto, en tu grabacion)':Number.isFinite(m.km)?' km '+String(m.km).replace('.',','):' (sin kilometro)')+' · '+(
   m.que==='sobraba'?'sobraba «'+m.aviso+'»':
   m.que==='amontonado'?'se amontonaron '+(m.veces||'varios')+' avisos «'+m.aviso+'» (bastaba '+(m.deja||1)+')':
   'faltó un aviso')+' · '+m.fecha;
@@ -123,11 +133,23 @@ for(const m of marcas){
  // km 0,09, que es el mismo sitio del suelo pero la otra punta del recorrido,
  // y ahi los avisos son otros. El kilometro lo da la aplicacion y es el bueno;
  // el punto sirve para comprobar que la ruta es esa y no otra.
- const aqui=Math.max(0,Math.min(r.cum[r.cum.length-1],m.km*1000));
- let mejor=null;
- for(let k=0;k<r.pts.length;k++){
-  if(Math.abs(r.cum[k]-aqui)>MIRA_M)continue;
-  const d=dist(m.lugar,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k};
+ // CON UNA GRABACION MANDA EL PUNTO, NO EL KILOMETRO. El kilometro de la
+ // marca es el avance sobre la RUTA, y una grabacion empieza donde el autor
+ // le dio a grabar: los dos numeros no son el mismo. Con «porPunto» se busca
+ // el sitio por las coordenadas, que en una grabacion de su salida son
+ // exactas (se comprobo el 24 de noviembre de 2026: sus dos marcas de Aixola
+ // caian a 0 y 1 m del trazado). En una ruta sigue mandando el kilometro,
+ // que en un circuito es lo unico que distingue la ida de la vuelta.
+ let mejor=null,aqui;
+ if(m.grabacion||m.porPunto){
+  for(let k=0;k<r.pts.length;k++){const d=dist(m.lugar,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k}}
+  aqui=mejor?r.cum[mejor.k]:0;
+ }else{
+  aqui=Math.max(0,Math.min(r.cum[r.cum.length-1],m.km*1000));
+  for(let k=0;k<r.pts.length;k++){
+   if(Math.abs(r.cum[k]-aqui)>MIRA_M)continue;
+   const d=dist(m.lugar,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k};
+  }
  }
  if(!mejor){
   sinTrazado++;
