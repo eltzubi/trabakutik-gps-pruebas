@@ -41,12 +41,14 @@ function distanciasDeAviso(){
  // La velocidad ya esta tapada en actualizaVelocidad a 20 m/s, asi que el
  // techo de cada aviso es su tiempo a esos 20 m/s. Por debajo de 22 km/h no
  // cambia ni un metro. Igual que el servicio, que es quien habla dormido.
- return [Math.min(180,Math.max(25,v*9)),Math.min(60,Math.max(8,v*3)),
-         Math.min(360,Math.max(35,v*18)),
+ // Desde donde EMPIEZA la maniobra (12 m antes del punto), igual que el
+ // servicio: ver el comentario de ENTRADA_M en TrackingService.
+ return [Math.min(180,Math.max(34,12+v*9)),Math.min(130,Math.max(28,12+v*6)),
+         Math.min(360,Math.max(35,12+v*18)),
          // El cuarto: donde se dice «… ahora». Dos segundos ANTES del cruce
          // (4-12 m), no encima: con el retraso del GPS y de la voz caia ya
          // dentro o pasado el giro. Igual que avisoYa() del servicio.
-         Math.min(Math.min(60,Math.max(8,v*3))-2,Math.min(40,Math.max(4,v*2))),
+         Math.min(Math.min(130,Math.max(28,12+v*6))-6,Math.min(90,Math.max(20,12+v*4))),
          // EL QUINTO ES PARA LAS CURVAS, Y ANTES ERAN DIEZ METROS FIJOS.
          // El punto de una curva es donde mas se dobla el track, y se mide
          // con 12 m a cada lado: la ENTRADA cae 12 m antes de ese punto, asi

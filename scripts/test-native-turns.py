@@ -41,11 +41,10 @@ public class NativeTurnsTest {
   pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+grados+"|"+(ramales==null?0:ramales.length)+"|"+segundos);
  }
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
-'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double SEGUIDO_MIN=[^;]+;',src).group(0)+'''
+'''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double ENTRADA_M=[^;]+;',src).group(0)+re.search(r' static final double SEGUIDO_MIN=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
- double avisoLargo(){return 80;}double avisoCorto(){return 30;}double avisoVoz(){return 200;}
  static class ToneGenerator{static final int TONE_PROP_ACK=2,TONE_PROP_BEEP=1;}
  void updateNotice(){}double posActual=Double.NaN,tresEn=Double.NaN;void pitidos(int n,int ms){beeps++;if(n==3&&Double.isNaN(tresEn))tresEn=posActual;}void pitidos(int n,int ms,int t){beeps++;}
  void pitidos(int n,int ms,int t,int volumen){require(t==ToneGenerator.TONE_PROP_BEEP&&volumen==100,"giro a volumen máximo");pitidos(n,ms);}
@@ -82,7 +81,7 @@ public class NativeTurnsTest {
  ' boolean confirmaMarchaCurva(double along,boolean fiable)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
  ' String siguienteManiobra(ArrayList<double[]> turns,int actual,boolean usaReves,double along)',
- ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' int seguidoDe(ArrayList<double[]> turns,int actual)',' double seguido()',' double desentenderse()',' double avisoYa()',' double avisoCurva()',
+ ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' int seguidoDe(ArrayList<double[]> turns,int actual)',' double seguido()',' double desentenderse()',' double avisoLargo()',' double avisoCorto()',' double avisoVoz()',' double avisoYa()',' double avisoCurva()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' static int gradosDelGiro(int tipo)',' static String textoCorto(int lado,int tipo,int salida)',
@@ -210,9 +209,10 @@ public class NativeTurnsTest {
   for(int m=0;m<=99;m+=5)d.posicion(new Location(m));
   require(d.pantallas.size()==1&&d.pantallas.get(0).split("[|]")[3].equals("0"),"sin ramales: "+d.pantallas);
   // Y SE ABRE CON EL PRIMER PITIDO, no con la voz, y dura lo que falta mas
-  // cuatro segundos: a 10 m/s y 80 m de cruce, doce. Antes eran doce fijos
-  // abiertos 18 s antes, y se apagaba 6 s ANTES de llegar al cruce.
-  require(d.pantallas.get(0).equals("Izquierda|80|90|0|12"),"abierta con el primer pitido y con sus segundos: "+d.pantallas);
+  // cuatro segundos: a 10 m/s el primer pitido son 102 m, asi que al verlo a
+  // 100 m quedan diez segundos y la ficha vive catorce. Antes eran doce
+  // fijos abiertos 18 s antes, y se apagaba 6 s ANTES de llegar al cruce.
+  require(d.pantallas.get(0).equals("Izquierda|100|90|0|14"),"abierta con el primer pitido y con sus segundos: "+d.pantallas);
   // DOS CRUCES SEGUIDOS ENCIENDEN LA PANTALLA DOS VECES. El autor: «si a
   // 50-100 metros hay otro cruce se volveria a encender; el segundo no
   // aparece en dibujo, me aparece lo que tengo en pantalla».
@@ -258,12 +258,16 @@ public class NativeTurnsTest {
   require(c.siguienteManiobra(c.turns,2,false,200).isEmpty(),"sin maniobra después de la última");
   c.sentido=-1;
   require(c.siguienteManiobra(c.turns,2,false,820).equals("Siguiente cruce a 700 metros"),"distancia al volver");
+  // A 10 m/s la escalera es 192 / 102 / 72 / 52 m: el primer pitido entre
+  // 102 y 72, nada entre 72 y 52, y el «... ahora» de 52 para abajo. Con el
+  // cruce en el metro 100: a 20 m quedan 80 (pitido), a 40 quedan 60 (nada)
+  // y a 55 quedan 45 (ahora).
   NativeTurnsTest fases=setup();
-  fases.checkTurns(new Location(30));
-  fases.checkTurns(new Location(75));
+  fases.checkTurns(new Location(20));
+  fases.checkTurns(new Location(40));
   require(fases.beeps==1,"sin pitido intermedio");
-  fases.checkTurns(new Location(95));
-  fases.checkTurns(new Location(95));
+  fases.checkTurns(new Location(55));
+  fases.checkTurns(new Location(55));
   require(fases.beeps==2,"dos avisos sonoros, sin repetición");
   require(fases.dicho.stream().noneMatch(d->d.contains("Siguiente cruce")),
     "con el siguiente a 85 m no se adelanta nada: se va a avisar solo");
@@ -294,15 +298,23 @@ public class NativeTurnsTest {
   long veces=w.dicho.stream().filter(d->d.equals("1")).count();
   require(veces==1,"el giro ya nombrado solo se dice otra vez en el «ahora»: "+w.dicho);
  }
- // «AHORA» ANTES DEL CRUCE: a 36 km/h (velocidadSuave 10), 12 m antes; y
- // andando, 4 m antes. Antes sonaba al llegar a 0 m.
+ // «AHORA» ANTES DEL CRUCE: a 36 km/h (velocidadSuave 10), 52 m antes; y
+ // andando, 20 m antes. Antes sonaba 12 m / 4 m antes del punto, es decir,
+ // dentro de la maniobra.
  static void ahoraAntes(){
   for(double v:new double[]{10,1.2}){
    NativeTurnsTest c=new NativeTurnsTest();c.velocidadSuave=v;for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});
    c.turns.add(new double[]{10,-1,1});
    for(int m=0;m<=110;m+=1){c.posActual=m;c.posicion(new Location(m));}
    double ya=c.avisoYa(),antes=100-c.tresEn;
-   require(Math.abs(ya-(v>5?20:4))<0.01,"adelanto a "+v+" m/s: "+ya);
+   // CUATRO SEGUNDOS ANTES DE ENTRAR en el cruce, y la entrada son los
+   // ENTRADA_M metros de antes del punto: a 10 m/s, 12+4*10 = 52 m; andando,
+   // manda el suelo de 20. Antes eran dos segundos desde el PUNTO, y como la
+   // frase tarda unos dos segundos en decirse y «ahora» va al final, la
+   // palabra caia dentro del giro. El autor, el 24 de noviembre de 2026: «me
+   // da la sensacion de que llega 3 o 4 segundos mas tarde, me lo indican en
+   // plena curva; me gustaria cuatro o cinco segundos antes de entrar».
+   require(Math.abs(ya-(v>5?52:20))<0.01,"adelanto a "+v+" m/s: "+ya);
    require(antes>=ya-1.01&&antes<=ya+0.01,"el «ahora» suena "+ya+" m antes, no encima: sono a "+antes+" m");
   }
  }
@@ -533,7 +545,7 @@ public class NativeTurnsTest {
   require(c.dicho.equals(Arrays.asList("Ya estás en la ruta")),"Al cambiar de ruta vuelve a anunciar");
  }
  public static void main(String[] args){
-  entradaDeRuta();saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();pantallaDelCruce();ahoraAntes();System.out.println("PASS: el «ahora» suena dos segundos antes del cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
+  entradaDeRuta();saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();pantallaDelCruce();ahoraAntes();System.out.println("PASS: el «ahora» suena cuatro segundos antes de entrar en el cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();
@@ -634,8 +646,7 @@ public class NativeTurnsTest {
  }
 }'''
 if replay:
- code=code.replace('double avisoLargo(){return 80;}double avisoCorto(){return 30;}double avisoVoz(){return 200;}',
-     ''.join(method(m) for m in (' void actualizaVelocidad(Location l)', ' double avisoLargo()', ' double avisoCorto()', ' double avisoVoz()')))
+ code=code.replace(' void updateNotice(){}',method(' void actualizaVelocidad(Location l)')+' void updateNotice(){}')
  code=code.replace('float acc=4;', 'float acc=4,speed=0; boolean hasSpeed(){return true;} float getSpeed(){return speed;}')
  code=code.replace('String fraseGiro(int lado,int tipo,String fase,double ahead,int salida){return ""+lado;}',
      method(' String fraseGiro(int lado,int tipo,String fase,double ahead,int salida)').replace(

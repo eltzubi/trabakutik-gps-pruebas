@@ -1324,8 +1324,10 @@ test('rotonda con numero: «rs» al servicio, y la recta solo a la APK que lo sa
 test('la pagina dice «ahora» dos segundos antes del cruce, como el servicio',()=>{
  const c=pieza('08-cruces.js');
  c.velocidadSuave=10;const a=c.distanciasDeAviso();
- assert.equal(a[3],20,'a 36 km/h, 20 m antes, que son los dos segundos');
- c.velocidadSuave=1.2;assert.equal(c.distanciasDeAviso()[3],4,'andando, 4 m antes');
+ assert.equal(a[3],52,'a 36 km/h: 12 m de la entrada y cuatro segundos de marcha');
+ c.velocidadSuave=1.2;assert.equal(c.distanciasDeAviso()[3],20,'andando, el suelo: 20 m');
+ c.velocidadSuave=10;
+
  assert(a[3]<a[1],'siempre por debajo del aviso corto');
  // EL QUINTO, LAS CURVAS: cinco segundos antes de ENTRAR en la curva, que
  // cae 12 m antes del punto. Antes eran diez metros fijos, o sea dentro.

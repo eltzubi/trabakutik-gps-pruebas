@@ -525,6 +525,18 @@ public class TrackingService extends Service implements LocationListener {
  // cruces si hay poca distancia».
  // En tiempo: seis segundos de marcha, de 25 a 150 m. Andando son los 25 del
  // suelo, en bici 30 -lo mismo que antes-, a 40 km/h 66 y a 60 km/h 100.
+ // LOS AVISOS SE MIDEN DESDE DONDE EMPIEZA LA MANIOBRA, NO DESDE SU PUNTO.
+ // El punto de un cruce es donde el track dobla; la maniobra empieza unos
+ // metros antes. Con las curvas ya se arreglo el 23 de noviembre de 2026 y
+ // con los cruces faltaba: el autor, el 24, «cuando me indica gira ahora me
+ // da la sensacion de que llega 3 o 4 segundos mas tarde, me lo indican en
+ // plena curva; me gustaria que indicara antes de entrar, cuatro o cinco
+ // segundos antes». Y hay otra cosa que no se estaba contando: la FRASE
+ // tarda unos dos segundos en decirse y la palabra «ahora» va al final, asi
+ // que disparando a dos segundos la palabra cae encima del cruce. Por eso el
+ // ultimo aviso sube de 2 a 3 segundos y el segundo pitido de 3 a 5, para
+ // que quepa.
+ static final double ENTRADA_M=12;
  static final double SEGUIDO_MIN=25,SEGUIDO_MAX=150;
  double desentenderse(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(1200,Math.max(120,v*60));}
  double seguido(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(SEGUIDO_MAX,Math.max(SEGUIDO_MIN,v*6));}
@@ -1316,7 +1328,7 @@ public class TrackingService extends Service implements LocationListener {
  // esos 20 m/s y no hay dos guardias para lo mismo: 180, 60, 360 y 40 m.
  // Por debajo de 22 km/h no cambia ni un metro: andando y en bici normal,
  // manda el suelo o el tiempo, igual que antes.
- double avisoLargo(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(180,Math.max(25,v*9));}
+ double avisoLargo(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(180,Math.max(34,ENTRADA_M+v*9));}
  // La voz necesita MUCHO mas sitio que un pitido. Un pitido informa al
  // instante; una frase tarda dos o tres segundos en decirse, y para cuando
  // acaba ya estas en el cruce. El autor lo vio: «estaba diciendo que girara
@@ -1327,8 +1339,8 @@ public class TrackingService extends Service implements LocationListener {
  // 54 segundos de antelacion: oyes «en 60 metros gira» y sigues andando casi
  // un minuto. El autor va ANDANDO, no en bici. Con 35 m quedan 32 s andando y
  // de 12 km/h para arriba no cambia nada, porque ahi manda ya el v*18.
- double avisoVoz(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(360,Math.max(35,v*18));}
- double avisoCorto(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(60,Math.max(8,v*3));}
+ double avisoVoz(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(360,Math.max(35,ENTRADA_M+v*18));}
+ double avisoCorto(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(130,Math.max(28,ENTRADA_M+v*6));}
  // «… AHORA» UN POCO ANTES DEL CRUCE, NO ENCIMA. Sonaba al llegar a 0 m, y a
  // eso se suman el retraso del GPS (1-2 s) y lo que tarda en arrancar la voz:
  // en bici a 20 km/h caia 5-10 m pasado el cruce. Es la queja de un hilo
@@ -1336,7 +1348,7 @@ public class TrackingService extends Service implements LocationListener {
  // but mostly after the turns»). Lo pidio el autor el 15 de noviembre de 2026.
  // Dos segundos de marcha, entre 4 y 12 m, y siempre por debajo del aviso
  // corto para que este no se quede sin sitio.
- double avisoYa(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(avisoCorto()-2,Math.min(40,Math.max(4,v*2)));}
+ double avisoYa(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(avisoCorto()-6,Math.min(90,Math.max(20,ENTRADA_M+v*4)));}
  // LA CURVA SE AVISABA A DIEZ METROS FIJOS, QUE ES DENTRO DE LA CURVA. El
  // punto de una curva es donde mas se dobla el track, y se mide con 12 m a
  // cada lado: la ENTRADA cae 12 m antes de ese punto, asi que avisar a 10 m
