@@ -797,6 +797,18 @@ public class TrackingService extends Service implements LocationListener {
  // se va mucho mas despacio y la bateria se nota.
  static final String CANAL_GIRO="giro";
  static final int NOTIF_GIRO=14;
+ // LA FICHA SE VA CUANDO PASAS EL CRUCE, NO CUANDO SUENA UN RELOJ. Con un
+ // reloj a ciegas, parado en el cruce se queda los segundos enteros y con
+ // cruces seguidos se solapan unas con otras: «o tarda demasiado en irse».
+ // El servicio le va dando cuerda mientras el cruce siga por delante; en
+ // cuanto deja de darsela -lo has pasado, te has salido o se acabo la
+ // navegacion- la ficha se cierra sola en PANTALLA_CUERDA_MS.
+ static final long PANTALLA_CUERDA_MS=4000;
+ void alargaPantallaGiro(){
+  try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+    .putLong("giroHasta",SystemClock.elapsedRealtime()+PANTALLA_CUERDA_MS).apply();}
+  catch(Exception ignored){}
+ }
  boolean pantallaCruces(){
   try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getBoolean("pantallaCruces",false);}
   catch(Exception e){return false;}
@@ -816,6 +828,12 @@ public class TrackingService extends Service implements LocationListener {
  void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
   try{
    if(!pantallaCruces())return;
+   // CON LA APLICACION DELANTE, NO. Ahi ya ves la ficha del giro en el mapa,
+   // y la pantalla completa solo tapa el mapa y los botones ✋ de marcar. La
+   // pantalla del cruce es para cuando el movil esta dormido en el soporte
+   // de la bici, que es para lo que la pidio el autor. El 24 de noviembre de
+   // 2026: «no se va de la pantalla de cruces y no puedo marcar».
+   if(MainActivity.appDelante)return;
    String texto=textoCorto(lado,tipo,salida);
    Intent i=GiroActivity.intent(this,lado,grados,metros,texto,ramales,segundos,tipo);
    PendingIntent pa=PendingIntent.getActivity(this,45,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
@@ -835,6 +853,7 @@ public class TrackingService extends Service implements LocationListener {
    NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
    nm.cancel(NOTIF_GIRO);
    nm.notify(NOTIF_GIRO,b.build());
+   alargaPantallaGiro();
   }catch(Throwable t){android.util.Log.w("TrabakutikGPS","Pantalla del cruce",t);}
  }
  void creaCanalCaida(){
@@ -1454,12 +1473,16 @@ public class TrackingService extends Service implements LocationListener {
      // justo en el cruce. Con el primer pitido (9 s) y los segundos que
      // faltan de verdad mas cuatro, esta encendida AL cruzar, se apaga
      // enseguida y gasta lo mismo o menos.
-     if(!curvaNueva&&!rectaSinNumero&&ahead<=d1&&ahead>=-2
-        &&warnedTurns.add((usaReves?"r":"")+mejor+":pant")){
-      double vp=velocidadSuave>0?velocidadSuave:1.2;
-      int seg=(int)Math.max(6,Math.min(20,Math.round(ahead/vp)+4));
-      abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro),
-        gradosDeGiro.containsKey(giro)?gradosDeGiro.get(giro):gradosDelGiro(tipo),seg);
+     if(!curvaNueva&&!rectaSinNumero&&ahead<=d1&&ahead>=-2){
+      if(warnedTurns.add((usaReves?"r":"")+mejor+":pant")){
+       double vp=velocidadSuave>0?velocidadSuave:1.2;
+       int seg=(int)Math.max(6,Math.min(20,Math.round(ahead/vp)+4));
+       abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro),
+         gradosDeGiro.containsKey(giro)?gradosDeGiro.get(giro):gradosDelGiro(tipo),seg);
+      }else if(pantallaCruces()){
+       // Sigue por delante: se le da cuerda para que no se cierre todavia.
+       alargaPantallaGiro();
+      }
      }
   }
   if(!next.equals(upcomingTurn)){upcomingTurn=next;updateNotice();}

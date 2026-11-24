@@ -196,6 +196,12 @@ public class MainActivity extends Activity {
  // Una respuesta de JavaScript puede llegar despues de volver a la app.
  // El numero de ciclo impide que esa respuesta suspenda una pantalla visible.
  boolean appEnSegundoPlano=false;
+ // LA PANTALLA DEL CRUCE NO SE ABRE SI ESTAS MIRANDO LA APLICACION. Teniendo
+ // el mapa delante ya ves la ficha del giro, y la ficha a pantalla completa
+ // solo tapa los botones ✋ y el mapa. El autor, el 24 de noviembre de 2026:
+ // «no se va de la pantalla de cruces y no puedo marcar "faltó aquí"». Es
+ // estatico porque quien lo mira es el servicio, que no tiene la Activity.
+ static volatile boolean appDelante=false;
  int cicloSegundoPlano=0;
  // SOS pedido que se quedo esperando a que la app vuelva al frente.
  long sosPendienteDesde=0;
@@ -203,6 +209,7 @@ public class MainActivity extends Activity {
   super.onResume();
   if(TrackingService.CAIDA_FIN!=0)caidaUi.post(this::muestraCaida);
   appEnSegundoPlano=false;
+  appDelante=true;
   cicloSegundoPlano++;
   if(sosPendienteDesde>0){
    boolean aTiempo=SystemClock.elapsedRealtime()-sosPendienteDesde<=60_000L;
@@ -220,6 +227,7 @@ public class MainActivity extends Activity {
   stopSosLocation();
   if(sosDialog!=null)sosDialog.dismiss();
   appEnSegundoPlano=true;
+  appDelante=false;
   final int ciclo=++cicloSegundoPlano;
   if(web==null||pendingGpsAction!=null)return;
   // Consultar a la pagina en que anda. Si no responde, se conserva su

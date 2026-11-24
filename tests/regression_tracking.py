@@ -76,6 +76,8 @@ public class TrackingRegression {
  Map<double[],Integer> gradosDeGiro=new HashMap<>();
  static int gradosDelGiro(int tipo){return tipo==5?90:tipo==0?70:90;}
  void abrePantallaGiro(int a,int b,int c,int d,int[] e,int f,int g){}
+ boolean pantallaCruces(){return false;}
+ void alargaPantallaGiro(){}
  double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;double velocidadSuave=1.2;int beeps=0;
  double avisoLargo(){return 50;}double avisoCorto(){return 10;}double avisoVoz(){return 35;}double avisoYa(){return 4;}double avisoCurva(){return 20;}

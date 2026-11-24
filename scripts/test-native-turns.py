@@ -32,6 +32,11 @@ public class NativeTurnsTest {
  Map<double[],int[]> ramalesDeGiro=new HashMap<>();
  Map<double[],Integer> gradosDeGiro=new HashMap<>();
  ArrayList<String> pantallas=new ArrayList<>();
+ // La ficha vive mientras el cruce siga por delante: aqui se cuenta cuantas
+ // veces se le ha dado cuerda, que es lo que la mantiene abierta.
+ boolean pantallaCruces(){return true;}
+ int cuerdas=0;
+ void alargaPantallaGiro(){cuerdas++;}
  void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
   pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+grados+"|"+(ramales==null?0:ramales.length)+"|"+segundos);
  }
@@ -217,6 +222,18 @@ public class NativeTurnsTest {
   dos.turns.add(new double[]{16,1,1});
   for(int m=0;m<=130;m+=5)dos.posicion(new Location(m));
   require(dos.pantallas.size()==2,"dos cruces a 60 m, dos pantallas: "+dos.pantallas);
+  // Y LA FICHA SE CIERRA AL PASAR EL CRUCE, no cuando suena un reloj: se le
+  // da cuerda en cada posicion mientras el cruce siga por delante y se deja
+  // de dar en cuanto lo pasas. El autor, el 24 de noviembre de 2026: «no se
+  // va de la pantalla de cruces... o tarda demasiado en irse».
+  NativeTurnsTest c2=new NativeTurnsTest();
+  for(int m=0;m<=300;m+=10)c2.route.add(new double[]{m/111195.,0});
+  c2.turns.add(new double[]{10,-1,1});
+  for(int m=0;m<=95;m+=5)c2.posicion(new Location(m));
+  int antes=c2.cuerdas;
+  require(antes>=3,"mientras el cruce esta delante se le da cuerda: "+antes);
+  for(int m=105;m<=160;m+=5)c2.posicion(new Location(m));
+  require(c2.cuerdas==antes,"pasado el cruce no se le da mas cuerda: "+c2.cuerdas+" vs "+antes);
  }
  static void girosSeguidos(){
   NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});

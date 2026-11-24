@@ -41,6 +41,21 @@ public class GiroActivity extends Activity {
    EXTRA_TEXTO="texto",EXTRA_RAMALES="ramales",EXTRA_SEGUNDOS="segundos",EXTRA_TIPO="tipo";
  static final int FONDO=0xFF06121A,CIAN=0xFF66E5FF,BLANCO=0xFFE9FDFF,GRIS=0xFF8FA6B2,RAMAL=0xFF5D7079;
  final Handler cierra=new Handler(Looper.getMainLooper());
+ // LA FICHA SE VA CUANDO PASAS EL CRUCE. El servicio le va dando cuerda
+ // («giroHasta») mientras el cruce siga por delante; en cuanto deja de
+ // darsela -lo has pasado, te has salido o se acabo la navegacion- esto lo
+ // ve y cierra. Antes solo habia un reloj a ciegas de 12 s: parado en el
+ // cruce se quedaba los doce enteros y con cruces seguidos se solapaban unas
+ // fichas con otras. El autor, el 24 de noviembre de 2026: «no se va de la
+ // pantalla de cruces... o tarda demasiado en irse».
+ final Handler cuerda=new Handler(Looper.getMainLooper());
+ final Runnable miraCuerda=new Runnable(){@Override public void run(){
+  try{
+   long hasta=getSharedPreferences("tracking_live",MODE_PRIVATE).getLong("giroHasta",0);
+   if(hasta>0&&android.os.SystemClock.elapsedRealtime()>hasta){finish();return;}
+  }catch(Throwable ignored){}
+  cuerda.postDelayed(this,500);
+ }};
 
  public static Intent intent(Context c,int lado,int grados,int metros,String texto,int[] ramales,int segundos){
   return intent(c,lado,grados,metros,texto,ramales,segundos,1);
@@ -67,6 +82,7 @@ public class GiroActivity extends Activity {
    setContentView(raiz);
    int seg=getIntent()!=null?getIntent().getIntExtra(EXTRA_SEGUNDOS,12):12;
    cierra.postDelayed(this::finish,Math.max(3,Math.min(40,seg))*1000L);
+   cuerda.postDelayed(miraCuerda,1000);
   }catch(Throwable t){android.util.Log.w("TrabakutikGPS","Pantalla del cruce",t);finish();}
  }
  @Override protected void onNewIntent(Intent i){
@@ -76,9 +92,10 @@ public class GiroActivity extends Activity {
    raiz.addView(new Ficha(this,i));raiz.setOnClickListener(v->finish());setContentView(raiz);
    int seg=i!=null?i.getIntExtra(EXTRA_SEGUNDOS,12):12;
    cierra.postDelayed(this::finish,Math.max(3,Math.min(40,seg))*1000L);
+   cuerda.removeCallbacksAndMessages(null);cuerda.postDelayed(miraCuerda,1000);
   }catch(Throwable t){android.util.Log.w("TrabakutikGPS","Pantalla del cruce",t);finish();}
  }
- @Override protected void onDestroy(){cierra.removeCallbacksAndMessages(null);super.onDestroy();}
+ @Override protected void onDestroy(){cierra.removeCallbacksAndMessages(null);cuerda.removeCallbacksAndMessages(null);super.onDestroy();}
 
  /** El dibujo. Nada de layouts: una vista que se pinta sola. */
  static class Ficha extends View {
