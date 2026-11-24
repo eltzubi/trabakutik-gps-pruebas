@@ -78,7 +78,7 @@ public class GiroActivity extends Activity {
    FrameLayout raiz=new FrameLayout(this);
    raiz.setBackgroundColor(FONDO);
    raiz.addView(new Ficha(this,getIntent()));
-   raiz.setOnClickListener(v->finish());
+   raiz.setOnClickListener(v->{quitada();finish();});
    setContentView(raiz);
    int seg=getIntent()!=null?getIntent().getIntExtra(EXTRA_SEGUNDOS,12):12;
    cierra.postDelayed(this::finish,Math.max(3,Math.min(40,seg))*1000L);
@@ -89,11 +89,19 @@ public class GiroActivity extends Activity {
   super.onNewIntent(i);setIntent(i);
   try{cierra.removeCallbacksAndMessages(null);
    FrameLayout raiz=new FrameLayout(this);raiz.setBackgroundColor(FONDO);
-   raiz.addView(new Ficha(this,i));raiz.setOnClickListener(v->finish());setContentView(raiz);
+   raiz.addView(new Ficha(this,i));raiz.setOnClickListener(v->{quitada();finish();});setContentView(raiz);
    int seg=i!=null?i.getIntExtra(EXTRA_SEGUNDOS,12):12;
    cierra.postDelayed(this::finish,Math.max(3,Math.min(40,seg))*1000L);
    cuerda.removeCallbacksAndMessages(null);cuerda.postDelayed(miraCuerda,1000);
   }catch(Throwable t){android.util.Log.w("TrabakutikGPS","Pantalla del cruce",t);finish();}
+ }
+ /** Quitada con el dedo: no vuelve a salir en medio minuto, para poder
+  *  mirar el mapa o marcar con ✋ sin que el siguiente cruce la reabra. */
+ static final long GIRO_CALLA_MS=30000;
+ void quitada(){
+  try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
+    .putLong("giroCallaHasta",android.os.SystemClock.elapsedRealtime()+GIRO_CALLA_MS).apply();}
+  catch(Throwable ignored){}
  }
  @Override protected void onDestroy(){cierra.removeCallbacksAndMessages(null);cuerda.removeCallbacksAndMessages(null);super.onDestroy();}
 

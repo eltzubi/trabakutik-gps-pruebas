@@ -804,6 +804,10 @@ public class TrackingService extends Service implements LocationListener {
  // cuanto deja de darsela -lo has pasado, te has salido o se acabo la
  // navegacion- la ficha se cierra sola en PANTALLA_CUERDA_MS.
  static final long PANTALLA_CUERDA_MS=4000;
+ long giroCallaHasta(){
+  try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getLong("giroCallaHasta",0);}
+  catch(Exception e){return 0;}
+ }
  void alargaPantallaGiro(){
   try{getSharedPreferences("tracking_live",MODE_PRIVATE).edit()
     .putLong("giroHasta",SystemClock.elapsedRealtime()+PANTALLA_CUERDA_MS).apply();}
@@ -828,12 +832,15 @@ public class TrackingService extends Service implements LocationListener {
  void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
   try{
    if(!pantallaCruces())return;
-   // CON LA APLICACION DELANTE, NO. Ahi ya ves la ficha del giro en el mapa,
-   // y la pantalla completa solo tapa el mapa y los botones ✋ de marcar. La
-   // pantalla del cruce es para cuando el movil esta dormido en el soporte
-   // de la bici, que es para lo que la pidio el autor. El 24 de noviembre de
-   // 2026: «no se va de la pantalla de cruces y no puedo marcar».
-   if(MainActivity.appDelante)return;
+   // SI LA ACABAS DE QUITAR CON EL DEDO, NO VUELVE ENSEGUIDA. Antes aqui
+   // habia un «con la aplicacion delante, no se abre», y eso la dejo MUDA:
+   // el autor va con la aplicacion delante en el soporte de la bici, no con
+   // el movil dormido, asi que no le salio ni una. «En la ultima
+   // actualizacion me ha dejado de salir la pantalla de los cruces.» Lo que
+   // hacia falta no era callarla, sino poder quitarsela de encima: tocando
+   // la ficha se cierra y no vuelve en GIRO_CALLA_MS, que es tiempo de sobra
+   // para mirar el mapa o marcar con ✋.
+   if(SystemClock.elapsedRealtime()<giroCallaHasta())return;
    String texto=textoCorto(lado,tipo,salida);
    Intent i=GiroActivity.intent(this,lado,grados,metros,texto,ramales,segundos,tipo);
    PendingIntent pa=PendingIntent.getActivity(this,45,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);

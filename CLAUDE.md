@@ -176,6 +176,23 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
   segundos, es el fallo. Asi salieron los tres de esta noche, que leyendo el
   codigo no se veian.
 
+- **LA PANTALLA DEL CRUCE NO SE TOCA SIN MEDIRLA, Y NUNCA SUPONIENDO COMO
+  LLEVA EL MOVIL.** Se rompio dos veces seguidas en dos dias, las dos con la
+  bateria en verde, porque ninguna prueba mira si la ficha APARECE de verdad:
+  1. Al moverla al primer pitido empezo a abrirse en todos los cruces y en
+     zona de cruces seguidos no se soltaba: «no se va de la pantalla de
+     cruces y no puedo marcar "falto aqui"».
+  2. Al arreglar eso se le puso «si la aplicacion esta delante, no se abre»,
+     suponiendo que iba con el movil dormido. Va con la aplicacion delante en
+     el soporte de la bici -lo habia dicho el mismo- y se quedo MUDA: «en la
+     ultima actualizacion me ha dejado de salir la pantalla de los cruces».
+  Asi que: una suposicion sobre como lleva el movil NO es base para un
+  cambio. Si el comportamiento depende de eso, se le pregunta, o se hace que
+  no dependa. Y antes de subir se mide sobre una ruta suya con el banco de
+  repeticion, contando CUANTAS fichas salen, cuanto tiempo esta la pantalla
+  encendida y si se solapan. El 24 de noviembre de 2026: 10 fichas en 9,3 km,
+  el 6 % del tiempo a 18 km/h y el 14 % a 40.
+
 - **El creador tiene que facilitar trazar la ruta.** Lo dijo el 23 de
   noviembre de 2026: «a la hora de crear tiene que facilitar trazar la ruta,
   teniendo en cuenta todas las opciones que puedan ocurrir al guiarnos luego».
