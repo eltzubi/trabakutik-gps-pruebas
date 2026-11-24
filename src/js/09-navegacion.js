@@ -482,17 +482,52 @@ function guardaTrazadoDeMarca(nombre){
  if(trazadoDeMarca===clave)return false;
  try{download(routePoints,clave);trazadoDeMarca=clave;return true}catch(e){return false}
 }
+// EL TERRENO VIAJA CON LA MARCA, dentro del texto que se copia. Una marca de
+// una ruta propia no se puede reproducir en el ordenador sin el trazado, y
+// buscar el GPX en Descargas y adjuntarlo es un baile que el autor no tiene
+// por que hacer cada vez. Asi que cada marca se lleva el trozo de ruta de su
+// alrededor -TRAMO_M a cada lado-, y con copiar el texto de siempre llegan la
+// marca y el terreno juntos. Lo pidio el autor el 24 de noviembre de 2026.
+//
+// Van en micrograados (la millonesima de grado son 11 cm) y por diferencias
+// con el punto anterior, que a ocho metros de paso son numeros de dos o tres
+// cifras: medio kilometro de ruta cabe en unos cientos de caracteres.
+const TRAMO_M=250;
+// UNA MARCA NO SE PIERDE POR NO CABER. El trozo de trazado abulta, y si el
+// almacen se llena setItem revienta y antes se perdia la marca ENTERA sin
+// decir nada. Se vuelve a intentar sin los trazados, que son el adorno; la
+// marca es lo que no se puede perder.
+function guardaAvisos(l){
+ try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l));return true}catch(e){}
+ try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l.map(a=>{const b=Object.assign({},a);delete b.tramo;return b})));return false}
+ catch(e){return false}
+}
+function tramoDeMarca(along){
+ if(typeof routePoints==='undefined'||!Array.isArray(routePoints))return null;
+ if(typeof routeCumulative==='undefined'||!Array.isArray(routeCumulative))return null;
+ const cum=routeCumulative,n=Math.min(routePoints.length,cum.length);
+ if(n<3||!Number.isFinite(along))return null;
+ let a=0,b=n-1;
+ while(a<n-1&&cum[a]<along-TRAMO_M)a++;
+ while(b>0&&cum[b]>along+TRAMO_M)b--;
+ if(b-a<2)return null;
+ const u=v=>Math.round(v*1e6),p=routePoints;
+ const out=[u(p[a][0]),u(p[a][1])];
+ for(let k=a+1;k<=b;k++)out.push(u(p[k][0])-u(p[k-1][0]),u(p[k][1])-u(p[k-1][1]));
+ return {m0:Math.round(cum[a]),p:out};
+}
 function marcaAvisoFalta(){
  const e=estadoGuia;if(!e||!e.p)return;
  const l=avisosMarcados();
  const ruta=(($('tripRuta')&&$('tripRuta').textContent)||($('mapTitle')&&$('mapTitle').textContent)||'').trim();
  let cerca=null;
  if(Number.isFinite(e.along))for(const t of e.lista||[]){const d=(t.along-e.along)*sentidoRuta;if(Math.abs(d)<=120&&(!cerca||Math.abs(d)<Math.abs(cerca.d)))cerca={d:Math.round(d),texto:textoDeGiro(t,sentidoRuta<0&&e.lista===junctions)}}
- l.push({tipo:'falta',ruta,km:Number.isFinite(e.along)?Math.round(e.along)/1000:null,sentido:sentidoRuta,
+ const tramo=tramoDeMarca(e.along);
+ l.push({tipo:'falta',ruta,km:Number.isFinite(e.along)?Math.round(e.along)/1000:null,sentido:sentidoRuta,tramo,
   cerca,fuera:e.fuera,parado:e.parado,precision:e.precision,distancia:e.distancia,
   lat:+(+e.p[0]).toFixed(5),lon:+(+e.p[1]).toFixed(5),fecha:new Date().toISOString()});
  while(l.length>300)l.shift();
- try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l))}catch(err){}
+ guardaAvisos(l);
  pintaBotonAvisos();
  const trazado=guardaTrazadoDeMarca(ruta);
  try{notice('Apuntado: aquí faltó un aviso · '+l.length+' en la lista'+(trazado?' · trazado guardado':''))}catch(err){}
@@ -501,10 +536,10 @@ function marcaAvisoMal(){
  if(!avisoMarcable)return;
  const t=avisoMarcable.turn,l=avisosMarcados();
  const ruta=(($('tripRuta')&&$('tripRuta').textContent)||($('mapTitle')&&$('mapTitle').textContent)||'').trim();
- l.push({ruta,km:Math.round(t.along)/1000,sentido:sentidoRuta,dicho:avisoMarcable.texto,grados:t.angle,
+ l.push({ruta,km:Math.round(t.along)/1000,sentido:sentidoRuta,dicho:avisoMarcable.texto,grados:t.angle,tramo:tramoDeMarca(t.along),
   lat:+(+t.point[0]).toFixed(5),lon:+(+t.point[1]).toFixed(5),fecha:new Date().toISOString()});
  while(l.length>300)l.shift();
- try{localStorage.setItem(AVISOS_MAL,JSON.stringify(l))}catch(e){}
+ guardaAvisos(l);
  avisoMarcadoJ=avisoMarcable.j;avisoMarcadoLista=avisoMarcable.lista;
  pintaAvisoMal();pintaBotonAvisos();
  const trazado=guardaTrazadoDeMarca(ruta);
@@ -526,7 +561,15 @@ function textoAvisos(){
    ?' · faltó un aviso · '+(a.cerca?'había «'+a.cerca.texto+'» a '+a.cerca.d+' m':'no había ninguno a menos de 120 m')
     +(a.fuera?' · fuera de ruta':'')+(a.parado?' · parado':'')+(a.precision>60?' · GPS ±'+a.precision+' m':'')+(a.distancia>25?' · a '+a.distancia+' m del track':'')
    :' · «'+a.dicho+'» sobraba')
-  +' · '+a.lat+','+a.lon+' · '+String(a.fecha||'').slice(0,16).replace('T',' ')).join('\n');
+  +' · '+a.lat+','+a.lon+' · '+String(a.fecha||'').slice(0,16).replace('T',' ')).join('\n')+textoTramos();
+}
+// Los trozos de trazado van al FINAL y en su propio bloque: lo de arriba se
+// lee, esto solo se pega. Cada linea se identifica sola con su ruta y su km.
+function textoTramos(){
+ const con=avisosMarcados().filter(a=>a.tramo&&Array.isArray(a.tramo.p)&&a.tramo.p.length>5);
+ if(!con.length)return '';
+ return '\n\n--- trazados de las marcas (pégalo entero, son los metros de alrededor) ---\n'
+  +con.map(a=>'T|'+(a.ruta||'')+'|'+(Number.isFinite(+a.km)?+a.km:'')+'|'+a.tramo.m0+'|'+a.tramo.p.join(',')).join('\n');
 }
 if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $('avisoMal').addEventListener==='function'){
  $('avisoMal').addEventListener('click',marcaAvisoMal);
@@ -972,7 +1015,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,tramoDeMarca,textoTramos,guardaAvisos,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});

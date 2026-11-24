@@ -1541,6 +1541,38 @@ test('Tu carretera sale a la izquierda y luego curva a la derecha: el aviso dice
  // Y el aviso esta en el propio cruce (el punto 0,0 de la ruta), no antes.
  assert(meters(enCruce[0].point,point(0,0))<1,'el aviso cuenta desde el cruce: '+meters(enCruce[0].point,point(0,0)));
 });
+test('Cada marca se lleva el trozo de trazado de alrededor, y si no cabe se salva la marca',()=>{
+ // Asi el texto que copia el autor trae la marca Y el terreno, sin ir a
+ // buscar el GPX a Descargas. Lo pidio el 24 de noviembre de 2026.
+ const almacen={},nodos={};
+ const nodo=id=>nodos[id]||(nodos[id]={textContent:id==='tripRuta'?'Mi ruta':'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}}});
+ // Una recta de 1 km con un punto cada 10 m.
+ const pts=[],cum=[];for(let m=0;m<=1000;m+=10){pts.push([43.2+m/111195,-2.5]);cum.push(m)}
+ const c=pieza('09-navegacion.js',{window:{},$:nodo,notice(){},junctionActive:-1,sentidoRuta:1,junctions:[],
+  guiaIniciada:()=>true,routePoints:pts,routeCumulative:cum,chosen:4,
+  localStorage:{getItem:k=>almacen[k]??null,setItem:(k,v)=>{almacen[k]=v},removeItem:k=>{delete almacen[k]}}},arranque09());
+ const t=c.tramoDeMarca(500);
+ assert(t&&t.m0===250,'empieza 250 m antes: '+JSON.stringify(t&&t.m0));
+ assert.equal(t.p.length,2+2*50,'501 metros de ruta, 51 puntos: un par y 50 diferencias');
+ assert.equal(t.p[0],43200000+Math.round(250/111195*1e6),'el primer punto, en microgrados');
+ assert(t.p.slice(2).every(Number.isInteger),'las diferencias son enteros');
+ assert.equal(c.tramoDeMarca(NaN),null,'sin kilometro no hay trozo');
+ // Y sale en el texto, al final y en su propio bloque.
+ c.estadoGuia={p:[43.2,-2.5],lista:[],fuera:false,parado:false,precision:5,along:500,distancia:3};
+ c.marcaAvisoFalta();
+ const txt=c.textoAvisos();
+ assert(txt.includes('--- trazados de las marcas'),'el bloque va al final');
+ assert(/\nT\|Mi ruta\|0\.5\|250\|43/.test(txt),'una linea por marca, con su ruta y su km: '+txt.slice(-120));
+ assert(txt.indexOf('faltó un aviso')<txt.indexOf('--- trazados'),'lo que se lee, primero');
+ // Si el almacen se llena, se guarda la marca sin el trozo antes que perderla.
+ let intentos=0;
+ const lleno={getItem:k=>almacen[k]??null,removeItem(){},setItem:(k,v)=>{if(++intentos===1)throw new Error('lleno');almacen[k]=v}};
+ const d=pieza('09-navegacion.js',{window:{},$:nodo,notice(){},junctionActive:-1,sentidoRuta:1,junctions:[],
+  guiaIniciada:()=>true,routePoints:pts,routeCumulative:cum,chosen:4,localStorage:lleno},arranque09());
+ assert.equal(d.guardaAvisos([{ruta:'x',km:1,tramo:{m0:0,p:[1,2,3,4,5,6]}}]),false,'avisa de que no cupo entero');
+ assert.equal(intentos,2,'lo reintenta sin el trozo');
+ assert(!JSON.parse(almacen[Object.keys(almacen)[0]])[0].tramo,'y la marca se guarda sin trozo');
+});
 test('La primera marca de una ruta propia guarda su trazado, y solo una vez',()=>{
  // Una marca de una ruta suya no se puede reproducir aqui: la ruta solo
  // esta en su movil. El 23 de noviembre de 2026 hubo que deducir un fallo de
