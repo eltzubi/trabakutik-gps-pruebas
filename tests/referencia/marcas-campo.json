@@ -59,6 +59,10 @@
   {"ruta":"Trabakua, Elgeta, Karabieta y Eibar por Unbe","trazado":"trabakua-elgeta-karabieta-y-eibar-por-unbe.gpx",
    "km":null,"sentido":-1,"que":"falto","cerca":null,"veces":1,
    "lugar":null,"fecha":"2026-11-24 11:57",
-   "nota":"La bajada de la presa. El autor: «me ha indicado que he cambiado de ruta, pero luego a la vuelta he vuelto por la pista de arriba y me ha indicado mal; es como si se quedara con la ruta anterior, no traza por donde voy; a veces ocurre eso». Pendiente de reproducir: hay que ver si al cambiar de ruta se rehacen los cruces o se quedan los de la anterior. Sin kilometro ni punto: lo conto de viva voz con una captura."}
+   "nota":"La bajada de la presa. El autor: «me ha indicado que he cambiado de ruta, pero luego a la vuelta he vuelto por la pista de arriba y me ha indicado mal; es como si se quedara con la ruta anterior, no traza por donde voy; a veces ocurre eso». Pendiente de reproducir: hay que ver si al cambiar de ruta se rehacen los cruces o se quedan los de la anterior. Sin kilometro ni punto: lo conto de viva voz con una captura."},
+  {"ruta":"Una ruta propia del 24/11/2026","trazado":null,
+   "km":28,"que":"sobraba","aviso":"Gira a la derecha","veces":1,
+   "lugar":null,"fecha":"2026-11-24",
+   "nota":"El autor: «en el kilometro 28 me ha saltado «gira a la derecha» en pantalla y no era cierto; casualidad que al principio de la ruta he girado a la izquierda para bajar a la presa». No es casualidad: es la firma de que la PROYECCION se fue a otro trozo de la ruta. Cuando una ruta pasa cerca de si misma -bajas a la presa al principio y vuelves por alli al final- el punto mas cercano del trazado puede caer en el tramo del principio, y entonces el navegador guia desde alli. Va con lo que conto el mismo dia: «es como si se queda con la ruta anterior, no traza por donde voy». Hace falta el GPX de esa ruta para reproducirlo."}
  ]
 }

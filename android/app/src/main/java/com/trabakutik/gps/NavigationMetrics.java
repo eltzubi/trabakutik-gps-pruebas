@@ -65,7 +65,20 @@ final class NavigationMetrics {
         missing = new int[n + 1];
         reference = Double.NaN;
         heldWalked = 0;
-        anclaLat = Double.NaN; anclaLon = Double.NaN; rumboAncla = Double.NaN;
+        // EL RUMBO DE MARCHA NO SE TIRA AL CARGAR OTRA RUTA. Es por donde vas
+        // tu, y eso no cambia porque elijas otra ruta en el movil. Tirandolo,
+        // la primera lectura sobre la ruta nueva se quedaba sin el unico dato
+        // que distingue la ida de la vuelta en un recorrido que va y vuelve
+        // por el mismo sitio, y se anclaba al tramo que no era: desde ahi la
+        // ventana la mantiene ahi y el navegador guia desde el sitio
+        // equivocado el resto de la ruta. El autor, el 24 de noviembre de
+        // 2026: «en el kilometro 28 me ha saltado gira a la derecha y no era
+        // cierto; casualidad que al principio de la ruta he girado a la
+        // izquierda para bajar a la presa», y «he cambiado de ruta mas de
+        // una vez». Medido sobre su ruta de Intxorta: el 43,7 % del
+        // recorrido se superpone consigo mismo, y el km 28 cae encima del
+        // km 5,6, a cero metros. El ancla caduca sola al minuto, asi que un
+        // rumbo viejo no se queda pegado.
         resetPace();
         events.clear();
         announced.clear();

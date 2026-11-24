@@ -316,6 +316,41 @@ public class NativeTurnsTest {
   for(int k=0;k<10;k++)d.decideSentido(200-k*5,k*5/111195.,0);
   require(d.sentido==-1,"retroceder 45 m de verdad si es ir al reves");
  }
+ // UNA RUTA DE IDA Y VUELTA POR EL MISMO SITIO: al cambiar de ruta en
+ // marcha, la primera lectura tiene DOS proyecciones igual de buenas -el
+ // tramo de ida y el de vuelta, a un metro una de otra- y puede anclarse al
+ // que no es. Desde ahi la ventana la mantiene ahi y el navegador guia desde
+ // el sitio equivocado toda la ruta. El autor, el 24 de noviembre de 2026:
+ // «en el kilometro 28 me ha saltado gira a la derecha y no era cierto;
+ // casualidad que al principio de la ruta he girado a la izquierda para
+ // bajar a la presa», y «es como si se queda con la ruta anterior, no traza
+ // por donde voy; he cambiado de ruta mas de una vez». Medido sobre su ruta
+ // de Intxorta: 43,7 % del recorrido se superpone consigo mismo, y el km 28
+ // cae encima del km 5,6.
+ //
+ // Lo que lo deshace es POR DONDE VAS: en la ida y en la vuelta se va en
+ // sentidos opuestos. El rumbo de marcha no cambia porque cargues otra ruta,
+ // asi que no se tira al reconfigurar.
+ static void idaYVueltaMismoSitio(){
+  // Ida de 0 a 1000 m y vuelta POR ENCIMA, exactamente la misma linea, que
+  // es como se superpone la ruta del autor: a cero metros.
+  ArrayList<double[]> ruta=new ArrayList<>();
+  for(int m=0;m<=1000;m+=10)ruta.add(new double[]{m/111195.,0,100});
+  for(int m=1000;m>=0;m-=10)ruta.add(new double[]{m/111195.,0,100});
+  NavigationMetrics met=new NavigationMetrics();
+  met.configure(ruta,Collections.emptyList());
+  // Vas de vuelta: pasas por el metro 1400 del recorrido (o sea, 600 m de
+  // los de ida, andando hacia atras). Dos lecturas para fijar el rumbo.
+  met.project(600/111195.,0,1,true);
+  met.project(590/111195.,0,1,true);
+  double antes=met.project(580/111195.,0,1,true).along();
+  require(antes>1200,"yendo de vuelta, la proyeccion esta en el tramo de vuelta: "+antes);
+  // Y AHORA CAMBIA DE RUTA sin moverse del sitio: se reconfigura la misma.
+  met.configure(ruta,Collections.emptyList());
+  double despues=met.project(570/111195.,0,1,true).along();
+  require(despues>1200,"tras cambiar de ruta sigue en el tramo de vuelta, no se va al de ida: "+despues);
+  System.out.println("PASS: ida y vuelta por el mismo sitio, al cambiar de ruta no se ancla al tramo que no es");
+ }
  static void metricsChecks(){
   ArrayList<double[]> line=new ArrayList<>();
   for(int m=0;m<=500;m+=10)line.add(new double[]{m/111195.,0,100+m*.10});
@@ -502,6 +537,7 @@ public class NativeTurnsTest {
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
   metricsChecks();
+  idaYVueltaMismoSitio();
   curvasCercanas();
   NativeTurnsTest late=setup();late.checkTurns(new Location(60));
   require(late.spoken.equals(Arrays.asList(-1)),"First fix in phase 1 still speaks");
