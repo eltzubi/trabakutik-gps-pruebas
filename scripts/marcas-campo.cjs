@@ -112,7 +112,15 @@ for(const m of marcas){
    c.routePoints=pts;c.junctions=[];c.junctionsReves=null;c.crucesOsm=[];c.rotondasOsm=[];
    c.aplicaZona(zonaDe(pts),0,false);
    const cum=[0];for(let k=1;k<pts.length;k++)cum[k]=cum[k-1]+dist(pts[k-1],pts[k]);
-   cache.set(clave,{pts,cum,avisos:c.junctions.map(j=>({m:j.along,t:decision(j),g:j.angle,nodo:!!j.nodo}))});
+   // AL REVES SE USAN LOS AVISOS CALCULADOS AL REVES, como hace la
+   // aplicacion: en un cruce no vale darle la vuelta al lado, porque al
+   // reves llegas por otra rama. Sin esto, las marcas que el autor hizo
+   // haciendo la ruta al reves -tres de las del 24 de noviembre de 2026- se
+   // comprobaban contra los avisos de la ida y no valian para nada. Los dos
+   // listados llevan el «along» medido en la ida, asi que el kilometro de la
+   // marca sirve igual para los dos.
+   const suelta=l=>l.map(j=>({m:j.along,t:decision(j),g:j.angle,nodo:!!j.nodo}));
+   cache.set(clave,{pts,cum,avisos:suelta(c.junctions),avisosReves:c.junctionsReves?suelta(c.junctionsReves):null});
   }
  }
  const r=cache.get(clave);
@@ -140,15 +148,27 @@ for(const m of marcas){
  // exactas (se comprobo el 24 de noviembre de 2026: sus dos marcas de Aixola
  // caian a 0 y 1 m del trazado). En una ruta sigue mandando el kilometro,
  // que en un circuito es lo unico que distingue la ida de la vuelta.
+ // Una marca contada de viva voz no trae punto: se dice y se sigue, que
+ // reventar por eso se lleva por delante el informe de todas las demas.
+ const punto=Array.isArray(m.lugar)&&m.lugar.length>=2?m.lugar:null;
+ if(!punto&&!Number.isFinite(m.km)){
+  sinTrazado++;
+  console.log('\n'+cabeza+'\n   SIN PUNTO NI KILOMETRO · no se puede situar; hace falta que la marque con ✋');
+  continue;
+ }
  let mejor=null,aqui;
- if(m.grabacion||m.porPunto){
-  for(let k=0;k<r.pts.length;k++){const d=dist(m.lugar,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k}}
+ if(!punto){
+  aqui=Math.max(0,Math.min(r.cum[r.cum.length-1],m.km*1000));
+  let k=0;while(k<r.cum.length-1&&r.cum[k]<aqui)k++;
+  mejor={d:0,k};
+ }else if(m.grabacion||m.porPunto){
+  for(let k=0;k<r.pts.length;k++){const d=dist(punto,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k}}
   aqui=mejor?r.cum[mejor.k]:0;
  }else{
   aqui=Math.max(0,Math.min(r.cum[r.cum.length-1],m.km*1000));
   for(let k=0;k<r.pts.length;k++){
    if(Math.abs(r.cum[k]-aqui)>MIRA_M)continue;
-   const d=dist(m.lugar,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k};
+   const d=dist(punto,r.pts[k]);if(!mejor||d<mejor.d)mejor={d,k};
   }
  }
  if(!mejor){
@@ -159,8 +179,17 @@ for(const m of marcas){
  // Una marca hecha estando FUERA de la ruta queda lejos del trazado, y no por
  // eso vale menos: el kilometro que da la aplicacion es el avance sobre la
  // ruta, que es con lo que se calculan los avisos. Se dice y se sigue.
+ // EL KILOMETRO DICE POR QUE PASADA VAS; EL SITIO EXACTO LO MANDA EL PUNTO.
+ // El kilometro lo mide la aplicacion sobre la ruta tal y como la cargo, y
+ // aqui se vuelve a medir: salen ochenta metros de diferencia en una ruta de
+ // 19 km, y con eso la marca de Aixola del 24 de noviembre de 2026 salia
+ // «sin aviso a 40 m» cuando tenia uno a CUATRO. Asi que el kilometro se usa
+ // para elegir la pasada -que en un circuito es lo unico que la distingue- y
+ // desde ahi se mira donde cae de verdad el punto.
+ if(punto&&mejor.d<=CERCA_M)aqui=r.cum[mejor.k];
  const fuera=mejor.d>CERCA_M?' · la marca se hizo a '+mejor.d.toFixed(0)+' m del trazado (ibas fuera de la ruta)':'';
- const cerca=r.avisos.filter(a=>Math.abs(a.m-aqui)<=MIRA_M);
+ const lista=(m.sentido<0&&r.avisosReves)?r.avisosReves:r.avisos;
+ const cerca=lista.filter(a=>Math.abs(a.m-aqui)<=MIRA_M);
  const suyo=cerca.filter(a=>Math.abs(a.m-aqui)<=CERCA_M);
  const bien=m.que==='sobraba'?!suyo.length
   :m.que==='amontonado'?(suyo.length>0&&suyo.length<=(m.deja||1))
