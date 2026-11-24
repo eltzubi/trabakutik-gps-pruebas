@@ -1620,9 +1620,12 @@ test('«✋ Faltó aquí»: siempre a mano guiando, apunta el sitio, el aviso m�
  assert.equal(t.length,2,c.textoAvisos());
  assert(/^recyde · km 0,50 · faltó un aviso · no había ninguno a menos de 120 m · fuera de ruta · a 40 m del track · 43.19,-2.49/.test(t[0]),t[0]);
  assert(/^recyde · km 0,96 · faltó un aviso · había «Gira a la izquierda» a 40 m · 43.2,-2.5/.test(t[1]),t[1]);
- // Y al salir el «Sobraba», el de «Faltó» se aparta.
+ // Y CON EL «Sobraba» DELANTE SIGUE SALIENDO (24 nov 2026): se apartaba
+ // durante los 250 m de despues de cada aviso -50 s a 18 km/h- y el autor se
+ // quedaba sin poder apuntar que falto uno justo donde le hizo falta.
  c.buscaAvisoMarcable(lista,{along:1040});
- assert(!nodo('avisoMal').classList.contains('hidden')&&nodo('avisoFalta').classList.contains('hidden'));
+ assert(!nodo('avisoMal').classList.contains('hidden')&&!nodo('avisoFalta').classList.contains('hidden'),
+   'los dos a la vez: «Sobraba» y «Faltó aquí»');
  // Y CON LA FICHA DEL GIRO DELANTE SIGUEN SALIENDO (23 nov 2026): antes se
  // escondian con junctionActive>=0 y el autor se quedaba sin poder marcar
  // justo el aviso que estaba sonando mal.

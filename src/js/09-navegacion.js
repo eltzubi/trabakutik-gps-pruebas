@@ -457,9 +457,17 @@ function pintaAvisoMal(){
  if(ver)b.textContent='✋ Sobraba: «'+avisoMarcable.texto+'»';
  // «✋ FALTO AQUI» (18 nov 2026): el autor oia pocos avisos y el ✋ solo
  // apuntaba los que sobran. Siempre a mano mientras se sigue una ruta (solo
- // con el ✋ activado), y se aparta cuando sale el de «Sobraba» o un giro.
+ // con el ✋ activado).
+ // Y SIEMPRE QUIERE DECIR TAMBIEN CUANDO ESTA EL DE «SOBRABA». Se apartaba
+ // mientras hubiera un aviso marcable, y eso son los AVISO_MAL_M metros de
+ // despues de cada aviso: 250 m, que a 18 km/h son 50 segundos sin poder
+ // apuntar que falto uno, justo despues de un aviso, que es cuando mas falta
+ // hace. El autor, el 24 de noviembre de 2026: «tarda en salir "falto aqui";
+ // para cuando sale, despues de un aviso, me he alejado de la zona que me
+ // hizo falta». Ahora salen los dos a la vez, apilados (el CSS pone el de
+ // «Sobraba» encima, que es el que crece con el texto).
  const f=$('avisoFalta');
- if(f)f.classList.toggle('hidden',!(botonAvisosActivo()&&typeof guiaIniciada==='function'&&guiaIniciada()&&!ver));
+ if(f)f.classList.toggle('hidden',!(botonAvisosActivo()&&typeof guiaIniciada==='function'&&guiaIniciada()));
 }
 // Apunta tu posicion como un aviso que FALTO, con lo necesario para saber
 // por que: el aviso calculado mas cercano (si lo habia, el problema no es la
