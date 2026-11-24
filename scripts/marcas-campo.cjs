@@ -111,7 +111,9 @@ for(const m of marcas){
  // soltó: el aviso era bueno, la repeticion no. Sin esta tercera clase, el
  // enlace de Osma del 23 de noviembre de 2026 salia «SIGUE» con el aviso ya
  // arreglado, porque seguia habiendo uno, que es justo lo que se queria.
- const cabeza=m.ruta+' km '+String(m.km).replace('.',',')+' · '+(
+ // Una marca contada de viva voz no trae kilometro: se apunta igual, que es
+ // la fuente fechada, y se dice que falta el dato en vez de escribir «null».
+ const cabeza=m.ruta+(Number.isFinite(m.km)?' km '+String(m.km).replace('.',','):' (sin kilometro)')+' · '+(
   m.que==='sobraba'?'sobraba «'+m.aviso+'»':
   m.que==='amontonado'?'se amontonaron '+(m.veces||'varios')+' avisos «'+m.aviso+'» (bastaba '+(m.deja||1)+')':
   'faltó un aviso')+' · '+m.fecha;

@@ -22,6 +22,10 @@
   {"ruta":"Mi ruta 23/11/2026","trazado":"mi-ruta-23-11-2026.gpx",
    "km":4.79,"que":"amontonado","aviso":"Gira a la izquierda","veces":4,"deja":1,
    "lugar":[43.19717,-2.55583],"fecha":"2026-11-23 13:00",
-   "nota":"El enlace de Osma, bajando a Miravalles. El autor: «ese aviso se ha amontonado cuatro, cinco veces». Medido sobre su trazado: cuatro avisos de «gira izquierda» (59, 113, 38 y 84 grados) en 90 m. Es el MISMO sitio que la marca de matiena km 6,27, a 25 m: ese enlace falla en las dos rutas."}
+   "nota":"El enlace de Osma, bajando a Miravalles. El autor: «ese aviso se ha amontonado cuatro, cinco veces». Medido sobre su trazado: cuatro avisos de «gira izquierda» (59, 113, 38 y 84 grados) en 90 m. Es el MISMO sitio que la marca de matiena km 6,27, a 25 m: ese enlace falla en las dos rutas."},
+  {"ruta":"Una ruta propia del 24/11/2026","trazado":null,
+   "km":null,"que":"sobraba","aviso":"Gira a la derecha","veces":1,
+   "lugar":[43.19717,-2.55583],"fecha":"2026-11-24",
+   "nota":"El enlace de Osma, DIRECCION ZENGOITIA. El autor: «en el cruce de Osma, direccion Zengoitia, me ha indicado gira a la derecha cuando deberia ser continua por la derecha, o simplemente no me deberia dar indicacion, hasta llegar al cruce de Zengotitia». Sin km ni trazado: lo conto de viva voz, sin pulsar la marca. El punto es el de sus marcas anteriores de ese mismo enlace (mi-ruta-23-11-2026 km 4,79 y matiena km 6,27), que son BAJANDO A MIRAVALLES, o sea la otra direccion: sirve para situarlo, no es el punto exacto de esta. Medido el 24 de noviembre de 2026: las 15 rutas publicadas que pasan a 24-45 m de ahi no dan NINGUN aviso en 120 m a la redonda, asi que este salio de una ruta suya y no se puede reproducir aqui. Para cerrarla hace falta que pulse la marca en ese sitio, que desde el 23 de noviembre guarda tambien el GPX de la ruta."}
  ]
 }
