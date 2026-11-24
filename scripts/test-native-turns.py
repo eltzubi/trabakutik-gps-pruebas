@@ -82,7 +82,7 @@ public class NativeTurnsTest {
  ' boolean confirmaMarchaCurva(double along,boolean fiable)',
  ' void checkTurns(Location l,NavigationMetrics.Projection position)',
  ' String siguienteManiobra(ArrayList<double[]> turns,int actual,boolean usaReves,double along)',
- ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' int seguidoDe(ArrayList<double[]> turns,int actual)',' double seguido()',' double avisoYa()',' double avisoCurva()',
+ ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' int seguidoDe(ArrayList<double[]> turns,int actual)',' double seguido()',' double desentenderse()',' double avisoYa()',' double avisoCurva()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' static int gradosDelGiro(int tipo)',' static String textoCorto(int lado,int tipo,int salida)',
@@ -251,10 +251,13 @@ public class NativeTurnsTest {
   // lo que NO se va a anunciar solo: con 80 m por delante y la voz avisando
   // a 200, en unos segundos suena su propia frase y serian dos seguidas.
   require(c.siguienteManiobra(c.turns,1,false,120).isEmpty(),"no se adelanta lo que se avisa solo");
-  require(c.siguienteManiobra(c.turns,1,false,-90).equals("Siguiente cruce a 290 metros"),"solo lo que queda lejos de verdad");
+  // A 10 m/s, «desentenderse» es un minuto de marcha: 600 m. Por debajo no
+  // se dice, que se va a avisar solo y serian dos frases pegadas.
+  require(c.siguienteManiobra(c.turns,1,false,-90).isEmpty(),"290 m no son para desentenderse");
+  require(c.siguienteManiobra(c.turns,1,false,-500).equals("Siguiente cruce a 700 metros"),"a 700 m si: ya puedes dejar de estar pendiente");
   require(c.siguienteManiobra(c.turns,2,false,200).isEmpty(),"sin maniobra después de la última");
   c.sentido=-1;
-  require(c.siguienteManiobra(c.turns,2,false,330).equals("Siguiente cruce a 210 metros"),"distancia al volver");
+  require(c.siguienteManiobra(c.turns,2,false,820).equals("Siguiente cruce a 700 metros"),"distancia al volver");
   NativeTurnsTest fases=setup();
   fases.checkTurns(new Location(30));
   fases.checkTurns(new Location(75));
@@ -267,9 +270,9 @@ public class NativeTurnsTest {
   // Y cuando el siguiente queda DE VERDAD lejos -mas que la voz-, se dice, y
   // una sola vez, pegado al «... ahora».
   NativeTurnsTest lejos=new NativeTurnsTest();
-  for(int m=0;m<=600;m+=10)lejos.route.add(new double[]{m/111195.,0});
+  for(int m=0;m<=900;m+=10)lejos.route.add(new double[]{m/111195.,0});
   lejos.turns.add(new double[]{10,-1,1});
-  lejos.turns.add(new double[]{45,1,1});
+  lejos.turns.add(new double[]{75,1,1});
   for(int m=0;m<=99;m+=5)lejos.posicion(new Location(m));
   require(lejos.dicho.stream().filter(d->d.contains("Siguiente cruce")).count()==1,
     "la distancia solo se dice con el ahora: "+lejos.dicho);

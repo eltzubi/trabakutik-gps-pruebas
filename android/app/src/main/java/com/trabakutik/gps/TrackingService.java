@@ -526,6 +526,7 @@ public class TrackingService extends Service implements LocationListener {
  // En tiempo: seis segundos de marcha, de 25 a 150 m. Andando son los 25 del
  // suelo, en bici 30 -lo mismo que antes-, a 40 km/h 66 y a 60 km/h 100.
  static final double SEGUIDO_MIN=25,SEGUIDO_MAX=150;
+ double desentenderse(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(1200,Math.max(120,v*60));}
  double seguido(){double v=velocidadSuave>0?velocidadSuave:1.2;return Math.min(SEGUIDO_MAX,Math.max(SEGUIDO_MIN,v*6));}
  // Cual es el giro que va pegado a este, o -1. Hace falta el numero y no
  // solo la frase: al decir «y enseguida a la derecha» ese giro YA esta
@@ -561,14 +562,21 @@ public class TrackingService extends Service implements LocationListener {
    double quedan=(progreso-along)*sentido;
    if(quedan>0.5&&quedan<distancia){distancia=quedan;tipoSiguiente=tipo;}
   }
-  // «SIGUIENTE CRUCE A X METROS» SOLO SI NO SE VA A ANUNCIAR SOLO. Se dice
-  // pegado al «... ahora» del cruce que estas tomando, asi que si el de
-  // despues va a cantar su propia frase en unos segundos son dos frases
-  // seguidas para nada: a 40 km/h con 80 m de hueco sonaba «gira a la
-  // izquierda ahora. Siguiente cruce a 100 metros» y cuatro segundos
-  // despues «en 50 metros, gira a la derecha». Con avisoVoz() en vez de 30 m
-  // fijos solo se dice lo que de verdad queda lejos.
-  if(!Double.isFinite(distancia)||distancia<=Math.max(seguido(),avisoVoz()))return "";
+  // «SIGUIENTE CRUCE A X METROS» SOLO CUANDO DE VERDAD PUEDES DESENTENDERTE.
+  // Va pegado al «... ahora» del cruce que estas tomando, asi que cada vez
+  // que suena son dos frases seguidas. Cronometrado el 24 de noviembre de
+  // 2026 sobre una ruta del autor de 37,9 km: de 181 frases, 53 llegaban a
+  // menos de DOS SEGUNDOS de la anterior, y casi todas eran esta. Un tercio
+  // de todo lo que habla el navegador, para contar algo que se va a avisar
+  // solo. El autor lleva dias diciendolo: «se amontonan las palabras».
+  //
+  // Para que valga la pena interrumpir, lo que viene tiene que estar lo
+  // bastante lejos como para dejar de estar pendiente: un minuto de marcha,
+  // entre 120 m andando y 1,2 km. Y nunca por debajo de avisoVoz(), que es
+  // lo que se anuncia solo. Andando 120 m, en bici 300, a 40 km/h 660 y a
+  // 60 km/h un kilometro.
+  if(!Double.isFinite(distancia)
+     ||distancia<=Math.max(Math.max(seguido(),avisoVoz()),desentenderse()))return "";
   String maniobra=tipoSiguiente==5?"Siguiente rotonda":tipoSiguiente==0||tipoSiguiente==3?"Siguiente curva":"Siguiente cruce";
   long metros=Math.max(1,Math.round(distancia/10)*10);
   if(metros<1000)return maniobra+" a "+metros+(metros==1?" metro":" metros");
