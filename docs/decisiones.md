@@ -1818,3 +1818,60 @@ despacio, y recortan la intención escrita en cuanto se corre. A 60 km/h el
 «… ahora» está escrito para dos segundos y el techo de 12 m lo deja en 0,7 s;
 el segundo pitido está escrito para tres segundos y el techo de 30 m lo deja
 en 1,8 s. Eso es otro cambio, con su propia batería.
+
+## «Sigue de frente»: medido el 24 de noviembre de 2026 y NO puesto
+
+El autor lo conto tres veces ese dia: «hay cruces que indica y otros que son
+importantes y no indica». Mando por fin tres rutas suyas y se pudo medir.
+
+**Lo primero que se vio, y es cierto**: «Sigue de frente» existe en la
+pantalla y en la voz desde el 20 de noviembre de 2026, pero **ninguna regla
+lo genera**. Solo se mete a mano, en una excepcion escrita para la ruta de
+Asuntza (`computeJunctions`, km 7,12). O sea que un cruce que atraviesas
+recto no se avisa nunca, salvo ahi.
+
+**Cuantos serian.** Sobre las 75 rutas publicadas, 1.687 km:
+
+| | |
+|---|---|
+| nodos de OSM con 3 ramas o mas por los que pasa la ruta | 791 |
+| de esos, los que se cruzan RECTO (menos de 25°) | 320 |
+| de esos, los que ya llevan algun aviso a 40 m | 119 |
+| **los que hoy se cruzan en silencio** | **201** (uno cada 8,4 km) |
+
+Escrita la regla general (nodo a 12 m o menos, 3 ramas o mas, giro menor de
+25°, y nada avisado ya a 40 m), la foto da **365 cambios en los dos sentidos,
+TODOS del mismo tipo** -`callar` → `de-frente`-: no quita ni cambia ningun
+aviso. Los 5 cruces revisados siguen bien.
+
+**Por que no se puso.** Porque no arregla ninguna de las tres marcas del
+autor de ese dia:
+
+- Aixola km 11,26: resulta que **si** tenia aviso, «sigue por la derecha,
+  18°» a cuatro metros. Lo que fallaba era el comprobador de marcas.
+- Aixola km 12,60: **no hay ningun nodo de OSM a 70 m**. No hay con que
+  avisar, como en Otzarreta km 7,45.
+- Ipurua km 13,28: es una **bifurcacion de dos ramas** y se pasa girando 7°,
+  asi que la regla de tres ramas no la toca.
+
+Se probo tambien una variante mas fina -avisar solo si OTRA rama sale casi
+tan recta como la tuya, que es cuando de verdad te puedes equivocar-:
+
+| ramas | otra rama a | avisos (ida) | uno cada |
+|---|---|---|---|
+| >=2 | 35° | 273 | 6,3 km |
+| >=2 | 50° | 477 | 3,6 km |
+| >=3 | 35° | 45 | 38 km |
+| >=3 | 50° | 73 | 24 km |
+
+Y **ninguna de las cuatro produce el Ipurua del autor**: ahi la otra rama de
+la bifurcacion sale a mas de 35°, o sea que seguir recto es obvio a la vista,
+y aun asi el lo marco. Eso apunta a que lo que quiere no es «avisame cuando
+se pueda confundir» sino «avisame de que hay un cruce», que es la version de
+los 365.
+
+**Conclusion**: la regla de los 365 es defendible pero no esta probada por
+ningun fallo suyo, y son 365 avisos mas en un navegador del que lleva dias
+diciendo que habla demasiado. Cuando haya una marca suya que la regla
+arregle, se pone. Mientras tanto, los numeros estan aqui para no volver a
+medirlo desde cero.
