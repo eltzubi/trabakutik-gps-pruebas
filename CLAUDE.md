@@ -193,26 +193,24 @@ Integración corre todo esto, pero se pasa **antes** de subir, no después.
   encendida y si se solapan. El 24 de noviembre de 2026: 10 fichas en 9,3 km,
   el 6 % del tiempo a 18 km/h y el 14 % a 40.
 
-- **UN CRUCE ES UN CRUCE AUNQUE EL DATO NO LO EXPLIQUE.** El 24 de noviembre
-  de 2026, en la salida de la autovia de Berriz, el autor giro a la derecha y
-  el navegador no dijo nada. Habia nodo de OSM a 13 m y un giro de 38 grados,
+- **El cruce de Berriz, 24 de noviembre de 2026** (un CASO, no una regla; lo
+  dijo el autor: «no es una regla, tal vez no valga para todos los lugares,
+  no se yo»). En la salida de la autovia de Berriz giro a la derecha y el
+  navegador no dijo nada. Habia nodo de OSM a 13 m y un giro de 38 grados,
   pero la regla exigia que alguna RAMA del nodo casara con por donde sales, y
-  las que OSM conoce ahi -174, 354 y 258- no incluian la suya, 44. El dato
-  estaba incompleto y eso se traducia en silencio.
-  El mismo dia, bajando de Elgeta, dos revueltas de pista entre caserios le
-  avisaron dos veces por pura forma del trazado. Sus palabras: «¿y por que
-  estas si me marca?». La forma hablaba y el cruce callaba.
-  Y cuando le pedi mas detalles, zanjo: «**es un cruce. Y punto**».
-  Tiene razon, y la regla general es esa: **un dato que falta no puede
-  convertirse en un silencio donde hay un cruce de verdad**. Si hay un nodo
-  al lado y la ruta gira claro, se avisa del giro. Lo que SI sigue mandando
-  es el silencio deliberado: cuando alguna rama casa con tu salida, decide
-  decideCruce y sus silencios -«sigues por el mismo camino», «sigue la
-  carretera», el fronton- se respetan. Sin esa condicion se rompian seis
-  pruebas; con ella, ninguna.
-  Y una cosa mas, de como se trabaja: cuando el autor dice de un sitio que es
-  un cruce, ESO es el dato bueno. Lo que diga OSM, o mi medicion de su
-  trazado, es lo que hay que cuadrar con su palabra, no al reves.
+  las que OSM conoce ahi -174, 354 y 258- no incluian la suya, 44. Ese mismo
+  dia, bajando de Elgeta, dos revueltas de pista entre caserios SI le
+  avisaron por pura forma del trazado: «¿y por que estas si me marca?». La
+  forma hablaba y el cruce callaba.
+  Lo que se cambio: con un nodo al lado y un giro claro se avisa del giro
+  aunque las ramas no lo expliquen. SOLO en ese caso: si alguna rama casa con
+  tu salida, manda decideCruce y sus silencios -«sigues por el mismo camino»,
+  «sigue la carretera», el fronton- se respetan. Sin esa condicion se rompian
+  seis pruebas; con ella, ninguna, y la foto solo AÑADE: 147 cambios, los 147
+  «callar» → «gira».
+  Lo que el autor conto del sitio, y que no esta en ningun dato: «aunque no
+  haya que parar para ir a la derecha, a la izquierda habria que parar».
+  Si un dia este cambio molesta en otro sitio, aqui esta de donde salio.
 
 - **El creador tiene que facilitar trazar la ruta.** Lo dijo el 23 de
   noviembre de 2026: «a la hora de crear tiene que facilitar trazar la ruta,
