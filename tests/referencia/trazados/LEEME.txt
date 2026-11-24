@@ -3,3 +3,12 @@ Los GPX de las rutas de las marcas que NO estan entre las 75 publicadas.
 Van aqui con el nombre que dice «trazado» en marcas-campo.json, y NO se
 suben: son recorridos del autor. El .gitignore de esta carpeta los deja
 fuera. Sin el GPX, scripts/marcas-campo.cjs dice «sin trazado» y sigue.
+
+COMO SE LLAMAN LOS FICHEROS QUE GUARDA EL MOVIL (24 de noviembre de 2026)
+-------------------------------------------------------------------------
+Al marcar con la mano la primera vez en una ruta propia, la aplicacion
+guarda su GPX en la carpeta Descargas del movil. El nombre sale del titulo
+de la ruta en minusculas, y saveGpx() de MainActivity cambia por un guion
+bajo TODO lo que no sea a-z, 0-9, punto, guion o guion bajo: la ene con
+tilde incluida. Asi que «Santamañazar» se guarda «santama_azar». Las marcas
+de marcas-campo.json tienen que llevar ese nombre, no el bonito.
