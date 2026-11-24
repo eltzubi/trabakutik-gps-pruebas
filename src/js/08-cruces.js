@@ -1658,7 +1658,15 @@ function resuelveRotondas(pts){
    // en markinaurjauziak y santaeufemia la ruta pasa por una calle a 10 m de
    // una rotonda de 28 m de radio, sin entrar, y su cruce de al lado es suyo.
    if(mIn<0||cerca>Math.max(rot[2],6)+ROT_DENTRO||barrido<ROT_BARRIDO)continue;
-   junctions=junctions.filter(j=>!(j.along>=mIn-15&&j.along<=mOut+15&&dist(j.point,c)<=r+15));
+   // LA BOCA DE LA ROTONDA NO ES UN CRUCE APARTE. La ventana de metros era
+   // mIn-15 y dejaba fuera la entrada por poco: en la ruta del autor del 23
+   // de noviembre de 2026 quedaba un «gira a la derecha 66°» a 15 m de la
+   // rotonda, y como manda el aviso mas cercano, la rotonda perdia el turno
+   // y su «toma la tercera salida» llegaba a 0 m, ya dentro. Quien decide
+   // sigue siendo la DISTANCIA AL CENTRO -radio+25 m, o sea el anillo y sus
+   // bocas-, que es geometria y no un numero al tuntun; la ventana de metros
+   // solo acota por donde mirar, asi que se abre a 40.
+   junctions=junctions.filter(j=>!(j.along>=mIn-40&&j.along<=mOut+40&&dist(j.point,c)<=r+15));
    // Sin brazo antes o despues (la ruta empieza o acaba en la rotonda) no
    // hay con que comparar: se quitan los de dentro y no se dice nada.
    if(mIn<8||total-mOut<8)continue;
