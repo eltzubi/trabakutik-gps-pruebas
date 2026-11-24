@@ -1542,7 +1542,84 @@ function calculaCrucesDe(){
  // Al contar desde el cruce, un aviso puede haber quedado por delante del
  // siguiente: en orden de la ruta, que es como los recorre la aplicacion.
  junctions.sort((p,q)=>p.i-q.i);
+ // UN CRUCE QUE LAS RAMAS NO EXPLICAN SIGUE SIENDO UN CRUCE. El 24 de
+ // noviembre de 2026 el autor se quedo sin aviso en la salida de la autovia
+ // de Berriz: «no me ha dicho ni gira a la derecha ni izquierda, tengo que
+ // adivinar». Medido sobre su grabacion de esa noche: hay un nodo de OSM a
+ // 13 m, llega con rumbo 359 y sale con 44 -un giro de 45 grados a la
+ // derecha, 38 medidos en los 12 m de la ventana-, y se callaba por dos
+ // cosas a la vez: el cruce se avisa desde 45 y las ramas que OSM conoce en
+ // ese nodo -174, 354 y 258- NO INCLUYEN por donde salio.
+ //
+ // El mismo dia, bajando de Elgeta, dos revueltas de pista entre caserios le
+ // avisaron dos veces por pura forma del trazado. Sus palabras: «¿y por que
+ // estas si me marca?». La forma hablaba y el cruce callaba, que es al
+ // reves de lo que hace falta.
+ //
+ // Asi que cuando hay un nodo al lado y la ruta GIRA CLARO, se avisa del
+ // giro aunque las ramas no lo expliquen: el dato incompleto no puede
+ // significar silencio en un cruce de verdad. Solo se mira donde no hay ya
+ // un aviso a NODO_HUECO, asi que esto unicamente AÑADE.
+ for(const g of girosEnNodo(pts,routeCumulative))
+  if(!junctions.some(j=>Math.abs(j.along-g.along)<NODO_HUECO))junctions.push(g);
+ junctions.sort((p,q)=>p.i-q.i);
  if(crucesOsm.length&&rotondasOsm.length)resuelveRotondas(pts);
+}
+// Medido sobre las 76 rutas publicadas, 1.725 km: con 35 grados salen 313
+// avisos nuevos, uno cada 5,5 km, y todos son de CRUCE, no de curva. Con 40
+// serian 232 y el caso del autor se quedaria fuera, que son 38.
+const NODO_GIRO=35,NODO_CERCA=20,NODO_HUECO=60,NODO_VENTANA=12,NODO_SEPARA=80,NODO_RAMA=35;
+function girosEnNodo(pts,cum){
+ const out=[];
+ if(!Array.isArray(crucesOsm)||!crucesOsm.length||!Array.isArray(pts)||pts.length<3)return out;
+ if(!Array.isArray(cum)||cum.length<pts.length)return out;
+ // Rejilla, para no comparar cada punto con cada nodo.
+ const CELDA=0.0005,clave=(la,lo)=>Math.round(la/CELDA)+'_'+Math.round(lo/CELDA);
+ const rejilla=new Map();
+ for(const n of crucesOsm){
+  const k=clave(n[0],n[1]);
+  if(!rejilla.has(k))rejilla.set(k,[]);
+  rejilla.get(k).push(n);
+ }
+ const nodoAlLado=p=>{
+  const ca=Math.round(p[0]/CELDA),co=Math.round(p[1]/CELDA);
+  for(let da=-1;da<=1;da++)for(let dd=-1;dd<=1;dd++){
+   const l=rejilla.get((ca+da)+'_'+(co+dd));
+   if(!l)continue;
+   for(const n of l)if(dist(p,n)<=NODO_CERCA)return n;
+  }
+  return null;
+ };
+ let ultimo=-1e9;
+ for(let i=1;i<pts.length-1;i++){
+  let a=i,b=i;
+  while(a>0&&cum[i]-cum[a]<NODO_VENTANA)a--;
+  while(b<pts.length-1&&cum[b]-cum[i]<NODO_VENTANA)b++;
+  if(a===i||b===i)continue;
+  const g=difRumbo(bearingBetween(pts[i],pts[b]),bearingBetween(pts[a],pts[i]));
+  if(Math.abs(g)<NODO_GIRO)continue;
+  if(cum[i]-ultimo<NODO_SEPARA)continue;
+  const n=nodoAlLado(pts[i]);
+  if(!n)continue;
+  // Y SOLO SI LAS RAMAS NO EXPLICAN POR DONDE SALES. Si el nodo conoce una
+  // rama que casa con tu salida, el cruce ya lo decidio decideCruce y su
+  // silencio es deliberado: ahi estan «un cruce donde sigues por el mismo
+  // camino no se avisa», «sigue la carretera» o el fronton. Esto es solo
+  // para el caso contrario, el de Berriz: nodo al lado, giro claro y una
+  // salida que no esta en los datos.
+  const ramas=[];
+  if(Array.isArray(n[2]))for(const gr of n[2])for(const r of gr)if(Number.isFinite(r))ramas.push((r+360)%360);
+  if(!ramas.length)continue;
+  const sale=bearingBetween(pts[i],pts[b]);
+  let masCerca=Infinity;
+  for(const r of ramas)masCerca=Math.min(masCerca,Math.abs(difRumbo(r,sale)));
+  if(masCerca<=NODO_RAMA)continue;
+  ultimo=cum[i];
+  const lado=g<0?'izquierda':'derecha';
+  out.push({i,point:pts[i],along:cum[i],direction:lado,hacia:lado,
+    angle:Math.round(Math.abs(g)),cruce:true,mantente:false,nodo:n});
+ }
+ return out;
 }
 // UNA ROTONDA ES UN CRUCE, NO DOS. El autor cruzo una rotonda siguiendo recto
 // y oyo «gira a la derecha»; a la derecha habia una calle de direccion
@@ -1708,7 +1785,7 @@ function resuelveRotondas(pts){
 }
 // Punto de avance sobre la ruta, no solo distancia en línea recta.
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada.
-if(typeof module==='object'&&module&&module.exports){module.exports={juntaAvisosPegados,ramalesQueConfunden,juntaAvisosDelMismoSitio,teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
+if(typeof module==='object'&&module&&module.exports){module.exports={juntaAvisosPegados,ramalesQueConfunden,juntaAvisosDelMismoSitio,teselasDeRuta,fueraDeZona,cargaTeselas,avisoDeCruces,cargaIndiceTeselas,juntaZonas,aplicaZona,ConfirmaRamalWeb,distARuta,eligePorForma,decideCrucePorCalle,salidaDeRotonda,textoSalida,ladoFlecha,actualizaVelocidad,distanciasDeAviso,pitidos,callaYa,closestMeters,resetJunctionView,guardaZona,zonaGuardada,descifraRamas,descifraZona,bajaZona,cargaZonaCruces,aplicaCruces,enviaGirosNativos,difRumbo,decideCruce,girosEnNodo,espaciaParaGiros,quitaPicos,nudosDe,nudosDeExtremos,quitaCurvasDeNudos,computeJunctions,detectaCurvasDelTrack,calculaCrucesDe,resuelveRotondas};
  Object.defineProperty(module.exports,'rotondasOsm',{get:()=>rotondasOsm,set:v=>{rotondasOsm=v}});
  Object.defineProperty(module.exports,'velocidadSuave',{get:()=>velocidadSuave,set:v=>{velocidadSuave=v}});
 }
