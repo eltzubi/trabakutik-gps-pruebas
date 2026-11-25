@@ -25,7 +25,7 @@ $('audioMode').onclick=conmutaModoAudio;pintaModoAudio();
 // Con typeof: las pruebas que cargan esta pieza sola no traen la 07.
 if($('pantallaCruces')&&typeof conmutaPantallaCruces==='function'){
  $('pantallaCruces').onclick=conmutaPantallaCruces;pintaPantallaCruces();
-}pintaEstadoGps();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+}pintaEstadoGps();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};
 // Esto solo sabia manejar TRANSICIONES: si el servicio no grababa y la pagina
 // tampoco creia grabar, no entraba en ninguna rama y la botonera se quedaba
 // como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin
