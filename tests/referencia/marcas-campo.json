@@ -67,6 +67,12 @@
   {"ruta":"Una ruta propia del 24/11/2026","trazado":null,
    "km":28,"que":"sobraba","aviso":"Gira a la derecha","veces":1,
    "lugar":null,"fecha":"2026-11-24",
-   "nota":"El autor: «en el kilometro 28 me ha saltado «gira a la derecha» en pantalla y no era cierto; casualidad que al principio de la ruta he girado a la izquierda para bajar a la presa». No es casualidad: es la firma de que la PROYECCION se fue a otro trozo de la ruta. Cuando una ruta pasa cerca de si misma -bajas a la presa al principio y vuelves por alli al final- el punto mas cercano del trazado puede caer en el tramo del principio, y entonces el navegador guia desde alli. Va con lo que conto el mismo dia: «es como si se queda con la ruta anterior, no traza por donde voy». Hace falta el GPX de esa ruta para reproducirlo."}
+   "nota":"El autor: «en el kilometro 28 me ha saltado «gira a la derecha» en pantalla y no era cierto; casualidad que al principio de la ruta he girado a la izquierda para bajar a la presa». No es casualidad: es la firma de que la PROYECCION se fue a otro trozo de la ruta. Cuando una ruta pasa cerca de si misma -bajas a la presa al principio y vuelves por alli al final- el punto mas cercano del trazado puede caer en el tramo del principio, y entonces el navegador guia desde alli. Va con lo que conto el mismo dia: «es como si se queda con la ruta anterior, no traza por donde voy». Hace falta el GPX de esa ruta para reproducirlo."},
+  {"ruta":"eibar elgeta","trazado":"eibar-elgeta.gpx","km":0.88,"que":"sobraba","aviso":"Gira a la derecha",
+   "lugar":null,"fecha":"2026-11-25 12:13",
+   "nota":"Nodo de OSM justo en el punto, con tres ramas: la calle por la que llegas (96), la misma calle siguiendo a 198 -pero marcada SIN SALIDA, clase 3- y la carretera a 288, que es por donde sales. Dijo «gira a la derecha 75°». No hay nada que elegir: lo unico que no es la carretera se acaba en menos de 300 m."},
+  {"ruta":"eibar elgeta","trazado":"eibar-elgeta.gpx","km":7.94,"que":"sobraba","aviso":"Gira a la izquierda",
+   "lugar":null,"fecha":"2026-11-25 12:20",
+   "nota":"Nodo de OSM con tres caminos (0, 18 y 168) y llegas con rumbo 191: los dos primeros quedan a 169 y 173 grados de como vienes, o sea DETRAS -uno es por donde entras y el otro se junta por atras-. Delante solo esta el 168, que es el que llevas. Dijo «gira a la izquierda 29°», cuatro grados por encima del corte de recto (CRUCE_RECTO=25)."}
  ]
 }
