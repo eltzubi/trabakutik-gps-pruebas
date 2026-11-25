@@ -531,7 +531,11 @@ function marcaAvisoFalta(){
  let cerca=null;
  if(Number.isFinite(e.along))for(const t of e.lista||[]){const d=(t.along-e.along)*sentidoRuta;if(Math.abs(d)<=120&&(!cerca||Math.abs(d)<Math.abs(cerca.d)))cerca={d:Math.round(d),texto:textoDeGiro(t,sentidoRuta<0&&e.lista===junctions)}}
  const tramo=tramoDeMarca(e.along);
+ // UNA MARCA HECHA SIMULANDO NO ES DEL TERRENO y se marca como tal: sirve
+ // igual para perseguir el aviso, pero no es una prueba de lo que paso en la
+ // bici, que es lo que valen las marcas ✋.
  l.push({tipo:'falta',ruta,km:Number.isFinite(e.along)?Math.round(e.along)/1000:null,sentido:sentidoRuta,tramo,
+  ...(simulandoNativo?{sim:true}:{}),
   cerca,fuera:e.fuera,parado:e.parado,precision:e.precision,distancia:e.distancia,
   lat:+(+e.p[0]).toFixed(5),lon:+(+e.p[1]).toFixed(5),fecha:new Date().toISOString()});
  while(l.length>300)l.shift();
@@ -545,6 +549,7 @@ function marcaAvisoMal(){
  const t=avisoMarcable.turn,l=avisosMarcados();
  const ruta=(($('tripRuta')&&$('tripRuta').textContent)||($('mapTitle')&&$('mapTitle').textContent)||'').trim();
  l.push({ruta,km:Math.round(t.along)/1000,sentido:sentidoRuta,dicho:avisoMarcable.texto,grados:t.angle,tramo:tramoDeMarca(t.along),
+  ...(simulandoNativo?{sim:true}:{}),
   lat:+(+t.point[0]).toFixed(5),lon:+(+t.point[1]).toFixed(5),fecha:new Date().toISOString()});
  while(l.length>300)l.shift();
  guardaAvisos(l);
@@ -564,7 +569,7 @@ function pintaBotonAvisos(){
 }
 function textoAvisos(){
  const km=a=>Number.isFinite(+a.km)&&a.km!==null?' · km '+(+a.km).toFixed(2).replace('.',','):'';
- return avisosMarcados().map(a=>(a.ruta||'Ruta')+km(a)+(a.sentido<0?' (al revés)':'')
+ return avisosMarcados().map(a=>(a.ruta||'Ruta')+km(a)+(a.sentido<0?' (al revés)':'')+(a.sim?' (SIMULADO, no es del terreno)':'')
   +(a.tipo==='falta'
    ?' · faltó un aviso · '+(a.cerca?'había «'+a.cerca.texto+'» a '+a.cerca.d+' m':'no había ninguno a menos de 120 m')
     +(a.fuera?' · fuera de ruta':'')+(a.parado?' · parado':'')+(a.precision>60?' · GPS ±'+a.precision+' m':'')+(a.distancia>25?' · a '+a.distancia+' m del track':'')
@@ -602,6 +607,11 @@ function girosDeLaRuta(reves){
  else {lista=(Array.isArray(junctions)?junctions:[]).slice().reverse();cambia=true}
  return lista.map(j=>({
   km:Math.max(0,(reves?fin-j.along:j.along))/1000,
+  // Los metros CONTADOS DESDE EL PRINCIPIO DE LA RUTA, que es como los cuenta
+  // el servicio, vaya uno en el sentido que vaya: son los que recibe el
+  // simulador. El kilometro de arriba es el que se lee, y a la vuelta va al
+  // reves; estos no.
+  m:j.along,
   texto:textoDeGiro(j,cambia),
   clase:j.rotonda?'rotonda':j.cruce?'cruce':'curva',
   // Los grados de una rotonda son el barrido del anillo, que no dice nada
@@ -620,7 +630,47 @@ function textoResumenGiros(filas){
   +(fin>0?' en '+(fin/1000).toFixed(1).replace('.',',')+' km':'')
   +(partes.length>1?': '+partes.join(', '):'')+'.';
 }
-let girosAlReves=false;
+let girosAlReves=false,simulandoNativo=false;
+// EL SIMULADOR (25 de noviembre de 2026). Se le pide al SERVICIO, que es quien
+// habla: el mete posiciones de mentira sobre la ruta, una por segundo, y suena
+// exactamente lo que sonaria en la bici. Desde la pagina solo se arranca y se
+// para. Va en tiempo real a proposito -acelerarlo dejaria las distancias bien
+// y las frases mal, que es lo que mas falla-, y por eso cada giro de la lista
+// tiene su ▶: empieza ANTES_DE_SIMULAR metros antes de ese giro, que a 50 km/h
+// son 18 segundos, de sobra para el primer aviso de todos.
+const ANTES_DE_SIMULAR=280;
+function puedeSimular(){return typeof window!=='undefined'&&!!window.TrabakutikAndroid&&typeof window.TrabakutikAndroid.simulaRuta==='function'}
+function velocidadDeSimulacion(){
+ const v=typeof $==='function'&&$('girosVel')?parseFloat($('girosVel').value):NaN;
+ return Number.isFinite(v)&&v>0?v:18;
+}
+function simulaDesde(metros,reves,exacto){
+ if(!puedeSimular())return false;
+ // Los metros van SIEMPRE contados desde el principio de la ruta, que es como
+ // los cuenta el servicio. Con «exacto» se empieza justo ahi (el principio o
+ // el final de la ruta); si no, ANTES_DE_SIMULAR metros antes del giro, y al
+ // reves eso es al otro lado, que es por donde se llega.
+ const desde=Math.max(0,(Number(metros)||0)+(exacto?0:reves?ANTES_DE_SIMULAR:-ANTES_DE_SIMULAR));
+ if($('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.add('hidden');
+ // Simular necesita el servicio navegando, pero NO grabando: lo que se simula
+ // no es un recorrido tuyo y no puede acabar en un GPX.
+ const guiando=typeof navegaNativo!=='undefined'&&navegaNativo;
+ if(!guiando&&typeof enciendeNavegacionNativa==='function')enciendeNavegacionNativa();
+ const lanza=()=>{try{window.TrabakutikAndroid.simulaRuta(velocidadDeSimulacion(),desde,!!reves)}catch(e){console.warn('No se pudo simular',e)}};
+ if(guiando)lanza();else setTimeout(lanza,1500);
+ try{notice('Simulando'+(reves?' la vuelta':'')+' a '+velocidadDeSimulacion()+' km/h · lo que oirías en la bici')}catch(e){}
+ return true;
+}
+function paraLaSimulacion(){
+ if(typeof window==='undefined'||!window.TrabakutikAndroid)return;
+ try{window.TrabakutikAndroid.paraSimulacion&&window.TrabakutikAndroid.paraSimulacion()}catch(e){}
+}
+function pintaSimulacion(){
+ if(typeof $!=='function')return;
+ const b=$('simBanda');
+ if(b&&b.classList)b.classList.toggle('hidden',!simulandoNativo);
+}
+
 function pintaGirosRuta(){
  if(typeof $!=='function')return;
  const b=$('girosRuta');if(!b||!b.classList)return;
@@ -640,6 +690,7 @@ function abreGirosRuta(reves){
   if(typeof t.setAttribute==='function')t.setAttribute('aria-pressed',on?'true':'false');
  });
  const lista=$('girosLista');
+ if($('girosSimula')&&$('girosSimula').classList)$('girosSimula').classList.toggle('hidden',!puedeSimular());
  if(lista&&typeof document!=='undefined'&&typeof document.createElement==='function'){
   lista.innerHTML='';
   if(!filas.length){
@@ -647,16 +698,25 @@ function abreGirosRuta(reves){
    v.textContent='Sin avisos en este sentido.';lista.appendChild(v);
   }
   filas.forEach(f=>{
-   const fila=document.createElement('button');
-   fila.type='button';fila.className='giro-fila';fila.setAttribute('role','listitem');
+   const fila=document.createElement('div');
+   fila.className='giro-fila';fila.setAttribute('role','listitem');
+   const ver=document.createElement('button');ver.type='button';ver.className='giro-ver';
    const km=document.createElement('b');km.className='giro-km';km.textContent='km '+f.km.toFixed(2).replace('.',',');
    const que=document.createElement('span');que.className='giro-que';que.textContent=f.texto;
-   fila.appendChild(km);fila.appendChild(que);
-   if(f.grados){const g=document.createElement('i');g.className='giro-grados';g.textContent=f.grados+'°';fila.appendChild(g)}
-   if(Array.isArray(f.point))fila.addEventListener('click',()=>{
+   ver.appendChild(km);ver.appendChild(que);
+   if(f.grados){const g=document.createElement('i');g.className='giro-grados';g.textContent=f.grados+'°';ver.appendChild(g)}
+   if(Array.isArray(f.point))ver.addEventListener('click',()=>{
     try{if(typeof map!=='undefined'&&map&&typeof map.setView==='function')map.setView(f.point,17)}catch(e){}
     if($('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.add('hidden');
    });
+   fila.appendChild(ver);
+   if(puedeSimular()){
+    const play=document.createElement('button');
+    play.type='button';play.className='giro-play';play.textContent='▶';
+    play.setAttribute('aria-label','Simular el aviso del km '+f.km.toFixed(2).replace('.',','));
+    play.addEventListener('click',()=>simulaDesde(f.m,girosAlReves));
+    fila.appendChild(play);
+   }
    lista.appendChild(fila);
   });
  }
@@ -694,6 +754,18 @@ if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $
   if($('girosCerrar'))$('girosCerrar').addEventListener('click',()=>$('girosDialogo').classList.add('hidden'));
   if($('girosIda'))$('girosIda').addEventListener('click',()=>abreGirosRuta(false));
   if($('girosVuelta'))$('girosVuelta').addEventListener('click',()=>abreGirosRuta(true));
+  if($('girosDesdeElPrincipio'))$('girosDesdeElPrincipio').addEventListener('click',()=>{
+   // El principio de la VUELTA es el final de la ida. Cinco metros antes del
+   // final de verdad: justo en el ultimo metro no hay tramo donde ponerse y
+   // la simulacion se acabaria en el primer paso.
+   const fin=finDeLaRuta();
+   simulaDesde(girosAlReves?Math.max(0,fin-5):0,girosAlReves,true);
+  });
+  if($('girosVel'))$('girosVel').addEventListener('change',()=>{
+   try{localStorage.setItem('sim-kmh',$('girosVel').value)}catch(e){}
+  });
+  try{const v=localStorage.getItem('sim-kmh');if(v&&$('girosVel'))$('girosVel').value=v}catch(e){}
+  if($('simBanda'))$('simBanda').addEventListener('click',paraLaSimulacion);
   pintaGirosRuta();
  }
 }
@@ -971,6 +1043,8 @@ function miraPosicionNativa(){
  // y callandose los dos no avisaba nadie. Un APK viejo no manda «guiando»,
  // y entonces vale lo de antes.
  navegaNativo=d.guiando===undefined?!!d.navigating:!!d.guiando;
+ // Un APK viejo no manda «simulando»: queda en false y no cambia nada.
+ if(!!d.simulando!==simulandoNativo){simulandoNativo=!!d.simulando;pintaSimulacion()}
  // Callarse en los giros SOLO si el servicio tiene giros que avisar.
  // «guiando» mira la ruta, no los giros, asi que el servicio podia estar
  // guiando con cero giros cargados y la pagina callada: no avisaba nadie.
@@ -1114,7 +1188,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={girosDeLaRuta,textoResumenGiros,pintaGirosRuta,abreGirosRuta,siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,tramoDeMarca,textoTramos,guardaAvisos,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={girosDeLaRuta,textoResumenGiros,pintaGirosRuta,abreGirosRuta,simulaDesde,paraLaSimulacion,pintaSimulacion,puedeSimular,velocidadDeSimulacion,siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,tramoDeMarca,textoTramos,guardaAvisos,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});

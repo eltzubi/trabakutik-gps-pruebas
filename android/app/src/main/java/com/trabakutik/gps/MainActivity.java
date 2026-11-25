@@ -597,6 +597,9 @@ public class MainActivity extends Activity {
     // La pagina necesita saberlo para callarse: si pita ella y pita el
     // servicio, cada cruce suena dos veces.
     o.put("navigating",pref.getBoolean("navigating",false));
+    // Simulando, la pagina lo dice en pantalla y las marcas ✋ salen marcadas
+    // como simuladas: no son del terreno.
+    o.put("simulando",pref.getBoolean("simulando",false));
     // No basta con «navigating»: el servicio solo avisa si ademas tiene la
     // ruta cargada. Si no, callaban los dos.
     o.put("guiando",pref.getBoolean("guiando",false));
@@ -860,6 +863,18 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void stopRecording(){runOnUiThread(()->stopNativeRecording());}
   // Pausar y reanudar la grabacion. No arrancan nada: si no hay servicio
   // vivo, no hay nada que pausar.
+  // EL SIMULADOR. «desde» son los metros de ruta en los que empieza, que es
+  // como se oye un aviso concreto sin hacerse la ruta entera: cada giro de la
+  // lista «↱ Giros» manda los suyos. Solo si el servicio ya esta navegando:
+  // simular no enciende nada ni pide permisos.
+  @JavascriptInterface public void simulaRuta(double kmh,double desde,boolean reves){
+   try{
+    if(!TrackingService.ACTIVO)return;
+    startService(new Intent(MainActivity.this,TrackingService.class).setAction("SIMULA")
+      .putExtra("kmh",(float)kmh).putExtra("desde",desde).putExtra("reves",reves));
+   }catch(Exception e){android.util.Log.w("TrabakutikGPS","No se pudo simular",e);}
+  }
+  @JavascriptInterface public void paraSimulacion(){enviaAlServicio("PARA_SIMULA");}
   @JavascriptInterface public void pauseRecording(){enviaAlServicio("PAUSE");}
   @JavascriptInterface public void resumeRecording(){enviaAlServicio("RESUME");}
   private void enviaAlServicio(String accion){

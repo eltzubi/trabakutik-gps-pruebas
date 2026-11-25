@@ -38,6 +38,8 @@ async function setup(context) {
       navigating: false,
       recording: false,
       saves: 0,
+      simulaciones: [],
+      simulando: false,
       points: [],
       complete: true,
     };
@@ -49,6 +51,7 @@ async function setup(context) {
           recording: window.__native.recording,
           navigating: window.__native.navigating,
           guiando: window.__native.navigating,
+          simulando: window.__native.simulando,
           locationEnabled: window.__native.locationEnabled !== false,
           lat: 43.2,
           lon: -2.5,
@@ -91,6 +94,13 @@ async function setup(context) {
         window.__native.active = false;
       },
       clearRoute() {},
+      simulaRuta(kmh, desde, reves) {
+        window.__native.simulaciones.push([kmh, Math.round(desde), reves]);
+        window.__native.simulando = true;
+      },
+      paraSimulacion() {
+        window.__native.simulando = false;
+      },
       clearLiveTrack() {},
       pauseRecording() {},
       resumeRecording() {},
@@ -708,14 +718,14 @@ async function setup(context) {
       assert.equal(await p.evaluate((g) => window.trabakutikImportaGpx(g, 'zigzag.gpx'), gpx), true, 'entra el zigzag');
       await p.waitForSelector('#girosRuta:not(.hidden)');
       await p.click('#girosRuta');
-      const ida = await p.$$eval('#girosLista .giro-fila', (e) => e.map((f) => f.textContent));
+      const ida = await p.$$eval('#girosLista .giro-ver', (e) => e.map((f) => f.textContent));
       assert(ida.length >= 2, 'el zigzag da varios avisos: ' + JSON.stringify(ida));
       assert.match(await p.textContent('#girosResumen'), /\d+ avisos? en [\d,]+ km/, 'el resumen cuenta los avisos y los km');
       assert(ida.every((t) => /^km \d+,\d\d/.test(t)), 'cada fila empieza por su kilometro: ' + JSON.stringify(ida));
       // LA VUELTA ES LA MISMA RUTA AL REVES: los mismos avisos, en el otro
       // orden y con los lados cambiados, que es lo que dice el guiado.
       await p.click('#girosVuelta');
-      const vuelta = await p.$$eval('#girosLista .giro-fila', (e) => e.map((f) => f.textContent));
+      const vuelta = await p.$$eval('#girosLista .giro-ver', (e) => e.map((f) => f.textContent));
       assert.equal(vuelta.length, ida.length, 'los mismos avisos a la vuelta');
       assert.notDeepEqual(vuelta, ida, 'pero no en el mismo orden ni con los mismos lados');
       const lado = (t) => (/izquierda/.test(t) ? 'i' : /derecha/.test(t) ? 'd' : '?');
@@ -724,12 +734,41 @@ async function setup(context) {
       // la ruta entera de lejos a tenerlo delante, a zoom 17.
       const zoom = () => p.evaluate(() => ((document.querySelector('.leaflet-tile-pane img') || {}).src || '').split('/').slice(-3)[0]);
       assert.notEqual(await zoom(), '17', 'la ruta entera se ve de lejos');
-      await p.click('#girosLista .giro-fila:last-child');
+      await p.click('#girosLista .giro-fila:last-child .giro-ver');
       await p.waitForFunction(() => document.getElementById('girosDialogo').classList.contains('hidden'));
       await p.waitForFunction(() => ((document.querySelector('.leaflet-tile-pane img') || {}).src || '').split('/').slice(-3)[0] === '17');
+      // EL SIMULADOR: cada giro tiene su ▶ y arranca la ruta 280 m ANTES de ese
+      // giro, que a 50 km/h son 18 s: entra hasta el primer aviso de todos. A
+      // la vuelta se anda la linea hacia atras, asi que el arranque va al otro
+      // lado del giro y los metros se cuentan igual, desde el principio.
+      await p.click('#girosRuta');
+      await p.click('#girosIda');
+      await p.waitForSelector('#girosLista .giro-play');
+      const kmDe = (t) => parseFloat(t.replace(/^km /, '').split(/[^\d,]/)[0].replace(',', '.'));
+      const kmIda = kmDe(ida[ida.length - 1]);
+      await p.selectOption('#girosVel', '18');
+      await p.click('#girosLista .giro-fila:last-child .giro-play');
+      await p.waitForFunction(() => window.__native.simulaciones.length === 1);
+      const [[vel, desde, reves]] = await p.evaluate(() => window.__native.simulaciones);
+      assert.equal(vel, 18, 'con la velocidad elegida');
+      assert.equal(reves, false, 'de ida');
+      assert.equal(desde, Math.max(0, Math.round(kmIda * 1000) - 280), 'empieza 280 m antes del giro: ' + desde);
+      // Y la banda roja sale sola en cuanto el servicio dice que simula.
+      await p.waitForSelector('#simBanda:not(.hidden)');
+      await p.click('#simBanda');
+      await p.waitForFunction(() => document.getElementById('simBanda').classList.contains('hidden'));
+      assert.equal(await p.evaluate(() => window.__native.simulando), false, 'la banda para la simulacion');
+      // A la vuelta, al otro lado del giro y marcada como vuelta.
+      await p.click('#girosRuta');
+      await p.click('#girosVuelta');
+      await p.click('#girosLista .giro-fila:first-child .giro-play');
+      await p.waitForFunction(() => window.__native.simulaciones.length === 2);
+      const atras = await p.evaluate(() => window.__native.simulaciones[1]);
+      assert.equal(atras[2], true, 'la vuelta se simula hacia atras');
+      assert(atras[1] > 0, 'y empieza pasado el giro, no en el metro cero: ' + atras[1]);
       assert.deepEqual(errores, [], 'errores de la pagina');
       await ctxGiros.close();
-      console.log('PASS Chromium: la lista de giros de la ruta, ida y vuelta, y cada fila lleva a su sitio en el mapa');
+      console.log('PASS Chromium: la lista de giros de la ruta, ida y vuelta, cada fila lleva a su sitio en el mapa y cada giro se simula con su ▶');
     }
     const offline = await browser.newContext();
     await setup(offline);

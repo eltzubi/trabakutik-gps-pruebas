@@ -43,6 +43,11 @@ public class NativeTurnsTest {
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
 '''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double ENTRADA_M=[^;]+;',src).group(0)+re.search(r' static final double SEGUIDO_MIN=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
+ // La distancia de TiempoEnMarcha, que aqui no esta: la misma haversine.
+ static class TiempoEnMarcha{static double metros(double la1,double lo1,double la2,double lo2){
+  double R=6371000,dla=Math.toRadians(la2-la1),dlo=Math.toRadians(lo2-lo1);
+  double a=Math.sin(dla/2)*Math.sin(dla/2)+Math.cos(Math.toRadians(la1))*Math.cos(Math.toRadians(la2))*Math.sin(dlo/2)*Math.sin(dlo/2);
+  return 2*R*Math.asin(Math.sqrt(a));}}
  ArrayList<Integer> spoken=new ArrayList<>();int beeps=0;
  static class Location {double lat,lon;float acc=4; Location(double m){lat=m/111195.;lon=0;} Location(double m,float a){this(m);acc=a;} Location(double m,double off,float a){this(m);lon=off/111195.;acc=a;}double getLatitude(){return lat;}double getLongitude(){return lon;}boolean hasAccuracy(){return true;}float getAccuracy(){return acc;}}
  static class ToneGenerator{static final int TONE_PROP_ACK=2,TONE_PROP_BEEP=1;}
@@ -85,7 +90,7 @@ public class NativeTurnsTest {
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
  ' static int gradosDelGiro(int tipo)',' static String textoCorto(int lado,int tipo,int salida)',
- ' void protegeAvisoRuta()',' String avisoSalida(Location l)',' void checkDeviation(Location l,boolean ramalEquivocado)',' double closest(double lat,double lon,double[] punto)', ' double closest(double lat,double lon)'))+'''
+ ' static double[] puntoEn(ArrayList<double[]> ruta,double along)',' void protegeAvisoRuta()',' String avisoSalida(Location l)',' void checkDeviation(Location l,boolean ramalEquivocado)',' double closest(double lat,double lon,double[] punto)', ' double closest(double lat,double lon)'))+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
@@ -318,6 +323,30 @@ public class NativeTurnsTest {
    require(antes>=ya-1.01&&antes<=ya+0.01,"el «ahora» suena "+ya+" m antes, no encima: sono a "+antes+" m");
   }
  }
+ // EL SIMULADOR PONE LA POSICION SOBRE LA RUTA, no cerca: si se desviara un
+ // metro, la proyeccion y los avisos dejarian de ser los de verdad y lo que se
+ // oye en casa no seria lo que se oye en la bici.
+ static void puntoSimulado(){
+  ArrayList<double[]> r=new ArrayList<>();
+  for(int m=0;m<=300;m+=10)r.add(new double[]{m/111195.,0});
+  double[] p=puntoEn(r,0);
+  require(p!=null&&Math.abs(p[0])<1e-9,"empieza en el primer punto");
+  require(Math.abs(p[2])<0.01,"y mirando al norte, que es por donde va: "+p[2]);
+  // En medio de un tramo, interpolado: 125 m son 12,5 puntos.
+  p=puntoEn(r,125);
+  require(Math.abs(TiempoEnMarcha.metros(0,0,p[0],p[1])-125)<0.5,"a 125 m del principio: "+TiempoEnMarcha.metros(0,0,p[0],p[1]));
+  require(Math.abs(p[1])<1e-12,"y encima de la linea, no al lado");
+  // Pasado el final no hay punto: ahi se para la simulacion sola.
+  require(puntoEn(r,301)==null,"se acaba la ruta y se acaba la simulacion");
+  require(puntoEn(r,299)!=null,"el ultimo metro todavia vale");
+  // Hacia el otro lado, el rumbo es el contrario.
+  ArrayList<double[]> sur=new ArrayList<>();
+  for(int m=0;m<=300;m+=10)sur.add(new double[]{-m/111195.,0});
+  require(Math.abs(puntoEn(sur,50)[2]-180)<0.01,"al sur, rumbo 180: "+puntoEn(sur,50)[2]);
+  // Una ruta de un solo punto no se puede simular.
+  ArrayList<double[]> corta=new ArrayList<>();corta.add(new double[]{0,0});
+  require(puntoEn(corta,0)==null,"sin tramo no hay simulacion");
+ }
  static void saltoNoEsVuelta(){
   NativeTurnsTest c=new NativeTurnsTest();
   double[] along={100,105,110,60,65,70,75};
@@ -545,9 +574,9 @@ public class NativeTurnsTest {
   require(c.dicho.equals(Arrays.asList("Ya estás en la ruta")),"Al cambiar de ruta vuelve a anunciar");
  }
  public static void main(String[] args){
-  entradaDeRuta();saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();pantallaDelCruce();ahoraAntes();System.out.println("PASS: el «ahora» suena cuatro segundos antes de entrar en el cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
+  entradaDeRuta();puntoSimulado();saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();pantallaDelCruce();ahoraAntes();System.out.println("PASS: el «ahora» suena cuatro segundos antes de entrar en el cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
-  System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");
+  System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");System.out.println("PASS: el simulador pone la posicion encima de la ruta y para al acabarla");
   metricsChecks();
   idaYVueltaMismoSitio();
   curvasCercanas();

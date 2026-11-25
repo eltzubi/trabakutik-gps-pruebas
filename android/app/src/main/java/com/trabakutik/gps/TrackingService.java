@@ -703,6 +703,7 @@ public class TrackingService extends Service implements LocationListener {
    return START_NOT_STICKY;
   }
   if("STOP_NAVIGATION".equals(action)){
+   paraSimulacion();
    acercarAlTrack=false;
    navigating=false;avisoRutaPendiente=null;entradaAvisada=false;routeReached=false;offRoute=false;farSince=0;cercaDesde=0;ultimoDesvio=0;fueraDesde=0;recordado=false;olvidaSentido();
    turns.clear();warnedTurns.clear();upcomingTurn="";route.clear();
@@ -722,6 +723,8 @@ public class TrackingService extends Service implements LocationListener {
    }
    return START_NOT_STICKY;
   }
+  if("SIMULA".equals(action)){arrancaSimulacion(i.getFloatExtra("kmh",18f),i.getDoubleExtra("desde",0),i.getBooleanExtra("reves",false));return START_NOT_STICKY;}
+  if("PARA_SIMULA".equals(action)){paraSimulacion();return START_NOT_STICKY;}
   if("PAUSE".equals(action)){pausado=true;enMarcha.pausa();baro.pausa(SystemClock.elapsedRealtime());metrics.pausePace();if(active)updateNotice();return START_NOT_STICKY;}
   if("RESUME".equals(action)){
    filtroGrabacion.reinicia();
@@ -1590,6 +1593,7 @@ public class TrackingService extends Service implements LocationListener {
     .putBoolean("active",active).putBoolean("recording",recording)
     .putBoolean("navigating",navigating)
     .putBoolean("guiando",navigating&&route.size()>1)
+    .putBoolean("simulando",simulando)
     .putInt("giros",turns.size()).apply();}
   catch(Exception ignored){}
  }
@@ -1736,8 +1740,96 @@ public class TrackingService extends Service implements LocationListener {
   long t=l.getElapsedRealtimeNanos();
   return t>0&&SystemClock.elapsedRealtimeNanos()-t>MAX_EDAD_FIX_NS;
  }
+ // EL SIMULADOR: LA RUTA EN CASA, CON LOS AVISOS DE VERDAD (25 nov 2026).
+ // Hasta hoy, un aviso que falla solo se descubria pedaleando: el autor lo
+ // marcaba con el ✋, habia que pedirle el GPX y repetirlo en el ordenador con
+ // --replay. El simulador le mete al servicio posiciones de mentira SOBRE la
+ // ruta, una por segundo -el mismo ritmo que el GPS de verdad- y a la
+ // velocidad que elija, asi que suena EXACTAMENTE lo que sonaria en la bici:
+ // la misma voz, los mismos pitidos y la misma pantalla del cruce, porque es
+ // el mismo checkTurns. La idea es de otro navegador que miro el autor.
+ //
+ // VA EN TIEMPO REAL, A PROPOSITO. Correr cuatro veces mas deprisa dejaria las
+ // distancias de los avisos bien pero las FRASES mal: la voz tarda lo que
+ // tarda, y lo que mas falla es que se amontonen. Por eso no se acelera: se
+ // empieza donde tu digas (cada giro de la lista tiene su ▶), que es lo que
+ // hace falta para oir un aviso concreto sin hacerse la ruta entera.
+ //
+ // NUNCA ENCIMA DE UNA GRABACION: lo que se simula no es un recorrido tuyo y
+ // no puede acabar en un GPX. Y mientras se simula, las posiciones DE VERDAD
+ // se tiran: si no, el GPS de casa y el simulador se pelean por la proyeccion.
+ static final String SIM_PROVEEDOR="simulacion";
+ static final long SIM_PASO_MS=1000;
+ boolean simulando=false;double simAlong=0;float simVel=5f;int simPaso1=1;
+ final Handler simHandler=new Handler(Looper.getMainLooper());
+ final Runnable simPaso=new Runnable(){@Override public void run(){
+  if(!simulando)return;
+  Location l=simAlong<0?null:simuladaEn(simAlong);
+  if(l==null){paraSimulacion();return;}
+  simAlong+=simVel*simPaso1;
+  onLocationChanged(l);
+  if(simulando)simHandler.postDelayed(this,SIM_PASO_MS);
+ }};
+ // Un punto de la ruta a «along» metros del principio, con el rumbo de su
+ // tramo. Sin Android dentro, para poder probarlo: {lat,lon,rumbo}, o null si
+ // «along» se pasa del final.
+ static double[] puntoEn(ArrayList<double[]> ruta,double along){
+  if(ruta==null||ruta.size()<2)return null;
+  if(along<0)along=0;
+  double acum=0;
+  for(int k=1;k<ruta.size();k++){
+   double[] a=ruta.get(k-1),b=ruta.get(k);
+   double d=TiempoEnMarcha.metros(a[0],a[1],b[0],b[1]);
+   if(d<=0)continue;
+   if(acum+d>=along){
+    double t=(along-acum)/d;
+    double la=Math.toRadians(a[0]),lb=Math.toRadians(b[0]),dlo=Math.toRadians(b[1]-a[1]);
+    double rumbo=Math.toDegrees(Math.atan2(Math.sin(dlo)*Math.cos(lb),
+      Math.cos(la)*Math.sin(lb)-Math.sin(la)*Math.cos(lb)*Math.cos(dlo)));
+    return new double[]{a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,(rumbo+360)%360};
+   }
+   acum+=d;
+  }
+  return null;
+ }
+ Location simuladaEn(double along){
+  double[] p=puntoEn(route,along);
+  if(p==null)return null;
+  Location l=new Location(SIM_PROVEEDOR);
+  l.setLatitude(p[0]);l.setLongitude(p[1]);
+  // Al reves se va mirando al otro lado. El sentido de la marcha lo decide el
+  // servicio solo, por como se mueve la posicion, igual que en el monte.
+  l.setAccuracy(5f);l.setBearing((float)((p[2]+(simPaso1<0?180:0))%360));l.setSpeed(simVel);
+  l.setTime(System.currentTimeMillis());
+  l.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+  return l;
+ }
+ void arrancaSimulacion(float kmh,double desde,boolean reves){
+  if(recording||!navigating||route.size()<2)return;
+  paraSimulacion();
+  simVel=(float)Math.max(.5,Math.min(20,kmh/3.6));
+  simPaso1=reves?-1:1;
+  simAlong=Math.max(0,desde);
+  // Sin rampa: el primer aviso ya se mide con la velocidad elegida.
+  velocidadSuave=simVel;
+  // Se empieza de cero, que los avisos ya dichos de la pasada anterior
+  // callarian justo el que se quiere oir.
+  warnedTurns.clear();upcomingTurn="";offRoute=false;farSince=0;fueraDesde=0;cercaDesde=0;
+  olvidaSentido();
+  simulando=true;
+  publicaEstado();
+  simHandler.post(simPaso);
+ }
+ void paraSimulacion(){
+  simHandler.removeCallbacksAndMessages(null);
+  if(!simulando)return;
+  simulando=false;callaYa();velocidadSuave=0;
+  publicaEstado();
+ }
  @Override public void onLocationChanged(Location l){
   if(!active)return;
+  // Simulando entran SOLO las de mentira; sin simular, ninguna de mentira.
+  if(simulando!=SIM_PROVEEDOR.equals(l.getProvider()))return;
   // Posicion vieja: Android puede entregar una posicion guardada de hace
   // rato. Si tiene mas de 10 s no vale ni para guiar ni para grabar.
   if(esAntigua(l))return;
@@ -1794,7 +1886,7 @@ public class TrackingService extends Service implements LocationListener {
   if(recording&&!pausado&&l.hasAccuracy())enMarcha.posicion(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos()/1_000_000L,l.hasSpeed()?l.getSpeed():Double.NaN);
   convierteAltura(l);
   final Altura alt=ultimaAltura;  // una sola lectura: altura, error y hora de la misma muestra
-  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",alt==null?-9999f:(float)alt.mar).putFloat("altError",alt==null?-1f:alt.error).putLong("altTiempo",alt==null?0L:alt.tiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putInt("sosRutaClave",metricsRouteKey).putLong("sosRutaFix",l.getElapsedRealtimeNanos()).putFloat("sosRutaPk",pkSos).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putInt("giros",turns.size()).apply();
+  getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putFloat("altMar",alt==null?-9999f:(float)alt.mar).putFloat("altError",alt==null?-1f:alt.error).putLong("altTiempo",alt==null?0L:alt.tiempo).putLong("tiempoMov",enMarcha.totalMs()).putString("metrics",liveMetrics).putInt("sosRutaClave",metricsRouteKey).putLong("sosRutaFix",l.getElapsedRealtimeNanos()).putFloat("sosRutaPk",pkSos).putFloat("lat",(float)l.getLatitude()).putFloat("lon",(float)l.getLongitude()).putFloat("accuracy",l.hasAccuracy()?l.getAccuracy():9999f).putLong("time",l.getTime()).putFloat("bearing",l.hasBearing()?l.getBearing():-1f).putFloat("speed",l.hasSpeed()?l.getSpeed():-1f).putLong("latBits",Double.doubleToRawLongBits(l.getLatitude())).putLong("lonBits",Double.doubleToRawLongBits(l.getLongitude())).putBoolean("active",active).putBoolean("recording",recording).putBoolean("navigating",navigating).putBoolean("guiando",navigating&&route.size()>1).putBoolean("simulando",simulando).putInt("giros",turns.size()).apply();
   if(!recording||pausado||!l.hasAccuracy()||l.getAccuracy()>35)return;
   boolean hayPunto=lastRecordedTime>0&&Double.isFinite(lastRecordedLat);
   double salto=hayPunto?l.distanceTo(makePreviousLocation()):0;
@@ -1866,6 +1958,6 @@ public class TrackingService extends Service implements LocationListener {
   recording=false;GRABANDO=null;
   getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("recording",false).putString("gasto",gastoUltimo).apply();
  }
- void finish(){paraCaidas();if(caidaEnCurso)terminaCaida(false);navigating=false;acercarAlTrack=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+ void finish(){paraSimulacion();paraCaidas();if(caidaEnCurso)terminaCaida(false);navigating=false;acercarAlTrack=false;route.clear();getSharedPreferences("tracking_live",MODE_PRIVATE).edit().putBoolean("active",false).putBoolean("recording",false).putBoolean("navigating",false).putBoolean("guiando",false).putBoolean("simulando",false).apply();sueltaRed();if(active){manager.removeUpdates(this);active=false;}if(gpsWakeLock!=null&&gpsWakeLock.isHeld())gpsWakeLock.release();endRecording();ACTIVO=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
  @Override public void onDestroy(){try{hiloAltura.shutdownNow();}catch(Exception ignored){}avisoHandler.removeCallbacks(refrescaAviso);callaYa();if(voz!=null){try{voz.stop();voz.shutdown();}catch(Exception ignored){}voz=null;vozLista=false;}if(active||recording)finish();ACTIVO=false;super.onDestroy();}
 }

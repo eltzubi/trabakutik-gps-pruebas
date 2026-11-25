@@ -1645,6 +1645,38 @@ test('«↱ Giros»: la lista de avisos de la ruta, ida y vuelta, como los dice 
  globalThis.junctions=junctions;
 });
 
+test('El simulador: ▶ empieza 280 m antes del giro, al revés al otro lado, y nunca encima de una grabación',()=>{
+ const nodos={};
+ const nodo=id=>nodos[id]||(nodos[id]={value:'',textContent:'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}},setAttribute(){},addEventListener(){}});
+ const pedidas=[];
+ const win={TrabakutikAndroid:{simulaRuta:(kmh,desde,reves)=>pedidas.push([kmh,Math.round(desde),reves]),paraSimulacion:()=>pedidas.push('parar')}};
+ const c=pieza('09-navegacion.js',{window:win,$:nodo,junctions:[],junctionsReves:null,routeCumulative:[0,2000],
+  sentidoRuta:1,junctionActive:-1,navegaNativo:true,notice(){},enciendeNavegacionNativa(){}},arranque09());
+ nodo('girosVel').value='30';
+ assert.equal(c.velocidadDeSimulacion(),30,'la velocidad la elige él');
+ // Un giro en el km 1,2: de ida se arranca 280 m antes.
+ c.simulaDesde(1200,false);
+ assert.deepStrictEqual(pedidas.at(-1),[30,920,false]);
+ // A la vuelta se anda la línea hacia atrás, así que se arranca 280 m DESPUÉS
+ // del giro, que es por donde se llega. Los metros siguen contados desde el
+ // principio de la ruta, que es como los cuenta el servicio.
+ c.simulaDesde(1200,true);
+ assert.deepStrictEqual(pedidas.at(-1),[30,1480,true]);
+ // Desde el principio de la ruta, el metro cero, sin restarle nada.
+ c.simulaDesde(0,false,true);
+ assert.deepStrictEqual(pedidas.at(-1),[30,0,false]);
+ // Y nunca por debajo de cero: un giro en el metro 50 arranca en el 0.
+ c.simulaDesde(50,false);
+ assert.deepStrictEqual(pedidas.at(-1),[30,0,false]);
+ c.paraLaSimulacion();
+ assert.equal(pedidas.at(-1),'parar');
+ // En la web no hay servicio que simule: ni botón ni llamada.
+ const web=pieza('09-navegacion.js',{window:{},$:nodo,junctions:[],junctionsReves:null,routeCumulative:[0,2000],
+  sentidoRuta:1,junctionActive:-1,notice(){}},arranque09());
+ assert.equal(web.puedeSimular(),false,'sin aplicación no se simula');
+ assert.equal(web.simulaDesde(1200,false),false,'y el ▶ no hace nada');
+});
+
 test('«✋ Faltó aquí»: siempre a mano guiando, apunta el sitio, el aviso más cercano y si el guiado callaba',()=>{
  const almacen={},nodos={};
  const nodo=id=>nodos[id]||(nodos[id]={textContent:id==='tripRuta'?'recyde':'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}}});
