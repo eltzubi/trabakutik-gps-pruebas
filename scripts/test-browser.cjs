@@ -212,13 +212,13 @@ async function setup(context) {
     // Controles utilizables incluso cuando la columna no cabe completa.
     for (const size of [{width:320,height:568},{width:568,height:320},{width:390,height:844}]) {
       await page.setViewportSize(size);
-      for (const id of ['eye','locate','orient','audioMode']) {
+      for (const id of ['eye','locate','orient','audioMode','plus','minus']) {
         const box=await page.locator('#'+id).boundingBox();
         assert(box.width>=48&&box.height>=48,'zona táctil de '+id);
       }
-      await page.locator('#audioMode').scrollIntoViewIfNeeded();
-      const last=await page.locator('#audioMode').boundingBox();
-      assert(last.y>=0&&last.y+last.height<=size.height,'control de audio accesible con poca altura');
+      await page.locator('#minus').scrollIntoViewIfNeeded();
+      const last=await page.locator('#minus').boundingBox();
+      assert(last.y>=0&&last.y+last.height<=size.height,'zoom accesible con poca altura');
     }
     await page.click('#choose');
     await page.locator('#search').click();
@@ -852,7 +852,7 @@ async function setup(context) {
       await ctx.unroute(ign);
       await ctx.setOffline(true);
       await p.click("#closeMapa");
-      await p.evaluate(() => { const el=document.querySelector("#mapRot"); el.dispatchEvent(new WheelEvent("wheel",{deltaY:-120,clientX:innerWidth/2,clientY:innerHeight/2,bubbles:true,cancelable:true})); });
+      await p.click("#plus");
       await p.waitForFunction(
         () => document.querySelector('img.leaflet-tile-loaded[src*="ign.es"]'),
         null,

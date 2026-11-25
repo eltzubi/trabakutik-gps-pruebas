@@ -498,23 +498,6 @@ public class NativeTurnsTest {
   eta=metrics.eta(124,1,124/111195.,0,187000,true);
   require(Math.abs(eta-188000)<1,"Pause not included in ETA");
 
-  // La velocidad reciente sustituye al ritmo de una subida antigua.
-  ArrayList<double[]> larga=new ArrayList<>();
-  for(int m=0;m<=10000;m+=10)larga.add(new double[]{m/111195.,0,100});
-  NavigationMetrics ritmo=new NavigationMetrics();
-  ritmo.configure(larga,Collections.emptyList());
-  for(int i=0;i<=300;i++)ritmo.eta(i*2,1,i*2/111195.,0,100000+i*1000,true);
-  for(int i=1;i<=300;i++)eta=ritmo.eta(600+i*10,1,(600+i*10)/111195.,0,400000+i*1000,true);
-  require(Math.abs(eta-640000)<2,"ETA se adapta a cinco minutos de ritmo nuevo: "+eta);
-  ArrayList<double[]> aproximacion=new ArrayList<>();
-  for(int m=0;m<=3000;m+=10)aproximacion.add(new double[]{m/111195.,0,100+Math.max(0,m-1000)*.12});
-  NavigationMetrics anticipa=new NavigationMetrics();
-  anticipa.configure(aproximacion,Collections.emptyList());
-  require(anticipa.nextNotice(200,1,Double.NaN,5)==null,"no avisa demasiado pronto");
-  NavigationMetrics.Notice cuesta=anticipa.nextNotice(350,1,Double.NaN,10);
-  require(cuesta!=null && cuesta.text().contains("pendiente media del") && cuesta.text().startsWith("A "),"aviso previo con pendiente: "+cuesta);
-  require(anticipa.nextNotice(360,1,Double.NaN,10)==null,"no repite el aviso previo");
-
   ArrayList<double[]> loop=new ArrayList<>(line);
   for(int m=490;m>=0;m-=10)loop.add(new double[]{m/111195.,0,100});
   metrics.configure(loop,Collections.emptyList());

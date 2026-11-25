@@ -1570,7 +1570,7 @@ public class TrackingService extends Service implements LocationListener {
    double rejoinedAt=climbRejoinDirection==sentido&&now-climbRejoinTime<=20000
            ?climbRejoinAlong:Double.NaN;
    climbRejoinAlong=Double.NaN;
-   NavigationMetrics.Notice notice=metrics.nextNotice(along,sentido,rejoinedAt,location.hasSpeed()?location.getSpeed():0);
+   NavigationMetrics.Notice notice=metrics.nextNotice(along,sentido,rejoinedAt);
    if(notice!=null){
     // OTRO TONO PARA LO QUE SOLO INFORMA. La subida era 1 pitido, igual que
     // «giro a 50 m», y la fuente 2 pitidos lentos, casi igual que «sin señal
