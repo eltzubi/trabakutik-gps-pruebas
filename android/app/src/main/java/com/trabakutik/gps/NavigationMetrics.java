@@ -1,6 +1,7 @@
 package com.trabakutik.gps;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Collections;
 import java.util.List;
@@ -54,6 +55,9 @@ final class NavigationMetrics {
     private long anclaT = 0;
     private double motionAlong, motionLat, motionLon, movingMeters;
     private long motionTime, movingMillis, lastMovement;
+    private record PaceSample(double meters, long millis) {}
+    private final ArrayDeque<PaceSample> paceSamples = new ArrayDeque<>();
+    private static final long PACE_WINDOW_MS = 300_000;
     private int direction = 1;
 
     void configure(List<double[]> route, List<Water> sources) {
@@ -128,7 +132,7 @@ final class NavigationMetrics {
                 // Yendo al reves, lo que aqui se sube es lo que de ida se baja.
                 double gain = dir > 0 ? ascent[top] - ascent[i] : descent[i] - descent[top];
                 if (gain >= CLIMB_MIN_GAIN || length >= CLIMB_MIN_LENGTH) {
-                    events.add(new Event(from, dir, new Notice(textoSubida(length, gain), 1), distance[top]));
+                    events.add(new Event(from, dir, new Notice(textoSubida(length, gain, highest - heightAt(i)), 1), distance[top]));
                 }
                 i = top == i ? i + dir : top;
             }
@@ -139,11 +143,11 @@ final class NavigationMetrics {
     // «Empieza una subida de 5,5 kilometros y 344 metros». Lo que hace falta
     // saber antes de meterse: cuanto dura y cuanto sube. Ni el porcentaje ni
     // los 200 metros de la ventana, que no son la subida.
-    private static String textoSubida(double length, double gain) {
+    private static String textoSubida(double length, double gain, double netGain) {
         String largo = length >= 1000
                 ? String.format(java.util.Locale.ROOT, "%.1f", length / 1000).replace('.', ',') + " kilómetros"
                 : Math.round(length / 10) * 10 + " metros";
-        return "Empieza una subida de " + largo + " y " + Math.round(gain) + " metros de desnivel";
+        return "Empieza una subida de " + largo + " y " + Math.round(gain) + " metros de desnivel, pendiente media del " + Math.round(100 * netGain / length) + " por ciento";
     }
 
     double total() { return distance.length == 0 ? 0 : distance[distance.length - 1]; }
@@ -301,6 +305,11 @@ final class NavigationMetrics {
     }
 
     Notice nextNotice(double along, int dir, double rejoinedAt) {
+        return nextNotice(along, dir, rejoinedAt, 0);
+    }
+
+    Notice nextNotice(double along, int dir, double rejoinedAt, double speed) {
+        double climbNotice = Math.max(CLIMB_NOTICE, Math.min(20, Math.max(0, speed)) * 15);
         Event best = null;
         double nearest = Double.POSITIVE_INFINITY;
         for (Event event : events) {
@@ -327,13 +336,13 @@ final class NavigationMetrics {
             // Si el arranque estaba cerca entonces, aún se puede avisar hasta la cima.
             double atRejoin = (event.along - rejoinedAt) * dir;
             boolean recoverClimb = !water && ahead < -CLIMB_LATE
-                    && atRejoin >= -CLIMB_LATE && atRejoin <= CLIMB_NOTICE
+                    && atRejoin >= -CLIMB_LATE && atRejoin <= climbNotice
                     && (event.end - along) * dir > 0;
             if (!recoverClimb && (ahead < (water ? -.01 : -CLIMB_LATE)
-                    || ahead > (water ? WATER_NOTICE : CLIMB_NOTICE))) continue;
+                    || ahead > (water ? WATER_NOTICE : climbNotice))) continue;
             if (!water) {
                 announced.add(key);
-                return event.notice;
+                return ahead > 1 ? new Notice("A " + Math.round(ahead) + " metros. " + event.notice.text, event.notice.beeps) : event.notice;
             }
             if (ahead < nearest) { best = key; nearest = ahead; }
         }
@@ -386,6 +395,7 @@ final class NavigationMetrics {
     private void resetPace() {
         motionTime = movingMillis = lastMovement = 0;
         movingMeters = 0;
+        paceSamples.clear();
     }
 
     long eta(double along, int dir, double lat, double lon, long time, boolean moving) {
@@ -401,6 +411,12 @@ final class NavigationMetrics {
             if (advance >= 3 && step >= 3 && advance <= 20 * delta / 1000. && step <= 20 * delta / 1000.) {
                 movingMeters += advance;
                 movingMillis += delta;
+                paceSamples.addLast(new PaceSample(advance, delta));
+                while (movingMillis > PACE_WINDOW_MS && paceSamples.size() > 1) {
+                    PaceSample oldest = paceSamples.removeFirst();
+                    movingMillis -= oldest.millis;
+                    movingMeters -= oldest.meters;
+                }
                 lastMovement = time;
             } else if (advance >= 0 && advance < 3 && step < 3) {
                 return estimatedTime(along, dir, time);
