@@ -522,6 +522,7 @@ function clearActiveRoute(){
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
  routePoints=[];chosen=-1;activeSavedId=null;hitosDeAviso=[];updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
  junctions=[];junctionsReves=null;junctionWarned.clear();routeCumulative=[];crucesOsm=[];
+ if(typeof pintaGirosRuta==='function')pintaGirosRuta();
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
  setRouteTitle('Mapa de rutas',null);

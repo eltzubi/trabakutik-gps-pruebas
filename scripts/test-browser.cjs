@@ -684,6 +684,53 @@ async function setup(context) {
       await ctx.close();
       console.log('PASS Chromium: la flecha del cruce en el mapa apunta en el sentido de la marcha, girado y con el norte arriba; y un GPX abierto desde fuera se abre como ruta activa y queda en Mis rutas');
     }
+    {
+      // «↱ GIROS»: LA LISTA DE AVISOS DE LA RUTA. Lo que dice una ruta solo se
+      // podia saber haciendola; ahora se lee antes de salir. Aqui se comprueba
+      // en Chromium de verdad, que es donde se vio que el boton no cabia a 320
+      // px y que la fila no se puede pintar sin document.createElement.
+      const ctxGiros = await browser.newContext({ viewport: { width: 360, height: 740 } });
+      await setup(ctxGiros);
+      const p = await ctxGiros.newPage();
+      const errores = [];
+      p.on("pageerror", (e) => errores.push(e.message));
+      await p.goto(base + "nuevo.html");
+      await p.waitForFunction(() => document.querySelector(".leaflet-container"));
+      assert.equal(await p.isVisible('#girosRuta'), false, 'sin ruta no hay giros que listar');
+      // Un zigzag con cuatro esquinas de 90 grados: avisos seguro.
+      const pts = [];
+      let la = 43.05, lo = -2.05;
+      const tramo = (dla, dlo) => { for (let k = 0; k < 40; k++) { la += dla; lo += dlo; pts.push([la, lo]); } };
+      tramo(0.00009, 0); tramo(0, 0.000123); tramo(0.00009, 0); tramo(0, -0.000123); tramo(0.00009, 0);
+      const gpx = '<gpx><trk><name>Zigzag</name><trkseg>' +
+        pts.map(([a2, o]) => '<trkpt lat="' + a2.toFixed(6) + '" lon="' + o.toFixed(6) + '"><ele>100</ele></trkpt>').join('') +
+        '</trkseg></trk></gpx>';
+      assert.equal(await p.evaluate((g) => window.trabakutikImportaGpx(g, 'zigzag.gpx'), gpx), true, 'entra el zigzag');
+      await p.waitForSelector('#girosRuta:not(.hidden)');
+      await p.click('#girosRuta');
+      const ida = await p.$$eval('#girosLista .giro-fila', (e) => e.map((f) => f.textContent));
+      assert(ida.length >= 2, 'el zigzag da varios avisos: ' + JSON.stringify(ida));
+      assert.match(await p.textContent('#girosResumen'), /\d+ avisos? en [\d,]+ km/, 'el resumen cuenta los avisos y los km');
+      assert(ida.every((t) => /^km \d+,\d\d/.test(t)), 'cada fila empieza por su kilometro: ' + JSON.stringify(ida));
+      // LA VUELTA ES LA MISMA RUTA AL REVES: los mismos avisos, en el otro
+      // orden y con los lados cambiados, que es lo que dice el guiado.
+      await p.click('#girosVuelta');
+      const vuelta = await p.$$eval('#girosLista .giro-fila', (e) => e.map((f) => f.textContent));
+      assert.equal(vuelta.length, ida.length, 'los mismos avisos a la vuelta');
+      assert.notDeepEqual(vuelta, ida, 'pero no en el mismo orden ni con los mismos lados');
+      const lado = (t) => (/izquierda/.test(t) ? 'i' : /derecha/.test(t) ? 'd' : '?');
+      assert.deepEqual(vuelta.map(lado), ida.slice().reverse().map((t) => (lado(t) === 'i' ? 'd' : lado(t) === 'd' ? 'i' : '?')), 'cambiados uno a uno');
+      // Y tocando una fila se cierra la lista y el mapa se va al giro: de ver
+      // la ruta entera de lejos a tenerlo delante, a zoom 17.
+      const zoom = () => p.evaluate(() => ((document.querySelector('.leaflet-tile-pane img') || {}).src || '').split('/').slice(-3)[0]);
+      assert.notEqual(await zoom(), '17', 'la ruta entera se ve de lejos');
+      await p.click('#girosLista .giro-fila:last-child');
+      await p.waitForFunction(() => document.getElementById('girosDialogo').classList.contains('hidden'));
+      await p.waitForFunction(() => ((document.querySelector('.leaflet-tile-pane img') || {}).src || '').split('/').slice(-3)[0] === '17');
+      assert.deepEqual(errores, [], 'errores de la pagina');
+      await ctxGiros.close();
+      console.log('PASS Chromium: la lista de giros de la ruta, ida y vuelta, y cada fila lleva a su sitio en el mapa');
+    }
     const offline = await browser.newContext();
     await setup(offline);
     const p = await offline.newPage();

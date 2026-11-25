@@ -1600,6 +1600,51 @@ test('La primera marca de una ruta propia guarda su trazado, y solo una vez',()=
  const sin=pieza('09-navegacion.js',{...base,chosen:-1,download:undefined},arranque09());
  assert.equal(sin.guardaTrazadoDeMarca('Mi ruta'),false,'sin guardado, no revienta');
 });
+test('«↱ Giros»: la lista de avisos de la ruta, ida y vuelta, como los dice el navegador',()=>{
+ const nodos={};
+ const nodo=id=>nodos[id]||(nodos[id]={textContent:'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on===undefined)this.s.has(k)?this.s.delete(k):this.s.add(k);else if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}},setAttribute(){}});
+ // Una ruta de 2 km con tres avisos: un cruce, una curva y una rotonda.
+ const junctions=[
+  {i:10,along:400,point:[43.1,-2.5],direction:'izquierda',hacia:'izquierda',cruce:true,angle:79},
+  {i:30,along:1200,point:[43.2,-2.5],direction:'derecha',hacia:'derecha',cruce:false,angle:112},
+  {i:40,along:1600,point:[43.3,-2.5],direction:'derecha',hacia:'derecha',cruce:true,rotonda:true,salida:2,angle:140},
+ ];
+ const routeCumulative=[0,2000];
+ const ORDINALES=['','primera','segunda','tercera','cuarta'];
+ const c=pieza('09-navegacion.js',{window:{},$:nodo,junctions,junctionsReves:null,routeCumulative,sentidoRuta:1,junctionActive:-1,
+  textoSalida:n=>ORDINALES[n]?'toma la '+ORDINALES[n]+' salida':''},arranque09());
+ const ida=c.girosDeLaRuta(false);
+ assert.deepStrictEqual(ida.map(f=>[f.km,f.texto,f.grados,f.clase]),[
+  [0.4,'Gira a la izquierda',79,'cruce'],
+  [1.2,'Curva cerrada a la derecha',112,'curva'],
+  // En una rotonda mandan el numero de salida y no los grados del anillo.
+  [1.6,'Rotonda · toma la segunda salida',0,'rotonda'],
+ ]);
+ assert.equal(c.textoResumenGiros(ida),'3 avisos en 2,0 km: 1 cruce, 1 curva, 1 rotonda.');
+ // SIN LISTA DE VUELTA, la de ida del reves y con los lados cambiados, que es
+ // lo que hace el guiado de verdad. Los kilometros, desde el otro extremo.
+ const vuelta=c.girosDeLaRuta(true);
+ assert.deepStrictEqual(vuelta.map(f=>[f.km,f.texto]),[
+  [0.4,'Rotonda · sal a la izquierda'],
+  [0.8,'Curva cerrada a la izquierda'],
+  [1.6,'Gira a la derecha'],
+ ]);
+ // Y CON LISTA DE VUELTA CALCULADA, esa, que ya trae los lados buenos y va en
+ // orden de marcha.
+ globalThis.junctionsReves=[{i:35,along:1400,point:[43.25,-2.5],direction:'izquierda',hacia:'izquierda',cruce:true,angle:60}];
+ assert.deepStrictEqual(c.girosDeLaRuta(true).map(f=>[f.km,f.texto]),[[0.6,'Gira a la izquierda']]);
+ globalThis.junctionsReves=null;
+ // El boton solo sale cuando la ruta tiene avisos.
+ c.pintaGirosRuta();
+ assert(!nodo('girosRuta').classList.contains('hidden'),'con avisos, sale');
+ globalThis.junctions=[];
+ c.pintaGirosRuta();
+ assert(nodo('girosRuta').classList.contains('hidden'),'sin avisos, no sale');
+ assert(nodo('girosDialogo').classList.contains('hidden'),'y la lista abierta se cierra con la ruta');
+ assert.equal(c.textoResumenGiros([]),'Esta ruta no da ningún aviso de giro en sus 2,0 km.');
+ globalThis.junctions=junctions;
+});
+
 test('«✋ Faltó aquí»: siempre a mano guiando, apunta el sitio, el aviso más cercano y si el guiado callaba',()=>{
  const almacen={},nodos={};
  const nodo=id=>nodos[id]||(nodos[id]={textContent:id==='tripRuta'?'recyde':'',classList:{s:new Set(['hidden']),add(k){this.s.add(k)},remove(k){this.s.delete(k)},toggle(k,on){if(on)this.s.add(k);else this.s.delete(k)},contains(k){return this.s.has(k)}}});

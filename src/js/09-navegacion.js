@@ -579,6 +579,90 @@ function textoTramos(){
  return '\n\n--- trazados de las marcas (pégalo entero, son los metros de alrededor) ---\n'
   +con.map(a=>'T|'+(a.ruta||'')+'|'+(Number.isFinite(+a.km)?+a.km:'')+'|'+a.tramo.m0+'|'+a.tramo.p.join(',')).join('\n');
 }
+// LOS GIROS DE LA RUTA, EN UNA LISTA (25 de noviembre de 2026). Hasta hoy los
+// avisos de una ruta solo se podian ver en el ordenador, corriendo
+// scripts/avisos-referencia.cjs: en el movil no habia forma de saber que va a
+// decir una ruta sin hacerla, asi que una ruta recien creada se estrenaba en
+// el monte. La idea es de otro navegador que miro el autor (su pestaña
+// «Pasos»); aqui, ademas, cada giro se toca y se ve en el mapa.
+//
+// LA VUELTA SE MUESTRA COMO LA DICE EL NAVEGADOR DE VERDAD: con la lista de
+// vuelta si esta calculada y, si no, la de ida del reves y con los lados
+// cambiados, que es exactamente lo que hace el guiado (buscaAvisoMarcable le
+// pasa a textoDeGiro ese mismo «alReves»). Si no fuera igual, la lista
+// mentiria justo en el sentido en el que el autor encuentra mas fallos.
+function finDeLaRuta(){
+ return Array.isArray(routeCumulative)&&routeCumulative.length?routeCumulative[routeCumulative.length-1]:0;
+}
+function girosDeLaRuta(reves){
+ const fin=finDeLaRuta();
+ let lista,cambia=false;
+ if(!reves)lista=Array.isArray(junctions)?junctions:[];
+ else if(Array.isArray(junctionsReves))lista=junctionsReves;
+ else {lista=(Array.isArray(junctions)?junctions:[]).slice().reverse();cambia=true}
+ return lista.map(j=>({
+  km:Math.max(0,(reves?fin-j.along:j.along))/1000,
+  texto:textoDeGiro(j,cambia),
+  clase:j.rotonda?'rotonda':j.cruce?'cruce':'curva',
+  // Los grados de una rotonda son el barrido del anillo, que no dice nada
+  // de lo que vas a hacer: ahi manda el numero de salida.
+  grados:j.rotonda||!(j.angle>0)?0:Math.round(j.angle),
+  point:j.point,
+ }));
+}
+function textoResumenGiros(filas){
+ const fin=finDeLaRuta();
+ if(!filas.length)return 'Esta ruta no da ningún aviso de giro'+(fin>0?' en sus '+(fin/1000).toFixed(1).replace('.',',')+' km':'')+'.';
+ const cuenta=c=>filas.filter(f=>f.clase===c).length;
+ const trozo=(c,uno,varios)=>{const n=cuenta(c);return n?n+' '+(n===1?uno:varios):''};
+ const partes=[trozo('cruce','cruce','cruces'),trozo('curva','curva','curvas'),trozo('rotonda','rotonda','rotondas')].filter(Boolean);
+ return filas.length+(filas.length===1?' aviso':' avisos')
+  +(fin>0?' en '+(fin/1000).toFixed(1).replace('.',',')+' km':'')
+  +(partes.length>1?': '+partes.join(', '):'')+'.';
+}
+let girosAlReves=false;
+function pintaGirosRuta(){
+ if(typeof $!=='function')return;
+ const b=$('girosRuta');if(!b||!b.classList)return;
+ const hay=Array.isArray(junctions)&&junctions.length>0;
+ b.classList.toggle('hidden',!hay);
+ // Si la ruta se quita con la lista abierta, la lista se va con ella.
+ if(!hay&&$('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.add('hidden');
+}
+function abreGirosRuta(reves){
+ if(typeof $!=='function')return[];
+ girosAlReves=!!reves;
+ const filas=girosDeLaRuta(girosAlReves);
+ if($('girosResumen'))$('girosResumen').textContent=textoResumenGiros(filas);
+ [['girosIda',!girosAlReves],['girosVuelta',girosAlReves]].forEach(([id,on])=>{
+  const t=$(id);if(!t||!t.classList)return;
+  t.classList.toggle('activo',on);
+  if(typeof t.setAttribute==='function')t.setAttribute('aria-pressed',on?'true':'false');
+ });
+ const lista=$('girosLista');
+ if(lista&&typeof document!=='undefined'&&typeof document.createElement==='function'){
+  lista.innerHTML='';
+  if(!filas.length){
+   const v=document.createElement('div');v.className='giro-vacio';
+   v.textContent='Sin avisos en este sentido.';lista.appendChild(v);
+  }
+  filas.forEach(f=>{
+   const fila=document.createElement('button');
+   fila.type='button';fila.className='giro-fila';fila.setAttribute('role','listitem');
+   const km=document.createElement('b');km.className='giro-km';km.textContent='km '+f.km.toFixed(2).replace('.',',');
+   const que=document.createElement('span');que.className='giro-que';que.textContent=f.texto;
+   fila.appendChild(km);fila.appendChild(que);
+   if(f.grados){const g=document.createElement('i');g.className='giro-grados';g.textContent=f.grados+'°';fila.appendChild(g)}
+   if(Array.isArray(f.point))fila.addEventListener('click',()=>{
+    try{if(typeof map!=='undefined'&&map&&typeof map.setView==='function')map.setView(f.point,17)}catch(e){}
+    if($('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.add('hidden');
+   });
+   lista.appendChild(fila);
+  });
+ }
+ if($('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.remove('hidden');
+ return filas;
+}
 if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $('avisoMal').addEventListener==='function'){
  $('avisoMal').addEventListener('click',marcaAvisoMal);
  if($('avisoFalta'))$('avisoFalta').addEventListener('click',marcaAvisoFalta);
@@ -605,6 +689,13 @@ if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $
    try{notice(si?'Botón ✋ Sobraba activado en este móvil':'Botón ✋ Sobraba desactivado')}catch(e){}}
  });
  pintaBotonAvisos();
+ if($('girosRuta')){
+  $('girosRuta').addEventListener('click',()=>abreGirosRuta(girosAlReves));
+  if($('girosCerrar'))$('girosCerrar').addEventListener('click',()=>$('girosDialogo').classList.add('hidden'));
+  if($('girosIda'))$('girosIda').addEventListener('click',()=>abreGirosRuta(false));
+  if($('girosVuelta'))$('girosVuelta').addEventListener('click',()=>abreGirosRuta(true));
+  pintaGirosRuta();
+ }
 }
 // Rumbo del mismo tramo que usa el progreso. En un cruce o en una ida y
 // vuelta, buscar otra vez el más cercano podría escoger la otra rama.
@@ -1023,7 +1114,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,tramoDeMarca,textoTramos,guardaAvisos,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={girosDeLaRuta,textoResumenGiros,pintaGirosRuta,abreGirosRuta,siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,tramoDeMarca,textoTramos,guardaAvisos,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});

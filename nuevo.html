@@ -177,6 +177,17 @@ button{min-width:0}
    comparten la clase .aviso-mal. */
 #avisoMal{bottom:70px}#map.con-giro #avisoMal{bottom:calc(66px + var(--turn-alto,0px))}
 #appVersion.con-mano::after{content:" ✋"}
+/* LOS GIROS DE LA RUTA, en una lista. Filas tocables: cada una lleva el
+   kilometro, la frase que se va a decir y los grados. */
+.giros-sentido{display:flex;gap:6px;margin:0 0 8px}
+.giros-sentido button{flex:1;padding:7px 10px;border-radius:10px;border:1px solid #2a3d4b;background:#0b1820;color:#9fb3c0;font-size:13px;font-weight:700}
+.giros-sentido button.activo{background:#15323f;color:#cfe3ec;border-color:#3d8ea4}
+.giros-lista{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;border:1px solid #2a3d4b;border-radius:10px;padding:6px;background:#0b1820}
+.giros-lista .giro-fila{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:7px 9px;border-radius:8px;border:1px solid #1d2d38;background:#0f1a20;color:#e6edf0;font-size:13px;line-height:1.3}
+.giros-lista .giro-km{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:700;color:#8fd3e4;min-width:62px}
+.giros-lista .giro-que{flex:1 1 auto;min-width:0}
+.giros-lista .giro-grados{flex:0 0 auto;font-variant-numeric:tabular-nums;color:#8fa6b2;font-size:12px}
+.giros-lista .giro-vacio{padding:10px;color:#8fa6b2;font-size:13px}
 #avisosTexto{width:100%;box-sizing:border-box;min-height:140px;font:12px/1.4 ui-monospace,monospace;background:#0b1820;color:#e6edf0;border:1px solid #2a3d4b;border-radius:10px;padding:8px;resize:vertical}
 #map.giro-al-lado .turn-hint{right:var(--giro-derecha,70px)}
 /* Por id y no por clase: «.info span» y «.info b» ponen display:block y
@@ -661,9 +672,9 @@ body.despejado #compass b{font-size:22px}
  <div class="crea-botones"><button type="button" id="creaGuardar" class="crea-guardar" disabled>&#10003; Guardar</button><button type="button" id="creaAbrir" class="crea-abrir hidden" disabled>&#10148; Abrir ruta</button></div>
 </section>
 <div class="crea-mandos"><div class="crea-pildora"><button type="button" id="creaDeshacer" aria-label="Deshacer el último tramo" title="Deshacer" disabled>&#8630;</button><button type="button" id="creaRehacer" aria-label="Rehacer" title="Rehacer" disabled>&#8631;</button></div><button type="button" id="creaMas" class="crea-mas" aria-label="Más opciones del trazado" aria-haspopup="menu" aria-expanded="false" aria-controls="creaMenu">&#8942;</button><div id="creaMenu" class="crea-menu hidden" role="menu"><button type="button" role="menuitem" id="creaCirculo">&#10227; Cerrar el círculo</button><button type="button" role="menuitem" id="creaIdaVuelta">&#8596; Ida y vuelta</button><button type="button" role="menuitem" id="creaBorrar" class="crea-borrar">&#10005; Borrar todo</button></div></div>
-<footer class="bottom"><div id="appUpdate" class="app-update hidden"><a id="appUpdateTexto" href="https://eltzubi.github.io/trabakutik-gps-pruebas/instalar.html">Hay una versión nueva de la app</a><button type="button" id="appUpdateCerrar" aria-label="Cerrar el aviso de versión nueva">✕</button></div><div id="soloApp" class="solo-app hidden"><b id="soloAppTitulo">La navegación va solo en la aplicación</b><span id="soloAppTexto">En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a id="soloAppBaja" class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="savedRoutes">Mis rutas</button><button type="button" id="avisosMarcados" class="hidden">✋ Avisos marcados</button><button id="crearDesdeRuta" type="button">✎ Crear</button><a id="openNativeGps" class="open-native hidden" href="#" title="Grabar y seguir esta ruta con la pantalla bloqueada">↗ Abrir en la aplicación</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Abrir ruta</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Empezar<small>graba la ruta y avisa de los giros</small></button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · elige una ruta o pulsa Empezar</div><div class="version hidden" id="appVersion"></div></footer>
+<footer class="bottom"><div id="appUpdate" class="app-update hidden"><a id="appUpdateTexto" href="https://eltzubi.github.io/trabakutik-gps-pruebas/instalar.html">Hay una versión nueva de la app</a><button type="button" id="appUpdateCerrar" aria-label="Cerrar el aviso de versión nueva">✕</button></div><div id="soloApp" class="solo-app hidden"><b id="soloAppTitulo">La navegación va solo en la aplicación</b><span id="soloAppTexto">En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a id="soloAppBaja" class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear</button></div><div class="actions" id="navActions"><button id="choose">Elegir ruta</button><button id="savedRoutes">Mis rutas</button><button type="button" id="avisosMarcados" class="hidden">✋ Avisos marcados</button><button type="button" id="girosRuta" class="hidden">↱ Giros</button><button id="crearDesdeRuta" type="button">✎ Crear</button><a id="openNativeGps" class="open-native hidden" href="#" title="Grabar y seguir esta ruta con la pantalla bloqueada">↗ Abrir en la aplicación</a></div><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Abrir ruta</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Empezar<small>graba la ruta y avisa de los giros</small></button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · elige una ruta o pulsa Empezar</div><div class="version hidden" id="appVersion"></div></footer>
 <div id="sosDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>SOS</h2><button type="button" class="close" id="closeSos" aria-label="Cerrar SOS">✕</button></div><div id="sosCuerpo"></div></div></div><div id="savedDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mis rutas</h2><button type="button" class="close" id="closeSaved" aria-label="Cerrar Mis rutas">✕</button></div><div class="import-gpx"><button type="button" id="importGpxBtn" title="Importar ruta desde un GPX del teléfono">＋ Importar GPX</button><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" style="display:none" aria-label="Elegir archivo GPX"></div><div id="savedItems"></div></div></div><div id="mapaDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Mapa sin cobertura</h2><button type="button" class="close" id="closeMapa" aria-label="Cerrar">✕</button></div><div class="mapa-cuerpo"><p id="mapaTexto">—</p><div id="mapaBarra" class="mapa-barra hidden"><i></i></div><p id="mapaGuardadoYa" class="mapa-ya"></p><div class="mapa-botones"><button type="button" id="mapaBajar">Guardar el mapa</button><button type="button" id="mapaParar" class="hidden">Parar</button><button type="button" id="mapaBorrar" class="mapa-borrar">Borrar lo guardado</button></div><p class="mapa-nota">Sólo se puede guardar el mapa del <b>IGN</b> y el de <b>satélite</b>: el Instituto Geográfico Nacional los publica con licencia CC-BY 4.0, que permite guardarlos citando el origen. OpenStreetMap lo prohíbe expresamente en sus teselas y OpenTopoMap no dice nada, así que esos dos no se bajan.</p></div></div></div><div id="routeDialog" class="popup hidden"><div class="sheet"><div class="sheet-header"><h2>Elegir ruta de Trabakutik</h2><button type="button" class="close" id="closeDialog" aria-label="Cerrar selector de rutas">✕</button></div><div id="routeListScope" class="route-list-scope" role="group" aria-label="Filtrar rutas"><button type="button" data-scope="all">Todas</button><button type="button" data-scope="near">Cerca de mí</button><button type="button" data-scope="current">Ruta actual</button></div><div id="routeListActivity" class="route-list-scope" role="group" aria-label="Actividad"><button type="button" data-activity="all">Todas las actividades</button><button type="button" data-activity="senderismo">Senderismo</button><button type="button" data-activity="bici">BTT/e-bike</button></div><input id="search" placeholder="Buscar por nombre…" autocomplete="off"><div id="items"></div></div></div>
-</div><div id="avisosDialogo" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="avisosTitulo"><section class="sheet"><div class="sheet-header"><h2 id="avisosTitulo">Avisos que sobraban</h2><button type="button" class="close" id="avisosCerrar" aria-label="Cerrar la lista de avisos">✕</button></div><p class="save-summary">Los que has marcado con ✋. Cópialos y pégalos en el chat para corregirlos.</p><textarea id="avisosTexto" readonly rows="8" aria-label="Lista de avisos marcados"></textarea><div class="save-choices"><button type="button" class="go" id="avisosCopiar">Copiar la lista</button><button type="button" class="red" id="avisosBorrar">Borrar la lista</button></div><p id="avisosEstado" class="save-status" role="status" aria-live="polite"></p></section></div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Abrir ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
+</div><div id="avisosDialogo" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="avisosTitulo"><section class="sheet"><div class="sheet-header"><h2 id="avisosTitulo">Avisos que sobraban</h2><button type="button" class="close" id="avisosCerrar" aria-label="Cerrar la lista de avisos">✕</button></div><p class="save-summary">Los que has marcado con ✋. Cópialos y pégalos en el chat para corregirlos.</p><textarea id="avisosTexto" readonly rows="8" aria-label="Lista de avisos marcados"></textarea><div class="save-choices"><button type="button" class="go" id="avisosCopiar">Copiar la lista</button><button type="button" class="red" id="avisosBorrar">Borrar la lista</button></div><p id="avisosEstado" class="save-status" role="status" aria-live="polite"></p></section></div><div id="girosDialogo" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="girosTitulo"><section class="sheet"><div class="sheet-header"><h2 id="girosTitulo">Giros de la ruta</h2><button type="button" class="close" id="girosCerrar" aria-label="Cerrar la lista de giros">✕</button></div><p id="girosResumen" class="save-summary"></p><div class="giros-sentido"><button type="button" id="girosIda" class="activo" aria-pressed="true">Ida</button><button type="button" id="girosVuelta" aria-pressed="false">Vuelta</button></div><div id="girosLista" class="giros-lista" role="list"></div><p class="save-status">Toca un giro para verlo en el mapa.</p></section></div><div id="saveDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="saveTitle"><section class="sheet"><div class="sheet-header"><h2 id="saveTitle">Guardar ruta</h2><button type="button" class="close" id="closeSave" aria-label="Cerrar opciones de guardado">✕</button></div><p id="saveSummary" class="save-summary"></p><div class="save-choices"><button type="button" class="go" id="saveToMine">Guardar en Mis rutas</button><button type="button" class="blue" id="downloadFromDialog">Descargar GPX</button><button type="button" class="amber hidden" id="shareFromDialog">Compartir GPX</button><button type="button" class="go hidden" id="navigateSavedFromDialog">Abrir ruta</button></div><p id="saveStatus" class="save-status" role="status" aria-live="polite"></p></section></div><script src="vendor/leaflet/leaflet.js"></script><script>
 (()=>{'use strict';
 // Los titulos de verdad de cada ruta. Sin esto la lista enseñaba el nombre
 // del archivo —«zengotitagarai», «askakosantakataline»— y no se sabia de que
@@ -3405,6 +3416,7 @@ function clearActiveRoute(){
  if(drawPoints.length||drawLayer||drawMarks.length)clearDraft();
  routePoints=[];chosen=-1;activeSavedId=null;hitosDeAviso=[];updateElevation();updateNativeLaunchLink();pintaBotonNavegar();directionArrows.clearLayers();
  junctions=[];junctionsReves=null;junctionWarned.clear();routeCumulative=[];crucesOsm=[];
+ if(typeof pintaGirosRuta==='function')pintaGirosRuta();
  $('clearActiveRoute').classList.add('hidden');
  $('title').textContent='Trabakutik GPS';
  setRouteTitle('Mapa de rutas',null);
@@ -5413,6 +5425,7 @@ function computeJunctions(){
  junctionsReves=vuelta?limpia(vuelta):null;
  junctionWarned.clear();junctionZoomOnce.clear();
  if(typeof updateDirectionArrows==='function')updateDirectionArrows();
+ if(typeof pintaGirosRuta==='function')pintaGirosRuta();
  enviaGirosNativos();
 }
 // CUATRO AVISOS EN NOVENTA METROS NO SON CUATRO AVISOS. En un enlace de
@@ -6730,6 +6743,90 @@ function textoTramos(){
  return '\n\n--- trazados de las marcas (pégalo entero, son los metros de alrededor) ---\n'
   +con.map(a=>'T|'+(a.ruta||'')+'|'+(Number.isFinite(+a.km)?+a.km:'')+'|'+a.tramo.m0+'|'+a.tramo.p.join(',')).join('\n');
 }
+// LOS GIROS DE LA RUTA, EN UNA LISTA (25 de noviembre de 2026). Hasta hoy los
+// avisos de una ruta solo se podian ver en el ordenador, corriendo
+// scripts/avisos-referencia.cjs: en el movil no habia forma de saber que va a
+// decir una ruta sin hacerla, asi que una ruta recien creada se estrenaba en
+// el monte. La idea es de otro navegador que miro el autor (su pestaña
+// «Pasos»); aqui, ademas, cada giro se toca y se ve en el mapa.
+//
+// LA VUELTA SE MUESTRA COMO LA DICE EL NAVEGADOR DE VERDAD: con la lista de
+// vuelta si esta calculada y, si no, la de ida del reves y con los lados
+// cambiados, que es exactamente lo que hace el guiado (buscaAvisoMarcable le
+// pasa a textoDeGiro ese mismo «alReves»). Si no fuera igual, la lista
+// mentiria justo en el sentido en el que el autor encuentra mas fallos.
+function finDeLaRuta(){
+ return Array.isArray(routeCumulative)&&routeCumulative.length?routeCumulative[routeCumulative.length-1]:0;
+}
+function girosDeLaRuta(reves){
+ const fin=finDeLaRuta();
+ let lista,cambia=false;
+ if(!reves)lista=Array.isArray(junctions)?junctions:[];
+ else if(Array.isArray(junctionsReves))lista=junctionsReves;
+ else {lista=(Array.isArray(junctions)?junctions:[]).slice().reverse();cambia=true}
+ return lista.map(j=>({
+  km:Math.max(0,(reves?fin-j.along:j.along))/1000,
+  texto:textoDeGiro(j,cambia),
+  clase:j.rotonda?'rotonda':j.cruce?'cruce':'curva',
+  // Los grados de una rotonda son el barrido del anillo, que no dice nada
+  // de lo que vas a hacer: ahi manda el numero de salida.
+  grados:j.rotonda||!(j.angle>0)?0:Math.round(j.angle),
+  point:j.point,
+ }));
+}
+function textoResumenGiros(filas){
+ const fin=finDeLaRuta();
+ if(!filas.length)return 'Esta ruta no da ningún aviso de giro'+(fin>0?' en sus '+(fin/1000).toFixed(1).replace('.',',')+' km':'')+'.';
+ const cuenta=c=>filas.filter(f=>f.clase===c).length;
+ const trozo=(c,uno,varios)=>{const n=cuenta(c);return n?n+' '+(n===1?uno:varios):''};
+ const partes=[trozo('cruce','cruce','cruces'),trozo('curva','curva','curvas'),trozo('rotonda','rotonda','rotondas')].filter(Boolean);
+ return filas.length+(filas.length===1?' aviso':' avisos')
+  +(fin>0?' en '+(fin/1000).toFixed(1).replace('.',',')+' km':'')
+  +(partes.length>1?': '+partes.join(', '):'')+'.';
+}
+let girosAlReves=false;
+function pintaGirosRuta(){
+ if(typeof $!=='function')return;
+ const b=$('girosRuta');if(!b||!b.classList)return;
+ const hay=Array.isArray(junctions)&&junctions.length>0;
+ b.classList.toggle('hidden',!hay);
+ // Si la ruta se quita con la lista abierta, la lista se va con ella.
+ if(!hay&&$('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.add('hidden');
+}
+function abreGirosRuta(reves){
+ if(typeof $!=='function')return[];
+ girosAlReves=!!reves;
+ const filas=girosDeLaRuta(girosAlReves);
+ if($('girosResumen'))$('girosResumen').textContent=textoResumenGiros(filas);
+ [['girosIda',!girosAlReves],['girosVuelta',girosAlReves]].forEach(([id,on])=>{
+  const t=$(id);if(!t||!t.classList)return;
+  t.classList.toggle('activo',on);
+  if(typeof t.setAttribute==='function')t.setAttribute('aria-pressed',on?'true':'false');
+ });
+ const lista=$('girosLista');
+ if(lista&&typeof document!=='undefined'&&typeof document.createElement==='function'){
+  lista.innerHTML='';
+  if(!filas.length){
+   const v=document.createElement('div');v.className='giro-vacio';
+   v.textContent='Sin avisos en este sentido.';lista.appendChild(v);
+  }
+  filas.forEach(f=>{
+   const fila=document.createElement('button');
+   fila.type='button';fila.className='giro-fila';fila.setAttribute('role','listitem');
+   const km=document.createElement('b');km.className='giro-km';km.textContent='km '+f.km.toFixed(2).replace('.',',');
+   const que=document.createElement('span');que.className='giro-que';que.textContent=f.texto;
+   fila.appendChild(km);fila.appendChild(que);
+   if(f.grados){const g=document.createElement('i');g.className='giro-grados';g.textContent=f.grados+'°';fila.appendChild(g)}
+   if(Array.isArray(f.point))fila.addEventListener('click',()=>{
+    try{if(typeof map!=='undefined'&&map&&typeof map.setView==='function')map.setView(f.point,17)}catch(e){}
+    if($('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.add('hidden');
+   });
+   lista.appendChild(fila);
+  });
+ }
+ if($('girosDialogo')&&$('girosDialogo').classList)$('girosDialogo').classList.remove('hidden');
+ return filas;
+}
 if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $('avisoMal').addEventListener==='function'){
  $('avisoMal').addEventListener('click',marcaAvisoMal);
  if($('avisoFalta'))$('avisoFalta').addEventListener('click',marcaAvisoFalta);
@@ -6756,6 +6853,13 @@ if(typeof document!=='undefined'&&typeof $==='function'&&$('avisoMal')&&typeof $
    try{notice(si?'Botón ✋ Sobraba activado en este móvil':'Botón ✋ Sobraba desactivado')}catch(e){}}
  });
  pintaBotonAvisos();
+ if($('girosRuta')){
+  $('girosRuta').addEventListener('click',()=>abreGirosRuta(girosAlReves));
+  if($('girosCerrar'))$('girosCerrar').addEventListener('click',()=>$('girosDialogo').classList.add('hidden'));
+  if($('girosIda'))$('girosIda').addEventListener('click',()=>abreGirosRuta(false));
+  if($('girosVuelta'))$('girosVuelta').addEventListener('click',()=>abreGirosRuta(true));
+  pintaGirosRuta();
+ }
 }
 // Rumbo del mismo tramo que usa el progreso. En un cruce o en una ida y
 // vuelta, buscar otra vez el más cercano podría escoger la otra rama.
@@ -7174,7 +7278,7 @@ if(window.TrabakutikAndroid?.shareSos){$('sos').hidden=false;$('sos').onclick=()
 // Para las pruebas: en la pagina «module» no existe y esto no hace nada. Su
 // estado va con accesores: se lee y se escribe la variable de verdad.
 if(typeof module==='object'&&module&&module.exports){
- module.exports={siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,tramoDeMarca,textoTramos,guardaAvisos,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
+ module.exports={girosDeLaRuta,textoResumenGiros,pintaGirosRuta,abreGirosRuta,siguienteManiobra,proximoCruceAviso,marcaAvisoFalta,guardaTrazadoDeMarca,tramoDeMarca,textoTramos,guardaAvisos,signoDelGiro,rumboDeLlegada,queRotonda,progressOnRoute,avanzaPorLaRuta,sigueMoviendose,colocaGiro,junctionGuidance,rumboDeLaRuta,pintaPosicionGps,onFix,miraPosicionNativa,syncNativeRoute,enciendeNavegacionNativa,startGPS,textoDeGiro,avisosMarcados,botonAvisosActivo,activaBotonAvisos,buscaAvisoMarcable,pintaAvisoMal,marcaAvisoMal,textoAvisos};
  Object.defineProperty(module.exports,'avisoMarcable',{get:()=>avisoMarcable,set:v=>{avisoMarcable=v}});
  Object.defineProperty(module.exports,'estadoGuia',{get:()=>estadoGuia,set:v=>{estadoGuia=v}});
  Object.defineProperties(module.exports,{anclaRumbo:{get:()=>anclaRumbo,set:v=>{anclaRumbo=v},enumerable:true},refParado:{get:()=>refParado,set:v=>{refParado=v},enumerable:true},refParadoT:{get:()=>refParadoT,set:v=>{refParadoT=v},enumerable:true},listaCrucesActiva:{get:()=>listaCrucesActiva,set:v=>{listaCrucesActiva=v},enumerable:true}});

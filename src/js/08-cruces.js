@@ -1055,6 +1055,7 @@ function computeJunctions(){
  junctionsReves=vuelta?limpia(vuelta):null;
  junctionWarned.clear();junctionZoomOnce.clear();
  if(typeof updateDirectionArrows==='function')updateDirectionArrows();
+ if(typeof pintaGirosRuta==='function')pintaGirosRuta();
  enviaGirosNativos();
 }
 // CUATRO AVISOS EN NOVENTA METROS NO SON CUATRO AVISOS. En un enlace de
