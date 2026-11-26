@@ -1129,9 +1129,15 @@ setInterval(()=>{
  if($('status').textContent!==mensaje)notice(mensaje);
  avisaSinGps(false);
 },5000);
+function heightsForNativeRoute(){
+ const base=typeof navigationProfilePoints==='function'?navigationProfilePoints():routePoints;
+ const aligned=base.length===routePoints.length&&base.every((p,i)=>p[0]===routePoints[i][0]&&p[1]===routePoints[i][1]);
+ return routePoints.map((p,i)=>[p[0],p[1],Number.isFinite(p[2])?p[2]:aligned&&Number.isFinite(base[i][2])?base[i][2]:null]);
+}
+function nativeRouteJson(){return JSON.stringify(heightsForNativeRoute())}
 function syncNativeRoute(){
  if(!window.TrabakutikAndroid||routePoints.length<2)return null;
- const json=JSON.stringify(routePoints.map(p=>[p[0],p[1],Number.isFinite(p[2])?p[2]:null]));
+ const json=nativeRouteJson();
  nativeRouteKey=0;
  for(let i=0;i<json.length;i++)nativeRouteKey=(Math.imul(nativeRouteKey,31)+json.charCodeAt(i))|0;
  try{

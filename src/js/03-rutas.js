@@ -329,6 +329,8 @@ function selectRoute(i){
  resetOffRoute(guiaIniciada()&&routePoints.length>1);resetJunctionView();junctionWarned.clear();junctionZoom=null;
  if(savedLine){map.removeLayer(savedLine);savedLine=null}
  chosen=i;
+ navProfileCollapsed=false;
+ profileHeightsError=false;
  updateNativeLaunchLink();
 
  // Los cruces llegan con la ruta fina, no con la gorda: hasta que llegue, sin
