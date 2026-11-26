@@ -748,7 +748,20 @@ function loadProfileHeights(){
   .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
   .then(data=>{if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Alturas no válidas');profileHeights=data})
   .catch(()=>{profileHeightsError=true})
-  .finally(()=>{profileHeightsRequest=null;updateElevation()});
+  .finally(()=>{
+   profileHeightsRequest=null;
+   updateElevation();
+   // Si el detalle Garmin no ha llegado, enviar las alturas alineadas con
+   // la geometría activa. No sustituir puntos ni índices de los cruces.
+   if(!profileHeightsError&&typeof syncNativeRoute==='function'&&typeof window!=='undefined'&&window.TrabakutikAndroid&&typeof chosen!=='undefined'&&chosen>=0&&routePoints.length>1){
+    const pts=heightsForNativeRoute();
+    if(pts.some((p,i)=>Number.isFinite(p[2])&&!Number.isFinite(routePoints[i][2]))&&typeof nativeRouteJson==='function'){
+     const json=nativeRouteJson();
+     let key=0;for(let i=0;i<json.length;i++)key=(Math.imul(key,31)+json.charCodeAt(i))|0;
+     if(key!==nativeRouteKey)syncNativeRoute();
+    }
+   }
+  });
 }
 if(typeof $==='function'){
 $('toggleProfile').onclick=()=>{
@@ -776,7 +789,7 @@ function updateElevation(){
  toggle.setAttribute('aria-label',collapsed?'Desplegar perfil':'Plegar perfil');
  toggle.textContent=collapsed?'⌃':'⌄';
  if(!visible)return;
- if(!creating&&!collapsed)loadProfileHeights();
+ if(!creating)loadProfileHeights();
  const pts=creating?drawPoints:navigationProfilePoints(),available=pts.filter(p=>Number.isFinite(p[2]));
  panel.classList.toggle('profile-empty',pts.length<2||available.length<2);
  panel.classList.toggle('profile-distance-only',pts.length>=2&&available.length<2);

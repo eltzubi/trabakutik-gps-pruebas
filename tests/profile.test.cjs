@@ -46,9 +46,9 @@ test('Sin ruta se oculta; sin alturas no inventa un perfil ni un desnivel cero',
  assert.equal(c.$('elevationPath').getAttribute('d'),'');assert.equal(c.$('profileGain').textContent,'↑ —');
  assert.equal(c.$('profileLow').textContent,'Sin alturas suficientes');
 });
-test('Las alturas se cargan solo al desplegar; un fallo de red deja un mensaje y permite reintentar',async()=>{
+test('Las alturas se cargan incluso plegadas; un fallo de red deja un mensaje y permite reintentar',async()=>{
  const c=fixture();c.chosen=0;c.tracks=[{href:'ruta.html',points:[[0,0],[0,.001]]}];
- c.updateElevation();assert.equal(c.calls.length,0);c.$('toggleProfile').click();
+ c.updateElevation();assert.equal(c.calls.length,1);c.$('toggleProfile').click();
  assert.equal(c.calls.length,1);await c.run('profileHeightsRequest');
  assert.equal(c.$('profileLow').textContent,'Sin alturas suficientes');
  c.$('toggleProfile').click();c.fetch=()=>{c.calls.push('retry');return Promise.resolve({ok:true,json:()=>({ruta:[100,120]})})};
@@ -122,4 +122,22 @@ test('El desnivel del perfil de navegación cuenta igual que «Ruta propia»: si
  c.updateElevation();
  assert.equal(c.$('profileGain').textContent,'↑ 10 m aprox.');
  assert.equal(c.$('profileLoss').textContent,'↓ 0 m aprox.');
+});
+
+test('La carga de alturas no depende de desplegar el perfil',async()=>{
+ const c=fixture();c.chosen=0;c.tracks=[{href:'ruta.html',points:[[0,0],[0,.001]]}];
+ c.fetch=()=>Promise.resolve({ok:true,json:()=>({ruta:[100,120]})});
+ c.updateElevation();await c.run('profileHeightsRequest');
+ assert.equal(c.$('toggleProfile').getAttribute('aria-expanded'),'false');
+ assert.match(c.$('elevationPath').getAttribute('d'),/^M/);
+});
+test('El servicio recibe alturas alineadas sin cambiar la geometría ni los índices',()=>{
+ const c=fixture();
+ const start=html.indexOf('function heightsForNativeRoute(){'),end=html.indexOf('function syncNativeRoute(){',start);
+ assert(start>=0&&end>start);vm.runInContext(html.slice(start,end),c);
+ c.chosen=0;c.routePoints=[[0,0],[0,.001]];c.tracks=[{href:'ruta.html',points:c.routePoints}];
+ c.run('profileHeights={ruta:[100,120]}');
+ assert.equal(c.run('nativeRouteJson()'),'[[0,0,100],[0,0.001,120]]');
+ c.routePoints=[[1,0],[1,.001]];
+ assert.equal(c.run('nativeRouteJson()'),'[[1,0,null],[1,0.001,null]]');
 });
