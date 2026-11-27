@@ -581,7 +581,8 @@ async function setup(context) {
     await opciones.goto(base+'nuevo.html');
     await opciones.click('#crearDesdeRuta');
     await opciones.waitForFunction(()=>window.__creator?.redGps);
-    assert.equal(await opciones.locator('#creadorActividad').textContent(),'Senderismo');
+    assert.deepEqual(await opciones.locator('#creadorModo button').allTextContents(),['Punto a punto','Inicio y destino']);
+    assert.doesNotMatch(await opciones.locator('#creadorDock').textContent(),/Senderismo/);
     assert.equal(await opciones.locator('#creadorDock select').count(),0);
     await opciones.evaluate(()=>{
       const {map,onFix,MotorSenderismo}=window.__creator;
