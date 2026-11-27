@@ -610,7 +610,11 @@ async function setup(context) {
     assert.equal(await opciones.evaluate(()=>window.__creator.drawPoints.length),0);
     await extremos();
     await opciones.getByRole('button',{name:'Elegir ruta',exact:true}).click();
-    await opciones.waitForFunction(()=>window.__creator.drawPoints.length===3);
+    await opciones.waitForFunction(()=>window.__creator.drawPoints.length>=3);
+    assert.deepEqual(await opciones.evaluate(()=>{
+      const pts=window.__creator.drawPoints;
+      return [pts[0].slice(0,2),pts.at(-1).slice(0,2)];
+    }),[[43.01,-2.01],[43.015,-2.01]]);
     await opciones.close();
     console.log('PASS Chromium: solo Senderismo, vista quieta al dibujar y alternativas que se pueden elegir o descartar');
     failPlanner=true;
