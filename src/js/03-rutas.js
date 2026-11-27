@@ -62,7 +62,9 @@ function applyNearbyPosition(p){
  showRoutesIfOpen();
  notice(nearbyCount?nearbyCount+' rutas cerca de ti · de la que más cerca te pasa a la que menos':'No hay ninguna ruta con salida a 4 km ni que te pase a 1,5 km');
 }
-function showRoutesIfOpen(){if(!$('routeDialog').classList.contains('hidden'))showRoutes()}
+function showRoutesIfOpen(){
+ if(!$('savedDialog').classList.contains('hidden')&&!$('routeDialog').classList.contains('hidden'))showRoutes();
+}
 function quickNativePosition(){
  try{
   if(!window.TrabakutikAndroid?.getLastLocation)return null;
@@ -339,7 +341,7 @@ function selectRoute(i){
  routePoints=tracks[i].points.map(p=>[p[0],p[1]]);pintaBotonMapa();
  updateElevation();
  drawAll();
- $('routeDialog').classList.add('hidden');
+ $('savedDialog').classList.add('hidden');
  notice('Ruta seleccionada · preparando recorrido');
  // Primero devolver control al navegador y pintar; calcular los giros
  // en el siguiente ciclo, sin bloquear la apertura desde la ficha.
@@ -417,7 +419,7 @@ document.querySelectorAll('#routeListActivity button').forEach(b=>b.onclick=()=>
  actividadRutas=b.dataset.activity;
  showRoutes();
 });
-$('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
+$('search').oninput=showRoutes;
 function changeMode(m){
  centrarEditorAlLocalizar=false;
  if(m!=='create')cancelaAlternativas();

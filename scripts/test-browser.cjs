@@ -220,7 +220,22 @@ async function setup(context) {
       const last=await page.locator('#minus').boundingBox();
       assert(last.y>=0&&last.y+last.height<=size.height,'zoom accesible con poca altura');
     }
-    await page.click('#choose');
+    assert.deepEqual(await page.locator('#navActions > button').allTextContents(),['Mis rutas','Importar GPX','Crear ruta']);
+    await page.click('#savedRoutes');
+    assert(await page.locator('#savedItems').isVisible());
+    assert.equal(await page.locator('#tabSaved').getAttribute('aria-selected'),'true');
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('#tabTrabakutik').getAttribute('aria-selected'),'true');
+    assert(await page.locator('#routeDialog').isVisible());
+    await page.keyboard.press('ArrowLeft');
+    assert(await page.locator('#savedItems').isVisible());
+    await page.keyboard.press('Escape');
+    const abreCatalogo=async()=>{
+      await page.click('#savedRoutes');
+      await page.click('#tabTrabakutik');
+      assert(await page.locator('#savedItems').isHidden());
+    };
+    await abreCatalogo();
     await page.locator('#search').click();
     assert(await page.locator('#routeDialog').isVisible(),'tocar dentro conserva el selector');
     // La salida con mas salidas de otras rutas a menos de 1 km, no la de la
@@ -237,7 +252,7 @@ async function setup(context) {
     await page.locator('#items .routeitem').first().click();
     await page.click('#eye');
     assert(await page.locator('#backgroundRouteLegend').isVisible());
-    await page.click('#choose');
+    await abreCatalogo();
     await page.locator('[data-scope="near"]').click();
     assert.match(await page.locator('#items .routeitem').first().textContent(), /0 m hasta el trazado/);
     assert.match(await page.locator('#items .routeitem').first().textContent(), /Senderismo|E-bike|Mixta/);
@@ -264,9 +279,9 @@ async function setup(context) {
     assert(await page.evaluate(()=>window.__coloresCapa.some(([pane,color])=>pane==='rutaActiva'&&color==='#071822')));
 
     await page.reload();
-    await page.click('#choose');
-    await page.locator('#routeDialog').click({position:{x:3,y:3}});
-    assert(await page.locator('#routeDialog').isHidden(),'tocar fuera cierra el selector');
+    await abreCatalogo();
+    await page.locator('#savedDialog').click({position:{x:3,y:3}});
+    assert(await page.locator('#savedDialog').isHidden(),'tocar fuera cierra el selector');
     await page.click('#savedRoutes');
     await page.keyboard.press('Escape');
     assert(await page.locator('#savedDialog').isHidden(),'Escape cierra Mis rutas');
@@ -274,11 +289,16 @@ async function setup(context) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.selectOption("#basemap", "ign");
     assert.match(await page.locator("#mapCredit").textContent(), /conexión/);
-    await page.click("#savedRoutes");
+    const abreSelectorGpx = async () => {
+      const selector = page.waitForEvent('filechooser');
+      await page.click('#importGpxBtn');
+      assert(await page.locator('#savedDialog').isHidden(),'Importar GPX abre el selector directamente');
+      return selector;
+    };
     let invalidImport='';
     const dialogCheck=dialog=>{invalidImport=dialog.message()};
     page.on('dialog',dialogCheck);
-    await page.setInputFiles('#importGpxFile',{
+    await (await abreSelectorGpx()).setFiles({
       name:'coordenada-ausente.gpx',mimeType:'application/gpx+xml',
       buffer:Buffer.from('<gpx><trk><trkseg><trkpt lon="-2"/><trkpt lat="43.1" lon="-2.1"/></trkseg></trk></gpx>')
     });
@@ -292,7 +312,7 @@ async function setup(context) {
       (_, i) =>
         `<trkpt lat="${43 + i * 0.00001}" lon="-2"><ele>${100 + 2 * Math.min(i, 100 - i)}</ele></trkpt>`,
     ).join("");
-    await page.setInputFiles("#importGpxFile", {
+    await (await abreSelectorGpx()).setFiles({
       name: "prueba-cima.gpx",
       mimeType: "application/gpx+xml",
       buffer: Buffer.from(
@@ -301,6 +321,8 @@ async function setup(context) {
           "</trkseg></trk></gpx>",
       ),
     });
+    await page.locator('#savedDialog').waitFor();
+    assert.equal(await page.locator('#tabSaved').getAttribute('aria-selected'),'true');
     await page
       .getByRole("button", { name: /Prueba cima · GPX importado/ })
       .click();

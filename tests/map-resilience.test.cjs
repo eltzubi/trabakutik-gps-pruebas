@@ -28,11 +28,11 @@ for(const file of ['nuevo.html']){
  });
  test(file+': tocar el interior conserva el panel; el fondo lo cierra',()=>{
   const nodes={};let closed=0;
-  for(const id of ['routeDialog','savedDialog','saveDialog','closeDialog','closeSaved'])nodes[id]={addEventListener(t,fn){this.fn=fn},click(){closed++}};
+  for(const id of ['savedDialog','saveDialog','closeSaved'])nodes[id]={addEventListener(t,fn){this.fn=fn},click(){closed++}};
   const c={$:id=>nodes[id],closeSaveDialog(){closed++},document:{addEventListener(){}}};vm.createContext(c);
   vm.runInContext(html.slice(html.indexOf('// Tocar el panel'),html.indexOf("if('serviceWorker' in navigator){")),c);
-  nodes.routeDialog.fn({target:{}});assert.equal(closed,0);
-  nodes.routeDialog.fn({target:nodes.routeDialog});assert.equal(closed,1);
+  nodes.savedDialog.fn({target:{}});assert.equal(closed,0);
+  nodes.savedDialog.fn({target:nodes.savedDialog});assert.equal(closed,1);
   nodes.saveDialog.fn({target:nodes.saveDialog});assert.equal(closed,2);
  });
 }

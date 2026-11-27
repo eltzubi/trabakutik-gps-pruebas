@@ -304,7 +304,7 @@ fetch('data/rutas.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
  // Puede llegar despues de que se haya pintado algo: se repinta.
  if(chosen>=0&&tracks[chosen]){$('title').textContent=toName(tracks[chosen]);setRouteTitle(toName(tracks[chosen]),tracks[chosen].href)}
  updateElevation();
- if(!$('routeDialog').classList.contains('hidden'))showRoutes();
+ showRoutesIfOpen();
 }).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
 fetchRouteJson('data/trailhead.json',{cache:'no-cache'}).then(data=>{
  tracks=data.tracks.filter(t=>t.points?.length>1);
@@ -321,12 +321,12 @@ fetchRouteJson('data/trailhead.json',{cache:'no-cache'}).then(data=>{
 // Pages y ademas con la cache del WebView desactivada, asi que sin esto, en
 // el monte y sin red, abrir la app de cero no daba nada.
 // Tocar el panel no cierra; tocar su fondo equivale a la X.
-for(const [id,close] of [['routeDialog',()=>$('closeDialog').click()],['savedDialog',()=>$('closeSaved').click()],['saveDialog',closeSaveDialog]]){
+for(const [id,close] of [['savedDialog',()=>$('closeSaved').click()],['saveDialog',closeSaveDialog]]){
  $(id).addEventListener('click',e=>{if(e.target===$(id))close()});
 }
 document.addEventListener('keydown',e=>{
  if(e.key!=='Escape')return;
- for(const id of ['closeSave','closeSaved','closeDialog']){
+ for(const id of ['closeSave','closeSaved']){
   const button=$(id);if(!button.closest('.popup').classList.contains('hidden')){button.click();break}
  }
 });

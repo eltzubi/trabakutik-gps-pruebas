@@ -576,7 +576,7 @@ function parseImportedGpx(text,filename){
  return hitos.length?{name,points,excluded,hitos}:{name,points,excluded};
 }
 $('importGpxBtn').onclick=()=>$('importGpxFile').click();
-// IMPORTAR UN GPX: desde el boton de «Mis rutas» y, desde el 17 nov 2026,
+// IMPORTAR UN GPX: desde el boton de la pantalla principal y, desde el 17 nov 2026,
 // tambien desde fuera de la app (Abrir con / Compartir, ver MainActivity): el
 // autor intento abrir un GPX desde el gestor de archivos y Trabakutik no salia
 // en la lista. Las dos entradas pasan por aqui con las mismas comprobaciones.
@@ -599,8 +599,8 @@ function importaTextoGpx(texto,nombre,abrir){
   if(!putSaved([item,...list]))throw new Error('No hay espacio para guardar la ruta. No se ha importado.');
   // Desde fuera se abre DIRECTAMENTE como ruta activa: el autor quiere pulsar
   // el GPX en Descargas y tenerlo en el navegador. Desde el boton, la lista.
-  if(abrir){$('savedDialog').classList.add('hidden');loadSaved(item)}
-  else showSaved();
+  if(abrir)loadSaved(item);
+  else abreMisRutas();
   notice('GPX importado: '+item.name+' · '+item.points.length+' puntos');
   return true;
  }catch(err){alert('No se pudo importar: '+err.message);notice('Error al importar GPX');return false}
@@ -697,8 +697,35 @@ function pintaGrabaciones(target){
  }
  target.append(caja);
 }
-$('savedRoutes').onclick=()=>{$('savedDialog').classList.remove('hidden');showSaved()};
-$('closeSaved').onclick=()=>$('savedDialog').classList.add('hidden');
+function cambiaPestanaRutas(catalogo){
+ const guardadas=$('tabSaved'),trabakutik=$('tabTrabakutik');
+ guardadas.setAttribute('aria-selected',String(!catalogo));
+ guardadas.tabIndex=catalogo?-1:0;
+ trabakutik.setAttribute('aria-selected',String(catalogo));
+ trabakutik.tabIndex=catalogo?0:-1;
+ $('savedItems').classList.toggle('hidden',catalogo);
+ $('routeDialog').classList.toggle('hidden',!catalogo);
+ if(catalogo)showRoutes();else showSaved();
+}
+function abreMisRutas(){
+ $('savedDialog').classList.remove('hidden');
+ cambiaPestanaRutas(false);
+ $('tabSaved').focus();
+}
+$('savedRoutes').onclick=abreMisRutas;
+$('tabSaved').onclick=()=>cambiaPestanaRutas(false);
+$('tabTrabakutik').onclick=()=>cambiaPestanaRutas(true);
+$('rutasTabs').addEventListener('keydown',e=>{
+ if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+ e.preventDefault();
+ const catalogo=e.key==='End'||e.key!=='Home'&&e.target===$('tabSaved');
+ cambiaPestanaRutas(catalogo);
+ $(catalogo?'tabTrabakutik':'tabSaved').focus();
+});
+$('closeSaved').onclick=()=>{
+ $('savedDialog').classList.add('hidden');
+ $('savedRoutes').focus();
+};
 $('saveCreated').onclick=()=>{
  if(calculandoMapaGps){estadoMapaGps('Espera a que termine el cálculo antes de guardar.');return}
  if(drawPoints.length<2)return;
