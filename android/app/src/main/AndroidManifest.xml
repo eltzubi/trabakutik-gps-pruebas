@@ -24,12 +24,10 @@
        Aqui no hay layouts por orientacion que cambiar -la interfaz se monta
        en codigo y los dos WebView se redimensionan solos-, asi que lo
        correcto es que la Activity sobreviva al cambio. -->
-  <!-- LA PANTALLA DEL CRUCE (23 nov 2026). Se enciende sola por encima del
-       bloqueo y se cierra sola; no sale en recientes y no deja rastro. No
-       lleva WebView: dibuja en Java, para no despertar la pagina. -->
+  <!-- La tarjeta de giro se muestra con la pantalla activa y desbloqueada.
+       Se cierra sola y no aparece en recientes. -->
   <activity android:name=".GiroActivity" android:exported="false"
    android:launchMode="singleTop" android:excludeFromRecents="true" android:noHistory="true"
-   android:showWhenLocked="true" android:turnScreenOn="true"
    android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
    android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|density|uiMode"/>
   <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop"

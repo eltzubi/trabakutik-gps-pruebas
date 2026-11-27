@@ -62,6 +62,7 @@ public class GirosLimiteTest {
  Map<double[],Integer> gradosDeGiro=new HashMap<>();
  void abrePantallaGiro(int a,int b,int c,int d,int[] e,int f,int g){}
  boolean pantallaCruces(){return false;}
+ boolean pantallaGiroDisponible(){return false;}
  void alargaPantallaGiro(){}
 ''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + linea(' static final String[] ORDINALES=') + '\n' + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead,int salida)') + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead){') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}

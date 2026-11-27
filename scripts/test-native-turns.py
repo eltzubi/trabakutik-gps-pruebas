@@ -35,6 +35,8 @@ public class NativeTurnsTest {
  // La ficha vive mientras el cruce siga por delante: aqui se cuenta cuantas
  // veces se le ha dado cuerda, que es lo que la mantiene abierta.
  boolean pantallaCruces(){return true;}
+ boolean pantallaActiva=true, pantallaBloqueada=false;
+ boolean pantallaGiroDisponible(){return pantallaActiva&&!pantallaBloqueada;}
  int cuerdas=0;
  void alargaPantallaGiro(){cuerdas++;}
  void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
@@ -218,6 +220,17 @@ public class NativeTurnsTest {
   // 100 m quedan diez segundos y la ficha vive catorce. Antes eran doce
   // fijos abiertos 18 s antes, y se apagaba 6 s ANTES de llegar al cruce.
   require(d.pantallas.get(0).equals("Izquierda|100|90|0|14"),"abierta con el primer pitido y con sus segundos: "+d.pantallas);
+  for(boolean bloqueada:new boolean[]{false,true}){
+   NativeTurnsTest audio=new NativeTurnsTest();
+   audio.pantallaActiva=bloqueada;
+   audio.pantallaBloqueada=bloqueada;
+   audio.route.addAll(d.route);
+   audio.turns.addAll(d.turns);
+   for(int m=0;m<=99;m+=5)audio.posicion(new Location(m));
+   require(audio.pantallas.isEmpty()&&audio.cuerdas==0,"sin tarjeta con pantalla apagada o bloqueada");
+   require(audio.beeps>0&&audio.beeps==d.beeps&&audio.dicho.equals(d.dicho)&&!audio.dicho.isEmpty(),
+     "la misma voz y pitidos con pantalla apagada o bloqueada: "+audio.dicho);
+  }
   // DOS CRUCES SEGUIDOS ENCIENDEN LA PANTALLA DOS VECES. El autor: «si a
   // 50-100 metros hay otro cruce se volveria a encender; el segundo no
   // aparece en dibujo, me aparece lo que tengo en pantalla».

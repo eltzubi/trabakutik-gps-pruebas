@@ -840,10 +840,11 @@ public class TrackingService extends Service implements LocationListener {
   try{return getSharedPreferences("tracking_live",MODE_PRIVATE).getBoolean("pantallaCruces",false);}
   catch(Exception e){return false;}
  }
+ boolean pantallaGiroDisponible(){return GiroActivity.pantallaDisponible(this);}
  void creaCanalGiro(){
   try{
    NotificationChannel c=new NotificationChannel(CANAL_GIRO,"Pantalla en los cruces",NotificationManager.IMPORTANCE_HIGH);
-   c.setDescription("Enciende la pantalla al llegar a un cruce, para verlo en el soporte de la bici");
+   c.setDescription("Muestra el giro si la pantalla ya está activa y desbloqueada");
    c.enableVibration(false);c.setSound(null,null);
    ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);
   }catch(Exception ignored){}
@@ -854,7 +855,7 @@ public class TrackingService extends Service implements LocationListener {
  // alarmas-, queda la notificacion, que al menos se asoma.
  void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
   try{
-   if(!pantallaCruces())return;
+   if(!pantallaGiroDisponible())return;
    // SI LA ACABAS DE QUITAR CON EL DEDO, NO VUELVE ENSEGUIDA. Antes aqui
    // habia un «con la aplicacion delante, no se abre», y eso la dejo MUDA:
    // el autor va con la aplicacion delante en el soporte de la bici, no con
@@ -1497,19 +1498,15 @@ public class TrackingService extends Service implements LocationListener {
         }
       }
      }
-     // LA PANTALLA DEL CRUCE VA CON EL PRIMER PITIDO, NO CON LA VOZ. Abierta
-     // con la voz se encendia 18 s antes y los 12 s fijos se le acababan 6 s
-     // ANTES de llegar: el autor veia el dibujo y luego la pantalla apagada
-     // justo en el cruce. Con el primer pitido (9 s) y los segundos que
-     // faltan de verdad mas cuatro, esta encendida AL cruzar, se apaga
-     // enseguida y gasta lo mismo o menos.
-     if(!curvaNueva&&!rectaSinNumero&&ahead<=d1&&ahead>=-2){
+     // La tarjeta visual empieza con el primer pitido. La voz y los tonos
+     // se calculan arriba, con independencia del estado de la pantalla.
+     if(!curvaNueva&&!rectaSinNumero&&ahead<=d1&&ahead>=-2&&pantallaCruces()&&pantallaGiroDisponible()){
       if(warnedTurns.add((usaReves?"r":"")+mejor+":pant")){
        double vp=velocidadSuave>0?velocidadSuave:1.2;
        int seg=(int)Math.max(6,Math.min(20,Math.round(ahead/vp)+4));
        abrePantallaGiro(lado,tipo,salida,(int)Math.max(0,Math.round(ahead/5)*5),ramalesDeGiro.get(giro),
          gradosDeGiro.containsKey(giro)?gradosDeGiro.get(giro):gradosDelGiro(tipo),seg);
-      }else if(pantallaCruces()){
+      }else{
        // Sigue por delante: se le da cuerda para que no se cierre todavia.
        alargaPantallaGiro();
       }
