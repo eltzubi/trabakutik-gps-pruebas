@@ -1,6 +1,7 @@
 package com.trabakutik.gps;
 
 import android.app.Activity;
+import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Canvas;
@@ -8,10 +9,10 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -22,10 +23,8 @@ import android.widget.FrameLayout;
  * donde tengo que ir... tiene que ser un giro, un dibujo, algo que se entienda
  * de un plumazo».
  *
- * Se enciende sola al acercarse al cruce, por encima del bloqueo, y se cierra
- * sola. NO ABRE EL NAVEGADOR: dibuja aqui mismo, en Java. Despertar la pagina
- * es lo que costaba la bateria -de 10 %/h se bajo a 5,5 durmiendola-, asi que
- * esto no la toca: ni mapa, ni teselas, ni red.
+ * Solo aparece con la pantalla activa y desbloqueada. Dibuja en Java y se
+ * cierra sola, sin abrir el navegador ni cargar el mapa.
  *
  * Lo que se ve: la flecha del giro lo mas grande que cabe, los metros, y el
  * lado en una palabra. El croquis del cruce SOLO si hay algun ramal que te
@@ -57,6 +56,12 @@ public class GiroActivity extends Activity {
   cuerda.postDelayed(this,500);
  }};
 
+ static boolean pantallaDisponible(Context context){
+  PowerManager power=context.getSystemService(PowerManager.class);
+  KeyguardManager bloqueo=context.getSystemService(KeyguardManager.class);
+  return power!=null&&power.isInteractive()&&bloqueo!=null&&!bloqueo.isKeyguardLocked();
+ }
+
  public static Intent intent(Context c,int lado,int grados,int metros,String texto,int[] ramales,int segundos){
   return intent(c,lado,grados,metros,texto,ramales,segundos,1);
  }
@@ -72,9 +77,8 @@ public class GiroActivity extends Activity {
  @Override protected void onCreate(Bundle b){
   super.onCreate(b);
   try{
-   if(Build.VERSION.SDK_INT>=27){setShowWhenLocked(true);setTurnScreenOn(true);}
-   getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-     |WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+   if(!pantallaDisponible(this)){finish();return;}
+   getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
    FrameLayout raiz=new FrameLayout(this);
    raiz.setBackgroundColor(FONDO);
    raiz.addView(new Ficha(this,getIntent()));
@@ -87,6 +91,7 @@ public class GiroActivity extends Activity {
  }
  @Override protected void onNewIntent(Intent i){
   super.onNewIntent(i);setIntent(i);
+  if(!pantallaDisponible(this)){finish();return;}
   try{cierra.removeCallbacksAndMessages(null);
    FrameLayout raiz=new FrameLayout(this);raiz.setBackgroundColor(FONDO);
    raiz.addView(new Ficha(this,i));raiz.setOnClickListener(v->{quitada();finish();});setContentView(raiz);

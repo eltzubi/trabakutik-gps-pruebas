@@ -679,8 +679,8 @@ function pintaPantallaCruces(){
  const i=$('iconoModo');
  if(i)i.innerHTML=pantallaCruces?DIBUJO_BICI:DIBUJO_ANDANDO;
  if(typeof b.setAttribute==='function')b.setAttribute('aria-label',pantallaCruces
-   ?'Modo: bici. La pantalla se enciende en los cruces'
-   :'Modo: senderismo. La pantalla no se enciende en los cruces');
+   ?'Modo: bici. Muestra el dibujo del giro'
+   :'Modo: senderismo. Oculta el dibujo del giro');
 }
 function conmutaPantallaCruces(){
  pantallaCruces=!pantallaCruces;
@@ -698,12 +698,12 @@ function conmutaPantallaCruces(){
   // anterior no la sabe abrir y entonces se dice donde esta.
   let llevado=false;
   try{if(window.TrabakutikAndroid?.abreAjustesPantalla){window.TrabakutikAndroid.abreAjustesPantalla();llevado=true}}catch(e){}
-  notice(llevado?'Android pide permiso para encender la pantalla · dáselo y vuelve'
-    :'Android no deja encender la pantalla a esta aplicación · actívalo en Ajustes → Aplicaciones → Trabakutik GPS');
+  notice(llevado?'Android pide permiso para mostrar la tarjeta de giro · dáselo y vuelve'
+    :'Android limita los avisos a pantalla completa · revisa Ajustes → Aplicaciones → Trabakutik GPS');
   return;
  }
- notice(!pantallaCruces?'Senderismo · la pantalla no se enciende en los cruces'
-   :'Bici · la pantalla se enciende en cada cruce, para el soporte');
+ notice(!pantallaCruces?'Senderismo · dibujo de giro desactivado'
+   :'Bici · dibujo de giro activado');
 }
 try{
  const g=localStorage.getItem('trabakutik-pantalla-cruces');
