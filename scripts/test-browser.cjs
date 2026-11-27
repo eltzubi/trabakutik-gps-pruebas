@@ -312,6 +312,7 @@ async function setup(context) {
     );
     assert(await page.locator("#recordStart").isVisible());
     assert.equal(await page.locator('#gpsState').textContent(),'GPS sin iniciar');
+    assert.equal(await page.locator('#pantallaCruces, #iconoModo').count(),0);
     const audioDrawings=[];
     for(const modo of ['voz','pitidos','silencio']){
       assert.equal(await page.locator('#audioMode').getAttribute('data-modo'),modo);
@@ -493,7 +494,7 @@ async function setup(context) {
       const source=fs.readFileSync(path.join(root,'nuevo.html'),'utf8');
       const end='\n})();\n</script>';
       assert(source.includes(end));
-      const bridge=`window.__creator={map,mueveAnclaGps,nodosManualesGps,
+      const bridge=`window.__creator={map,mueveAnclaGps,nodosManualesGps,MotorSenderismo,onFix,
         get redGps(){return redGps},get drawPoints(){return drawPoints},
         get drawLayer(){return drawLayer},get anclasGps(){return anclasGps},
         get tramosGps(){return tramosGps},get routePoints(){return routePoints}};`;
@@ -575,6 +576,43 @@ async function setup(context) {
     assert.match(await creator.locator('#profileLoss').textContent(),/↓ [1-9]/);
     assert(!/sin datos|Sin alturas/.test(await creator.locator('#elevationSlope').textContent()),'pendiente al marcar');
     await creator.screenshot({path:path.join(root,'.test-artifacts/planificador-con-desnivel.png')});
+    const opciones=await personal.newPage();
+    opciones.on('dialog', d=>d.accept());
+    await opciones.goto(base+'nuevo.html');
+    await opciones.click('#crearDesdeRuta');
+    await opciones.waitForFunction(()=>window.__creator?.redGps);
+    assert.equal(await opciones.locator('#creadorActividad').textContent(),'Senderismo');
+    assert.equal(await opciones.locator('#creadorDock select').count(),0);
+    await opciones.evaluate(()=>{
+      const {map,onFix,MotorSenderismo}=window.__creator;
+      map.setView([43.3,-2.7],16,{animate:false});
+      onFix({coords:{latitude:43.2,longitude:-2.5,accuracy:5,heading:null,speed:0}});
+      MotorSenderismo.fetchAlternatives=async(a,b)=>[-1,0,1].map(lado=>({
+        parts:[[a, [(a[0]+b[0])/2,(a[1]+b[1])/2+.001*lado,100], b]],
+        comparison:{distance:550,ascent:null},
+      }));
+    });
+    assert(Math.abs(await opciones.evaluate(()=>window.__creator.map.getCenter().lat)-43.3)<.0001);
+    const extremos=async()=>{
+      await opciones.click('#modoDosPuntos');
+      await opciones.evaluate(()=>{
+        for(const lat of [43.01,43.015])
+          window.__creator.map.fire('click',{latlng:L.latLng(lat,-2.01)});
+      });
+      await opciones.locator('#alternativasLista .alternativa').nth(2).waitFor();
+    };
+    await extremos();
+    const colores=opciones.locator('#alternativasLista .alternativa');
+    await colores.nth(1).click();
+    await colores.nth(0).click();
+    assert.equal(await colores.nth(0).getAttribute('aria-pressed'),'true');
+    await opciones.getByRole('button',{name:'Descartar',exact:true}).click();
+    assert.equal(await opciones.evaluate(()=>window.__creator.drawPoints.length),0);
+    await extremos();
+    await opciones.getByRole('button',{name:'Elegir ruta',exact:true}).click();
+    await opciones.waitForFunction(()=>window.__creator.drawPoints.length===3);
+    await opciones.close();
+    console.log('PASS Chromium: solo Senderismo, vista quieta al dibujar y alternativas que se pueden elegir o descartar');
     failPlanner=true;
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
     // Aqui no hay red, asi que los caminos de la zona tampoco se han podido

@@ -24,12 +24,6 @@
        Aqui no hay layouts por orientacion que cambiar -la interfaz se monta
        en codigo y los dos WebView se redimensionan solos-, asi que lo
        correcto es que la Activity sobreviva al cambio. -->
-  <!-- La tarjeta de giro se muestra con la pantalla activa y desbloqueada.
-       Se cierra sola y no aparece en recientes. -->
-  <activity android:name=".GiroActivity" android:exported="false"
-   android:launchMode="singleTop" android:excludeFromRecents="true" android:noHistory="true"
-   android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
-   android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|density|uiMode"/>
   <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop"
    android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|density|uiMode">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>

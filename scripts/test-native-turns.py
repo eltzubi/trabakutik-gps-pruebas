@@ -18,6 +18,9 @@ def method(signature):
  while depth:
   depth += (src[i]=='{')-(src[i]=='}');i+=1
  return src[a:i]
+turns=method(' void checkTurns(Location l,NavigationMetrics.Projection position)')
+assert 'GiroActivity' not in src and 'abrePantallaGiro' not in turns
+assert 'hablaGiro(' in turns and 'pitidos(' in turns
 code='''package com.trabakutik.gps;
 import java.util.*;
 public class NativeTurnsTest {
@@ -27,21 +30,6 @@ public class NativeTurnsTest {
  double inicioCurva=Double.NaN,maximoCurva=Double.NaN;long ultimoFixCurva=0;
  HashSet<String> warnedTurns=new HashSet<>();String upcomingTurn="";int sentido=1;
  double ultimoProgresoGiro=Double.NaN;long ultimoProgresoGiroMs=0;double velocidadSuave=10;
- // La pantalla del cruce no se puede abrir aqui: se apunta lo que se le
- // habria mandado, que es lo que interesa comprobar.
- Map<double[],int[]> ramalesDeGiro=new HashMap<>();
- Map<double[],Integer> gradosDeGiro=new HashMap<>();
- ArrayList<String> pantallas=new ArrayList<>();
- // La ficha vive mientras el cruce siga por delante: aqui se cuenta cuantas
- // veces se le ha dado cuerda, que es lo que la mantiene abierta.
- boolean pantallaCruces(){return true;}
- boolean pantallaActiva=true, pantallaBloqueada=false;
- boolean pantallaGiroDisponible(){return pantallaActiva&&!pantallaBloqueada;}
- int cuerdas=0;
- void alargaPantallaGiro(){cuerdas++;}
- void abrePantallaGiro(int lado,int tipo,int salida,int metros,int[] ramales,int grados,int segundos){
-  pantallas.add(textoCorto(lado,tipo,salida)+"|"+metros+"|"+grados+"|"+(ramales==null?0:ramales.length)+"|"+segundos);
- }
  double movSentido=Double.NaN,latSentido=Double.NaN,lonSentido=Double.NaN;
 '''+re.search(r' static final double AVANCE_DECIDE_M=[^;]+;',src).group(0)+re.search(r' static final double FUERA_M=[^;]+;',src).group(0)+re.search(r' static final long RECUERDA_MS=[^;]+;',src).group(0)+re.search(r' long fueraDesde=0;boolean recordado=false;long ultimoDesvio=0;',src).group(0)+re.search(r' static final double ENTRADA_M=[^;]+;',src).group(0)+re.search(r' static final double SEGUIDO_MIN=[^;]+;',src).group(0)+'''
  static class SystemClock {static long reloj=1000;static long elapsedRealtime(){return reloj;}}
@@ -91,7 +79,6 @@ public class NativeTurnsTest {
  ' String giroSeguido(ArrayList<double[]> turns,int actual,boolean usaReves)',' int seguidoDe(ArrayList<double[]> turns,int actual)',' double seguido()',' double desentenderse()',' double avisoLargo()',' double avisoCorto()',' double avisoVoz()',' double avisoYa()',' double avisoCurva()',
  ' void decideSentido(double along,double lat,double lon)',' void decideSentido(double along)',' void ponSentido(int s)',
  ' void olvidaSentido()',' void tonoBien()',' void vuelveALaRuta()',
- ' static int gradosDelGiro(int tipo)',' static String textoCorto(int lado,int tipo,int salida)',
  ' static double[] puntoEn(ArrayList<double[]> ruta,double along)',' void protegeAvisoRuta()',' String avisoSalida(Location l)',' void checkDeviation(Location l,boolean ramalEquivocado)',' double closest(double lat,double lon,double[] punto)', ' double closest(double lat,double lon)'))+'''
  static NativeTurnsTest setup(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{10,-1,1});c.turns.add(new double[]{18,1,1});return c;}
  static NativeTurnsTest setup2(){NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});c.turns.add(new double[]{7,-1,1});c.turns.add(new double[]{17,1,1});return c;}
@@ -168,90 +155,12 @@ public class NativeTurnsTest {
  // DOS GIROS SEGUIDOS SE DICEN JUNTOS: a 20 m, «y enseguida a la derecha»;
  // a 80 m, cada uno el suyo. Y al reves de la ruta, el siguiente es el de
  // atras y con el lado cambiado.
- // LA PANTALLA DEL CRUCE (23 nov 2026). Lo que se le manda: una palabra, los
- // metros y cuantos ramales hay. El angulo es para dibujar, no una medida:
- // una herradura dibuja 160, un cruce 90 y un «sigue por la derecha» 30.
- static void pantallaDelCruce(){
-  require(textoCorto(-1,1,0).equals("Izquierda"),"cruce a la izquierda");
-  require(textoCorto(1,1,0).equals("Derecha"),"cruce a la derecha");
-  require(textoCorto(-1,3,0).equals("Herradura izquierda"),"herradura con su lado");
-  require(textoCorto(1,2,0).equals("Sigue derecha"),"sigue por un lado");
-  require(textoCorto(0,1,0).equals("Da la vuelta"),"sin lado, da la vuelta");
-  require(textoCorto(1,5,2).equals("Rotonda, 2.ª salida"),"rotonda con su salida");
-  require(textoCorto(1,5,0).equals("Rotonda"),"rotonda sin numero");
-  require(textoCorto(0,7,0).equals("De frente"),"de frente");
-  require(gradosDelGiro(3)==160&&gradosDelGiro(1)==90&&gradosDelGiro(2)==30&&gradosDelGiro(0)==70,
-    "el angulo que se dibuja segun el tipo");
-  // Y se manda UNA VEZ por giro, con los metros que faltan, al avisar de voz.
-  NativeTurnsTest c=new NativeTurnsTest();
-  for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});
-  c.turns.add(new double[]{10,1,1});
-  c.ramalesDeGiro.put(c.turns.get(0),new int[]{90});
-  for(int m=0;m<=99;m+=5)c.posicion(new Location(m));
-  require(c.pantallas.size()==1,"una sola pantalla por cruce: "+c.pantallas);
-  String[] p=c.pantallas.get(0).split("[|]");
-  require(p[0].equals("Derecha"),"la palabra: "+p[0]);
-  require(Integer.parseInt(p[1])>0,"los metros que faltan: "+p[1]);
-  require(p[3].equals("1"),"un ramal que puede engañar: "+p[3]);
-  // UNA ROTONDA SE DIBUJA CON SUS GRADOS, no con los 90 del tipo. Hasta el 23
-  // de noviembre de 2026 gradosDelGiro(5) caia en el «return 90» y la pantalla
-  // pintaba un giro corriente donde el texto decia «Rotonda, 3.ª salida». El
-  // autor: «me ha marcado, en vez de la cuarta salida, un dibujo de giro a la
-  // izquierda directamente».
-  NativeTurnsTest rot=new NativeTurnsTest();
-  for(int m=0;m<=300;m+=10)rot.route.add(new double[]{m/111195.,0});
-  rot.turns.add(new double[]{10,-1,5,3,0});
-  rot.gradosDeGiro.put(rot.turns.get(0),125);
-  rot.ramalesDeGiro.put(rot.turns.get(0),new int[]{-70,95});
-  for(int m=0;m<=99;m+=5)rot.posicion(new Location(m));
-  require(rot.pantallas.size()==1,"una pantalla por rotonda: "+rot.pantallas);
-  String[] q=rot.pantallas.get(0).split("[|]");
-  require(q[0].equals("Rotonda, 3.ª salida"),"la palabra de la rotonda: "+q[0]);
-  require(q[2].equals("125"),"los grados de verdad de la rotonda, no 90: "+q[2]);
-  require(q[3].equals("2"),"las otras bocas del anillo: "+q[3]);
-  // Sin ramales que engañen, no se dibuja croquis.
-  NativeTurnsTest d=new NativeTurnsTest();
-  for(int m=0;m<=300;m+=10)d.route.add(new double[]{m/111195.,0});
-  d.turns.add(new double[]{10,-1,1});
-  for(int m=0;m<=99;m+=5)d.posicion(new Location(m));
-  require(d.pantallas.size()==1&&d.pantallas.get(0).split("[|]")[3].equals("0"),"sin ramales: "+d.pantallas);
-  // Y SE ABRE CON EL PRIMER PITIDO, no con la voz, y dura lo que falta mas
-  // cuatro segundos: a 10 m/s el primer pitido son 102 m, asi que al verlo a
-  // 100 m quedan diez segundos y la ficha vive catorce. Antes eran doce
-  // fijos abiertos 18 s antes, y se apagaba 6 s ANTES de llegar al cruce.
-  require(d.pantallas.get(0).equals("Izquierda|100|90|0|14"),"abierta con el primer pitido y con sus segundos: "+d.pantallas);
-  for(boolean bloqueada:new boolean[]{false,true}){
-   NativeTurnsTest audio=new NativeTurnsTest();
-   audio.pantallaActiva=bloqueada;
-   audio.pantallaBloqueada=bloqueada;
-   audio.route.addAll(d.route);
-   audio.turns.addAll(d.turns);
-   for(int m=0;m<=99;m+=5)audio.posicion(new Location(m));
-   require(audio.pantallas.isEmpty()&&audio.cuerdas==0,"sin tarjeta con pantalla apagada o bloqueada");
-   require(audio.beeps>0&&audio.beeps==d.beeps&&audio.dicho.equals(d.dicho)&&!audio.dicho.isEmpty(),
-     "la misma voz y pitidos con pantalla apagada o bloqueada: "+audio.dicho);
-  }
-  // DOS CRUCES SEGUIDOS ENCIENDEN LA PANTALLA DOS VECES. El autor: «si a
-  // 50-100 metros hay otro cruce se volveria a encender; el segundo no
-  // aparece en dibujo, me aparece lo que tengo en pantalla».
-  NativeTurnsTest dos=new NativeTurnsTest();
-  for(int m=0;m<=300;m+=10)dos.route.add(new double[]{m/111195.,0});
-  dos.turns.add(new double[]{10,-1,1});
-  dos.turns.add(new double[]{16,1,1});
-  for(int m=0;m<=130;m+=5)dos.posicion(new Location(m));
-  require(dos.pantallas.size()==2,"dos cruces a 60 m, dos pantallas: "+dos.pantallas);
-  // Y LA FICHA SE CIERRA AL PASAR EL CRUCE, no cuando suena un reloj: se le
-  // da cuerda en cada posicion mientras el cruce siga por delante y se deja
-  // de dar en cuanto lo pasas. El autor, el 24 de noviembre de 2026: «no se
-  // va de la pantalla de cruces... o tarda demasiado en irse».
-  NativeTurnsTest c2=new NativeTurnsTest();
-  for(int m=0;m<=300;m+=10)c2.route.add(new double[]{m/111195.,0});
-  c2.turns.add(new double[]{10,-1,1});
-  for(int m=0;m<=95;m+=5)c2.posicion(new Location(m));
-  int antes=c2.cuerdas;
-  require(antes>=3,"mientras el cruce esta delante se le da cuerda: "+antes);
-  for(int m=105;m<=160;m+=5)c2.posicion(new Location(m));
-  require(c2.cuerdas==antes,"pasado el cruce no se le da mas cuerda: "+c2.cuerdas+" vs "+antes);
+ static void avisosSonorosDeCruce(){
+  NativeTurnsTest audio=new NativeTurnsTest();
+  for(int m=0;m<=300;m+=10)audio.route.add(new double[]{m/111195.,0});
+  audio.turns.add(new double[]{10,-1,1});
+  for(int m=0;m<=99;m+=5)audio.posicion(new Location(m));
+  require(audio.beeps>0&&!audio.dicho.isEmpty(),"el cruce mantiene la voz y los pitidos");
  }
  static void girosSeguidos(){
   NativeTurnsTest c=new NativeTurnsTest();for(int m=0;m<=300;m+=10)c.route.add(new double[]{m/111195.,0});
@@ -587,7 +496,7 @@ public class NativeTurnsTest {
   require(c.dicho.equals(Arrays.asList("Ya estás en la ruta")),"Al cambiar de ruta vuelve a anunciar");
  }
  public static void main(String[] args){
-  entradaDeRuta();puntoSimulado();saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();pantallaDelCruce();ahoraAntes();System.out.println("PASS: el «ahora» suena cuatro segundos antes de entrar en el cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
+  entradaDeRuta();puntoSimulado();saltoNoEsVuelta();desnivelYCircuito();idaYVuelta();girosSeguidos();avisosSonorosDeCruce();ahoraAntes();System.out.println("PASS: el «ahora» suena cuatro segundos antes de entrar en el cruce");System.out.println("PASS: dos giros a menos de 30 m se dicen juntos");
   System.out.println("PASS: el desnivel con umbral de 5 m y el final de un circuito");
   System.out.println("PASS: un salto de la proyeccion no es dar la vuelta");System.out.println("PASS: el simulador pone la posicion encima de la ruta y para al acabarla");
   metricsChecks();

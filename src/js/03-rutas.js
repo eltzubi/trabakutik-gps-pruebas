@@ -419,6 +419,8 @@ document.querySelectorAll('#routeListActivity button').forEach(b=>b.onclick=()=>
 });
 $('choose').onclick=()=>{$('routeDialog').classList.remove('hidden');showRoutes()};$('closeDialog').onclick=()=>$('routeDialog').classList.add('hidden');$('search').oninput=showRoutes;
 function changeMode(m){
+ centrarEditorAlLocalizar=false;
+ if(m!=='create')cancelaAlternativas();
  if(m!=='create'){cancelaMapaGps();$('saveCreated').disabled=drawPoints.length<2}
 
  const creating=m==='create';

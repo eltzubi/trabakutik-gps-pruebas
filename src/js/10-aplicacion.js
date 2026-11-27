@@ -22,10 +22,14 @@ if(!enLaApp){
  }
 }
 $('audioMode').onclick=conmutaModoAudio;pintaModoAudio();
-// Con typeof: las pruebas que cargan esta pieza sola no traen la 07.
-if($('pantallaCruces')&&typeof conmutaPantallaCruces==='function'){
- $('pantallaCruces').onclick=conmutaPantallaCruces;pintaPantallaCruces();
-}pintaEstadoGps();$('locate').onclick=()=>{followGps=true;manualMapUntil=0;if(position){map.setView(position,Math.max(16,map.getZoom()),{animate:false});if(watch===null)startGPS()}else startGPS();window.trabakutikSyncNative?.();pintaMandos()};$('plus').onclick=()=>map.zoomIn();$('minus').onclick=()=>map.zoomOut();
+pintaEstadoGps();
+$('locate').onclick=()=>{
+ if(mode==='create')centrarEditorAlLocalizar=!position;
+ else{followGps=true;manualMapUntil=0}
+ if(position)map.setView(position,Math.max(16,map.getZoom()),{animate:false});
+ if(!position||watch===null)startGPS();
+ window.trabakutikSyncNative?.();pintaMandos();
+};
 // Esto solo sabia manejar TRANSICIONES: si el servicio no grababa y la pagina
 // tampoco creia grabar, no entraba en ninguna rama y la botonera se quedaba
 // como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin
@@ -302,7 +306,16 @@ fetch('data/rutas.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
  updateElevation();
  if(!$('routeDialog').classList.contains('hidden'))showRoutes();
 }).catch(e=>console.warn('No se han podido cargar los nombres de las rutas',e));
-fetchRouteJson('data/trailhead.json',{cache:'no-cache'}).then(data=>{tracks=data.tracks.filter(t=>t.points?.length>1);const slug=new URLSearchParams(location.search).get('ruta');const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;if(n>=0)selectRoute(n);else{drawAll();map.setView([43.19,-2.55],12);notice('Elige una ruta, o pulsa Empezar para solo grabar por donde vas')} rutasListas=true; }).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
+fetchRouteJson('data/trailhead.json',{cache:'no-cache'}).then(data=>{
+ tracks=data.tracks.filter(t=>t.points?.length>1);
+ const slug=new URLSearchParams(location.search).get('ruta');
+ const n=slug?tracks.findIndex(t=>t.href.replace(/\.html$/,'')===slug.replace(/\.html$/,'')):-1;
+ if(mode==='nav'&&routePoints.length<2){
+  if(n>=0)selectRoute(n);
+  else{drawAll();notice('Elige una ruta, o pulsa Empezar para solo grabar por donde vas')}
+ }else refreshRouteLayers();
+ rutasListas=true;showRoutesIfOpen();
+}).catch(e=>notice('No se han podido cargar las rutas: '+e.message));
 // Guardar la pagina en el movil para poder abrirla SIN COBERTURA. Ver sw.js.
 // La aplicacion de Android no lleva la pagina dentro: la carga de GitHub
 // Pages y ademas con la cache del WebView desactivada, asi que sin esto, en

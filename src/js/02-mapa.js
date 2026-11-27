@@ -89,7 +89,7 @@ function pintaMandos(){
  // dos veces. Mirar solo watch dejaba este boton apagado para siempre en
  // la app, con el mapa siguiendote delante. Lo vio el autor en su captura.
  // Lo que cuenta es que llegue posicion, venga de donde venga.
- $('locate').classList.toggle('siguiendo',(watch!==null||fuenteNativa)&&followGps&&Date.now()>=manualMapUntil);
+ $('locate').classList.toggle('siguiendo',mode!=='create'&&(watch!==null||fuenteNativa)&&followGps&&Date.now()>=manualMapUntil);
 }
 function pintaOrient(){
  const on=cursoArriba;
@@ -101,7 +101,9 @@ function pintaOrient(){
   ?'<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg>'
   :'<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18V6l8 12V6"/></svg>';
 }
+let centrarEditorAlLocalizar=false;
 map.on('dragstart',()=>{manualMapUntil=Date.now()+8000;aplicaGiroMapa(true);pintaMandos()});
+map.on('dragstart zoomstart click',()=>{centrarEditorAlLocalizar=false});
 dimensionaMapa();
 if(window.ResizeObserver)new ResizeObserver(dimensionaMapa).observe(document.getElementById('map'));
 else window.addEventListener('resize',dimensionaMapa);

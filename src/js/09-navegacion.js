@@ -875,7 +875,8 @@ function onFix(pos){
  pintaMandos();
  pintaPosicionGps(p,h);
  pintaProximoCruce(progreso);
- if(followGps&&Date.now()>=manualMapUntil){
+ if(centrarEditorAlLocalizar||(mode!=='create'&&followGps&&Date.now()>=manualMapUntil)){
+  centrarEditorAlLocalizar=false;
   const center=map.getCenter();
   if(dist([center.lat,center.lng],p)>2)map.panTo(p,{animate:false});
  }
@@ -1001,7 +1002,11 @@ window.trabakutikSyncNative=()=>{
   }
  }catch(e){console.warn('Seguimiento Android no recuperado',e)}
 };
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){followGps=true;manualMapUntil=0;setTimeout(()=>window.trabakutikSyncNative(),250)}});
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden)return;
+ if(mode!=='create'){followGps=true;manualMapUntil=0}
+ setTimeout(()=>window.trabakutikSyncNative(),250);
+});
 setInterval(()=>{if(!document.hidden&&window.TrabakutikAndroid)window.trabakutikSyncNative()},4500);
 // La guia caduca si deja de llegar posicion. Antes se quedaba clavada: la
 // ficha del giro y el «A X del track» solo se recalculan dentro de onFix,

@@ -1020,6 +1020,7 @@ function updateDraw(){
 }
 if(typeof map!=='undefined')map.on('click',e=>{
  if(mode!=='create')return;
+ if(typeof capturaAlternativas==='function'&&capturaAlternativas(e))return;
  if(!redGps){notice('Preparando red de caminos…');return}
  if(seguirMapaGps){
   if(calculandoMapaGps)return;

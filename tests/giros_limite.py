@@ -58,12 +58,6 @@ public class GirosLimiteTest {
  Map<Integer,ConfirmaRamal.Cruce> ramalesIda=new HashMap<>(),ramalesVuelta=new HashMap<>();
  void cargaRamales(JSONObject p,int at,ArrayList<double[]> lista){}
  Map<double[],String> hitosDeGiro=new HashMap<>();
- Map<double[],int[]> ramalesDeGiro=new HashMap<>();
- Map<double[],Integer> gradosDeGiro=new HashMap<>();
- void abrePantallaGiro(int a,int b,int c,int d,int[] e,int f,int g){}
- boolean pantallaCruces(){return false;}
- boolean pantallaGiroDisponible(){return false;}
- void alargaPantallaGiro(){}
 ''' + linea(' static final int GIROS_MAX=') + '\n' + metodo(' static String girosQueCaben(') + metodo(' void loadTurns()') + metodo(' void leeGiros(') + linea(' static final String[] ORDINALES=') + '\n' + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead,int salida)') + metodo(' String fraseGiro(int lado,int tipo,String fase,double ahead){') + r'''
  static void require(boolean b,String s){if(!b)throw new AssertionError(s);}
  static String lista(int n,int desde){StringBuilder b=new StringBuilder("[");
