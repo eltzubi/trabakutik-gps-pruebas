@@ -30,6 +30,18 @@ $('locate').onclick=()=>{
  if(!position||watch===null)startGPS();
  window.trabakutikSyncNative?.();pintaMandos();
 };
+$('plus').onclick=()=>map.zoomIn(1,{animate:false});
+$('minus').onclick=()=>map.zoomOut(1,{animate:false});
+if(window.ResizeObserver){
+ const columna=$('plus').closest('.tools'),panel=$('creadorDock');
+ const mideColumna=()=>{
+  const mandos=columna.getBoundingClientRect(),creador=panel.getBoundingClientRect();
+  const seCruzan=creador.width>0&&creador.right>mandos.left&&creador.left<mandos.right;
+  columna.style.maxHeight=seCruzan?Math.max(0,Math.floor(creador.top-mandos.top-6))+'px':'';
+ };
+ const observa=new window.ResizeObserver(mideColumna);
+ for(const id of ['map','creadorDock','elevationPanel'])observa.observe($(id));
+}
 // Esto solo sabia manejar TRANSICIONES: si el servicio no grababa y la pagina
 // tampoco creia grabar, no entraba en ninguna rama y la botonera se quedaba
 // como estuviera. El autor se encontro con «Pausar» y «Parar» puestos sin

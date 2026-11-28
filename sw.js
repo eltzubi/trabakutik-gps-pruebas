@@ -29,7 +29,7 @@
 // guardado en el movil para siempre-, pero las teselas NO se tocan: son
 // hasta 900 imagenes del monte descargadas para andar sin cobertura, y
 // volver a bajarlas cuesta datos y tiempo en un sitio donde no hay.
-const VERSION_CONCHA = 'gps-10';
+const VERSION_CONCHA = 'gps-11';
 const VERSION_TESELAS = 'gps-2';
 const CONCHA = 'concha-' + VERSION_CONCHA;
 const TESELAS = 'teselas-' + VERSION_TESELAS;

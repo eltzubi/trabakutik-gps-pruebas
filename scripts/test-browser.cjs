@@ -511,7 +511,7 @@ async function setup(context) {
     // intercepta lo que sirve el service worker: al recargar, la pagina salia
     // de su cache sin el puente y la prueba moria con «__creator undefined».
     // El service worker tiene su propio contexto mas abajo, el de sin conexion.
-    const personal = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+    const personal = await browser.newContext({viewport:{width:390,height:844},hasTouch:true,serviceWorkers:'block'});
     await setup(personal);
     // El creador vive dentro de una IIFE. Solo esta respuesta de prueba
     // expone el estado: la página y la APK entregadas no llevan este puente.
@@ -569,7 +569,18 @@ async function setup(context) {
     creator.on('pageerror',e=>creatorErrors.push(e.message));
     creator.on('dialog',d=>d.accept(d.type()==='prompt'?'Ruta personal de prueba':undefined));
     await creator.goto(base+'nuevo.html');
+    const compruebaZoom=async()=>{
+      const z=await creator.evaluate(()=>window.__creator.map.getZoom());
+      await creator.tap('#plus');
+      assert.equal(await creator.evaluate(()=>window.__creator.map.getZoom()),z+1,'el + acerca el mapa');
+      await creator.tap('#minus');
+      assert.equal(await creator.evaluate(()=>window.__creator.map.getZoom()),z,'el − aleja el mapa');
+    };
+    await compruebaZoom();
+    assert.deepEqual(await creator.locator('.tools button').evaluateAll(botones=>botones.slice(-2).map(b=>b.id)),
+      ['plus','minus'],'el zoom va después de los demás mandos');
     await creator.click('#crearDesdeRuta');
+    await compruebaZoom();
     await creator.waitForFunction(()=>window.__creator&&window.__creator.redGps!==null);
     assert.equal(await creator.locator('#drawMethod').count(),0,'un único creador sin selector');
     assert(!(await creator.locator('#plannerStatus').isVisible()),'sin aviso fijo al entrar');
@@ -593,6 +604,7 @@ async function setup(context) {
     const originalViewport=creator.viewportSize();
     for(const size of [{width:320,height:568},{width:568,height:320}]){
       await creator.setViewportSize(size);
+      await compruebaZoom();
       const dock=await creator.locator('#creadorDock').boundingBox();
       const profile=await creator.locator('#elevationPanel').boundingBox();
       assert(dock.y>=0&&dock.y+dock.height<=profile.y,'creador visible por encima del resumen');
