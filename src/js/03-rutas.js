@@ -427,7 +427,7 @@ function changeMode(m){
 
  const creating=m==='create';
  const actions=$('createActions'),profile=$('elevationPanel'),modes=document.querySelector('.modes');
- if(creating){$('map').appendChild(actions);$('map').appendChild(modes)}else{document.querySelector('footer.bottom').prepend(modes);modes.after(actions)}
+ if(creating){$('map').appendChild(actions);$('creadorBarra').prepend(modes)}else{document.querySelector('footer.bottom').prepend(modes);modes.after(actions)}
  if(creating)$('map').appendChild(profile);else document.querySelector('footer.bottom').before(profile);
  document.body.classList.toggle('creating-route',creating);
  if(m==='create'&&junctionActive>=0)resetJunctionView();mode=m;for(const [key,b] of [['nav','modeNav'],['create','modeCreate']])$(b).setAttribute('aria-pressed',String(m===key));

@@ -236,6 +236,9 @@ async function setup(context) {
       assert(await page.locator('#savedItems').isHidden());
     };
     await abreCatalogo();
+    const searchBox=await page.locator('#search').boundingBox();
+    const filterBox=await page.locator('#routeListScope').boundingBox();
+    assert(searchBox.y+searchBox.height<=filterBox.y,'la búsqueda queda encima de los filtros');
     await page.locator('#search').click();
     assert(await page.locator('#routeDialog').isVisible(),'tocar dentro conserva el selector');
     // La salida con mas salidas de otras rutas a menos de 1 km, no la de la
@@ -587,6 +590,18 @@ async function setup(context) {
     assert.equal(await creator.locator('.gps-dot.es-destino').textContent(),'B');
     // Mandos nuevos: los originales quedan escondidos y se manejan desde aqui.
     assert(await creator.locator('#creaDeshacer').isVisible()&&await creator.locator('#creaMas').isVisible());
+    const originalViewport=creator.viewportSize();
+    for(const size of [{width:320,height:568},{width:568,height:320}]){
+      await creator.setViewportSize(size);
+      const dock=await creator.locator('#creadorDock').boundingBox();
+      const profile=await creator.locator('#elevationPanel').boundingBox();
+      assert(dock.y>=0&&dock.y+dock.height<=profile.y,'creador visible por encima del resumen');
+      await creator.click('#creaMas');
+      const menu=await creator.locator('#creaMenu').boundingBox();
+      assert(menu.y>=0&&menu.x>=0&&menu.x+menu.width<=size.width,`menú del creador dentro de ${size.width}×${size.height}: ${JSON.stringify(menu)}`);
+      await creator.click('#creaMas');
+    }
+    await creator.setViewportSize(originalViewport);
     assert(!(await creator.locator('#createActions').isVisible()),'la fila vieja no se ve');
     assert.match(await creator.locator('#creaTiempo').textContent(),/andando/);
     assert.match(await creator.locator('#creaEsfuerzo').textContent(),/Esfuerzo/);
