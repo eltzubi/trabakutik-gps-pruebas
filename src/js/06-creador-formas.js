@@ -587,6 +587,11 @@ function parseImportedGpx(text,filename){
  }
  return hitos.length?{name,points,excluded,hitos}:{name,points,excluded};
 }
+function decodificaArchivoTrack(buffer){
+ const cabecera=new TextDecoder().decode(buffer.slice(0,256));
+ const declaracion=cabecera.match(/<\?xml\s[^?]*encoding\s*=\s*["'](ISO-8859-1|Windows-1252)["']/i);
+ return new TextDecoder(declaracion?.[1]||'utf-8').decode(buffer);
+}
 function parseImportedKml(text,filename){
  const xml=new DOMParser().parseFromString(text,'application/xml');
  if(xml.getElementsByTagName('parsererror').length||xml.documentElement?.localName!=='kml')
@@ -650,10 +655,7 @@ $('importGpxFile').onchange=async e=>{
  if(!file)return;
  try{
   if(file.size>4*1024*1024){alert('No se pudo importar: El archivo ocupa más de 4 MB');notice('Error al importar GPX');return}
-  const buffer=await file.arrayBuffer();
-  const cabecera=new TextDecoder().decode(buffer.slice(0,256));
-  const declaracion=cabecera.match(/<\?xml\s[^?]*encoding\s*=\s*["'](ISO-8859-1|Windows-1252)["']/i);
-  importaTextoGpx(new TextDecoder(declaracion?.[1]||'utf-8').decode(buffer),file.name);
+  importaTextoGpx(decodificaArchivoTrack(await file.arrayBuffer()),file.name);
  }finally{e.target.value=''}
 };
 // La app de Android llama a esto con el texto del GPX que se ha abierto con

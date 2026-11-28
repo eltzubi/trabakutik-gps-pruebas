@@ -441,6 +441,75 @@ if(typeof map!=='undefined'){
  map.on('moveend fondoCambiado',actualizaSenderosDeFondo);
 }
 
+// Colección BTT histórica de la Oficina de Turismo de Durango, publicada en 2011.
+const fichasBttDurango={
+ 'rodeando-oiz':'Rodeando Oiz',
+ 'panoramica-desde-oiz':'Panorámica desde Oiz',
+ 'rodeando-anboto':'Rodeando Anboto',
+ 'recorriendo-atxondo':'Recorriendo Atxondo',
+ 'entre-bosques':'Entre Bosques',
+ 'marcha-de-las-cofradias':'Marcha de las Cofradías',
+ 'cerca-de-urkiola':'Cerca de Urkiola',
+};
+
+if(typeof map!=='undefined'){
+ const referenciasBtt=L.layerGroup();
+ const leyendaBtt=$('bttDurangoLeyenda');
+ const listadoBtt=$('bttDurangoFichas');
+ const entornoDurango=[[42.99,-2.80],[43.31,-2.48]];
+ const ficherosBtt=new Map();
+ let revisionBtt=0;
+
+ function cargaBttDurango(slug,nombre){
+  if(ficherosBtt.has(slug))return ficherosBtt.get(slug);
+  const ctl=new AbortController(),espera=setTimeout(()=>ctl.abort(),4500);
+  const carga=fetch('data/btt-durangaldea/'+slug+'.kml',{signal:ctl.signal})
+   .then(r=>{if(!r.ok)throw Error('Track no disponible');return r.arrayBuffer()})
+   .then(buffer=>{
+    const {points}=parseImportedKml(decodificaArchivoTrack(buffer),slug+'.kml');
+    return {slug,nombre,puntos:points,limites:L.latLngBounds(points)};
+   })
+   .catch(()=>{ficherosBtt.delete(slug);return null})
+   .finally(()=>clearTimeout(espera));
+  ficherosBtt.set(slug,carga);
+  return carga;
+ }
+
+ async function actualizaBttDurango(){
+  const revision=++revisionBtt;
+  const vista=map.getBounds();
+  if(mode!=='create'||map.getZoom()<13||!vista.intersects(entornoDurango)){
+   referenciasBtt.clearLayers().remove();
+   leyendaBtt.hidden=true;
+   leyendaBtt.open=false;
+   return;
+  }
+  const catalogo=await Promise.all(Object.entries(fichasBttDurango).map(([slug,nombre])=>cargaBttDurango(slug,nombre)));
+  if(revision!==revisionBtt)return;
+  const visibles=catalogo.filter(r=>r&&vista.intersects(r.limites));
+  referenciasBtt.clearLayers();
+  const color=$('basemap').value==='pnoa'?'#d3dbe0':'#40596a';
+  for(const ref of visibles){
+   L.polyline(ref.puntos,{
+    pane:'senderosOficiales',color,weight:2,opacity:.43,dashArray:'2 5',interactive:false,
+   }).addTo(referenciasBtt);
+  }
+  if(visibles.length)referenciasBtt.addTo(map);
+  else{referenciasBtt.remove();leyendaBtt.open=false}
+  listadoBtt.replaceChildren(...visibles.map(ref=>{
+   const fila=document.createElement('li'),enlace=document.createElement('a');
+   enlace.href='https://www.turismodurango.net/es/'+ref.slug;
+   enlace.target='_blank';enlace.rel='noopener';
+   enlace.textContent=ref.nombre;
+   fila.append(enlace);
+   return fila;
+  }));
+  leyendaBtt.hidden=!visibles.length;
+ }
+
+ map.on('moveend fondoCambiado modoCreadorCambiado',actualizaBttDurango);
+}
+
 function recortaSenderoOficial(a,b,referencias,distance,radio=20){
  let mejor=null;
  for(const ref of referencias){

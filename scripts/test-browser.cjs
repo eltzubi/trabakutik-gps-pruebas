@@ -849,6 +849,41 @@ async function setup(context) {
     await leyendaOficial.waitFor({state:'hidden'});
     await biz.close();
     console.log('PASS Chromium: senderos oficiales en ambos modos y capa discreta con zoom');
+    const btt=await personal.newPage();
+    const descargasBtt=[];
+    btt.on('request',r=>{if(r.url().includes('/data/btt-durangaldea/'))descargasBtt.push(r.url())});
+    await btt.goto(base+'nuevo.html');
+    await btt.waitForFunction(()=>window.__creator?.map);
+    const zoomBtt=z=>btt.evaluate(z=>window.__creator.map.setView([43.173,-2.632],z,{animate:false}),z);
+    const leyendaBtt=btt.locator('#bttDurangoLeyenda');
+    await zoomBtt(14);
+    assert(await leyendaBtt.isHidden());
+    assert.equal(descargasBtt.length,0);
+    await btt.click('#crearDesdeRuta');
+    await leyendaBtt.waitFor({state:'visible'});
+    assert.match(await leyendaBtt.locator('summary').textContent(),/Turismo de Durango/);
+    assert.equal(await leyendaBtt.locator('a[href="https://www.turismodurango.net/es/rodeando-oiz"]').count(),1);
+    assert.equal(descargasBtt.length,7);
+    assert(await btt.evaluate(()=>{
+      let n=0;
+      window.__creator.map.eachLayer(layer=>{
+        if(layer instanceof L.Polyline&&layer.options.dashArray==='2 5'&&layer.options.opacity<.5&&
+          !layer.options.interactive)n++;
+      });
+      return n>0;
+    }));
+    await btt.click('#modoDosPuntos');
+    assert(await leyendaBtt.isVisible());
+    await zoomBtt(12);
+    await leyendaBtt.waitFor({state:'hidden'});
+    await zoomBtt(14);
+    await leyendaBtt.waitFor({state:'visible'});
+    await btt.click('#modeNav');
+    await leyendaBtt.waitFor({state:'hidden'});
+    assert.equal(descargasBtt.length,7);
+    await btt.close();
+    console.log('PASS Chromium: colección pública BTT visible al crear, tenue y con atribución municipal');
+
     failPlanner=true;
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
     // Aqui no hay red, asi que los caminos de la zona tampoco se han podido
