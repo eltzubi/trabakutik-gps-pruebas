@@ -220,7 +220,7 @@ async function setup(context) {
       const last=await page.locator('#minus').boundingBox();
       assert(last.y>=0&&last.y+last.height<=size.height,'zoom accesible con poca altura');
     }
-    assert.deepEqual(await page.locator('#navActions > button').allTextContents(),['Mis rutas','Importar GPX','Crear ruta']);
+    assert.deepEqual(await page.locator('#navActions > button').allTextContents(),['Mis rutas','Importar GPX o KML','Crear ruta']);
     await page.click('#savedRoutes');
     assert(await page.locator('#savedItems').isVisible());
     assert.equal(await page.locator('#tabSaved').getAttribute('aria-selected'),'true');
@@ -808,8 +808,47 @@ async function setup(context) {
     assert.match(guardada.fuentes[0],/PR-BI 160.*Eusko Jaurlaritza \/ Gobierno Vasco.*CC BY 4.0/);
     await biz.click('#downloadFromDialog');
     assert.match(await biz.evaluate(()=>window.__native.gpxOficial),/<desc>Track adaptado de PR-BI 160/);
+    await biz.goto(base+'nuevo.html');
+    await biz.waitForFunction(()=>window.__creator?.map);
+    const acercaOficial=zoom=>biz.evaluate(([coords,zoom])=>{
+      window.__creator.map.setView(coords,zoom,{animate:false});
+    },[coordsOficial[0],zoom]);
+    const leyendaOficial=biz.locator('#senderosOficialesLeyenda');
+    const leyendaImportados=biz.locator('#senderosImportadosLeyenda');
+    const kml=coordsOficial.map(([lat,lon],i)=>lon+','+lat+','+(100+i)).join(' ');
+    await biz.locator('#importGpxFile').setInputFiles({
+      name:'pista.kml',mimeType:'application/vnd.google-earth.kml+xml',
+      buffer:Buffer.from('<kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><name>Pista local</name>'+
+        '<altitudeMode>absolute</altitudeMode><LineString><coordinates>'+kml+'</coordinates></LineString></Placemark></kml>'),
+    });
+    await biz.getByRole('button',{name:/Pista local · KML importado/}).waitFor();
+    assert.deepEqual(await biz.evaluate(()=>JSON.parse(localStorage.getItem('trabakutik-gps-creadas-v1'))[0].points),
+      coordsOficial.map((coords,i)=>[...coords,100+i]));
+    await biz.keyboard.press('Escape');
+    await acercaOficial(14);
+    assert(await leyendaOficial.isHidden());
+    await biz.click('#eye');
+    await leyendaOficial.waitFor({state:'visible'});
+    await leyendaImportados.waitFor({state:'visible'});
+    assert(await biz.evaluate(()=>{
+      const map=window.__creator.map;
+      let trazos=0;
+      map.eachLayer(l=>{
+        if(l instanceof L.Polyline&&l.options.pane==='senderosOficiales'&&
+          l.options.weight===2&&l.options.dashArray&&!l.options.interactive)trazos++;
+      });
+      return trazos>0&&Number(map.getPane('senderosOficiales').style.zIndex)<
+        Number(map.getPane('rutaActiva').style.zIndex);
+    }),'los senderos oficiales quedan bajo la ruta activa en línea fina y discontinua');
+    await acercaOficial(12);
+    await leyendaOficial.waitFor({state:'hidden'});
+    await leyendaImportados.waitFor({state:'hidden'});
+    await acercaOficial(14);
+    await leyendaOficial.waitFor({state:'visible'});
+    await biz.click('#eye');
+    await leyendaOficial.waitFor({state:'hidden'});
     await biz.close();
-    console.log('PASS Chromium: catálogo oficial bajo demanda, sin capa propia y utilizable en ambos modos');
+    console.log('PASS Chromium: senderos oficiales en ambos modos y capa discreta con zoom');
     failPlanner=true;
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
     // Aqui no hay red, asi que los caminos de la zona tampoco se han podido
@@ -924,7 +963,7 @@ async function setup(context) {
       assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('trabakutik-gps-creadas-v1')||'[]')[0].name),'Desde fuera','y queda guardada en Mis rutas');
       let aviso='';p.once('dialog',d=>{aviso=d.message();d.accept()});
       assert.equal(await p.evaluate(()=>window.trabakutikImportaGpx('<html>no</html>','nada.gpx')),false,'lo que no es GPX no entra');
-      assert.match(aviso,/no es un GPX/);
+      assert.match(aviso,/El archivo debe ser GPX o KML/);
       assert.deepEqual(errores,[],'errores de la pagina');
       await ctx.close();
       console.log('PASS Chromium: la flecha del cruce en el mapa apunta en el sentido de la marcha, girado y con el norte arriba; y un GPX abierto desde fuera se abre como ruta activa y queda en Mis rutas');

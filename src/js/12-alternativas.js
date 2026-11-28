@@ -389,6 +389,58 @@ async function senderosBizkaia(){
  return (await Promise.all(catalogosOficiales.map(cargaCatalogoOficial))).flat();
 }
 
+if(typeof map!=='undefined'){
+ const trazosOficiales=L.layerGroup();
+ const trazosImportados=L.layerGroup();
+ const leyendaOficial=$('senderosOficialesLeyenda');
+ const leyendaImportados=$('senderosImportadosLeyenda');
+ const seVenSenderos=()=>otherTracksVisible&&routeListScope!=='current'&&map.getZoom()>=13;
+ let revisionSenderos=0;
+ let importadosParaMapa=null;
+
+ function pintaTrazosDeFondo(grupo,referencias,vista,color){
+  grupo.clearLayers();
+  for(const ref of referencias){
+   if(!vista.intersects(ref.limites))continue;
+   L.polyline(ref.puntos,{
+    pane:'senderosOficiales',color,weight:2,opacity:.7,dashArray:'4 4',interactive:false,
+   }).addTo(grupo);
+  }
+  const visibles=grupo.getLayers().length>0;
+  if(visibles)grupo.addTo(map);
+  else grupo.remove();
+  return visibles;
+ }
+
+ async function actualizaSenderosDeFondo(){
+  const revision=++revisionSenderos;
+  const mostrar=seVenSenderos();
+  const vista=map.getBounds();
+  const satelite=$('basemap').value==='pnoa';
+  if(mostrar&&!importadosParaMapa){
+   importadosParaMapa=savedList().filter(r=>r.imported&&Array.isArray(r.points)&&r.points.length>1)
+    .map(r=>({id:r.created,puntos:r.points,limites:L.latLngBounds(r.points)}));
+  }
+  const importados=mostrar?importadosParaMapa.filter(r=>r.id!==activeSavedId):[];
+  leyendaImportados.hidden=!pintaTrazosDeFondo(trazosImportados,importados,vista,satelite?'#ffd6b3':'#9b542c');
+
+  const catalogo=mostrar?await senderosBizkaia():[];
+  if(revision!==revisionSenderos)return;
+  const oficiales=catalogo.map(ref=>{
+   const [sur,oeste,norte,este]=ref.limites;
+   return {puntos:ref.puntos,limites:[[sur,oeste],[norte,este]]};
+  });
+  leyendaOficial.hidden=!pintaTrazosDeFondo(trazosOficiales,oficiales,vista,satelite?'#e0c9ff':'#66448c');
+  if(leyendaOficial.hidden)leyendaOficial.open=false;
+ }
+
+ map.on('rutasDeFondoCambiadas rutasGuardadasCambiadas',()=>{
+  importadosParaMapa=null;
+  actualizaSenderosDeFondo();
+ });
+ map.on('moveend fondoCambiado',actualizaSenderosDeFondo);
+}
+
 function recortaSenderoOficial(a,b,referencias,distance,radio=20){
  let mejor=null;
  for(const ref of referencias){

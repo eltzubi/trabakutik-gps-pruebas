@@ -194,7 +194,12 @@ function gpx(points,name,hitos=[],fuentes=[]){
 function download(points,name,hitos,fuentes){if(points.length<2)return;if(window.TrabakutikAndroid&&window.TrabakutikAndroid.saveGpx){window.TrabakutikAndroid.saveGpx(gpxFilename(name)+'.gpx',gpx(points,name,hitos,fuentes));return;}const url=URL.createObjectURL(new Blob([gpx(points,name,hitos,fuentes)],{type:'application/gpx+xml'})),a=document.createElement('a');a.href=url;a.download=gpxFilename(name)+'.gpx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 const STORAGE_KEY='trabakutik-gps-creadas-v1';
 function savedList(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}}
-function putSaved(list){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list));return true}catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}}
+function putSaved(list){
+ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(list))}
+ catch(e){notice('No hay espacio para guardar en el navegador. Descarga el GPX.');return false}
+ if(typeof map!=='undefined')map.fire?.('rutasGuardadasCambiadas');
+ return true;
+}
 let savedFromDialog=null;
 let pendingSave=null,estadoBotonera='ready',ultimoVozEstado='',rutasListas=false,ultimoParoNativo=0,giraNativo=false;
 function gpxFilename(name){return (name||'ruta').toLowerCase().replace(/[^a-z0-9áéíóúüñ-]+/gi,'-').replace(/^-+|-+$/g,'')||'ruta'}
@@ -459,8 +464,8 @@ function loadSaved(item){
   otherTracksVisible=false; // cada GPX externo abre el mapa limpio
   refreshRouteLayers();
   $('eye').setAttribute('aria-pressed','false');
-  $('eye').setAttribute('aria-label','Mostrar rutas de Trabakutik');
-  $('eye').title='Mostrar rutas de Trabakutik';
+  $('eye').setAttribute('aria-label','Mostrar rutas de fondo');
+  $('eye').title='Mostrar rutas de fondo';
  }
  $('savedDialog').classList.add('hidden');changeMode('nav');
 
@@ -582,6 +587,31 @@ function parseImportedGpx(text,filename){
  }
  return hitos.length?{name,points,excluded,hitos}:{name,points,excluded};
 }
+function parseImportedKml(text,filename){
+ const xml=new DOMParser().parseFromString(text,'application/xml');
+ if(xml.getElementsByTagName('parsererror').length||xml.documentElement?.localName!=='kml')
+  throw new Error('El archivo KML no tiene un XML válido');
+ const candidates=Array.from(xml.getElementsByTagNameNS('*','LineString')).flatMap(line=>{
+  const coords=Array.from(line.children).find(el=>el.localName==='coordinates')?.textContent.trim();
+  const vertices=coords?.split(/\s+/)||[];
+  return vertices.length>1?[{vertices,line}]:[];
+ });
+ const route=candidates.reduce((longest,r)=>r.vertices.length>(longest?.vertices.length||0)?r:longest,null);
+ if(!route)throw new Error('El KML no contiene una línea de ruta');
+ if(route.vertices.length>15000)throw new Error('El KML supera los 15.000 puntos admitidos');
+ const placemark=route.line.closest('Placemark');
+ const atributo=(elemento,nombre)=>Array.from(elemento?.children||[]).find(el=>el.localName===nombre)?.textContent.trim();
+ const altitude=atributo(route.line,'altitudeMode')||atributo(placemark,'altitudeMode');
+ const points=route.vertices.map(p=>{
+  const [lon,lat,ele]=p.split(',').map(v=>v.trim()?Number(v):NaN);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)
+   throw new Error('Hay coordenadas inválidas en el KML');
+  return altitude==='absolute'&&Number.isFinite(ele)?[lat,lon,ele]:[lat,lon];
+ });
+ const title=atributo(placemark,'name');
+ const name=(title||filename.replace(/\.kml$/i,'')).trim().slice(0,110)||'Ruta importada';
+ return {name,points,excluded:candidates.length-1};
+}
 $('importGpxBtn').onclick=()=>$('importGpxFile').click();
 // IMPORTAR UN GPX: desde el boton de la pantalla principal y, desde el 17 nov 2026,
 // tambien desde fuera de la app (Abrir con / Compartir, ver MainActivity): el
@@ -590,25 +620,28 @@ $('importGpxBtn').onclick=()=>$('importGpxFile').click();
 function importaTextoGpx(texto,nombre,abrir){
  try{
   if(typeof texto!=='string'||!texto)throw new Error('El archivo está vacío');
-  if(texto.length>4*1024*1024)throw new Error('El GPX ocupa más de 4 MB');
+  if(texto.length>4*1024*1024)throw new Error('El archivo ocupa más de 4 MB');
   const list=savedList();
   if(list.length>=30)throw new Error('Mis rutas está lleno (30). Exporta o elimina una ruta antes de importar');
   // Ya no se exige que el nombre acabe en «.gpx»: el selector de Android se
   // come la extension si cambias el nombre a mano al guardar, y esos ficheros
   // son GPX perfectos que antes no habia forma de volver a meter aqui. Quien
   // decide es el contenido, que ademas es mas seguro que fiarse del nombre.
-  if(!/<gpx[\s>]/i.test(texto.slice(0,4000)))throw new Error('Ese archivo no es un GPX');
-  const result=parseImportedGpx(texto,nombre||'ruta.gpx');
+  const cabecera=texto.slice(0,4000);
+  const formato=/<(?:[\w.-]+:)?kml[\s>]/i.test(cabecera)?'KML':'GPX';
+  if(formato==='GPX'&&!/<gpx[\s>]/i.test(cabecera))throw new Error('El archivo debe ser GPX o KML');
+  const result=formato==='KML'?parseImportedKml(texto,nombre||'ruta.kml'):parseImportedGpx(texto,nombre||'ruta.gpx');
   if(result.excluded){
-   if(!confirm('El GPX contiene '+(result.excluded+1)+' tramos separados. Para no unirlos con líneas rectas se importará únicamente el tramo más largo. ¿Continuar?'))return false;
+   if(!confirm('El '+formato+' contiene '+(result.excluded+1)+' tramos separados. Se importará únicamente el tramo con más puntos, sin unirlo con otros. ¿Continuar?'))return false;
   }
-  const item={name:result.name,points:result.points,created:Date.now(),imported:true,...(result.hitos?{hitos:result.hitos}:{})};
+  const item={name:result.name,points:result.points,created:Date.now(),imported:true,
+   ...(formato==='KML'?{formato}:{}),...(result.hitos?{hitos:result.hitos}:{})};
   if(!putSaved([item,...list]))throw new Error('No hay espacio para guardar la ruta. No se ha importado.');
   // Desde fuera se abre DIRECTAMENTE como ruta activa: el autor quiere pulsar
   // el GPX en Descargas y tenerlo en el navegador. Desde el boton, la lista.
   if(abrir)loadSaved(item);
   else abreMisRutas();
-  notice('GPX importado: '+item.name+' · '+item.points.length+' puntos');
+  notice(formato+' importado: '+item.name+' · '+item.points.length+' puntos');
   return true;
  }catch(err){alert('No se pudo importar: '+err.message);notice('Error al importar GPX');return false}
 }
@@ -616,8 +649,11 @@ $('importGpxFile').onchange=async e=>{
  const file=e.target.files?.[0];
  if(!file)return;
  try{
-  if(file.size>4*1024*1024){alert('No se pudo importar: El GPX ocupa más de 4 MB');notice('Error al importar GPX');return}
-  importaTextoGpx(await file.text(),file.name);
+  if(file.size>4*1024*1024){alert('No se pudo importar: El archivo ocupa más de 4 MB');notice('Error al importar GPX');return}
+  const buffer=await file.arrayBuffer();
+  const cabecera=new TextDecoder().decode(buffer.slice(0,256));
+  const declaracion=cabecera.match(/<\?xml\s[^?]*encoding\s*=\s*["'](ISO-8859-1|Windows-1252)["']/i);
+  importaTextoGpx(new TextDecoder(declaracion?.[1]||'utf-8').decode(buffer),file.name);
  }finally{e.target.value=''}
 };
 // La app de Android llama a esto con el texto del GPX que se ha abierto con
@@ -638,7 +674,7 @@ function showSaved(){
  if(!list.length){const vacio=document.createElement('p');vacio.textContent='Aún no hay rutas guardadas. Puedes importar un GPX desde tu móvil o crear una ruta en el mapa.';target.append(vacio);pintaGrabaciones(target);return}
  list.forEach((item,i)=>{
   const row=document.createElement('div');row.className='routeitem';
-  const open=document.createElement('button');open.textContent=item.name+(item.imported?' · GPX importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
+  const open=document.createElement('button');open.textContent=item.name+(item.imported?' · '+(item.formato||'GPX')+' importado':'')+' · '+item.points.length+' puntos'+elevationText(item.points);open.style.flex='1';open.onclick=()=>loadSaved(item);
   const dl=document.createElement('button');dl.className='btn-sub';dl.textContent='↓ GPX';dl.title='Descargar archivo GPX';dl.onclick=()=>download(item.points,item.name,item.hitos,item.fuentes);
   const share=document.createElement('button');share.className='btn-sub';share.textContent='Enviar al reloj';share.title='Abrir el GPX con la aplicación del reloj';share.onclick=()=>{void enviaAlReloj(item.points,item.name,item.hitos,item.fuentes)};
   const del=document.createElement('button');del.className='btn-sub';del.textContent='Eliminar';del.onclick=()=>{if(!confirm('¿Eliminar esta ruta guardada?'))return;const wasActive=chosen===-1&&savedLine&&(sameTrack(routePoints,item.points)||!!(item.created&&activeSavedId===item.created));const draftMatches=sameTrack(drawPoints,item.points);list.splice(i,1);if(putSaved(list)){if(wasActive)clearActiveRoute();if(draftMatches)clearDraft();showSaved();notice('Ruta eliminada del listado y del mapa')}};

@@ -210,6 +210,7 @@ function getTrackLayer(i){
 function refreshRouteLayers(){
  const muestraFondo=otherTracksVisible&&routeListScope!=='current';
  $('backgroundRouteLegend')?.classList.toggle('hidden',!muestraFondo);
+ map.fire('rutasDeFondoCambiadas');
  tracks.forEach((t,i)=>{
   const show=i===chosen||(muestraFondo&&(!nearbyOnly||nearTrack(i)));
   if(show){const layer=getTrackLayer(i);if(layer&&!map.hasLayer(layer))layer.addTo(map);}
@@ -247,9 +248,9 @@ $('eye').onclick=()=>{
  otherTracksVisible=!otherTracksVisible;
  refreshRouteLayers();
  $('eye').setAttribute('aria-pressed',String(otherTracksVisible));
- $('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar rutas de Trabakutik':'Mostrar rutas de Trabakutik');
- $('eye').title=otherTracksVisible?'Ocultar rutas de Trabakutik':'Mostrar rutas de Trabakutik';
- notice(otherTracksVisible?'Rutas de Trabakutik visibles':'Mapa limpio · rutas de Trabakutik ocultas');
+ $('eye').setAttribute('aria-label',otherTracksVisible?'Ocultar rutas de fondo':'Mostrar rutas de fondo');
+ $('eye').title=otherTracksVisible?'Ocultar rutas de fondo':'Mostrar rutas de fondo';
+ notice(otherTracksVisible?'Rutas de fondo visibles':'Rutas de fondo ocultas');
 };
 function updateNativeLaunchLink(){
  // El boton de guardar el mapa depende de que haya ruta, y esta funcion se
