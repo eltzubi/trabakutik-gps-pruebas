@@ -618,41 +618,76 @@ async function setup(context) {
     await opciones.goto(base+'nuevo.html');
     await opciones.click('#crearDesdeRuta');
     await opciones.waitForFunction(()=>window.__creator?.redGps);
-    assert.deepEqual(await opciones.locator('#creadorModo button').allTextContents(),['Punto a punto','Inicio y destino']);
+    assert.deepEqual(await opciones.locator('#creadorModo button').allTextContents(),['Punto a punto','Ir de A a B']);
     assert.doesNotMatch(await opciones.locator('#creadorDock').textContent(),/Senderismo/);
     assert.equal(await opciones.locator('#creadorDock select').count(),0);
     await opciones.evaluate(()=>{
       const {map,onFix,MotorSenderismo}=window.__creator;
       map.setView([43.3,-2.7],16,{animate:false});
       onFix({coords:{latitude:43.2,longitude:-2.5,accuracy:5,heading:null,speed:0}});
-      MotorSenderismo.fetchAlternatives=async(a,b)=>[-1,0,1].map(lado=>({
-        parts:[[a, [(a[0]+b[0])/2,(a[1]+b[1])/2+.001*lado,100], b]],
-        comparison:{distance:550,ascent:null},
+      MotorSenderismo.fetchAlternatives=async(a,b)=>[-1,0,1].map((lado,i)=>({
+        parts:[[[...a,100], [(a[0]+b[0])/2,(a[1]+b[1])/2+.001*lado,i===1?190:110], [...b,110]]],
+        comparison:{distance:550+50*i,ascent:null},
       }));
     });
     assert(Math.abs(await opciones.evaluate(()=>window.__creator.map.getCenter().lat)-43.3)<.0001);
-    const extremos=async()=>{
+    await opciones.route('https://www.cartociudad.es/geocoder/api/geocoder/candidates?**',r=>
+      r.fulfill({json:[{address:'Elgeta',province:'Gipuzkoa',id:'20033',type:'poblacion',lat:0,lng:0}]}));
+    await opciones.route('https://www.cartociudad.es/geocoder/api/geocoder/find?**',r=>
+      r.fulfill({json:{lat:43.015,lng:-2.01}}));
+    const extremos=async(buscar=false)=>{
       await opciones.click('#modoDosPuntos');
-      await opciones.evaluate(()=>{
-        for(const lat of [43.01,43.015])
-          window.__creator.map.fire('click',{latlng:L.latLng(lat,-2.01)});
-      });
+      assert.match(await opciones.locator('#alternativasEstado').textContent(),/Marca el inicio/);
+      if(buscar){
+        await opciones.click('#altMiPosicion');
+      }else{
+        await opciones.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.01,-2.01)}));
+      }
+      assert.match(await opciones.locator('#alternativasEstado').textContent(),/Marca el destino/);
+      if(buscar){
+        await opciones.click('#altBuscarDestino');
+        await opciones.locator('#destinoNombre').fill('Elgeta');
+        await opciones.locator('#destinoForm button[type=submit]').click();
+        await opciones.getByRole('button',{name:'Elgeta · Gipuzkoa'}).click();
+      }else{
+        await opciones.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.015,-2.01)}));
+      }
       await opciones.locator('#alternativasLista .alternativa').nth(2).waitFor();
     };
     await extremos();
     const colores=opciones.locator('#alternativasLista .alternativa');
     await colores.nth(1).click();
+    assert.match(await colores.nth(1).textContent(),/↑ 90 m/);
+    assert.match(await colores.nth(0).textContent(),/Más corta/);
+    const cuentaTrazos=(prop,valor)=>opciones.evaluate(({prop,valor})=>{
+      let n=0;
+      window.__creator.map.eachLayer(l=>{if(l instanceof L.Polyline&&l.options[prop]===valor)n++});
+      return n;
+    },{prop,valor});
+    assert.equal(await cuentaTrazos('dashArray','6 8'),2,'se ven las otras dos rutas discontinuas');
+    await opciones.getByRole('button',{name:/Ver rampa/}).click();
+    assert.equal(await cuentaTrazos('color','#fff0ae'),1);
     await colores.nth(0).click();
+    assert.equal(await cuentaTrazos('color','#fff0ae'),0);
     assert.equal(await colores.nth(0).getAttribute('aria-pressed'),'true');
+    for(const size of [{width:320,height:568},{width:568,height:320}]){
+      await opciones.setViewportSize(size);
+      const panel=await opciones.locator('#creadorDock').boundingBox();
+      assert(panel.y>=0&&panel.x+panel.width<=size.width,'comparación dentro de la pantalla');
+      const elegir=opciones.getByRole('button',{name:'Elegir ruta',exact:true});
+      const box=await elegir.boundingBox();
+      assert(box.y+box.height<=size.height&&box.height>=44,'elegir ruta visible y pulsable');
+    }
+    await opciones.setViewportSize({width:390,height:844});
     await opciones.getByRole('button',{name:'Descartar',exact:true}).click();
     assert.equal(await opciones.evaluate(()=>window.__creator.drawPoints.length),0);
-    await extremos();
+    await extremos(true);
     await opciones.getByRole('button',{name:'Elegir ruta',exact:true}).click();
     await opciones.waitForFunction(()=>window.__creator.drawPoints.length>=3);
     assert.deepEqual(await opciones.evaluate(()=>{
       const pts=window.__creator.drawPoints;
       return [pts[0].slice(0,2),pts.at(-1).slice(0,2)];
-    }),[[43.01,-2.01],[43.015,-2.01]]);
+    }),[[43.2,-2.5],[43.015,-2.01]]);
     await opciones.close();
     console.log('PASS Chromium: solo Senderismo, vista quieta al dibujar y alternativas que se pueden elegir o descartar');
     failPlanner=true;
