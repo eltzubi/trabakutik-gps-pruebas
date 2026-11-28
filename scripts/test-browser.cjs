@@ -614,6 +614,10 @@ async function setup(context) {
     assert(!/sin datos|Sin alturas/.test(await creator.locator('#elevationSlope').textContent()),'pendiente al marcar');
     await creator.screenshot({path:path.join(root,'.test-artifacts/planificador-con-desnivel.png')});
     const opciones=await personal.newPage();
+    await opciones.route('**/data/trailhead.json',r=>r.fulfill({json:{tracks:[{
+      href:'ugunaotzarreta.html',color:'violet',
+      points:Array.from({length:6},(_,i)=>[43.01+i*.001,-2.01]),
+    }]}}));
     opciones.on('dialog', d=>d.accept());
     await opciones.goto(base+'nuevo.html');
     await opciones.click('#crearDesdeRuta');
@@ -656,20 +660,26 @@ async function setup(context) {
     };
     await extremos();
     const colores=opciones.locator('#alternativasLista .alternativa');
-    await colores.nth(1).click();
-    assert.match(await colores.nth(1).textContent(),/↑ 90 m/);
-    assert.match(await colores.nth(0).textContent(),/Más corta/);
+    assert.match(await colores.nth(0).textContent(),/100 % Trabakutik/);
+    assert.match(await colores.nth(0).textContent(),/↑ 90 m/);
+    assert.match(await colores.nth(1).textContent(),/Más corta/);
     const cuentaTrazos=(prop,valor)=>opciones.evaluate(({prop,valor})=>{
       let n=0;
       window.__creator.map.eachLayer(l=>{if(l instanceof L.Polyline&&l.options[prop]===valor)n++});
       return n;
     },{prop,valor});
     assert.equal(await cuentaTrazos('dashArray','6 8'),2,'se ven las otras dos rutas discontinuas');
+    assert.equal(await cuentaTrazos('color','#f1fff0'),1,'el tramo conocido queda marcado');
+    const detalle=opciones.locator('.alternativaDocumentada');
+    await detalle.locator('summary').click();
+    assert.equal(await detalle.getByRole('link').getAttribute('href'),'https://trabakutik.com/ugunaotzarreta.html');
+    await detalle.locator('summary').click();
     await opciones.getByRole('button',{name:/Ver rampa/}).click();
     assert.equal(await cuentaTrazos('color','#fff0ae'),1);
-    await colores.nth(0).click();
+    await colores.nth(1).click();
     assert.equal(await cuentaTrazos('color','#fff0ae'),0);
-    assert.equal(await colores.nth(0).getAttribute('aria-pressed'),'true');
+    assert.equal(await cuentaTrazos('color','#f1fff0'),0,'la marca acompaña a la ruta activa');
+    assert.equal(await colores.nth(1).getAttribute('aria-pressed'),'true');
     for(const size of [{width:320,height:568},{width:568,height:320}]){
       await opciones.setViewportSize(size);
       const panel=await opciones.locator('#creadorDock').boundingBox();
