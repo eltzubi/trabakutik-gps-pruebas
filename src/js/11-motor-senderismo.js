@@ -148,14 +148,12 @@ async function fetchAlternatives(origin,target,signal){
     }));
   }
   await Promise.all([attempt('Valhalla',()=>valhalla(0)),attempt('OSRM',osrm)]);
-  if(signal?.aborted)throw Error('Cálculo cancelado');
   if(!candidates.length)throw Error('Ningún motor devolvió un recorrido válido. '+errors.join(' · '));
-  if(uniqueAlternatives(candidates,origin,target).length<3)
+  if(!signal?.aborted&&uniqueAlternatives(candidates,origin,target).length<3)
     await attempt('Valhalla alternativas',()=>valhalla(2));
-  if(signal?.aborted)throw Error('Cálculo cancelado');
   const priority={Valhalla:0,OSRM:1};
   candidates.sort((a,b)=>priority[a.provider]-priority[b.provider]);
   return uniqueAlternatives(candidates,origin,target);
 }
-return {fetchAlternatives};
+return {fetchAlternatives,similarAlternatives};
 })();

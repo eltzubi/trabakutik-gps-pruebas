@@ -700,6 +700,46 @@ async function setup(context) {
     }),[[43.2,-2.5],[43.015,-2.01]]);
     await opciones.close();
     console.log('PASS Chromium: solo Senderismo, vista quieta al dibujar y alternativas que se pueden elegir o descartar');
+    const oiz=await personal.newPage();
+    const inicioOiz=[43.21008,-2.546398,418],cimaOiz=[43.227608,-2.591572,1025];
+    const trackOiz=Array.from({length:80},(_,i)=>
+      inicioOiz.map((v,j)=>v+(cimaOiz[j]-v)*i/79));
+    await oiz.route('**/data/trailhead.json',r=>r.fulfill({json:{tracks:[{
+      href:'oiz.html',color:'violet',points:trackOiz.map(p=>p.slice(0,2)),
+    }]}}));
+    await oiz.route('https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/oiz.json',r=>
+      r.fulfill({json:{tracks:[{points:trackOiz}]}}));
+    await oiz.route('https://www.cartociudad.es/geocoder/api/geocoder/candidates?**',r=>
+      r.fulfill({json:[{address:'Oiz',province:'Navarra',id:'31187',type:'Municipio',lat:0,lng:0}]}));
+    oiz.on('dialog',d=>d.accept());
+    await oiz.goto(base+'nuevo.html');
+    await oiz.click('#crearDesdeRuta');
+    await oiz.waitForFunction(()=>window.__creator?.redGps);
+    await oiz.evaluate(()=>{
+      const {map,MotorSenderismo}=window.__creator;
+      MotorSenderismo.fetchAlternatives=async()=>{throw new Error('Sin ruta en los motores')};
+      map.setView([43.2105,-2.5461],16,{animate:false});
+    });
+    await oiz.click('#modoDosPuntos');
+    await oiz.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.2105,-2.5461)}));
+    await oiz.click('#altBuscarDestino');
+    await oiz.locator('#destinoNombre').fill('Oiz');
+    await oiz.locator('#destinoForm button[type=submit]').click();
+    assert.match(await oiz.locator('#destinoResultados button').first().textContent(),/cima.*Bizkaia/);
+    await oiz.getByRole('button',{name:'Oiz (cima) · Bizkaia'}).click();
+    await oiz.getByRole('button',{name:/Track publicado/}).waitFor();
+    assert.match(await oiz.locator('.alternativaAjuste').textContent(),/Salida ajustada [0-9]+ m/);
+    await oiz.getByRole('button',{name:'Elegir ruta',exact:true}).click();
+    await oiz.waitForFunction(()=>window.__creator.drawPoints.length>3);
+    const extremosOiz=await oiz.evaluate(()=>{
+      const pts=window.__creator.drawPoints;
+      return [pts[0].slice(0,2),pts.at(-1).slice(0,2)];
+    });
+    assert(Math.abs(extremosOiz[0][0]-43.2105)>.0001,'la salida recortada conserva el track');
+    assert.deepEqual(extremosOiz[1],cimaOiz.slice(0,2));
+    await oiz.close();
+    console.log('PASS Chromium: Trabakua a la cima de Oiz con el track publicado si fallan los motores');
+
     failPlanner=true;
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
     // Aqui no hay red, asi que los caminos de la zona tampoco se han podido

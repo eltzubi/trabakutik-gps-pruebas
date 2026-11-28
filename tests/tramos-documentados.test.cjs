@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {buscaTramosDocumentados}=require('../src/js/12-alternativas.js');
+const {buscaTramosDocumentados,recortaTrackPublicado}=require('../src/js/12-alternativas.js');
 
 const lat=43,lon=-2;
 const p=(x,y=0)=>[lat+y/111195,lon+x/(111195*Math.cos(lat*Math.PI/180))];
@@ -34,4 +34,22 @@ test('una coincidencia breve se descarta y dos fichas del mismo trazado no se su
  const [r]=buscaTramosDocumentados([linea],refs);
  assert(Math.abs(r.metros-200)<=15);
  assert.deepEqual(r.tramos.map(t=>t.ref.href),['a.html','b.html']);
+});
+
+const distancia=(a,b)=>Math.hypot((a[0]-b[0])*111195,(a[1]-b[1])*111195*Math.cos(lat*Math.PI/180));
+
+test('un track publicado sale entre los puntos próximos en ambos sentidos y conserva su geometría',()=>{
+ const original=[...recta(0,100),...recta(150,350,25),...recta(400,500)];
+ const ida=recortaTrackPublicado(original,p(25,30),p(475,20),distancia);
+ const vuelta=recortaTrackPublicado(original,p(475,20),p(25,30),distancia);
+ assert.deepEqual(ida.points,vuelta.points.slice().reverse());
+ assert.deepEqual(ida.points[0],p(25).concat(null));
+ assert.deepEqual(ida.points.at(-1),p(475).concat(null));
+ assert(Math.abs(ida.ajustes[0]-30)<.01);
+ assert(ida.points.slice(1,-1).every(q=>original.includes(q)));
+});
+
+test('el recorte rechaza puntos alejados y no cruza un salto del track',()=>{
+ assert.equal(recortaTrackPublicado(recta(0,500),p(25,70),p(475),distancia),null);
+ assert.equal(recortaTrackPublicado([...recta(0,100),...recta(350,500)],p(25),p(475),distancia),null);
 });

@@ -97,9 +97,9 @@ async function consultaCartoCiudad(metodo,params,signal){
  return respuesta.json();
 }
 async function eligeDestinoAlternativas(lugar){
- if(altBusqueda)return;
  const directo=puntoCartoCiudad(lugar);
  if(directo){marcaPuntoAlternativas(directo);return}
+ if(altBusqueda)return;
  const ctl=new AbortController();
  altBusqueda=ctl;
  const espera=setTimeout(()=>ctl.abort(),8000);
@@ -121,13 +121,32 @@ async function eligeDestinoAlternativas(lugar){
   if(altBusqueda===ctl)altBusqueda=null;
  }
 }
+function destinosTrabakutik(consulta){
+ const nombre=sinTildes(consulta).replace(/\s+/g,' ');
+ if(!/^(?:(?:la )?cima (?:de |del )?|(?:el )?monte )?oiz$/.test(nombre)&&nombre!=='oiz cima')return [];
+ // Punto de la cresta en el track publicado a pie de Trabakua a Oiz.
+ return [{address:'Oiz (cima)',province:'Bizkaia',lat:43.227608,lng:-2.591572}];
+}
+function pintaDestinosAlternativas(lugares){
+ const resultados=$('destinoResultados');
+ resultados.replaceChildren();
+ for(const lugar of lugares){
+  const b=document.createElement('button');
+  b.type='button';
+  b.textContent=[lugar.address,lugar.province].filter(Boolean).join(' · ');
+  b.onclick=()=>eligeDestinoAlternativas(lugar);
+  resultados.append(b);
+ }
+}
 async function buscaDestinoAlternativas(event){
  event.preventDefault();
  if(!altInicio||altBusqueda)return;
  const consulta=$('destinoNombre').value.trim();
  if(consulta.length<2)return;
- const resultados=$('destinoResultados');
- $('destinoEstado').textContent='';
+ const estado=$('destinoEstado');
+ estado.textContent='';
+ const locales=destinosTrabakutik(consulta);
+ pintaDestinosAlternativas(locales);
  const key=sinTildes(consulta);
  let lugares=cacheDestinos.get(key);
  if(!lugares){
@@ -135,7 +154,7 @@ async function buscaDestinoAlternativas(event){
   ultimaBusquedaDestino=Date.now();
   const ctl=new AbortController();
   altBusqueda=ctl;
-  resultados.textContent='Buscando lugares…';
+  estado.textContent='Buscando lugares…';
   const espera=setTimeout(()=>ctl.abort(),8000);
   try{
    const datos=await consultaCartoCiudad('candidates',{q:consulta,limit:'5'},ctl.signal);
@@ -144,22 +163,16 @@ async function buscaDestinoAlternativas(event){
    if(cacheDestinos.size>=40)cacheDestinos.delete(cacheDestinos.keys().next().value);
    cacheDestinos.set(key,lugares);
   }catch{
-   if(altBusqueda===ctl)resultados.textContent='Ahora no se puede buscar. Puedes marcar el destino en el mapa.';
+   if(altBusqueda===ctl)estado.textContent=locales.length?'':'Ahora no se puede buscar. Puedes marcar el destino en el mapa.';
    return;
   }finally{
    clearTimeout(espera);
    if(altBusqueda===ctl)altBusqueda=null;
   }
  }
- resultados.replaceChildren();
- if(!lugares.length){resultados.textContent='Sin resultados. Prueba con el nombre y el municipio.';return;}
- for(const lugar of lugares){
-  const b=document.createElement('button');
-  b.type='button';
-  b.textContent=[lugar.address,lugar.province].filter(Boolean).join(' · ');
-  b.onclick=()=>eligeDestinoAlternativas(lugar);
-  resultados.append(b);
- }
+ const todos=[...locales,...lugares];
+ pintaDestinosAlternativas(todos);
+ estado.textContent=todos.length?'':'Sin resultados. Prueba con el nombre y el municipio.';
 }
 
 function mideAlternativa(pts){
@@ -276,29 +289,128 @@ function encuadraAlternativa(bounds){
  map.fitBounds(bounds,{paddingTopLeft:[25,arriba],paddingBottomRight:[68,abajo],maxZoom:18,animate:false});
 }
 
+// Se recorta el track detallado entre dos proyecciones cercanas. Los
+// extremos que se muestran y se guardan son los del track, sin empalmes.
+function recortaTrackPublicado(pts,a,b,distance,radio=60){
+ const salida=[],llegada=[];
+ const latitud=111195,longitud=latitud*Math.cos((a[0]+b[0])/2*Math.PI/180);
+ let acumulado=0,cortes=0;
+ for(let i=1;i<pts.length;i++){
+  const x=pts[i-1],y=pts[i],m=distance(x,y);
+  if(m>125)cortes++;
+  if(m<.05||m>125){acumulado+=m;continue}
+  const dx=(y[0]-x[0])*latitud,dy=(y[1]-x[1])*longitud;
+  for(const [p,lista] of [[a,salida],[b,llegada]]){
+   const vx=(p[0]-x[0])*latitud,vy=(p[1]-x[1])*longitud;
+   const f=Math.max(0,Math.min(1,(vx*dx+vy*dy)/(dx*dx+dy*dy)));
+   const ajuste=Math.hypot(vx-f*dx,vy-f*dy);
+   if(ajuste>radio)continue;
+   const h=Number.isFinite(x[2])&&Number.isFinite(y[2])?x[2]+f*(y[2]-x[2]):null;
+   lista.push({p:[x[0]+f*(y[0]-x[0]),x[1]+f*(y[1]-x[1]),h],i,cortes,ajuste,desde:acumulado+f*m});
+  }
+  acumulado+=m;
+ }
+ const mejores=lista=>{
+  const candidatas=[];
+  for(const p of lista.sort((x,y)=>x.ajuste-y.ajuste)){
+   if(candidatas.some(q=>q.cortes===p.cortes&&Math.abs(q.desde-p.desde)<15))continue;
+   candidatas.push(p);
+   if(candidatas.length===16)break;
+  }
+  return candidatas;
+ };
+ let mejor=null;
+ const directa=distance(a,b),inicios=mejores(salida),finales=mejores(llegada);
+ for(const ini of inicios)for(const fin of finales){
+  const kmTrack=Math.abs(ini.desde-fin.desde);
+  if(ini.cortes!==fin.cortes||kmTrack<10||kmTrack>Math.max(200,directa*5))continue;
+  const coste=ini.ajuste+fin.ajuste+kmTrack*.002;
+  if(!mejor||coste<mejor.coste)mejor={ini,fin,coste,metros:kmTrack};
+ }
+ if(!mejor)return null;
+ const {ini,fin,metros}=mejor;
+ const haciaDelante=ini.desde<fin.desde;
+ const intermedios=haciaDelante?pts.slice(ini.i,fin.i):pts.slice(fin.i,ini.i).reverse();
+ const points=[ini.p,...intermedios,fin.p].filter((p,i,tramo)=>!i||distance(tramo[i-1],p)>.05);
+ if(points.length<2)return null;
+ return {points,metros,ajustes:[ini.ajuste,fin.ajuste]};
+}
+
+async function recorridoPublicadoAlternativas(a,b,referencias,signal){
+ const candidatas=[];
+ for(const ref of referencias){
+  const slug=ref.href.replace(/\.html$/,'');
+  if(!/^[a-z0-9_-]+$/i.test(slug))continue;
+  const cercaA=closestMeters(a,ref.points),cercaB=closestMeters(b,ref.points);
+  if(Math.max(cercaA,cercaB)<=75)candidatas.push({ref,slug,distancia:cercaA+cercaB});
+ }
+ candidatas.sort((x,y)=>x.distancia-y.distancia);
+ const respuestas=await Promise.allSettled(candidatas.slice(0,3).map(async ({ref,slug})=>{
+  const base='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/';
+  const res=await fetch(base+slug+'.json',{cache:'no-store',signal});
+  if(!res.ok)return null;
+  const data=await res.json(),pts=data.tracks?.[0]?.points;
+  if(!Array.isArray(pts)||pts.length<2||pts.length>15000||
+     !pts.every(p=>Array.isArray(p)&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180&&Number.isFinite(p[0])&&Number.isFinite(p[1])))return null;
+  const corte=recortaTrackPublicado(pts,a,b,dist);
+  if(!corte)return null;
+  return {ref,...corte};
+ }));
+ const validas=respuestas.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value);
+ validas.sort((x,y)=>x.ajustes[0]+x.ajustes[1]-y.ajustes[0]-y.ajustes[1]||x.metros-y.metros);
+ const r=validas[0];
+ return r?{parts:[r.points],comparison:{distance:r.metros,ascent:null},publicado:r}:null;
+}
+
 async function calculaAlternativas(a,b){
- if(!confirm('Los puntos se enviarán a Valhalla y OSRM para calcular las rutas. ¿Continuar?')){pasoAlternativas('Marca el destino en el mapa',2);return;}
+ const permiteCalculo=confirm('¿Buscar también rutas de mapa? Para calcularlas se enviarán los puntos a Valhalla y OSRM.');
  const gen=++altGeneracion,ctl=new AbortController();
  altControl=ctl;
  const lista=$('alternativasLista');
- pasoAlternativas('Calculando hasta tres recorridos…');
+ pasoAlternativas(permiteCalculo?'Buscando en Trabakutik y calculando opciones…':'Buscando en los tracks de Trabakutik…');
  altCapas.push(L.circleMarker(b,{radius:8,color:'#ffad4a',fillOpacity:1,interactive:false}).addTo(map));
  try{
-  const raw=await MotorSenderismo.fetchAlternatives(a,b,ctl.signal);
+  const referencias=tracks.filter(t=>coincideActividad(t,'senderismo'));
+  const trackControl=new AbortController(),motorControl=new AbortController();
+  const cancelaPeticiones=()=>{trackControl.abort();motorControl.abort()};
+  ctl.signal.addEventListener('abort',cancelaPeticiones,{once:true});
+  const esperaTrack=setTimeout(()=>trackControl.abort(),6500);
+  let esperaMotor;
+  const [publicado,motor]=await Promise.all([
+   recorridoPublicadoAlternativas(a,b,referencias,trackControl.signal)
+    .then(r=>{
+     if(r&&permiteCalculo)esperaMotor=setTimeout(()=>motorControl.abort(),4500);
+     return r;
+    }).catch(()=>null),
+   permiteCalculo?MotorSenderismo.fetchAlternatives(a,b,motorControl.signal).catch(()=>[]):[],
+  ]).finally(()=>{
+   clearTimeout(esperaTrack);
+   clearTimeout(esperaMotor);
+   ctl.signal.removeEventListener('abort',cancelaPeticiones);
+  });
   if(gen!==altGeneracion)return;
+  const raw=publicado?[publicado,...motor.filter(r=>!MotorSenderismo.similarAlternatives(publicado,r)).slice(0,2)]:motor;
   const opciones=raw.map(r=>{
    const parts=r.parts.map(p=>p.map(q=>q.slice()));
    return {...r,parts,anchors:[parts[0][0],parts[0].at(-1)],medidas:null};
   });
-  if(!opciones.length)throw Error('No hay recorridos válidos entre los dos puntos');
-  const referencias=tracks.filter(t=>coincideActividad(t,'senderismo'));
+  if(!opciones.length){
+   if(!permiteCalculo){
+    altCapas.pop().remove();
+    pasoAlternativas('Sin track publicado entre estos puntos. Marca el destino de nuevo para calcular.',2);
+    return;
+   }
+   throw Error('No hay recorridos válidos');
+  }
   const documentados=buscaTramosDocumentados(opciones.map(r=>r.parts[0]),referencias);
   opciones.forEach((r,i)=>{
    const doc=documentados[i];
-   r.documentado={...doc,fraccion:doc.total?doc.metros/doc.total:0};
+   r.documentado=r.publicado?
+    {fraccion:1,metros:r.comparison.distance,lineas:r.parts,tramos:[{ref:r.publicado.ref}]}:
+    {...doc,fraccion:doc.total?doc.metros/doc.total:0};
   });
   // A igual porcentaje redondeado se conserva el orden del motor.
-  opciones.sort((a,b)=>Math.round(b.documentado.fraccion*100)-Math.round(a.documentado.fraccion*100));
+  opciones.sort((a,b)=>Number(!!b.publicado)-Number(!!a.publicado)||Math.round(b.documentado.fraccion*100)-Math.round(a.documentado.fraccion*100));
   limpiaCapasAlternativas();
   lista.replaceChildren();
   lista.classList.remove('hidden');
@@ -312,6 +424,7 @@ async function calculaAlternativas(a,b){
   const detalleDoc=document.createElement('details');detalleDoc.className='alternativaDocumentada hidden';
   const resumenDoc=document.createElement('summary');detalleDoc.append(resumenDoc);
   const fichasDoc=document.createElement('div');detalleDoc.append(fichasDoc);
+  const ajusteDoc=document.createElement('small');ajusteDoc.className='alternativaAjuste hidden';
   const menorDistancia=Math.min(...opciones.map(r=>r.comparison.distance));
   function actualizaDatos(){
    const subidas=opciones.map(r=>r.medidas?.sube??r.comparison.ascent);
@@ -344,9 +457,13 @@ async function calculaAlternativas(a,b){
    altDocumentados=doc.lineas.length?L.polyline(doc.lineas,{
     color:'#f1fff0',weight:3,dashArray:'3 6',interactive:false,
    }).addTo(map):null;
+   const fuente=opciones[i].publicado;
+   const ajustes=fuente?fuente.ajustes.map(Math.round):[];
+   ajusteDoc.classList.toggle('hidden',!ajustes.some(m=>m>=5));
+   ajusteDoc.textContent=ajustes.map((m,j)=>m>=5?(j?'Llegada':'Salida')+' ajustada '+m+' m al track':'').filter(Boolean).join(' · ');
    detalleDoc.open=false;
    detalleDoc.classList.toggle('hidden',!altDocumentados);
-   resumenDoc.textContent=fmt(doc.metros)+' de tramos Trabakutik · ver fichas';
+   resumenDoc.textContent=fuente?'Track publicado · ver ficha':fmt(doc.metros)+' de tramos Trabakutik · ver fichas';
    fichasDoc.replaceChildren();
    const origenes=[...new Set(doc.tramos.map(t=>t.ref))];
    for(const ref of origenes){
@@ -378,7 +495,7 @@ async function calculaAlternativas(a,b){
    if(r.documentado.metros){
     const coincidente=document.createElement('small');
     coincidente.className='alternativaCoincidencia';
-    coincidente.textContent=Math.max(1,Math.round(r.documentado.fraccion*100))+' % Trabakutik';
+    coincidente.textContent=r.publicado?'Track publicado':Math.max(1,Math.round(r.documentado.fraccion*100))+' % Trabakutik';
     button.append(coincidente);
    }
    comparacion.append(button);
@@ -400,7 +517,7 @@ async function calculaAlternativas(a,b){
   detalleDoc.addEventListener('toggle',()=>{
    if(detalleDoc.open&&altDocumentados&&gen===altGeneracion)encuadraAlternativa(altDocumentados.getBounds());
   });
-  lista.append(comparacion,detalleDoc,rampButton,acciones);
+  lista.append(comparacion,detalleDoc,ajusteDoc,rampButton,acciones);
   lista.classList.add('compact-preview');
   choose.onclick=async()=>{
    const r=opciones[selected];
@@ -412,7 +529,7 @@ async function calculaAlternativas(a,b){
    lista.querySelectorAll('button:not(.alternativaCancelar)').forEach(x=>x.disabled=true);
    pasoAlternativas('Preparando recorrido y alturas…');
    const espera=setTimeout(()=>altura.abort(),20000);
-   try{if(!r.medidas)await alturasTerrenoGps(r,altura.signal)}catch{}finally{clearTimeout(espera)}
+   try{if(!r.medidas&&permiteCalculo)await alturasTerrenoGps(r,altura.signal)}catch{}finally{clearTimeout(espera)}
    if(gen!==altGeneracion)return;
    cancelaAlternativas();
    aplicaMapaGps(r);
@@ -427,7 +544,7 @@ async function calculaAlternativas(a,b){
     if(terreno.signal.aborted)return;
     const espera=setTimeout(()=>terreno.abort(),18000);
     try{
-     if(!r.parts[0].every(p=>Number.isFinite(p[2])))await alturasTerrenoGps(r,terreno.signal);
+     if(permiteCalculo&&!r.parts[0].every(p=>Number.isFinite(p[2])))await alturasTerrenoGps(r,terreno.signal);
      if(terreno.signal.aborted||gen!==altGeneracion)return;
      r.medidas=mideAlternativa(r.parts[0]);
      actualizaDatos();
@@ -472,4 +589,4 @@ if(typeof document!=='undefined'){
  }
 }
 
-if(typeof module==='object'&&module.exports)module.exports={buscaTramosDocumentados};
+if(typeof module==='object'&&module.exports)module.exports={buscaTramosDocumentados,recortaTrackPublicado,destinosTrabakutik};

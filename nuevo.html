@@ -804,6 +804,7 @@ body.creating-route #alternativasPanel:has(#destinoForm:not(.hidden)){max-height
 .alternativaDocumentada summary{cursor:pointer;padding:10px;min-height:40px}
 .alternativaDocumentada>div{display:grid;padding:0 8px 5px;max-height:110px;overflow:auto}
 .alternativaDocumentada a{color:inherit;padding:8px}
+.alternativaAjuste{padding:2px 4px;color:#ffe1a3;font-size:11px}
 </style></head><body><div id="app">
 <header class="top"><div><strong>TRABAKUTIK <span style="color:#70eaff">GPS</span></strong><small id="title">Elige una ruta</small></div><a href="https://trabakutik.com/">← Volver a la web</a></header>
 <div id="map" aria-label="Mapa de todas las rutas"><div id="mapRot"></div><div id="creadorDock"><div id="creadorBarra"><div class="crea-mandos"><div class="crea-pildora"><button type="button" id="creaDeshacer" aria-label="Deshacer el último tramo" title="Deshacer" disabled>&#8630;</button><button type="button" id="creaRehacer" aria-label="Rehacer" title="Rehacer" disabled>&#8631;</button></div><button type="button" id="creaMas" class="crea-mas" aria-label="Más opciones del trazado" aria-haspopup="menu" aria-expanded="false" aria-controls="creaMenu">&#8942;</button><div id="creaMenu" class="crea-menu hidden" role="menu"><button type="button" role="menuitem" id="creaCirculo">&#10227; Cerrar el círculo</button><button type="button" role="menuitem" id="creaIdaVuelta">&#8596; Ida y vuelta</button><button type="button" role="menuitem" id="creaBorrar" class="crea-borrar">&#10005; Borrar todo</button></div></div></div><div id="creadorModo"><button type="button" id="modoManual" aria-pressed="true">Punto a punto</button><button type="button" id="modoDosPuntos" aria-pressed="false">Ir de A a B</button></div><section id="alternativasPanel" class="hidden"><header><span id="alternativasPaso" aria-hidden="true" hidden></span><p id="alternativasEstado" role="status"></p><button type="button" id="alternativasCerrar" aria-label="Volver a punto a punto">✕</button></header><div id="alternativasEntrada" class="hidden"><button id="altMiPosicion" type="button">Mi posición</button><button id="altBuscarDestino" type="button" class="hidden">Buscar destino</button><form id="destinoForm" class="hidden"><div class="destinoBusqueda"><input id="destinoNombre" type="search" aria-label="Nombre del destino" placeholder="Pueblo, calle o lugar" required minlength="2" maxlength="120"><button type="submit">Buscar</button></div><div id="destinoResultados" aria-live="polite"></div><div id="destinoEstado" role="status"></div><a href="https://www.cartociudad.es/" target="_blank" rel="noopener">CartoCiudad · CC BY 4.0 SCNE</a></form></div><div id="alternativasLista" class="hidden"></div></section></div><div class="tools"><div class="tool-stack"><button id="eye" title="Mostrar rutas de Trabakutik" aria-label="Mostrar rutas de Trabakutik" aria-pressed="false"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="m3 12 9 4 9-4M3 17l9 4 9-4"/></svg></button><button id="locate" title="Mi posición" aria-label="Centrar en mi posición">⌖</button><button id="orient" type="button" aria-pressed="true" title="Orientar el mapa" aria-label="Orientar el mapa: rumbo arriba o norte arriba"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L16 20 L12 17 L8 20 Z"/></svg></button></div><div class="tool-stack"><button id="plus" aria-label="Acercar">+</button><button id="minus" aria-label="Alejar">−</button></div><div class="tool-stack"><button id="audioMode" type="button" data-modo="voz" aria-label="Avisos por voz y pitidos" title="Cambiar avisos sonoros"><svg id="audioIcon" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button><button id="guardaMapa" type="button" title="Guardar el mapa de esta ruta para andar sin cobertura" aria-label="Guardar el mapa de esta ruta"><small>mapa</small><b>⤓</b></button><button id="sos" type="button" aria-label="Compartir coordenadas SOS" hidden>SOS</button></div></div><button type="button" id="avisoMal" class="aviso-mal hidden"></button><button type="button" id="avisoFalta" class="aviso-mal aviso-falta hidden">✋ Faltó aquí</button><div id="turnHint" class="turn-hint hidden" role="status" aria-live="polite"><div class="turn-fila"><span id="turnArrow" class="turn-arrow"></span><span class="turn-copy"><b id="turnDirection">Gira a la derecha</b><small id="turnAngle">Giro de 78&deg;</small><span class="turn-dist"><em id="turnDistance">50</em><i>m</i></span></span></div><div class="turn-fases"><i></i><i></i></div><div class="turn-rot"><span id="turnRot1">50 m</span><span>en el cruce</span></div></div><div class="info"><div class="info-top"><button id="mapTitle" class="route-title-link" type="button" disabled title="Ficha de la ruta">Mapa de rutas</button><button id="clearActiveRoute" class="clear-active hidden" type="button" aria-label="Quitar ruta activa del mapa" title="Quitar ruta activa">×</button><label class="basemap-control"><span>Mapa</span><select id="basemap" aria-label="Elegir fondo de mapa"><option value="osm">OSM</option><option value="ign">IGN</option><option value="pnoa">Sat.</option></select></label></div><div id="gpsState" data-estado="inactivo">GPS sin iniciar</div><span id="compass" class="compass hidden"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#07202dcc" stroke="#4ba7bc" stroke-width="1.4"/><text x="20" y="9.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#8fd3e4">N</text><text x="20" y="36" text-anchor="middle" font-size="6.5" fill="#54818f">S</text><text x="35.2" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">E</text><text x="4.8" y="22.6" text-anchor="middle" font-size="6.5" fill="#54818f">O</text><g id="compassNeedle" transform="rotate(0 20 20)"><path d="M20 3.5 L26 25 L20 21 L14 25 Z" fill="#ff9c3b" stroke="#020617" stroke-width="1.2" stroke-linejoin="round"/><circle cx="20" cy="20" r="2.1" fill="#07202d" stroke="#8ef0ff" stroke-width="1.1"/></g></svg><b id="compassText">—</b></span><span id="routeProgress" class="route-progress hidden"></span><span id="distance">Ruta destacada en cian</span><span id="backgroundRouteLegend" class="hidden">Naranja continua · e-bike / Verde discontinua · senderismo / Dos colores · mixta</span><span id="ffProxBox" class="ff"><span class="ff-lab">Próx. cruce</span><b id="ffProx">—</b></span><span id="ffTrackBox" class="ff"><span class="ff-lab">Al track</span><b id="ffTrack">—</b></span><span id="ffAltBox" class="ff"><span class="ff-lab">Altitud</span><b id="ffAlt">—</b></span><button type="button" id="simBanda" class="sim-banda hidden">▶ SIMULANDO · toca para parar</button><span id="reverseWarn" class="reverse-warn hidden">&#8646; La est&aacute;s haciendo AL REV&Eacute;S &middot; los giros van corregidos</span></div><div id="plannerStatus" class="hidden" role="status" aria-live="polite"></div><span class="on-map" id="drawTip" hidden>Toca las líneas para marcar puntos azules</span><div id="mapCredit"></div><div id="plannerCredit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · cálculo FOSSGIS · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir mapa</a></div></div>
@@ -8263,16 +8264,14 @@ async function fetchAlternatives(origin,target,signal){
     }));
   }
   await Promise.all([attempt('Valhalla',()=>valhalla(0)),attempt('OSRM',osrm)]);
-  if(signal?.aborted)throw Error('Cálculo cancelado');
   if(!candidates.length)throw Error('Ningún motor devolvió un recorrido válido. '+errors.join(' · '));
-  if(uniqueAlternatives(candidates,origin,target).length<3)
+  if(!signal?.aborted&&uniqueAlternatives(candidates,origin,target).length<3)
     await attempt('Valhalla alternativas',()=>valhalla(2));
-  if(signal?.aborted)throw Error('Cálculo cancelado');
   const priority={Valhalla:0,OSRM:1};
   candidates.sort((a,b)=>priority[a.provider]-priority[b.provider]);
   return uniqueAlternatives(candidates,origin,target);
 }
-return {fetchAlternatives};
+return {fetchAlternatives,similarAlternatives};
 })();
 // Las alternativas son una vista previa. El borrador cambia al elegir ruta.
 let altInicio=null,altActivo=false,altGeneracion=0,altCapas=[],altControl=null;
@@ -8373,9 +8372,9 @@ async function consultaCartoCiudad(metodo,params,signal){
  return respuesta.json();
 }
 async function eligeDestinoAlternativas(lugar){
- if(altBusqueda)return;
  const directo=puntoCartoCiudad(lugar);
  if(directo){marcaPuntoAlternativas(directo);return}
+ if(altBusqueda)return;
  const ctl=new AbortController();
  altBusqueda=ctl;
  const espera=setTimeout(()=>ctl.abort(),8000);
@@ -8397,13 +8396,32 @@ async function eligeDestinoAlternativas(lugar){
   if(altBusqueda===ctl)altBusqueda=null;
  }
 }
+function destinosTrabakutik(consulta){
+ const nombre=sinTildes(consulta).replace(/\s+/g,' ');
+ if(!/^(?:(?:la )?cima (?:de |del )?|(?:el )?monte )?oiz$/.test(nombre)&&nombre!=='oiz cima')return [];
+ // Punto de la cresta en el track publicado a pie de Trabakua a Oiz.
+ return [{address:'Oiz (cima)',province:'Bizkaia',lat:43.227608,lng:-2.591572}];
+}
+function pintaDestinosAlternativas(lugares){
+ const resultados=$('destinoResultados');
+ resultados.replaceChildren();
+ for(const lugar of lugares){
+  const b=document.createElement('button');
+  b.type='button';
+  b.textContent=[lugar.address,lugar.province].filter(Boolean).join(' · ');
+  b.onclick=()=>eligeDestinoAlternativas(lugar);
+  resultados.append(b);
+ }
+}
 async function buscaDestinoAlternativas(event){
  event.preventDefault();
  if(!altInicio||altBusqueda)return;
  const consulta=$('destinoNombre').value.trim();
  if(consulta.length<2)return;
- const resultados=$('destinoResultados');
- $('destinoEstado').textContent='';
+ const estado=$('destinoEstado');
+ estado.textContent='';
+ const locales=destinosTrabakutik(consulta);
+ pintaDestinosAlternativas(locales);
  const key=sinTildes(consulta);
  let lugares=cacheDestinos.get(key);
  if(!lugares){
@@ -8411,7 +8429,7 @@ async function buscaDestinoAlternativas(event){
   ultimaBusquedaDestino=Date.now();
   const ctl=new AbortController();
   altBusqueda=ctl;
-  resultados.textContent='Buscando lugares…';
+  estado.textContent='Buscando lugares…';
   const espera=setTimeout(()=>ctl.abort(),8000);
   try{
    const datos=await consultaCartoCiudad('candidates',{q:consulta,limit:'5'},ctl.signal);
@@ -8420,22 +8438,16 @@ async function buscaDestinoAlternativas(event){
    if(cacheDestinos.size>=40)cacheDestinos.delete(cacheDestinos.keys().next().value);
    cacheDestinos.set(key,lugares);
   }catch{
-   if(altBusqueda===ctl)resultados.textContent='Ahora no se puede buscar. Puedes marcar el destino en el mapa.';
+   if(altBusqueda===ctl)estado.textContent=locales.length?'':'Ahora no se puede buscar. Puedes marcar el destino en el mapa.';
    return;
   }finally{
    clearTimeout(espera);
    if(altBusqueda===ctl)altBusqueda=null;
   }
  }
- resultados.replaceChildren();
- if(!lugares.length){resultados.textContent='Sin resultados. Prueba con el nombre y el municipio.';return;}
- for(const lugar of lugares){
-  const b=document.createElement('button');
-  b.type='button';
-  b.textContent=[lugar.address,lugar.province].filter(Boolean).join(' · ');
-  b.onclick=()=>eligeDestinoAlternativas(lugar);
-  resultados.append(b);
- }
+ const todos=[...locales,...lugares];
+ pintaDestinosAlternativas(todos);
+ estado.textContent=todos.length?'':'Sin resultados. Prueba con el nombre y el municipio.';
 }
 
 function mideAlternativa(pts){
@@ -8552,29 +8564,128 @@ function encuadraAlternativa(bounds){
  map.fitBounds(bounds,{paddingTopLeft:[25,arriba],paddingBottomRight:[68,abajo],maxZoom:18,animate:false});
 }
 
+// Se recorta el track detallado entre dos proyecciones cercanas. Los
+// extremos que se muestran y se guardan son los del track, sin empalmes.
+function recortaTrackPublicado(pts,a,b,distance,radio=60){
+ const salida=[],llegada=[];
+ const latitud=111195,longitud=latitud*Math.cos((a[0]+b[0])/2*Math.PI/180);
+ let acumulado=0,cortes=0;
+ for(let i=1;i<pts.length;i++){
+  const x=pts[i-1],y=pts[i],m=distance(x,y);
+  if(m>125)cortes++;
+  if(m<.05||m>125){acumulado+=m;continue}
+  const dx=(y[0]-x[0])*latitud,dy=(y[1]-x[1])*longitud;
+  for(const [p,lista] of [[a,salida],[b,llegada]]){
+   const vx=(p[0]-x[0])*latitud,vy=(p[1]-x[1])*longitud;
+   const f=Math.max(0,Math.min(1,(vx*dx+vy*dy)/(dx*dx+dy*dy)));
+   const ajuste=Math.hypot(vx-f*dx,vy-f*dy);
+   if(ajuste>radio)continue;
+   const h=Number.isFinite(x[2])&&Number.isFinite(y[2])?x[2]+f*(y[2]-x[2]):null;
+   lista.push({p:[x[0]+f*(y[0]-x[0]),x[1]+f*(y[1]-x[1]),h],i,cortes,ajuste,desde:acumulado+f*m});
+  }
+  acumulado+=m;
+ }
+ const mejores=lista=>{
+  const candidatas=[];
+  for(const p of lista.sort((x,y)=>x.ajuste-y.ajuste)){
+   if(candidatas.some(q=>q.cortes===p.cortes&&Math.abs(q.desde-p.desde)<15))continue;
+   candidatas.push(p);
+   if(candidatas.length===16)break;
+  }
+  return candidatas;
+ };
+ let mejor=null;
+ const directa=distance(a,b),inicios=mejores(salida),finales=mejores(llegada);
+ for(const ini of inicios)for(const fin of finales){
+  const kmTrack=Math.abs(ini.desde-fin.desde);
+  if(ini.cortes!==fin.cortes||kmTrack<10||kmTrack>Math.max(200,directa*5))continue;
+  const coste=ini.ajuste+fin.ajuste+kmTrack*.002;
+  if(!mejor||coste<mejor.coste)mejor={ini,fin,coste,metros:kmTrack};
+ }
+ if(!mejor)return null;
+ const {ini,fin,metros}=mejor;
+ const haciaDelante=ini.desde<fin.desde;
+ const intermedios=haciaDelante?pts.slice(ini.i,fin.i):pts.slice(fin.i,ini.i).reverse();
+ const points=[ini.p,...intermedios,fin.p].filter((p,i,tramo)=>!i||distance(tramo[i-1],p)>.05);
+ if(points.length<2)return null;
+ return {points,metros,ajustes:[ini.ajuste,fin.ajuste]};
+}
+
+async function recorridoPublicadoAlternativas(a,b,referencias,signal){
+ const candidatas=[];
+ for(const ref of referencias){
+  const slug=ref.href.replace(/\.html$/,'');
+  if(!/^[a-z0-9_-]+$/i.test(slug))continue;
+  const cercaA=closestMeters(a,ref.points),cercaB=closestMeters(b,ref.points);
+  if(Math.max(cercaA,cercaB)<=75)candidatas.push({ref,slug,distancia:cercaA+cercaB});
+ }
+ candidatas.sort((x,y)=>x.distancia-y.distancia);
+ const respuestas=await Promise.allSettled(candidatas.slice(0,3).map(async ({ref,slug})=>{
+  const base='https://raw.githubusercontent.com/eltzubi/Rutas-Mallabia/main/data/';
+  const res=await fetch(base+slug+'.json',{cache:'no-store',signal});
+  if(!res.ok)return null;
+  const data=await res.json(),pts=data.tracks?.[0]?.points;
+  if(!Array.isArray(pts)||pts.length<2||pts.length>15000||
+     !pts.every(p=>Array.isArray(p)&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180&&Number.isFinite(p[0])&&Number.isFinite(p[1])))return null;
+  const corte=recortaTrackPublicado(pts,a,b,dist);
+  if(!corte)return null;
+  return {ref,...corte};
+ }));
+ const validas=respuestas.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value);
+ validas.sort((x,y)=>x.ajustes[0]+x.ajustes[1]-y.ajustes[0]-y.ajustes[1]||x.metros-y.metros);
+ const r=validas[0];
+ return r?{parts:[r.points],comparison:{distance:r.metros,ascent:null},publicado:r}:null;
+}
+
 async function calculaAlternativas(a,b){
- if(!confirm('Los puntos se enviarán a Valhalla y OSRM para calcular las rutas. ¿Continuar?')){pasoAlternativas('Marca el destino en el mapa',2);return;}
+ const permiteCalculo=confirm('¿Buscar también rutas de mapa? Para calcularlas se enviarán los puntos a Valhalla y OSRM.');
  const gen=++altGeneracion,ctl=new AbortController();
  altControl=ctl;
  const lista=$('alternativasLista');
- pasoAlternativas('Calculando hasta tres recorridos…');
+ pasoAlternativas(permiteCalculo?'Buscando en Trabakutik y calculando opciones…':'Buscando en los tracks de Trabakutik…');
  altCapas.push(L.circleMarker(b,{radius:8,color:'#ffad4a',fillOpacity:1,interactive:false}).addTo(map));
  try{
-  const raw=await MotorSenderismo.fetchAlternatives(a,b,ctl.signal);
+  const referencias=tracks.filter(t=>coincideActividad(t,'senderismo'));
+  const trackControl=new AbortController(),motorControl=new AbortController();
+  const cancelaPeticiones=()=>{trackControl.abort();motorControl.abort()};
+  ctl.signal.addEventListener('abort',cancelaPeticiones,{once:true});
+  const esperaTrack=setTimeout(()=>trackControl.abort(),6500);
+  let esperaMotor;
+  const [publicado,motor]=await Promise.all([
+   recorridoPublicadoAlternativas(a,b,referencias,trackControl.signal)
+    .then(r=>{
+     if(r&&permiteCalculo)esperaMotor=setTimeout(()=>motorControl.abort(),4500);
+     return r;
+    }).catch(()=>null),
+   permiteCalculo?MotorSenderismo.fetchAlternatives(a,b,motorControl.signal).catch(()=>[]):[],
+  ]).finally(()=>{
+   clearTimeout(esperaTrack);
+   clearTimeout(esperaMotor);
+   ctl.signal.removeEventListener('abort',cancelaPeticiones);
+  });
   if(gen!==altGeneracion)return;
+  const raw=publicado?[publicado,...motor.filter(r=>!MotorSenderismo.similarAlternatives(publicado,r)).slice(0,2)]:motor;
   const opciones=raw.map(r=>{
    const parts=r.parts.map(p=>p.map(q=>q.slice()));
    return {...r,parts,anchors:[parts[0][0],parts[0].at(-1)],medidas:null};
   });
-  if(!opciones.length)throw Error('No hay recorridos válidos entre los dos puntos');
-  const referencias=tracks.filter(t=>coincideActividad(t,'senderismo'));
+  if(!opciones.length){
+   if(!permiteCalculo){
+    altCapas.pop().remove();
+    pasoAlternativas('Sin track publicado entre estos puntos. Marca el destino de nuevo para calcular.',2);
+    return;
+   }
+   throw Error('No hay recorridos válidos');
+  }
   const documentados=buscaTramosDocumentados(opciones.map(r=>r.parts[0]),referencias);
   opciones.forEach((r,i)=>{
    const doc=documentados[i];
-   r.documentado={...doc,fraccion:doc.total?doc.metros/doc.total:0};
+   r.documentado=r.publicado?
+    {fraccion:1,metros:r.comparison.distance,lineas:r.parts,tramos:[{ref:r.publicado.ref}]}:
+    {...doc,fraccion:doc.total?doc.metros/doc.total:0};
   });
   // A igual porcentaje redondeado se conserva el orden del motor.
-  opciones.sort((a,b)=>Math.round(b.documentado.fraccion*100)-Math.round(a.documentado.fraccion*100));
+  opciones.sort((a,b)=>Number(!!b.publicado)-Number(!!a.publicado)||Math.round(b.documentado.fraccion*100)-Math.round(a.documentado.fraccion*100));
   limpiaCapasAlternativas();
   lista.replaceChildren();
   lista.classList.remove('hidden');
@@ -8588,6 +8699,7 @@ async function calculaAlternativas(a,b){
   const detalleDoc=document.createElement('details');detalleDoc.className='alternativaDocumentada hidden';
   const resumenDoc=document.createElement('summary');detalleDoc.append(resumenDoc);
   const fichasDoc=document.createElement('div');detalleDoc.append(fichasDoc);
+  const ajusteDoc=document.createElement('small');ajusteDoc.className='alternativaAjuste hidden';
   const menorDistancia=Math.min(...opciones.map(r=>r.comparison.distance));
   function actualizaDatos(){
    const subidas=opciones.map(r=>r.medidas?.sube??r.comparison.ascent);
@@ -8620,9 +8732,13 @@ async function calculaAlternativas(a,b){
    altDocumentados=doc.lineas.length?L.polyline(doc.lineas,{
     color:'#f1fff0',weight:3,dashArray:'3 6',interactive:false,
    }).addTo(map):null;
+   const fuente=opciones[i].publicado;
+   const ajustes=fuente?fuente.ajustes.map(Math.round):[];
+   ajusteDoc.classList.toggle('hidden',!ajustes.some(m=>m>=5));
+   ajusteDoc.textContent=ajustes.map((m,j)=>m>=5?(j?'Llegada':'Salida')+' ajustada '+m+' m al track':'').filter(Boolean).join(' · ');
    detalleDoc.open=false;
    detalleDoc.classList.toggle('hidden',!altDocumentados);
-   resumenDoc.textContent=fmt(doc.metros)+' de tramos Trabakutik · ver fichas';
+   resumenDoc.textContent=fuente?'Track publicado · ver ficha':fmt(doc.metros)+' de tramos Trabakutik · ver fichas';
    fichasDoc.replaceChildren();
    const origenes=[...new Set(doc.tramos.map(t=>t.ref))];
    for(const ref of origenes){
@@ -8654,7 +8770,7 @@ async function calculaAlternativas(a,b){
    if(r.documentado.metros){
     const coincidente=document.createElement('small');
     coincidente.className='alternativaCoincidencia';
-    coincidente.textContent=Math.max(1,Math.round(r.documentado.fraccion*100))+' % Trabakutik';
+    coincidente.textContent=r.publicado?'Track publicado':Math.max(1,Math.round(r.documentado.fraccion*100))+' % Trabakutik';
     button.append(coincidente);
    }
    comparacion.append(button);
@@ -8676,7 +8792,7 @@ async function calculaAlternativas(a,b){
   detalleDoc.addEventListener('toggle',()=>{
    if(detalleDoc.open&&altDocumentados&&gen===altGeneracion)encuadraAlternativa(altDocumentados.getBounds());
   });
-  lista.append(comparacion,detalleDoc,rampButton,acciones);
+  lista.append(comparacion,detalleDoc,ajusteDoc,rampButton,acciones);
   lista.classList.add('compact-preview');
   choose.onclick=async()=>{
    const r=opciones[selected];
@@ -8688,7 +8804,7 @@ async function calculaAlternativas(a,b){
    lista.querySelectorAll('button:not(.alternativaCancelar)').forEach(x=>x.disabled=true);
    pasoAlternativas('Preparando recorrido y alturas…');
    const espera=setTimeout(()=>altura.abort(),20000);
-   try{if(!r.medidas)await alturasTerrenoGps(r,altura.signal)}catch{}finally{clearTimeout(espera)}
+   try{if(!r.medidas&&permiteCalculo)await alturasTerrenoGps(r,altura.signal)}catch{}finally{clearTimeout(espera)}
    if(gen!==altGeneracion)return;
    cancelaAlternativas();
    aplicaMapaGps(r);
@@ -8703,7 +8819,7 @@ async function calculaAlternativas(a,b){
     if(terreno.signal.aborted)return;
     const espera=setTimeout(()=>terreno.abort(),18000);
     try{
-     if(!r.parts[0].every(p=>Number.isFinite(p[2])))await alturasTerrenoGps(r,terreno.signal);
+     if(permiteCalculo&&!r.parts[0].every(p=>Number.isFinite(p[2])))await alturasTerrenoGps(r,terreno.signal);
      if(terreno.signal.aborted||gen!==altGeneracion)return;
      r.medidas=mideAlternativa(r.parts[0]);
      actualizaDatos();
@@ -8748,6 +8864,6 @@ if(typeof document!=='undefined'){
  }
 }
 
-if(typeof module==='object'&&module.exports)module.exports={buscaTramosDocumentados};
+if(typeof module==='object'&&module.exports)module.exports={buscaTramosDocumentados,recortaTrackPublicado,destinosTrabakutik};
 })();
 </script></body></html>
