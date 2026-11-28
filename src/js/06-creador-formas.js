@@ -236,7 +236,7 @@ function openSaveDialog(points,name,kind){
  const complete=kind!=='recording'||nativeTrackComplete;
  const fuentes=kind==='created'&&typeof tramosGps!=='undefined'?
   [...new Set(tramosGps.filter(tr=>tr.oficial).map(({oficial})=>
-   'Track adaptado de '+oficial.codigo+' · '+oficial.nombre+' · Diputación Foral de Bizkaia · CC BY 4.0 · '+oficial.url))]:[];
+   'Track adaptado de '+oficial.codigo+' · '+oficial.nombre+' · '+oficial.organismo+' · '+oficial.licencia+' · '+oficial.url))]:[];
  pendingSave={points:points.map(p=>p===null?null:p.slice()),name,kind,complete,fuentes};
  $('saveTitle').textContent=kind==='recording'?'Guardar grabación':'Guardar ruta creada';
  $('saveSummary').textContent=name+' · '+points.filter(Boolean).length+' puntos'+elevationText(points.filter(Boolean));

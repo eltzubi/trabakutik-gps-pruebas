@@ -821,7 +821,7 @@ body.creating-route:has(#creaFuente:not([hidden])){--crea-extra:98px}
  <svg id="elevationSvg" role="img" aria-label="Perfil de subidas y bajadas" viewBox="0 0 800 120" preserveAspectRatio="none"><path id="elevationFill" fill="#38bdf81c"/><path id="elevationPath" fill="none" stroke="#4de1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle id="elevationEnd" r="5" fill="#a6f3ff" stroke="#0b1c29" stroke-width="2" cx="0" cy="99"/></svg>
  <div class="elevation-foot"><span id="profileLow">Altura pendiente</span><span id="profileHigh">—</span></div>
  <div class="crea-resumen"><span id="creaTiempo">—</span><span id="creaEsfuerzo"></span></div>
- <a id="creaFuente" target="_blank" rel="noopener" title="GPX original de la Diputación Foral de Bizkaia · CC BY 4.0" hidden>Tramo oficial · Diputación de Bizkaia</a>
+ <a id="creaFuente" target="_blank" rel="noopener" hidden></a>
  <div class="crea-botones"><button type="button" id="creaGuardar" class="crea-guardar" disabled>&#10003; Guardar</button><button type="button" id="creaAbrir" class="crea-abrir hidden" disabled>&#10148; Abrir ruta</button></div>
 </section>
 <footer class="bottom"><div id="appUpdate" class="app-update hidden"><a id="appUpdateTexto" href="https://eltzubi.github.io/trabakutik-gps-pruebas/instalar.html">Hay una versión nueva de la app</a><button type="button" id="appUpdateCerrar" aria-label="Cerrar el aviso de versión nueva">✕</button></div><div id="soloApp" class="solo-app hidden"><b id="soloAppTitulo">La navegación va solo en la aplicación</b><span id="soloAppTexto">En un navegador el móvil se bloquea y la página se duerme: no sonarían los avisos de giro ni el de fuera de ruta, y la grabación se cortaría. Aquí puedes ver el mapa y las rutas, y crear la tuya.</span><a id="soloAppBaja" class="solo-app-baja" href="instalar.html">Descargar la aplicación</a></div><div class="modes"><button id="modeNav" aria-pressed="true">⌖ Ruta</button><button id="modeCreate" aria-pressed="false">✎ Crear ruta</button></div><div class="actions" id="navActions"><button id="savedRoutes" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z M3 7V4h8l2 2h6v3"/></svg>Mis rutas</button><button id="importGpxBtn" type="button"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4 M4 16v5h16v-5"/></svg>Importar GPX</button><button id="crearDesdeRuta" type="button"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17c3 0 3-10 7-10h3 M7 17a2 2 0 1 0-4 0 2 2 0 1 0 4 0 M21 7a2 2 0 1 0-4 0 2 2 0 1 0 4 0"/></svg>Crear ruta</button><div class="nav-route-tools"><button type="button" id="avisosMarcados" class="hidden">✋ Avisos marcados</button><button type="button" id="girosRuta" class="hidden">↱ Giros</button><a id="openNativeGps" class="open-native hidden" href="#" title="Grabar y seguir esta ruta con la pantalla bloqueada">↗ Abrir en la aplicación</a></div></div><input id="importGpxFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" style="display:none" aria-label="Elegir archivo GPX"><div class="actions hidden" id="createActions"><button id="undo" disabled>↶ Deshacer</button><button id="clearCreated" class="red" disabled>✕ Borrar</button><button class="blue" id="saveCreated" disabled>Guardar ruta</button><button class="go hidden" id="navCreated" disabled>Abrir ruta</button><button id="cerrarCirculo" class="hidden" title="Unir el último punto con el primero">⟳ Cerrar círculo</button><button id="idaVuelta" class="hidden" title="Volver por el mismo camino">↔ Ida y vuelta</button></div><div class="actions" id="recordActions"><button class="go" id="recordStart">Empezar<small>graba la ruta y avisa de los giros</small></button><button class="amber hidden" id="recordPause">❙❙ Pausar</button><button class="go hidden" id="recordResume">▶ Reanudar</button><button class="red hidden" id="recordStop">■ Parar</button><button class="blue hidden" id="saveRecording" disabled>↓ Guardar / exportar</button><button class="red hidden" id="discardRecording">✕ Descartar</button></div><div class="status" role="status" aria-live="polite" id="status">Mapa listo · elige una ruta o pulsa Empezar</div><div class="version hidden" id="appVersion"></div></footer>
@@ -3032,8 +3032,11 @@ function updateDraw(){
  if(fuente){
   const oficial=tramosGps.find(tr=>tr.oficial)?.oficial;
   fuente.hidden=!oficial;
-  if(oficial)fuente.href=oficial.url;
-  else fuente.removeAttribute('href');
+  if(oficial){
+   fuente.href=oficial.url;
+   fuente.textContent='Tramo oficial · '+oficial.organismoCorto;
+   fuente.title=oficial.codigo+' · '+oficial.nombre+' · '+oficial.organismo+' · '+oficial.licencia;
+  }else fuente.removeAttribute('href');
  }
  updateElevation();
  // Los mandos nuevos del creador (pieza 06): rehacer deja de valer en cuanto
@@ -3335,7 +3338,7 @@ function openSaveDialog(points,name,kind){
  const complete=kind!=='recording'||nativeTrackComplete;
  const fuentes=kind==='created'&&typeof tramosGps!=='undefined'?
   [...new Set(tramosGps.filter(tr=>tr.oficial).map(({oficial})=>
-   'Track adaptado de '+oficial.codigo+' · '+oficial.nombre+' · Diputación Foral de Bizkaia · CC BY 4.0 · '+oficial.url))]:[];
+   'Track adaptado de '+oficial.codigo+' · '+oficial.nombre+' · '+oficial.organismo+' · '+oficial.licencia+' · '+oficial.url))]:[];
  pendingSave={points:points.map(p=>p===null?null:p.slice()),name,kind,complete,fuentes};
  $('saveTitle').textContent=kind==='recording'?'Guardar grabación':'Guardar ruta creada';
  $('saveSummary').textContent=name+' · '+points.filter(Boolean).length+' puntos'+elevationText(points.filter(Boolean));
@@ -8691,20 +8694,30 @@ async function recorridoPublicadoAlternativas(a,b,referencias,signal,radio=60){
  return r?{parts:[r.points],comparison:{distance:r.metros,ascent:null},publicado:r}:null;
 }
 
-let cargaSenderosBizkaia=null;
-function senderosBizkaia(){
- if(cargaSenderosBizkaia)return cargaSenderosBizkaia;
+const catalogosOficiales=['data/senderos-bizkaia.json','data/senderos-urdaibai.json'];
+const cargasCatalogos=new Map();
+const organismoForal='Diputación Foral de Bizkaia';
+const nombreForal='Diputación de Bizkaia';
+
+function cargaCatalogoOficial(url){
+ if(cargasCatalogos.has(url))return cargasCatalogos.get(url);
  const ctl=new AbortController(),espera=setTimeout(()=>ctl.abort(),4500);
- cargaSenderosBizkaia=fetch('data/senderos-bizkaia.json',{signal:ctl.signal})
+ const carga=fetch(url,{signal:ctl.signal})
   .then(r=>{if(!r.ok)throw Error('Catálogo no disponible');return r.json()})
   .then(data=>{
    if(data.version!==1||!Array.isArray(data.tramos))throw Error('Catálogo no compatible');
-   return data.tramos;
+   return data.tramos.map(ref=>({...ref,organismo:data.organismo,organismoCorto:data.organismoCorto,
+    licencia:data.licencia}));
   }).catch(()=>{
-   cargaSenderosBizkaia=null;
+   cargasCatalogos.delete(url);
    return [];
   }).finally(()=>clearTimeout(espera));
- return cargaSenderosBizkaia;
+ cargasCatalogos.set(url,carga);
+ return carga;
+}
+
+async function senderosBizkaia(){
+ return (await Promise.all(catalogosOficiales.map(cargaCatalogoOficial))).flat();
 }
 
 function recortaSenderoOficial(a,b,referencias,distance,radio=20){
@@ -8721,7 +8734,9 @@ function recortaSenderoOficial(a,b,referencias,distance,radio=20){
  if(!mejor)return null;
  const {ref,corte}=mejor;
  return {parts:[corte.points],comparison:{distance:corte.metros,ascent:null},
-  oficial:{codigo:ref.codigo,nombre:ref.nombre,url:ref.url,ajustes:corte.ajustes}};
+  oficial:{codigo:ref.codigo,nombre:ref.nombre,url:ref.url,ajustes:corte.ajustes,
+   organismo:ref.organismo||organismoForal,organismoCorto:ref.organismoCorto||nombreForal,
+   licencia:ref.licencia||'CC BY 4.0'}};
 }
 
 async function recorridoOficialAlternativas(a,b,signal,radio=20){
@@ -8865,12 +8880,12 @@ async function calculaAlternativas(a,b){
    ajusteDoc.classList.toggle('hidden',!ajusteDoc.textContent);
    detalleDoc.open=false;
    detalleDoc.classList.toggle('hidden',!altDocumentados&&!refOficial);
-   resumenDoc.textContent=refOficial?'Tramo oficial · Diputación de Bizkaia':
+   resumenDoc.textContent=refOficial?'Tramo oficial · '+refOficial.organismoCorto:
     fuente?'Track publicado · ver ficha':fmt(doc.metros)+' de tramos Trabakutik · ver fichas';
    fichasDoc.replaceChildren();
    if(refOficial){
     const enlace=document.createElement('a');
-    enlace.textContent=refOficial.codigo+' · '+refOficial.nombre+' · CC BY 4.0';
+    enlace.textContent=refOficial.codigo+' · '+refOficial.nombre+' · '+refOficial.organismo+' · '+refOficial.licencia;
     enlace.href=refOficial.url;
     enlace.target='_blank';
     enlace.rel='noopener';

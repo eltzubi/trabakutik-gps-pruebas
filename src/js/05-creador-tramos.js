@@ -1035,8 +1035,11 @@ function updateDraw(){
  if(fuente){
   const oficial=tramosGps.find(tr=>tr.oficial)?.oficial;
   fuente.hidden=!oficial;
-  if(oficial)fuente.href=oficial.url;
-  else fuente.removeAttribute('href');
+  if(oficial){
+   fuente.href=oficial.url;
+   fuente.textContent='Tramo oficial · '+oficial.organismoCorto;
+   fuente.title=oficial.codigo+' · '+oficial.nombre+' · '+oficial.organismo+' · '+oficial.licencia;
+  }else fuente.removeAttribute('href');
  }
  updateElevation();
  // Los mandos nuevos del creador (pieza 06): rehacer deja de valer en cuanto

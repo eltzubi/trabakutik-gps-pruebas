@@ -363,20 +363,30 @@ async function recorridoPublicadoAlternativas(a,b,referencias,signal,radio=60){
  return r?{parts:[r.points],comparison:{distance:r.metros,ascent:null},publicado:r}:null;
 }
 
-let cargaSenderosBizkaia=null;
-function senderosBizkaia(){
- if(cargaSenderosBizkaia)return cargaSenderosBizkaia;
+const catalogosOficiales=['data/senderos-bizkaia.json','data/senderos-urdaibai.json'];
+const cargasCatalogos=new Map();
+const organismoForal='Diputación Foral de Bizkaia';
+const nombreForal='Diputación de Bizkaia';
+
+function cargaCatalogoOficial(url){
+ if(cargasCatalogos.has(url))return cargasCatalogos.get(url);
  const ctl=new AbortController(),espera=setTimeout(()=>ctl.abort(),4500);
- cargaSenderosBizkaia=fetch('data/senderos-bizkaia.json',{signal:ctl.signal})
+ const carga=fetch(url,{signal:ctl.signal})
   .then(r=>{if(!r.ok)throw Error('Catálogo no disponible');return r.json()})
   .then(data=>{
    if(data.version!==1||!Array.isArray(data.tramos))throw Error('Catálogo no compatible');
-   return data.tramos;
+   return data.tramos.map(ref=>({...ref,organismo:data.organismo,organismoCorto:data.organismoCorto,
+    licencia:data.licencia}));
   }).catch(()=>{
-   cargaSenderosBizkaia=null;
+   cargasCatalogos.delete(url);
    return [];
   }).finally(()=>clearTimeout(espera));
- return cargaSenderosBizkaia;
+ cargasCatalogos.set(url,carga);
+ return carga;
+}
+
+async function senderosBizkaia(){
+ return (await Promise.all(catalogosOficiales.map(cargaCatalogoOficial))).flat();
 }
 
 function recortaSenderoOficial(a,b,referencias,distance,radio=20){
@@ -393,7 +403,9 @@ function recortaSenderoOficial(a,b,referencias,distance,radio=20){
  if(!mejor)return null;
  const {ref,corte}=mejor;
  return {parts:[corte.points],comparison:{distance:corte.metros,ascent:null},
-  oficial:{codigo:ref.codigo,nombre:ref.nombre,url:ref.url,ajustes:corte.ajustes}};
+  oficial:{codigo:ref.codigo,nombre:ref.nombre,url:ref.url,ajustes:corte.ajustes,
+   organismo:ref.organismo||organismoForal,organismoCorto:ref.organismoCorto||nombreForal,
+   licencia:ref.licencia||'CC BY 4.0'}};
 }
 
 async function recorridoOficialAlternativas(a,b,signal,radio=20){
@@ -537,12 +549,12 @@ async function calculaAlternativas(a,b){
    ajusteDoc.classList.toggle('hidden',!ajusteDoc.textContent);
    detalleDoc.open=false;
    detalleDoc.classList.toggle('hidden',!altDocumentados&&!refOficial);
-   resumenDoc.textContent=refOficial?'Tramo oficial · Diputación de Bizkaia':
+   resumenDoc.textContent=refOficial?'Tramo oficial · '+refOficial.organismoCorto:
     fuente?'Track publicado · ver ficha':fmt(doc.metros)+' de tramos Trabakutik · ver fichas';
    fichasDoc.replaceChildren();
    if(refOficial){
     const enlace=document.createElement('a');
-    enlace.textContent=refOficial.codigo+' · '+refOficial.nombre+' · CC BY 4.0';
+    enlace.textContent=refOficial.codigo+' · '+refOficial.nombre+' · '+refOficial.organismo+' · '+refOficial.licencia;
     enlace.href=refOficial.url;
     enlace.target='_blank';
     enlace.rel='noopener';

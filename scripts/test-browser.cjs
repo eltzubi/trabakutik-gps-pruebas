@@ -753,14 +753,14 @@ async function setup(context) {
     console.log('PASS Chromium: Trabakua a la cima de Oiz con el track publicado si fallan los motores');
 
     const biz=await personal.newPage();
-    const oficial=JSON.parse(fs.readFileSync(path.join(root,'data/senderos-bizkaia.json'),'utf8'))
-      .tramos.find(t=>t.codigo==='PR-BI 120');
+    const oficial=JSON.parse(fs.readFileSync(path.join(root,'data/senderos-urdaibai.json'),'utf8'))
+      .tramos.find(t=>t.codigo==='PR-BI 160');
     const coordsOficial=[100,160,190].map(i=>oficial.puntos[i].slice(0,2));
-    let pidioCatalogo=0;
-    biz.on('request',req=>{if(req.url().endsWith('/data/senderos-bizkaia.json'))pidioCatalogo++});
+    const catalogosPedidos=[];
+    biz.on('request',req=>{if(/\/data\/senderos-(bizkaia|urdaibai)\.json$/.test(req.url()))catalogosPedidos.push(req.url().split('/').pop())});
     biz.on('dialog',d=>d.accept());
     await biz.goto(base+'nuevo.html');
-    assert.equal(pidioCatalogo,0,'el catálogo oficial no se carga para mostrar el mapa');
+    assert.equal(catalogosPedidos.length,0,'el catálogo oficial no se carga para mostrar el mapa');
     await biz.click('#crearDesdeRuta');
     await biz.waitForFunction(()=>window.__creator?.redGps);
     await biz.evaluate(()=>{
@@ -775,7 +775,7 @@ async function setup(context) {
     const tarjetaOficial=biz.getByRole('button',{name:/Tramo oficial/});
     await tarjetaOficial.waitFor();
     assert.equal(await tarjetaOficial.getAttribute('aria-pressed'),'true');
-    assert.match(await biz.locator('.alternativaDocumentada summary').textContent(),/Diputación de Bizkaia/);
+    assert.match(await biz.locator('.alternativaDocumentada summary').textContent(),/Gobierno Vasco/);
     const tramosAzules=()=>biz.evaluate(()=>{
       let n=0;
       window.__creator.map.eachLayer(l=>{if(l instanceof L.Polyline&&l.options.color==='#38bdf8')n++});
@@ -797,16 +797,17 @@ async function setup(context) {
       await biz.waitForFunction(n=>window.__creator.anclasGps.length===n,i+1);
     }
     assert(await biz.locator('#creaFuente').isVisible());
-    assert.equal(pidioCatalogo,1,'una descarga sirve para ambos modos');
+    assert.deepEqual(catalogosPedidos.sort(),['senderos-bizkaia.json','senderos-urdaibai.json'],
+      'una descarga de cada catálogo sirve para ambos modos');
     assert.equal(await biz.evaluate(()=>window.__creator.tramosGps.slice(1)
-      .every(tr=>tr.oficial?.codigo==='PR-BI 120')),true);
+      .every(tr=>tr.oficial?.codigo==='PR-BI 160')),true);
     await biz.evaluate(()=>{window.TrabakutikAndroid.saveGpx=(name,gpx)=>window.__native.gpxOficial=gpx});
     await biz.click('#creaGuardar');
     await biz.click('#saveToMine');
     const guardada=await biz.evaluate(()=>JSON.parse(localStorage.getItem('trabakutik-gps-creadas-v1'))[0]);
-    assert.match(guardada.fuentes[0],/PR-BI 120.*Diputación Foral de Bizkaia.*CC BY 4.0/);
+    assert.match(guardada.fuentes[0],/PR-BI 160.*Eusko Jaurlaritza \/ Gobierno Vasco.*CC BY 4.0/);
     await biz.click('#downloadFromDialog');
-    assert.match(await biz.evaluate(()=>window.__native.gpxOficial),/<desc>Track adaptado de PR-BI 120/);
+    assert.match(await biz.evaluate(()=>window.__native.gpxOficial),/<desc>Track adaptado de PR-BI 160/);
     await biz.close();
     console.log('PASS Chromium: catálogo oficial bajo demanda, sin capa propia y utilizable en ambos modos');
     failPlanner=true;
