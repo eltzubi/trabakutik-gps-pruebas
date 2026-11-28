@@ -752,6 +752,63 @@ async function setup(context) {
     await oiz.close();
     console.log('PASS Chromium: Trabakua a la cima de Oiz con el track publicado si fallan los motores');
 
+    const biz=await personal.newPage();
+    const oficial=JSON.parse(fs.readFileSync(path.join(root,'data/senderos-bizkaia.json'),'utf8'))
+      .tramos.find(t=>t.codigo==='PR-BI 120');
+    const coordsOficial=[100,160,190].map(i=>oficial.puntos[i].slice(0,2));
+    let pidioCatalogo=0;
+    biz.on('request',req=>{if(req.url().endsWith('/data/senderos-bizkaia.json'))pidioCatalogo++});
+    biz.on('dialog',d=>d.accept());
+    await biz.goto(base+'nuevo.html');
+    assert.equal(pidioCatalogo,0,'el catálogo oficial no se carga para mostrar el mapa');
+    await biz.click('#crearDesdeRuta');
+    await biz.waitForFunction(()=>window.__creator?.redGps);
+    await biz.evaluate(()=>{
+      window.__creator.MotorSenderismo.fetchAlternatives=async(a,b)=>[{
+        parts:[[[...a,100],[(a[0]+b[0])/2+.002,(a[1]+b[1])/2,110],[...b,100]]],
+        comparison:{distance:1000,ascent:10},
+      }];
+    });
+    const marcaOficial=async p=>biz.evaluate(p=>window.__creator.map.fire('click',{latlng:L.latLng(p)}),p);
+    await biz.click('#modoDosPuntos');
+    await marcaOficial(coordsOficial[0]);await marcaOficial(coordsOficial[1]);
+    const tarjetaOficial=biz.getByRole('button',{name:/Tramo oficial/});
+    await tarjetaOficial.waitFor();
+    assert.equal(await tarjetaOficial.getAttribute('aria-pressed'),'true');
+    assert.match(await biz.locator('.alternativaDocumentada summary').textContent(),/Diputación de Bizkaia/);
+    const tramosAzules=()=>biz.evaluate(()=>{
+      let n=0;
+      window.__creator.map.eachLayer(l=>{if(l instanceof L.Polyline&&l.options.color==='#38bdf8')n++});
+      return n;
+    });
+    assert.equal(await tramosAzules(),1);
+    await biz.locator('.alternativa').nth(1).click();
+    assert.equal(await tramosAzules(),0,'la opción oficial se oculta al elegir otro trazado');
+    await tarjetaOficial.click();
+    await biz.getByRole('button',{name:'Elegir ruta',exact:true}).click();
+    await biz.locator('#creaFuente').waitFor();
+    assert.equal(await biz.locator('#creaFuente').getAttribute('href'),oficial.url);
+    await biz.click('#creaDeshacer');
+    assert(await biz.locator('#creaFuente').isHidden());
+    await biz.click('#creaDeshacer');
+    assert.equal(await biz.evaluate(()=>window.__creator.anclasGps.length),0);
+    for(const [i,p] of coordsOficial.entries()){
+      await marcaOficial(p);
+      await biz.waitForFunction(n=>window.__creator.anclasGps.length===n,i+1);
+    }
+    assert(await biz.locator('#creaFuente').isVisible());
+    assert.equal(pidioCatalogo,1,'una descarga sirve para ambos modos');
+    assert.equal(await biz.evaluate(()=>window.__creator.tramosGps.slice(1)
+      .every(tr=>tr.oficial?.codigo==='PR-BI 120')),true);
+    await biz.evaluate(()=>{window.TrabakutikAndroid.saveGpx=(name,gpx)=>window.__native.gpxOficial=gpx});
+    await biz.click('#creaGuardar');
+    await biz.click('#saveToMine');
+    const guardada=await biz.evaluate(()=>JSON.parse(localStorage.getItem('trabakutik-gps-creadas-v1'))[0]);
+    assert.match(guardada.fuentes[0],/PR-BI 120.*Diputación Foral de Bizkaia.*CC BY 4.0/);
+    await biz.click('#downloadFromDialog');
+    assert.match(await biz.evaluate(()=>window.__native.gpxOficial),/<desc>Track adaptado de PR-BI 120/);
+    await biz.close();
+    console.log('PASS Chromium: catálogo oficial bajo demanda, sin capa propia y utilizable en ambos modos');
     failPlanner=true;
     await creator.evaluate(()=>window.__creator.map.fire('click',{latlng:L.latLng(43.0108,-2.0103)}));
     // Aqui no hay red, asi que los caminos de la zona tampoco se han podido

@@ -402,7 +402,9 @@ function aplicaMapaGps(result){
  anclasGps=ids;tramosGps=ids.length?[[ids[0]]]:[];
  result.parts.forEach((pts,i)=>{
   const tr=[ids[i],...pts.slice(1,-1).map(p=>nodoManualGps(p[0],p[1],p[2])),ids[i+1]];
-  tr.mapa=true;tramosGps.push(tr);
+  tr.mapa=true;
+  if(result.oficial)tr.oficial=result.oficial;
+  tramosGps.push(tr);
  });
  updateDraw();
 }
@@ -414,7 +416,7 @@ function aplicaMapaGps(result){
 // Esto añade el tramo calculado al final y deja lo anterior como estaba.
 function anadeTramoMapa(result){
  const a=result.anchors[0],b=result.anchors[1];
- if(!anclasGps.length||result.calzada&&anclasGps.length===1){
+ if(!anclasGps.length||(result.calzada||result.ajustaInicio)&&anclasGps.length===1){
   const ini=nodoManualGps(a[0],a[1],a[2]);
   anclasGps[0]=ini;tramosGps[0]=[ini];
  }
@@ -428,10 +430,13 @@ function anadeTramoMapa(result){
  // Solo si es un punto puesto a mano: a un nodo de la red de caminos no se le
  // escribe encima, que lo comparten todas las rutas.
  if(nodosManualesGps.has(ini)&&redGps.nodos[ini]&&!Number.isFinite(redGps.nodos[ini][2])&&Number.isFinite(a[2]))redGps.nodos[ini][2]=a[2];
- const fin=cierraEnElInicio(b)??nodoManualGps(b[0],b[1],b[2]);
+ const cierre=cierraEnElInicio(b);
+ const esCatalogo=!!(result.oficial||result.publicado);
+ const fin=cierre!==null&&(!esCatalogo||dist(redGps.nodos[cierre],b)<=.8)?cierre:nodoManualGps(b[0],b[1],b[2]);
  const pts=result.parts[0]||[];
  const tr=[ini,...pts.slice(1,-1).map(q=>nodoManualGps(q[0],q[1],q[2])),fin];
  tr.mapa=true;
+ if(result.oficial)tr.oficial=result.oficial;
  anclasGps.push(fin);tramosGps.push(tr);
  updateDraw();
 }
@@ -472,15 +477,28 @@ function uneEnRectaMapa(){
 async function planificaTramoMapa(desde,hasta){
  tramoSinCamino=null;
  if(!coordenadaMapaGps(desde)||!coordenadaMapaGps(hasta))return;
- if(!permisoMapaGps){
-  permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap). ¿Continuar?');
-  if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
- }
  cancelaMapaGps();const version=calculoMapaGps;
  const controller=new AbortController();peticionMapaGps=controller;calculandoMapaGps=true;
  $('saveCreated').disabled=true;estadoMapaGps('Calculando tramo…');
  const timer=setTimeout(()=>controller.abort(),30000);
  try{
+  if(typeof tramoDeCatalogo==='function'){
+   const referencias=new AbortController(),cancela=()=>referencias.abort();
+   controller.signal.addEventListener('abort',cancela,{once:true});
+   const limite=setTimeout(cancela,5500);
+   const conocido=await tramoDeCatalogo(desde,hasta,referencias.signal,anclasGps.length<=1)
+    .catch(()=>null).finally(()=>{clearTimeout(limite);controller.signal.removeEventListener('abort',cancela)});
+   if(version!==calculoMapaGps)return;
+   if(conocido){
+    anadeTramoMapa(conocido);
+    estadoMapaGps(textoAjustesTrack((conocido.oficial||conocido.publicado).ajustes));
+    return;
+   }
+  }
+  if(!permisoMapaGps){
+   permisoMapaGps=confirm('Para calcular los caminos y el desnivel se enviarán los puntos del recorrido a los servicios de rutas y alturas de FOSSGIS (OpenStreetMap). ¿Continuar?');
+   if(!permisoMapaGps){estadoMapaGps('Cálculo cancelado. No se han enviado los puntos.');return}
+  }
   {const espera=esperaRotondas([desde,hasta]);if(espera)await espera}
   const result=await solicitaMapaGps([desde,hasta],controller.signal);
   if(version!==calculoMapaGps)return;
@@ -1013,6 +1031,13 @@ function updateDraw(){
  $('navCreated').disabled=true;
  $('navCreated').classList.add('hidden');
  $('clearActiveRoute').classList.toggle('hidden',routePoints.length<2&&drawPoints.length<2);
+ const fuente=$('creaFuente');
+ if(fuente){
+  const oficial=tramosGps.find(tr=>tr.oficial)?.oficial;
+  fuente.hidden=!oficial;
+  if(oficial)fuente.href=oficial.url;
+  else fuente.removeAttribute('href');
+ }
  updateElevation();
  // Los mandos nuevos del creador (pieza 06): rehacer deja de valer en cuanto
  // el trazado cambia, aunque ningun boton de siempre cambie de estado.

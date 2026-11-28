@@ -65,7 +65,10 @@ function tramoGps(a,b,manual=trazadoManual){
  return camino(redGps,a,b);
 }
 function invierteTramoGps(tr){
- const vuelta=tr.slice().reverse();if(tr.manual)vuelta.manual=true;return vuelta;
+ const vuelta=tr.slice().reverse();
+ if(tr.manual)vuelta.manual=true;
+ if(tr.oficial)vuelta.oficial=tr.oficial;
+ return vuelta;
 }
 // Cálculo por la red peatonal de OpenStreetMap. Un error nunca se convierte
 // en una recta ni en una ruta por el grafo de tracks de Trabakutik.
